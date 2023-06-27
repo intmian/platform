@@ -1,3 +1,4 @@
+github.com/intmian/mian_go_lib v0.0.0-20230525092916-bbc7532a45bb/go.mod h1:VQMC7sRfNjMoczDkFTtG5vqTrTJcuRycrtPViqFnnZo=
 golang.org/x/mod v0.8.0/go.mod h1:iBbtSCu2XBx23ZKBPSOrRkjjQPZFPuis4dIYUhu/chs=
 golang.org/x/sys v0.5.0/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
 golang.org/x/term v0.8.0/go.mod h1:xPskH00ivmX89bAKVGSKKtLOWNx2+17Eiy94tnKShWo=
