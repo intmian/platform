@@ -5,7 +5,7 @@ import (
 	"github.com/intmian/platform/services/auto/tool"
 	"time"
 
-	"github.com/intmian/platform/mian_go_lib/tool/xlog"
+	"github.com/intmian/mian_go_lib/tool/xlog"
 	"github.com/robfig/cron"
 )
 

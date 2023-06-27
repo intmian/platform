@@ -1,7 +1,7 @@
 package setting
 
 import (
-	"github.com/intmian/platform/mian_go_lib/tool/misc"
+	"github.com/intmian/mian_go_lib/tool/misc"
 	"sync"
 )
 

@@ -1,8 +1,8 @@
 package mods
 
 import (
-	"github.com/intmian/platform/mian_go_lib/tool/spider"
-	"github.com/intmian/platform/mian_go_lib/tool/xlog"
+	"github.com/intmian/mian_go_lib/tool/spider"
+	"github.com/intmian/mian_go_lib/tool/xlog"
 	"github.com/intmian/platform/services/auto/setting"
 	"github.com/intmian/platform/services/auto/tool"
 )

@@ -4,8 +4,8 @@ import (
 	"github.com/intmian/platform/services/auto/log_cache"
 	"github.com/intmian/platform/services/auto/setting"
 
-	"github.com/intmian/platform/mian_go_lib/tool/xlog"
-	"github.com/intmian/platform/mian_go_lib/tool/xpush"
+	"github.com/intmian/mian_go_lib/tool/xlog"
+	"github.com/intmian/mian_go_lib/tool/xpush"
 )
 
 func Init() {

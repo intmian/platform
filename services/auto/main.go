@@ -2,7 +2,7 @@ package main
 
 import (
 	"github.com/gin-gonic/gin"
-	"github.com/intmian/platform/mian_go_lib/tool/xlog"
+	"github.com/intmian/mian_go_lib/tool/xlog"
 	"github.com/intmian/platform/services/auto/http"
 	"github.com/intmian/platform/services/auto/setting"
 	"github.com/intmian/platform/services/auto/task"

@@ -86,16 +86,16 @@ type UnitStatus struct {
 	open       bool
 }
 
-func (mgr *Mgr) GetAllUnitStatus() []UnitStatus {
+func (mgr *Mgr) GetAllUnitStatus() []*UnitStatus {
 	var status []*UnitStatus
-	for _, unit := range mgr.Units {
-		status := &UnitStatus{
-			name:       unit.name,
-			nextTime:   unit.GetNextTime(),
-			nextRemain: unit.GetNextRemain(),
-			timeParam:  unit.,
-			open:       unit.open,
-		}
-	}
+	//for _, unit := range mgr.Units {
+	//	status := &UnitStatus{
+	//		name:       unit.name,
+	//		nextTime:   unit.GetNextTime(),
+	//		nextRemain: unit.GetNextRemain(),
+	//		//timeParam:  unit,
+	//		//open:       unit.open,
+	//	}
+	//}
 	return status
 }
