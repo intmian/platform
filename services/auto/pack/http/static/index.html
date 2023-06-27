@@ -1,0 +1,66 @@
+<html lang="zh-CN">
+<head>
+    <script src="https://unpkg.com/vue@next"></script>
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+</head>
+<body>
+<pre id="log" class="all">
+    <h1>日志:</h1>
+    {{ log }}
+</pre>
+<pre id="status" class="all">
+    <h1>状态:</h1>
+    {{ s }}
+</pre>
+</body>
+<script>
+    const Log = {
+        data() {
+            return {
+                log: ""
+            }
+        },
+        mounted() {
+            axios.get("/api/log_cache").then((response) => {
+                this.log = response.data
+            })
+            setInterval(() => {
+                axios.get("/api/log_cache").then((response) => {
+                    this.log = response.data
+                })
+            }, 10000)
+        }
+    }
+    Vue.createApp(Log).mount('#log')
+
+    const Status = {
+        data() {
+            return {
+                s: ""
+            }
+        },
+        mounted() {
+            axios.get("/api/status").then((response) => {
+                this.s = response.data
+            })
+            setInterval(() => {
+                axios.get("/api/status").then((response) => {
+                    this.s = response.data
+                })
+            }, 10000)
+        }
+    }
+    Vue.createApp(Status).mount('#status')
+</script>
+<style>
+    .all {
+        border: 1px solid #eee;
+        border-radius: 2px;
+        padding: 20px 30px;
+        margin-top: 1em;
+        margin-bottom: 40px;
+        user-select: none;
+        overflow-x: auto;
+    }
+</style>
+</html>

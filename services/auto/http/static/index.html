@@ -1,0 +1,89 @@
+<html lang="zh-CN">
+<head>
+    <script src="https://unpkg.com/vue@next"></script>
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+    <title>mian</title>
+</head>
+<body>
+<div id="title">
+    <h1>{{ message }}</h1>
+</div>
+<div id="log" class="all">
+    <h3>日志:</h3>
+    <pre>{{log}}</pre>
+</div>
+<div id="status" class="all">
+    <h3>状态:</h3>
+    <pre>{{s}}</pre>
+</div>
+</body>
+<script>
+    const Log = {
+        data() {
+            return {
+                log: ""
+            }
+        },
+        mounted() {
+            axios.get("/api/log_cache").then((response) => {
+                this.log = response.data
+            })
+            setInterval(() => {
+                axios.get("/api/log_cache").then((response) => {
+                    this.log = response.data
+                })
+            }, 10000)
+        }
+    }
+    Vue.createApp(Log).mount('#log')
+
+    const Status = {
+        data() {
+            return {
+                s: ""
+            }
+        },
+        mounted() {
+            axios.get("/api/task/status").then((response) => {
+                this.s = response.data
+            })
+            setInterval(() => {
+                axios.get("/api/task/status").then((response) => {
+                    this.s = response.data
+                })
+            }, 10000)
+        }
+    }
+    Vue.createApp(Status).mount('#status')
+
+    const Title = {
+        data() {
+            return {
+                message: ""
+            }
+        },
+        mounted() {
+            axios.get("/api/title").then((response) => {
+                this.message = response.data
+            })
+            setInterval(() => {
+                axios.get("/api/title").then((response) => {
+                    this.message = response.data
+                })
+            }, 1000)
+        }
+    }
+    Vue.createApp(Title).mount('#title')
+</script>
+<style>
+    .all {
+        border: 1px solid #eee;
+        border-radius: 2px;
+        padding: 20px 30px;
+        margin-top: 1em;
+        margin-bottom: 40px;
+        user-select: none;
+        overflow-x: auto;
+    }
+</style>
+</html>
