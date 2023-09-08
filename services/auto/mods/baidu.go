@@ -41,13 +41,20 @@ func (b *Baidu) Do() {
 	}
 	var keywords []string
 	var newss [][]spider.BaiduNew
+	hasErrAll := false
+	noNewsAll := false
 	for _, v := range params {
-		news, b1, b2 := spider.GetBaiduNews(v.(string), true)
-		if b1 == true || b2 == true {
-			tool.GLog.Log(xlog.EError, "BAIDU", "已失效")
-		}
+		news, hasErr, noNews := spider.GetBaiduNews(v.(string), true)
 		keywords = append(keywords, v.(string))
 		newss = append(newss, news)
+		hasErrAll = hasErrAll || hasErr
+		noNewsAll = noNewsAll && noNews
+	}
+	if hasErrAll {
+		tool.GLog.Log(xlog.EWarning, "BAIDU", "接口存在错误")
+	}
+	if noNewsAll {
+		tool.GLog.Log(xlog.EWarning, "BAIDU", "接口为空")
 	}
 
 	s := spider.ParseNewToMarkdown(keywords, newss)

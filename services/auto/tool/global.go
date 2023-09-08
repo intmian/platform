@@ -13,8 +13,8 @@ func Init() {
 		Token: setting.GSettingMgr.Get("pushdeer_token").(string),
 	}, "autogogo")
 	GLog = xlog.SimpleNewMgr(GPush, "", "", "autogogo")
-	GLog.SetLogAddr("./static/log")
-	GLog.SetPrinter(log_cache.GLogCache.Add)
+	GLog.LogAddr = "./static/log"
+	GLog.Printer = log_cache.GLogCache.Add
 	GLog.Log(xlog.ELog, "INIT", "日志、推送初始化完成")
 }
 
