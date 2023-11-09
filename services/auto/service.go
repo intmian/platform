@@ -1,24 +1,32 @@
-package main
+package auto
 
 import (
 	"github.com/gin-gonic/gin"
 	"github.com/intmian/mian_go_lib/tool/xlog"
+	"github.com/intmian/mian_go_lib/tool/xstorage"
 	"github.com/intmian/platform/services/auto/http"
 	"github.com/intmian/platform/services/auto/setting"
 	"github.com/intmian/platform/services/auto/task"
 	"github.com/intmian/platform/services/auto/tool"
+	"github.com/intmian/platform/services/share"
 	"io"
 	"os"
 )
 
-func main() {
-	println("doing....")
-	tool.Init()
+type Service struct {
+	share share.ServiceShare
+	share.ServiceBase
+}
+
+func (s Service) Start(share share.ServiceShare) error {
+	s.share = share
+	tool.Init(share.Push, share.Log)
 	tool.GLog.Log(xlog.ELog, "SYS", "初始化开始")
 	task.Init()
 	tool.GLog.Log(xlog.ELog, "SYS", "task初始化完成")
-
-	if setting.GSettingMgr.Exist("web.debug") && setting.GSettingMgr.Get("web.debug").(bool) {
+	setting.GSetting = share.PlatSetting
+	ok, isDebug, err := xstorage.Get[bool](setting.GSetting, "web.debug")
+	if ok && isDebug {
 		gin.SetMode(gin.DebugMode)
 	} else {
 		gin.SetMode(gin.ReleaseMode)
@@ -30,16 +38,21 @@ func main() {
 	http.InitRoot(r)
 	tool.GLog.Log(xlog.ELog, "SYS", "web初始化完成")
 	tool.GLog.Log(xlog.ELog, "SYS", "初始化完成")
-	var err error
-	if setting.GSettingMgr.Get("web.port") == nil {
+
+	ok, port, err := xstorage.Get[string](setting.GSetting, "web.port")
+	if !ok {
 		err = r.Run(":8080")
 	} else {
-		port := ":" + setting.GSettingMgr.Get("web.port").(string)
-		err = r.Run(port)
+		err = r.Run(":" + port)
 	}
 
 	if err != nil {
 		tool.GLog.Log(xlog.ELog, "SYS", "web启动失败")
 	}
+	return nil
+}
 
+func (s Service) Stop() error {
+	task.GMgr.AllStop()
+	return nil
 }

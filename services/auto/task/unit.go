@@ -1,6 +1,9 @@
 package task
 
 import (
+	"fmt"
+	"github.com/intmian/mian_go_lib/tool/misc"
+	"github.com/intmian/mian_go_lib/tool/xstorage"
 	"github.com/intmian/platform/services/auto/setting"
 	"github.com/intmian/platform/services/auto/tool"
 	"time"
@@ -50,10 +53,13 @@ func (u *Unit) Start() {
 	if u.status != StatusClose {
 		return
 	}
-	setting.GSettingMgr.Set(u.name+".open", true)
-	setting.GSettingMgr.Save()
+	err := setting.GSetting.Set(u.name+".open", xstorage.ToUnit(true, xstorage.VALUE_TYPE_BOOL))
+	if err != nil {
+		tool.GLog.Log(xlog.EError, u.name, "start失败:"+err.Error())
+		return
+	}
 	u.c = cron.New()
-	err := u.c.AddFunc(u.timeStr, u.do)
+	err = u.c.AddFunc(u.timeStr, u.do)
 	if err != nil {
 		tool.GLog.Log(xlog.EError, u.name, "start失败:"+err.Error())
 	}
@@ -65,8 +71,11 @@ func (u *Unit) Stop() {
 	if u.status == StatusClose {
 		return
 	}
-	setting.GSettingMgr.Set(u.name+".open", false)
-	setting.GSettingMgr.Save()
+	err := setting.GSetting.Set(u.name+".open", xstorage.ToUnit(false, xstorage.VALUE_TYPE_BOOL))
+	if err != nil {
+		tool.GLog.Log(xlog.EError, u.name, "stop失败:"+err.Error())
+		return
+	}
 	u.c.Stop()
 	u.status = StatusClose
 }
@@ -131,50 +140,96 @@ func NewUnit(task Task) *Unit {
 		f:       task.Do,
 		init:    task.Init,
 	}
-	t := setting.GSettingMgr.Get(u.name + ".time_str")
-	if t != nil {
-		switch t.(type) {
-		case string:
-			u.timeStr = t.(string)
-		}
+	//t := setting.GSetting.Get(u.name + ".time_str")
+	//if t != nil {
+	//	switch t.(type) {
+	//	case string:
+	//		u.timeStr = t.(string)
+	//	}
+	//}
+	//setting.GSetting.Set(u.name+".time_str", u.timeStr)
+	ok, v, err, c := setting.GSetting.GetAndSetDefaultAsync(u.name+".time_str", xstorage.ToUnit(u.timeStr, xstorage.VALUE_TYPE_STRING))
+	if err != nil {
+		tool.GLog.Log(xlog.EError, u.name, fmt.Sprintf("NewUnit(%v) GetAndSetDefaultAsync error:%v", task, err))
+		return nil
 	}
-	setting.GSettingMgr.Set(u.name+".time_str", u.timeStr)
+	if ok {
+		u.timeStr = xstorage.ToBase[string](v)
+	}
+	misc.GoWaitError(tool.GLog, c, u.name, fmt.Sprintf("NewUnit(%v) GetAndSetDefaultAsync error", task))
 	return &u
 }
 
 func (u *Unit) Init() {
 	u.init()
-	if !setting.GSettingMgr.Exist(u.name + ".open") {
-		setting.GSettingMgr.Set(u.name+".open", true)
-		setting.GSettingMgr.Save()
+	//if !setting.GSetting.Exist(u.name + ".open") {
+	//	setting.GSetting.Set(u.name+".open", true)
+	//	setting.GSetting.Save()
+	//	u.Start()
+	//} else {
+	//	if setting.GSetting.Get(u.name + ".open").(bool) {
+	//		u.Start()
+	//	} else {
+	//		u.Stop()
+	//	}
+	//}
+	ok, v, err, c := setting.GSetting.GetAndSetDefaultAsync(u.name+".open", xstorage.ToUnit(true, xstorage.VALUE_TYPE_BOOL))
+	if err != nil {
+		tool.GLog.Log(xlog.EError, u.name, fmt.Sprintf("Unit.Init() GetAndSetDefaultAsync error:%v", err))
+		return
+	}
+	if !ok {
 		u.Start()
 	} else {
-		if setting.GSettingMgr.Get(u.name + ".open").(bool) {
+		if xstorage.ToBase[bool](v) {
 			u.Start()
 		} else {
 			u.Stop()
 		}
 	}
+	misc.GoWaitError(tool.GLog, c, u.name, "Unit.Init() GetAndSetDefaultAsync error")
 }
 
 func (u *Unit) check() {
-	i := setting.GSettingMgr.Get(u.name + ".open")
-	if i != nil {
-		switch i.(type) {
-		case bool:
-			if i.(bool) {
-				u.Start()
-			} else {
-				u.Stop()
-			}
+	//i := setting.GSetting.Get(u.name + ".open")
+	//if i != nil {
+	//	switch i.(type) {
+	//	case bool:
+	//		if i.(bool) {
+	//			u.Start()
+	//		} else {
+	//			u.Stop()
+	//		}
+	//	}
+	//}
+	//
+	//i = setting.GSetting.Get(u.name + ".time_str")
+	//if i != nil {
+	//	switch i.(type) {
+	//	case string:
+	//		u.timeStr = i.(string)
+	//		u.c.Stop()
+	//		u.c.Start()
+	//	}
+	//}
+	get, b, err := xstorage.Get[bool](setting.GSetting, u.name+".open")
+	if err != nil {
+		tool.GLog.Log(xlog.EError, u.name, fmt.Sprintf("Unit.check() Get error:%v", err))
+	}
+	if get {
+		if b {
+			u.Start()
+		} else {
+			u.Stop()
 		}
 	}
-
-	i = setting.GSettingMgr.Get(u.name + ".time_str")
-	if i != nil {
-		switch i.(type) {
-		case string:
-			u.timeStr = i.(string)
+	get, s, err := xstorage.Get[string](setting.GSetting, u.name+".time_str")
+	if err != nil {
+		tool.GLog.Log(xlog.EError, u.name, fmt.Sprintf("Unit.check() Get error:%v", err))
+	}
+	if get {
+		if s != u.timeStr {
+			u.timeStr = s
 			u.c.Stop()
 			u.c.Start()
 		}
