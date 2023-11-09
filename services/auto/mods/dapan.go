@@ -24,7 +24,7 @@ func (d *Dapan) Do() {
 }
 
 func (d *Dapan) GetName() string {
-	return "DAPAN"
+	return "auto.DAPAN"
 }
 
 func (d *Dapan) GetInitTimeStr() string {

@@ -61,7 +61,7 @@ func (b *Baidu) Do() {
 }
 
 func (b *Baidu) GetName() string {
-	return "BAIDU"
+	return "auto.BAIDU"
 }
 
 func (b *Baidu) GetInitTimeStr() string {

@@ -23,7 +23,7 @@ func (l *Lottery) Do() {
 }
 
 func (l *Lottery) GetName() string {
-	return "LOTTERY"
+	return "auto.LOTTERY"
 }
 
 func (l *Lottery) GetInitTimeStr() string {
