@@ -19,4 +19,8 @@ const (
 type cmd struct {
 	name    string
 	cmdAddr string
+	params  []cmdParam
 }
+
+// cmdName->paramName->paramValue
+type cmdParamHistory map[string]map[string]string

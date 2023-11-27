@@ -19,7 +19,7 @@ func (b *Baidu) Init() {
 		"macbook air",
 		"扫地机器人 发布",
 		"kindle",
-	}, xstorage.VALUE_TYPE_SLICE_STRING))
+	}, xstorage.ValueTypeSliceString))
 	if err != nil {
 		tool.GLog.LogWithErr(xlog.EWarning, "auto.BAIDU", errors.Join(errors.New("func Init() GetAndSetDefault error"), err))
 	}

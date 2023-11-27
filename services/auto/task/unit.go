@@ -53,7 +53,7 @@ func (u *Unit) Start() {
 	if u.status != StatusClose {
 		return
 	}
-	err := setting.GSetting.Set(u.name+".open", xstorage.ToUnit(true, xstorage.VALUE_TYPE_BOOL))
+	err := setting.GSetting.Set(u.name+".open", xstorage.ToUnit(true, xstorage.ValueTypeBool))
 	if err != nil {
 		tool.GLog.Log(xlog.EError, u.name, "start失败:"+err.Error())
 		return
@@ -71,7 +71,7 @@ func (u *Unit) Stop() {
 	if u.status == StatusClose {
 		return
 	}
-	err := setting.GSetting.Set(u.name+".open", xstorage.ToUnit(false, xstorage.VALUE_TYPE_BOOL))
+	err := setting.GSetting.Set(u.name+".open", xstorage.ToUnit(false, xstorage.ValueTypeBool))
 	if err != nil {
 		tool.GLog.Log(xlog.EError, u.name, "stop失败:"+err.Error())
 		return
@@ -148,7 +148,7 @@ func NewUnit(task Task) *Unit {
 	//	}
 	//}
 	//setting.GSetting.Set(u.name+".time_str", u.timeStr)
-	ok, v, err, c := setting.GSetting.GetAndSetDefaultAsync(u.name+".time_str", xstorage.ToUnit(u.timeStr, xstorage.VALUE_TYPE_STRING))
+	ok, v, err, c := setting.GSetting.GetAndSetDefaultAsync(u.name+".time_str", xstorage.ToUnit(u.timeStr, xstorage.ValueTypeSliceString))
 	if err != nil {
 		tool.GLog.Log(xlog.EError, u.name, fmt.Sprintf("NewUnit(%v) GetAndSetDefaultAsync error:%v", task, err))
 		return nil
@@ -173,7 +173,7 @@ func (u *Unit) Init() {
 	//		u.Stop()
 	//	}
 	//}
-	ok, v, err, c := setting.GSetting.GetAndSetDefaultAsync(u.name+".open", xstorage.ToUnit(true, xstorage.VALUE_TYPE_BOOL))
+	ok, v, err, c := setting.GSetting.GetAndSetDefaultAsync(u.name+".open", xstorage.ToUnit(true, xstorage.ValueTypeBool))
 	if err != nil {
 		tool.GLog.Log(xlog.EError, u.name, fmt.Sprintf("Unit.Init() GetAndSetDefaultAsync error:%v", err))
 		return
