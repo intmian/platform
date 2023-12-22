@@ -2,7 +2,6 @@ package task
 
 import (
 	"fmt"
-	"github.com/intmian/mian_go_lib/tool/misc"
 	"github.com/intmian/mian_go_lib/tool/xstorage"
 	"github.com/intmian/platform/services/auto/setting"
 	"github.com/intmian/platform/services/auto/tool"
@@ -148,15 +147,16 @@ func NewUnit(task Task) *Unit {
 	//	}
 	//}
 	//setting.GSetting.Set(u.name+".time_str", u.timeStr)
-	ok, v, err, c := setting.GSetting.GetAndSetDefaultAsync(u.name+".time_str", xstorage.ToUnit(u.timeStr, xstorage.ValueTypeSliceString))
+	var v xstorage.ValueUnit
+	ok, err, c := setting.GSetting.GetAndSetDefaultAsync(u.name+".time_str", xstorage.ToUnit(u.timeStr, xstorage.ValueTypeString), &v)
 	if err != nil {
 		tool.GLog.Log(xlog.EError, u.name, fmt.Sprintf("NewUnit(%v) GetAndSetDefaultAsync error:%v", task, err))
 		return nil
 	}
 	if ok {
-		u.timeStr = xstorage.ToBase[string](v)
+		u.timeStr = xstorage.ToBase[string](&v)
 	}
-	misc.GoWaitError(tool.GLog, c, u.name, fmt.Sprintf("NewUnit(%v) GetAndSetDefaultAsync error", task))
+	xlog.GoWaitError(tool.GLog, c, u.name, fmt.Sprintf("NewUnit(%v) GetAndSetDefaultAsync error", task))
 	return &u
 }
 
@@ -173,7 +173,8 @@ func (u *Unit) Init() {
 	//		u.Stop()
 	//	}
 	//}
-	ok, v, err, c := setting.GSetting.GetAndSetDefaultAsync(u.name+".open", xstorage.ToUnit(true, xstorage.ValueTypeBool))
+	v := &xstorage.ValueUnit{}
+	ok, err, c := setting.GSetting.GetAndSetDefaultAsync(u.name+".open", xstorage.ToUnit(true, xstorage.ValueTypeBool), v)
 	if err != nil {
 		tool.GLog.Log(xlog.EError, u.name, fmt.Sprintf("Unit.Init() GetAndSetDefaultAsync error:%v", err))
 		return
@@ -187,7 +188,7 @@ func (u *Unit) Init() {
 			u.Stop()
 		}
 	}
-	misc.GoWaitError(tool.GLog, c, u.name, "Unit.Init() GetAndSetDefaultAsync error")
+	xlog.GoWaitError(tool.GLog, c, u.name, "Unit.Init() GetAndSetDefaultAsync error")
 }
 
 func (u *Unit) check() {

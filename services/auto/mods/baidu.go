@@ -13,7 +13,7 @@ type Baidu struct {
 }
 
 func (b *Baidu) Init() {
-	_, _, err := setting.GSetting.GetAndSetDefault(xstorage.Join("auto", "baidu", "keys"), xstorage.ToUnit([]string{
+	err := setting.GSetting.SetDefault(xstorage.Join("auto", "baidu", "keys"), xstorage.ToUnit([]string{
 		"nuc",
 		"群晖",
 		"macbook air",

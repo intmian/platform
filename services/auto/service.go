@@ -20,11 +20,11 @@ type Service struct {
 
 func (s Service) Start(share share.ServiceShare) error {
 	s.share = share
+	setting.GSetting = share.Storage
 	tool.Init(share.Push, share.Log)
 	tool.GLog.Log(xlog.ELog, "SYS", "初始化开始")
 	task.Init()
 	tool.GLog.Log(xlog.ELog, "SYS", "task初始化完成")
-	setting.GSetting = share.PlatSetting
 	ok, isDebug, err := xstorage.Get[bool](setting.GSetting, "web.debug")
 	if ok && isDebug {
 		gin.SetMode(gin.DebugMode)
