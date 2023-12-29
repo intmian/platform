@@ -2,11 +2,11 @@ package tool
 
 import (
 	"github.com/intmian/mian_go_lib/tool/xlog"
-	"github.com/intmian/mian_go_lib/tool/xpush"
+	"github.com/intmian/mian_go_lib/xpush"
 )
 
-func Init(push *xpush.Mgr, log *xlog.Mgr) {
-	//GPush = xpush.NewMgr(&xpush.EmailToken{}, &xpush.PushDeerToken{
+func Init(push *xpush.XPush, log *xlog.Mgr) {
+	//GPush = xpush.NewXPush(&xpush.EmailSetting{}, &xpush.PushDeerSetting{
 	//	Token: setting.GSettingMgr.Get("pushdeer_token").(string),
 	//}, "autogogo")
 	//GLog = xlog.SimpleNewMgr(GPush, "", "", "autogogo")
@@ -18,4 +18,4 @@ func Init(push *xpush.Mgr, log *xlog.Mgr) {
 }
 
 var GLog *xlog.Mgr
-var GPush *xpush.Mgr
+var GPush *xpush.XPush

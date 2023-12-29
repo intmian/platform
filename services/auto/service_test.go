@@ -4,8 +4,9 @@ import (
 	"fmt"
 	"github.com/intmian/mian_go_lib/tool/misc"
 	"github.com/intmian/mian_go_lib/tool/xlog"
-	"github.com/intmian/mian_go_lib/tool/xpush"
 	"github.com/intmian/mian_go_lib/tool/xstorage"
+	"github.com/intmian/mian_go_lib/xpush"
+	"github.com/intmian/mian_go_lib/xpush/pushmod"
 	"github.com/intmian/platform/services/share"
 	"os"
 	"strings"
@@ -27,13 +28,13 @@ func MakeServiceShare() *share.ServiceShare {
 	token = strs[0]
 	secret = strs[1]
 
-	s.Push = xpush.NewDingMgr(&xpush.DingSetting{
+	s.Push = xpush.NewDingMgr(&pushmod.DingSetting{
 		Token:             token,
 		Secret:            secret,
 		SendInterval:      60,
 		IntervalSendCount: 20,
 	}, "测试")
-	pushStyle := []xpush.PushType{xpush.PushType_PUSH_PUSH_DEER}
+	pushStyle := []xpush.PushType{xpush.PushTypePushDeer}
 	f := func(msg string) bool {
 		fmt.Println(msg)
 		return true
@@ -42,7 +43,9 @@ func MakeServiceShare() *share.ServiceShare {
 
 	s.Log = l
 	m, _ := xstorage.NewMgr(xstorage.KeyValueSetting{
-		Property: misc.CreateProperty(xstorage.UseCache, xstorage.MultiSafe),
+		Property: misc.CreateProperty(xstorage.UseCache, xstorage.MultiSafe, xstorage.UseDisk, xstorage.FullInitLoad),
+		SaveType: xstorage.SqlLiteDB,
+		DBAddr:   "test.db",
 	})
 	s.Storage = m
 	return &s
