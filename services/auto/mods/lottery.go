@@ -2,7 +2,6 @@ package mods
 
 import (
 	"github.com/intmian/mian_go_lib/tool/spider"
-	"github.com/intmian/mian_go_lib/tool/xlog"
 	"github.com/intmian/platform/services/auto/tool"
 )
 
@@ -15,11 +14,14 @@ func (l *Lottery) Init() {
 func (l *Lottery) Do() {
 	lotteries := spider.GetLotteryNow()
 	if lotteries == nil {
-		tool.GLog.Log(xlog.EWarning, l.GetName(), "接口失效")
+		tool.GLog.Warning(l.GetName(), "接口失效")
 		return
 	}
 	s := spider.ParseLotteriesToMarkDown(lotteries)
-	tool.GPush.PushPushDeer("彩票", s, true)
+	err := tool.GPush.Push("彩票", s, true)
+	if err != nil {
+		tool.GLog.WarningErr(l.GetName(), err)
+	}
 }
 
 func (l *Lottery) GetName() string {

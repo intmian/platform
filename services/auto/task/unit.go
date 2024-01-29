@@ -2,12 +2,12 @@ package task
 
 import (
 	"fmt"
-	"github.com/intmian/mian_go_lib/tool/xstorage"
+	"github.com/intmian/mian_go_lib/xstorage"
 	"github.com/intmian/platform/services/auto/setting"
 	"github.com/intmian/platform/services/auto/tool"
 	"time"
 
-	"github.com/intmian/mian_go_lib/tool/xlog"
+	"github.com/intmian/mian_go_lib/xlog"
 	"github.com/robfig/cron"
 )
 
@@ -54,13 +54,13 @@ func (u *Unit) Start() {
 	}
 	err := setting.GSetting.Set(u.name+".open", xstorage.ToUnit(true, xstorage.ValueTypeBool))
 	if err != nil {
-		tool.GLog.Log(xlog.EError, u.name, "start失败:"+err.Error())
+		tool.GLog.Error(u.name, "start失败:"+err.Error())
 		return
 	}
 	u.c = cron.New()
 	err = u.c.AddFunc(u.timeStr, u.do)
 	if err != nil {
-		tool.GLog.Log(xlog.EError, u.name, "start失败:"+err.Error())
+		tool.GLog.Error(u.name, "start失败:"+err.Error())
 	}
 	u.c.Start()
 	u.status = StatusPending
@@ -72,7 +72,7 @@ func (u *Unit) Stop() {
 	}
 	err := setting.GSetting.Set(u.name+".open", xstorage.ToUnit(false, xstorage.ValueTypeBool))
 	if err != nil {
-		tool.GLog.Log(xlog.EError, u.name, "stop失败:"+err.Error())
+		tool.GLog.Error(u.name, "stop失败:"+err.Error())
 		return
 	}
 	u.c.Stop()
@@ -85,13 +85,13 @@ func (u *Unit) Status() Status {
 
 func (u *Unit) do() {
 	u.status = StatusRunning
-	tool.GLog.Log(xlog.ELog, u.name, "执行开始")
+	tool.GLog.Info(u.name, "执行开始")
 	ok := make(chan bool)
 	begin := time.Now()
 	go func() {
 		defer func() {
 			if err := recover(); err != nil {
-				tool.GLog.Log(xlog.EError, u.name, "携程崩溃:"+u.name)
+				tool.GLog.Error(u.name, "携程崩溃:"+u.name)
 			}
 		}()
 		u.f()
@@ -104,10 +104,10 @@ loop:
 			break loop
 		case <-time.After(time.Hour):
 			now := time.Now()
-			tool.GLog.Log(xlog.EWarning, u.name, "执行超时:"+now.Sub(begin).String())
+			tool.GLog.Warning(u.name, "执行超时:"+now.Sub(begin).String())
 		}
 	}
-	tool.GLog.Log(xlog.ELog, u.name, "执行完成")
+	tool.GLog.Info(u.name, "执行完成")
 	u.status = StatusPending
 
 }
@@ -150,7 +150,7 @@ func NewUnit(task Task) *Unit {
 	var v xstorage.ValueUnit
 	ok, err, c := setting.GSetting.GetAndSetDefaultAsync(u.name+".time_str", xstorage.ToUnit(u.timeStr, xstorage.ValueTypeString), &v)
 	if err != nil {
-		tool.GLog.Log(xlog.EError, u.name, fmt.Sprintf("NewUnit(%v) GetAndSetDefaultAsync error:%v", task, err))
+		tool.GLog.Error(u.name, fmt.Sprintf("NewUnit(%v) GetAndSetDefaultAsync error:%v", task, err))
 		return nil
 	}
 	if ok {
@@ -176,7 +176,7 @@ func (u *Unit) Init() {
 	v := &xstorage.ValueUnit{}
 	ok, err, c := setting.GSetting.GetAndSetDefaultAsync(u.name+".open", xstorage.ToUnit(true, xstorage.ValueTypeBool), v)
 	if err != nil {
-		tool.GLog.Log(xlog.EError, u.name, fmt.Sprintf("Unit.Init() GetAndSetDefaultAsync error:%v", err))
+		tool.GLog.Error(u.name, fmt.Sprintf("Unit.Init() GetAndSetDefaultAsync error:%v", err))
 		return
 	}
 	if !ok {
@@ -215,7 +215,7 @@ func (u *Unit) check() {
 	//}
 	get, b, err := xstorage.Get[bool](setting.GSetting, u.name+".open")
 	if err != nil {
-		tool.GLog.Log(xlog.EError, u.name, fmt.Sprintf("Unit.check() Get error:%v", err))
+		tool.GLog.Error(u.name, fmt.Sprintf("Unit.check() Get error:%v", err))
 	}
 	if get {
 		if b {
@@ -226,7 +226,7 @@ func (u *Unit) check() {
 	}
 	get, s, err := xstorage.Get[string](setting.GSetting, u.name+".time_str")
 	if err != nil {
-		tool.GLog.Log(xlog.EError, u.name, fmt.Sprintf("Unit.check() Get error:%v", err))
+		tool.GLog.Error(u.name, fmt.Sprintf("Unit.check() Get error:%v", err))
 	}
 	if get {
 		if s != u.timeStr {

@@ -1,6 +1,6 @@
 package setting
 
-import "github.com/intmian/mian_go_lib/tool/xstorage"
+import "github.com/intmian/mian_go_lib/xstorage"
 
 // 微服务话后，被迁移到传入的storage
 //
@@ -61,4 +61,4 @@ import "github.com/intmian/mian_go_lib/tool/xstorage"
 //		m.j.Save()
 //		m.rwLock.RUnlock()
 //	}
-var GSetting *xstorage.Mgr
+var GSetting *xstorage.XStorage

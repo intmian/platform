@@ -2,8 +2,7 @@ package auto
 
 import (
 	"github.com/gin-gonic/gin"
-	"github.com/intmian/mian_go_lib/tool/xlog"
-	"github.com/intmian/mian_go_lib/tool/xstorage"
+	"github.com/intmian/mian_go_lib/xstorage"
 	"github.com/intmian/platform/services/auto/http"
 	"github.com/intmian/platform/services/auto/setting"
 	"github.com/intmian/platform/services/auto/task"
@@ -22,9 +21,9 @@ func (s Service) Start(share share.ServiceShare) error {
 	s.share = share
 	setting.GSetting = share.Storage
 	tool.Init(share.Push, share.Log)
-	tool.GLog.Log(xlog.ELog, "SYS", "初始化开始")
+	tool.GLog.Info("SYS", "初始化开始")
 	task.Init()
-	tool.GLog.Log(xlog.ELog, "SYS", "task初始化完成")
+	tool.GLog.Info("SYS", "task初始化完成")
 	ok, isDebug, err := xstorage.Get[bool](setting.GSetting, "web.debug")
 	if ok && isDebug {
 		gin.SetMode(gin.DebugMode)
@@ -36,8 +35,8 @@ func (s Service) Start(share share.ServiceShare) error {
 	gin.DefaultWriter = io.MultiWriter(f)
 	r := gin.Default()
 	http.InitRoot(r)
-	tool.GLog.Log(xlog.ELog, "SYS", "web初始化完成")
-	tool.GLog.Log(xlog.ELog, "SYS", "初始化完成")
+	tool.GLog.Info("SYS", "web初始化完成")
+	tool.GLog.Info("SYS", "初始化完成")
 
 	ok, port, err := xstorage.Get[string](setting.GSetting, "web.port")
 	if !ok {
@@ -47,7 +46,7 @@ func (s Service) Start(share share.ServiceShare) error {
 	}
 
 	if err != nil {
-		tool.GLog.Log(xlog.ELog, "SYS", "web启动失败")
+		tool.GLog.Info("SYS", "web启动失败")
 	}
 	return nil
 }

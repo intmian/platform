@@ -1,12 +1,11 @@
 package auto
 
 import (
-	"fmt"
 	"github.com/intmian/mian_go_lib/tool/misc"
-	"github.com/intmian/mian_go_lib/tool/xlog"
-	"github.com/intmian/mian_go_lib/tool/xstorage"
+	"github.com/intmian/mian_go_lib/xlog"
 	"github.com/intmian/mian_go_lib/xpush"
 	"github.com/intmian/mian_go_lib/xpush/pushmod"
+	"github.com/intmian/mian_go_lib/xstorage"
 	"github.com/intmian/platform/services/share"
 	"os"
 	"strings"
@@ -19,7 +18,7 @@ func MakeServiceShare() *share.ServiceShare {
 	secret := ""
 
 	// 从本地文件 dingding_test.txt 读取测试内容token和secret
-	file, _ := os.Open("E:\\my_code_out\\platform\\mian_go_lib\\tool\\xpush\\dingding_test.txt")
+	file, _ := os.Open("E:\\my_code_out\\platform\\mian_go_lib\\xpush\\pushmod\\dingding_test.txt")
 	defer file.Close()
 	buf := make([]byte, 1024)
 	n, _ := file.Read(buf)
@@ -28,21 +27,26 @@ func MakeServiceShare() *share.ServiceShare {
 	token = strs[0]
 	secret = strs[1]
 
-	s.Push = xpush.NewDingMgr(&pushmod.DingSetting{
+	push, err := xpush.NewXPush(true)
+	if err != nil {
+		panic(err)
+	}
+	err = push.AddDingDing(pushmod.DingSetting{
 		Token:             token,
 		Secret:            secret,
 		SendInterval:      60,
 		IntervalSendCount: 20,
-	}, "测试")
-	pushStyle := []xpush.PushType{xpush.PushTypePushDeer}
-	f := func(msg string) bool {
-		fmt.Println(msg)
-		return true
+	})
+	push.Push("这是测试消息", "这是测试消息", false)
+	s.Push = push
+	if err != nil {
+		panic(err)
 	}
-	l := xlog.NewMgr("D:/log", f, s.Push, pushStyle, true, true, true, true, true, "target@intmian.com", "from@intmian.com", "testlog")
-
-	s.Log = l
-	m, _ := xstorage.NewMgr(xstorage.KeyValueSetting{
+	d := xlog.DefaultSetting()
+	d.LogAddr = "E:/log"
+	d.PushInfo.PushMgr = push
+	s.Log, _ = xlog.NewXlog(d)
+	m, _ := xstorage.NewXstorage(xstorage.XstorageSetting{
 		Property: misc.CreateProperty(xstorage.UseCache, xstorage.MultiSafe, xstorage.UseDisk, xstorage.FullInitLoad),
 		SaveType: xstorage.SqlLiteDB,
 		DBAddr:   "test.db",

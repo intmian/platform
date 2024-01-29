@@ -3,8 +3,7 @@ package mods
 import (
 	"errors"
 	"github.com/intmian/mian_go_lib/tool/spider"
-	"github.com/intmian/mian_go_lib/tool/xlog"
-	"github.com/intmian/mian_go_lib/tool/xstorage"
+	"github.com/intmian/mian_go_lib/xstorage"
 	"github.com/intmian/platform/services/auto/setting"
 	"github.com/intmian/platform/services/auto/tool"
 )
@@ -21,18 +20,18 @@ func (b *Baidu) Init() {
 		"kindle",
 	}, xstorage.ValueTypeSliceString))
 	if err != nil {
-		tool.GLog.LogWithErr(xlog.EWarning, "auto.BAIDU", errors.Join(errors.New("func Init() GetAndSetDefault error"), err))
+		tool.GLog.WarningErr("auto.BAIDU", errors.Join(errors.New("func Init() GetAndSetDefault error"), err))
 	}
 }
 
 func (b *Baidu) Do() {
 	ok, keys, err := xstorage.Get[[]string](setting.GSetting, "auto.baidu.keys")
 	if !ok {
-		tool.GLog.Log(xlog.EError, "BAIDU", "baidu.keys not exist")
+		tool.GLog.Error("BAIDU", "baidu.keys not exist")
 		return
 	}
 	if err != nil {
-		tool.GLog.LogWithErr(xlog.EError, "BAIDU", errors.Join(errors.New("func Do() Get auto.baidu.keys error"), err))
+		tool.GLog.ErrorErr("BAIDU", errors.Join(errors.New("func Do() Get auto.baidu.keys error"), err))
 		return
 	}
 	if keys == nil || len(keys) == 0 {
@@ -50,14 +49,18 @@ func (b *Baidu) Do() {
 		noNewsAll = noNewsAll && noNews
 	}
 	if hasErrAll {
-		tool.GLog.Log(xlog.EWarning, "BAIDU", "接口存在错误")
+		tool.GLog.Warning("BAIDU", "接口存在错误")
 	}
 	if noNewsAll {
-		tool.GLog.Log(xlog.EWarning, "BAIDU", "接口为空")
+		tool.GLog.Warning("BAIDU", "接口为空")
 	}
 
 	s := spider.ParseNewToMarkdown(keywords, newss)
-	tool.GPush.PushPushDeer("百度新闻", s, true)
+	err = tool.GPush.Push("百度新闻", s, true)
+	if err != nil {
+		tool.GLog.ErrorErr("BAIDU", errors.Join(errors.New("func Do() Push error"), err))
+		return
+	}
 }
 
 func (b *Baidu) GetName() string {
