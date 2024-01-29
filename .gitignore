@@ -1,3 +1,4 @@
 .idea
 .git
 qodana.yaml
+services/auto/test.db

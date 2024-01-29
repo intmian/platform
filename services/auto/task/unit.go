@@ -52,7 +52,7 @@ func (u *Unit) Start() {
 	if u.status != StatusClose {
 		return
 	}
-	err := setting.GSetting.Set(u.name+".open", xstorage.ToUnit(true, xstorage.ValueTypeBool))
+	err := setting.GSetting.Set(xstorage.Join(u.name, "open"), xstorage.ToUnit(true, xstorage.ValueTypeBool))
 	if err != nil {
 		tool.GLog.Error(u.name, "start失败:"+err.Error())
 		return
