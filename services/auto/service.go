@@ -9,7 +9,6 @@ import (
 
 type Service struct {
 	share share.ServiceShare
-	share.ServiceBase
 }
 
 func (s Service) Start(share share.ServiceShare) error {
@@ -19,7 +18,7 @@ func (s Service) Start(share share.ServiceShare) error {
 	tool.GLog.Info("SYS", "初始化开始")
 	task.Init()
 	tool.GLog.Info("SYS", "task初始化完成")
-	
+
 	// 网页被做到了外部，因此这里不需要了
 	//ok, isDebug, err := xstorage.Get[bool](setting.GSetting, "web.debug")
 	//if ok && isDebug {
