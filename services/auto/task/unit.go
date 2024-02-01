@@ -213,24 +213,24 @@ func (u *Unit) check() {
 	//		u.c.Start()
 	//	}
 	//}
-	get, b, err := xstorage.Get[bool](setting.GSetting, u.name+".open")
+	getV, err := setting.GSetting.Get(u.name + ".open")
 	if err != nil {
 		tool.GLog.Error(u.name, fmt.Sprintf("Unit.check() Get error:%v", err))
 	}
-	if get {
-		if b {
+	if getV != nil {
+		if xstorage.ToBase[bool](getV) {
 			u.Start()
 		} else {
 			u.Stop()
 		}
 	}
-	get, s, err := xstorage.Get[string](setting.GSetting, u.name+".time_str")
+	getV, err = setting.GSetting.Get(u.name + ".time_str")
 	if err != nil {
 		tool.GLog.Error(u.name, fmt.Sprintf("Unit.check() Get error:%v", err))
 	}
-	if get {
-		if s != u.timeStr {
-			u.timeStr = s
+	if getV != nil {
+		if xstorage.ToBase[string](getV) != u.timeStr {
+			u.timeStr = xstorage.ToBase[string](getV)
 			u.c.Stop()
 			u.c.Start()
 		}

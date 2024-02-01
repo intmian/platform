@@ -2,6 +2,7 @@ package core
 
 import (
 	"context"
+	"fmt"
 	"github.com/intmian/mian_go_lib/tool/misc"
 	"github.com/intmian/mian_go_lib/xlog"
 	"github.com/intmian/mian_go_lib/xpush"
@@ -10,11 +11,23 @@ import (
 	"github.com/intmian/platform/core/tool"
 	"github.com/intmian/platform/services/auto"
 	"github.com/intmian/platform/services/share"
+	share2 "github.com/intmian/platform/web/share"
 	"github.com/pkg/errors"
+	"time"
 )
 
+var GPlatCore *PlatCore
+
+func Init() {
+	GPlatCore = &PlatCore{}
+	err := GPlatCore.Init()
+	if err != nil {
+		panic(err)
+	}
+}
+
 // PlatCore 提供共用的核心共享服务，并负责启动关闭各项服务
-// TODO:后续可以考虑多机，一个服务一个进程起多个或者一个进程n个，网关服务，同时考虑在服务间转发等等，现在就是一个单机单进程系统
+// TODO:后续可以考虑多机，一个服务一个进程起多个或者一个进程n个，网关服务，同时考虑在服务间转发等等，现在就是一个单机单进程系统,
 type PlatCore struct {
 	log         *xlog.XLog
 	push        *xpush.XPush
@@ -24,13 +37,14 @@ type PlatCore struct {
 
 	ctx context.Context
 
-	service map[SvrFlag]share.Service
+	service     map[SvrFlag]share.IService
+	serviceMeta map[SvrFlag]*ServiceMeta
 }
 
-func (m *PlatCore) Init() error {
-	m.ctx = context.Background()
-	m.baseSetting = misc.NewFileUnit[baseSetting](misc.FileUnitToml, "base_setting.toml")
-	s := m.baseSetting.Copy()
+func (p *PlatCore) Init() error {
+	p.ctx = context.Background()
+	p.baseSetting = misc.NewFileUnit[baseSetting](misc.FileUnitToml, "base_setting.toml")
+	s := p.baseSetting.Copy()
 	storage, err := xstorage.NewXStorage(xstorage.XstorageSetting{
 		Property: misc.CreateProperty(xstorage.UseCache, xstorage.UseDisk, xstorage.MultiSafe, xstorage.FullInitLoad),
 		SaveType: xstorage.SqlLiteDB,
@@ -48,7 +62,7 @@ func (m *PlatCore) Init() error {
 		Secret:            s.DingDingSecret,
 		SendInterval:      60,
 		IntervalSendCount: 20,
-		Ctx:               context.WithoutCancel(m.ctx),
+		Ctx:               context.WithoutCancel(p.ctx),
 	})
 	if err != nil {
 		return err
@@ -59,78 +73,115 @@ func (m *PlatCore) Init() error {
 	if err != nil {
 		return err
 	}
-	m.storage = storage
-	m.push = push
-	m.log = log
-	m.service = make(map[SvrFlag]share.Service)
-	m.registerSvr()
+	p.storage = storage
+	p.push = push
+	p.log = log
+	p.service = make(map[SvrFlag]share.IService)
+	p.serviceMeta = make(map[SvrFlag]*ServiceMeta)
+	p.registerSvr()
 	return nil
 }
 
-func (m *PlatCore) StartService(flag SvrFlag) error {
+func (p *PlatCore) StartService(flag SvrFlag) error {
 	name := tool.GetName(flag)
 	v := xstorage.ToUnit[bool](true, xstorage.ValueTypeBool)
-	err := m.platStorage.Set(xstorage.Join(string(name), "open"), v)
+	err := p.platStorage.Set(xstorage.Join(string(name), "open"), v)
 	if err != nil {
-		m.log.ErrorErr("PLAT", errors.WithMessagef(err, "StartService %d err", flag))
+		p.log.ErrorErr("PLAT", errors.WithMessagef(err, "StartService %d err", flag))
 	}
-	if _, ok := m.service[flag]; !ok {
+	if _, ok := p.service[flag]; !ok {
 		return errors.New("service not exist")
 	}
-	svr := m.service[flag]
-	err = svr.Start(share.ServiceShare{
-		Log:     m.log,
-		Push:    m.push,
-		Storage: m.storage,
-		Ctx:     context.WithoutCancel(m.ctx),
+	err = p.service[flag].Start(share.ServiceShare{
+		Log:     p.log,
+		Push:    p.push,
+		Storage: p.storage,
+		Ctx:     context.WithoutCancel(p.ctx),
 	})
 	if err != nil {
-		m.log.ErrorErr("PLAT", errors.WithMessagef(err, "StartService %d err", flag))
+		p.log.ErrorErr("PLAT", errors.WithMessagef(err, "StartService %d err", flag))
 	}
-	m.log.Info("PLAT", "StartService %s success", name)
+	err = p.push.Push("PLAT", fmt.Sprintf("StartService %s success", name), false)
+	p.serviceMeta[flag].Status = StatusStart
+	p.serviceMeta[flag].StartTime = time.Now()
+	if err != nil {
+		p.log.WarningErr("PLAT", errors.WithMessage(err, "StartService push err"))
+	}
 	return nil
 }
 
-func (m *PlatCore) StopService(flag SvrFlag) error {
+func (p *PlatCore) StopService(flag SvrFlag) error {
 	name := tool.GetName(flag)
 	v := xstorage.ToUnit[bool](false, xstorage.ValueTypeBool)
-	err := m.platStorage.Set(xstorage.Join(string(name), "open"), v)
+	err := p.platStorage.Set(xstorage.Join(string(name), "open"), v)
 	if err != nil {
-		m.log.ErrorErr("PLAT", errors.WithMessagef(err, "StopService %s err", name))
+		p.log.ErrorErr("PLAT", errors.WithMessagef(err, "StopService %s err", name))
 	}
-	if _, ok := m.service[flag]; !ok {
+	if _, ok := p.service[flag]; !ok {
 		return errors.New("service not exist")
 	}
-	svr := m.service[flag]
+	svr := p.service[flag]
 	err = svr.Stop()
+	p.serviceMeta[flag].Status = StatusStop
 	if err != nil {
-		m.log.ErrorErr("PLAT", errors.WithMessagef(err, "StopService %s err", name))
+		p.log.ErrorErr("PLAT", errors.WithMessagef(err, "StopService %s err", name))
 	}
-	m.log.Info("PLAT", "StopService %s success", name)
+	p.log.Info("PLAT", "StopService %s success", name)
 	return nil
 }
 
-func (m *PlatCore) registerSvr() {
-	m.service[FlagAuto] = auto.Service{}
+func (p *PlatCore) registerSvr() {
+	p.service[FlagAuto] = &auto.Service{}
 	// 新增于此处
-	for _, v := range m.service {
-		exist, open, err := xstorage.Get[bool](m.platStorage, xstorage.Join(string(NameAuto), "open"))
+	for k, v := range p.service {
+		p.serviceMeta[k] = &ServiceMeta{}
+		openV, err := p.platStorage.Get(xstorage.Join(string(NameAuto), "open"))
 		if err != nil {
-			m.log.ErrorErr("PLAT", errors.WithMessagef(err, "registerSvr get %s open err", NameAuto))
+			p.log.ErrorErr("PLAT", errors.WithMessagef(err, "registerSvr get %s open err", NameAuto))
 			continue
 		}
-		if !exist || !open {
+		if openV == nil || !xstorage.ToBase[bool](openV) {
 			continue
 		}
 
 		err = v.Start(share.ServiceShare{
-			Log:     m.log,
-			Push:    m.push,
-			Storage: m.storage,
-			Ctx:     context.WithoutCancel(m.ctx),
+			Log:     p.log,
+			Push:    p.push,
+			Storage: p.storage,
+			Ctx:     context.WithoutCancel(p.ctx),
 		})
 		if err != nil {
-			m.log.ErrorErr("PLAT", errors.WithMessage(err, "registerSvr start err"))
+			p.log.ErrorErr("PLAT", errors.WithMessage(err, "registerSvr start err"))
 		}
+	}
+}
+
+func (p *PlatCore) GetServiceMeta(flag SvrFlag) *ServiceMeta {
+	return p.serviceMeta[flag]
+}
+
+func (p *PlatCore) GetWebInfo() []share2.ServicesInfo {
+	var ret []share2.ServicesInfo
+	for k, v := range p.serviceMeta {
+		ret = append(ret, share2.ServicesInfo{
+			Name:      string(tool.GetName(k)),
+			Status:    tool.GetStatusStr(v.Status),
+			StartTime: time.Since(v.StartTime).String(),
+		})
+	}
+	return ret
+}
+
+func (p *PlatCore) GetWebSetting() share2.Setting {
+	d := xstorage.ToUnit[string]("8080", xstorage.ValueTypeString)
+	port, err := p.storage.GetAndSetDefault(xstorage.Join("web", "port"), d)
+	if err != nil {
+		p.log.ErrorErr("PLAT", errors.WithMessage(err, "PlatCore GetWebSetting"))
+		return share2.Setting{
+			WebPort: "8080",
+		}
+	}
+	return share2.Setting{
+		WebPort: xstorage.ToBase[string](port),
 	}
 }

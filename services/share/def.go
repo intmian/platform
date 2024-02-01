@@ -16,7 +16,7 @@ type ServiceShare struct {
 	Ctx     context.Context
 }
 
-type Service interface {
+type IService interface {
 	Start(share ServiceShare) error
 	Stop() error
 }

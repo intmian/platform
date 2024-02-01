@@ -27,3 +27,14 @@ func GetFlag(name core.SvrName) core.SvrFlag {
 func GetName(flag core.SvrFlag) core.SvrName {
 	return gTool.flag2name[flag]
 }
+
+func GetStatusStr(status core.ServiceStatus) string {
+	switch status {
+	case core.StatusStart:
+		return "start"
+	case core.StatusStop:
+		return "stop"
+	default:
+		return "unknown"
+	}
+}

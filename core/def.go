@@ -1,5 +1,7 @@
 package core
 
+import "time"
+
 type (
 	// baseSetting 一些最基础的配置，
 	// 复杂的或者需要热更的请使用xstorage
@@ -28,3 +30,15 @@ const (
 	FlagAuto
 	FlagNote
 )
+
+type ServiceStatus int
+
+const (
+	StatusStop ServiceStatus = iota
+	StatusStart
+)
+
+type ServiceMeta struct {
+	StartTime time.Time
+	Status    ServiceStatus
+}

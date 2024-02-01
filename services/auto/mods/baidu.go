@@ -25,8 +25,8 @@ func (b *Baidu) Init() {
 }
 
 func (b *Baidu) Do() {
-	ok, keys, err := xstorage.Get[[]string](setting.GSetting, "auto.baidu.keys")
-	if !ok {
+	keysV, err := setting.GSetting.Get("auto.baidu.keys")
+	if keysV == nil {
 		tool.GLog.Error("BAIDU", "baidu.keys not exist")
 		return
 	}
@@ -34,6 +34,7 @@ func (b *Baidu) Do() {
 		tool.GLog.ErrorErr("BAIDU", errors.Join(errors.New("func Do() Get auto.baidu.keys error"), err))
 		return
 	}
+	keys := xstorage.ToBase[[]string](keysV)
 	if keys == nil || len(keys) == 0 {
 		return
 	}

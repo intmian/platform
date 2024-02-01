@@ -11,7 +11,7 @@ type Service struct {
 	share share.ServiceShare
 }
 
-func (s Service) Start(share share.ServiceShare) error {
+func (s *Service) Start(share share.ServiceShare) error {
 	s.share = share
 	setting.GSetting = share.Storage
 	tool.Init(share.Push, share.Log)
@@ -47,7 +47,7 @@ func (s Service) Start(share share.ServiceShare) error {
 	return nil
 }
 
-func (s Service) Stop() error {
+func (s *Service) Stop() error {
 	task.GMgr.AllStop()
 	return nil
 }
