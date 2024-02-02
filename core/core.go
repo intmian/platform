@@ -27,12 +27,12 @@ func Init() {
 }
 
 // PlatCore 提供共用的核心共享服务，并负责启动关闭各项服务
-// TODO:后续可以考虑多机，一个服务一个进程起多个或者一个进程n个，网关服务，同时考虑在服务间转发等等，现在就是一个单机单进程系统,
+// TODO:后续可以考虑多机，一个服务一个进程起多个或者一个进程n个，网关服务，同时考虑在服务间转发等等，现在就是一个单机单进程系统。接入netext后就行，将信息在core内接通，然后在core内部转发
 type PlatCore struct {
 	log         *xlog.XLog
 	push        *xpush.XPush
 	storage     *xstorage.XStorage
-	platStorage *xstorage.XStorage
+	WebPack     *xstorage.WebPack
 	baseSetting *misc.FileUnit[baseSetting]
 
 	ctx context.Context
@@ -51,11 +51,11 @@ func (p *PlatCore) Init() error {
 		DBAddr:   s.DBAddr,
 	})
 	if err != nil {
-		return err
+		return errors.WithMessage(err, "Init xstorage err")
 	}
 	push, err := xpush.NewXPush(true)
 	if err != nil {
-		return err
+		return errors.WithMessage(err, "Init xpush err")
 	}
 	err = push.AddDingDing(pushmod.DingSetting{
 		Token:             s.DingDingToken,
@@ -74,6 +74,16 @@ func (p *PlatCore) Init() error {
 		return err
 	}
 	p.storage = storage
+	p.WebPack, err = xstorage.NewWebPack(
+		xstorage.WebPackSetting{
+			LogFrom: "plat",
+			Log:     log,
+		},
+		storage,
+	)
+	if err != nil {
+		return errors.WithMessage(err, "Init WebPack err")
+	}
 	p.push = push
 	p.log = log
 	p.service = make(map[SvrFlag]share.IService)
@@ -85,7 +95,7 @@ func (p *PlatCore) Init() error {
 func (p *PlatCore) StartService(flag SvrFlag) error {
 	name := tool.GetName(flag)
 	v := xstorage.ToUnit[bool](true, xstorage.ValueTypeBool)
-	err := p.platStorage.Set(xstorage.Join(string(name), "open"), v)
+	err := p.storage.Set(xstorage.Join(string(name), "open"), v)
 	if err != nil {
 		p.log.ErrorErr("PLAT", errors.WithMessagef(err, "StartService %d err", flag))
 	}
@@ -113,7 +123,7 @@ func (p *PlatCore) StartService(flag SvrFlag) error {
 func (p *PlatCore) StopService(flag SvrFlag) error {
 	name := tool.GetName(flag)
 	v := xstorage.ToUnit[bool](false, xstorage.ValueTypeBool)
-	err := p.platStorage.Set(xstorage.Join(string(name), "open"), v)
+	err := p.storage.Set(xstorage.Join(string(name), "open"), v)
 	if err != nil {
 		p.log.ErrorErr("PLAT", errors.WithMessagef(err, "StopService %s err", name))
 	}
@@ -135,7 +145,7 @@ func (p *PlatCore) registerSvr() {
 	// 新增于此处
 	for k, v := range p.service {
 		p.serviceMeta[k] = &ServiceMeta{}
-		openV, err := p.platStorage.Get(xstorage.Join(string(NameAuto), "open"))
+		openV, err := p.storage.Get(xstorage.Join(string(NameAuto), "open"))
 		if err != nil {
 			p.log.ErrorErr("PLAT", errors.WithMessagef(err, "registerSvr get %s open err", NameAuto))
 			continue
