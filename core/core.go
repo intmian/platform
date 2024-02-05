@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/intmian/mian_go_lib/tool/misc"
 	"github.com/intmian/mian_go_lib/xlog"
+	"github.com/intmian/mian_go_lib/xnews"
 	"github.com/intmian/mian_go_lib/xpush"
 	"github.com/intmian/mian_go_lib/xpush/pushmod"
 	"github.com/intmian/mian_go_lib/xstorage"
@@ -33,6 +34,7 @@ type PlatCore struct {
 	push        *xpush.XPush
 	storage     *xstorage.XStorage
 	WebPack     *xstorage.WebPack
+	logNews     *xnews.XNews // 用来保存最近的日志 方便查询
 	baseSetting *misc.FileUnit[baseSetting]
 
 	ctx context.Context
@@ -67,8 +69,21 @@ func (p *PlatCore) Init() error {
 	if err != nil {
 		return err
 	}
+	p.logNews, err = xnews.NewXNews(context.WithoutCancel(p.ctx))
+	if err != nil {
+		return errors.WithMessage(err, "Init xnews err")
+	}
+	var topicSetting xnews.TopicSetting
+	topicSetting.AddForeverLimit(100)
+	err = p.logNews.AddTopic("PLAT", topicSetting)
+	if err != nil {
+		return errors.WithMessage(err, "Init xnews add topic err")
+	}
 	logS := xlog.DefaultSetting()
 	logS.LogAddr = s.LogAddr
+	logS.OnLog = func(content string) {
+		_ = p.logNews.AddMessage("PLAT", content)
+	}
 	log, err := xlog.NewXlog(logS)
 	if err != nil {
 		return err
@@ -194,4 +209,8 @@ func (p *PlatCore) GetWebSetting() share2.Setting {
 	return share2.Setting{
 		WebPort: xstorage.ToBase[string](port),
 	}
+}
+
+func (p *PlatCore) GetLastLog() ([]string, error) {
+	return p.logNews.GetTopic("PLAT")
 }

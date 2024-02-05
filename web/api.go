@@ -58,3 +58,15 @@ func stopService(c *gin.Context) {
 		"msg":  "ok",
 	})
 }
+
+func getLastLog(c *gin.Context) {
+	logs, err := core.GPlatCore.GetLastLog()
+	if err != nil {
+		c.JSON(200, gin.H{
+			"code": 1,
+			"msg":  err.Error(),
+		})
+		return
+	}
+	c.JSON(200, logs)
+}
