@@ -4,6 +4,6 @@ import "github.com/gin-gonic/gin"
 
 func InitRoot(r *gin.Engine) {
 	r.GET("/api/services", getServices)
-	r.GET("/api/service/:name/start", startService)
-	r.GET("/api/service/:name/stop", stopService)
+	r.POST("/api/service/:name/start", startService)
+	r.POST("/api/service/:name/stop", stopService)
 }

@@ -8,5 +8,5 @@ import (
 func main() {
 	core.Init()
 	web.Init()
-
+	core.GPlatCore.Update()
 }

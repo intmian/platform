@@ -2,3 +2,5 @@
 .git
 qodana.yaml
 services/auto/test.db
+test
+frontend/yarn.lock
