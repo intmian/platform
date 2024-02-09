@@ -1,13 +1,12 @@
-package web
+package backend
 
 import (
 	"encoding/json"
 	"github.com/gin-gonic/gin"
 	"github.com/intmian/mian_go_lib/tool/token"
-	"github.com/intmian/platform/core"
-	"github.com/intmian/platform/core/share"
-	"github.com/intmian/platform/core/tool"
-	"github.com/intmian/platform/global"
+	"github.com/intmian/platform/backend/global"
+	"github.com/intmian/platform/backend/share"
+	"github.com/intmian/platform/backend/tool"
 	"time"
 )
 
@@ -66,7 +65,7 @@ func checkAdmin(c *gin.Context) {
 }
 
 func getServices(c *gin.Context) {
-	info := core.GPlatCore.GetWebInfo()
+	info := GPlatCore.GetWebInfo()
 	c.JSON(200, info)
 }
 
@@ -80,7 +79,7 @@ func startService(c *gin.Context) {
 		})
 		return
 	}
-	err := core.GPlatCore.StartService(flag)
+	err := GPlatCore.StartService(flag)
 	if err != nil {
 		c.JSON(200, gin.H{
 			"code": 1,
@@ -104,7 +103,7 @@ func stopService(c *gin.Context) {
 		})
 		return
 	}
-	err := core.GPlatCore.StopService(flag)
+	err := GPlatCore.StopService(flag)
 	if err != nil {
 		c.JSON(200, gin.H{
 			"code": 1,

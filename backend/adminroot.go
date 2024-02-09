@@ -1,8 +1,8 @@
-package web
+package backend
 
 import (
 	"github.com/gin-gonic/gin"
-	"github.com/intmian/platform/global"
+	"github.com/intmian/platform/backend/global"
 )
 
 func InitRoot(r *gin.Engine) {

@@ -1,15 +1,14 @@
-package core
+package backend
 
 import (
 	"context"
 	"fmt"
 	"github.com/intmian/mian_go_lib/xstorage"
-	coreShare "github.com/intmian/platform/core/share"
-	"github.com/intmian/platform/core/tool"
-	"github.com/intmian/platform/global"
+	"github.com/intmian/platform/backend/global"
+	coreShare "github.com/intmian/platform/backend/share"
+	"github.com/intmian/platform/backend/tool"
 	"github.com/intmian/platform/services/auto"
 	"github.com/intmian/platform/services/share"
-	share2 "github.com/intmian/platform/web/share"
 	"github.com/pkg/errors"
 	"time"
 )
@@ -23,6 +22,7 @@ func Init() {
 	if err != nil {
 		panic(err)
 	}
+	GWebMgr.Init()
 }
 
 // PlatCore 提供共用的核心共享服务，并负责启动关闭各项服务
@@ -119,10 +119,10 @@ func (p *PlatCore) GetServiceMeta(flag coreShare.SvrFlag) *coreShare.ServiceMeta
 	return p.serviceMeta[flag]
 }
 
-func (p *PlatCore) GetWebInfo() []share2.ServicesInfo {
-	var ret []share2.ServicesInfo
+func (p *PlatCore) GetWebInfo() []coreShare.ServicesInfo {
+	var ret []coreShare.ServicesInfo
 	for k, v := range p.serviceMeta {
-		ret = append(ret, share2.ServicesInfo{
+		ret = append(ret, coreShare.ServicesInfo{
 			Name:      string(tool.GetName(k)),
 			Status:    tool.GetStatusStr(v.Status),
 			StartTime: time.Since(v.StartTime).String(),

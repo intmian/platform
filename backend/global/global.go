@@ -8,7 +8,7 @@ import (
 	"github.com/intmian/mian_go_lib/xpush"
 	"github.com/intmian/mian_go_lib/xpush/pushmod"
 	"github.com/intmian/mian_go_lib/xstorage"
-	coreShare "github.com/intmian/platform/core/share"
+	coreShare "github.com/intmian/platform/backend/share"
 	"github.com/pkg/errors"
 )
 

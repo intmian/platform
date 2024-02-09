@@ -1,29 +1,25 @@
-package web
+package backend
 
 import (
 	"github.com/gin-gonic/gin"
 	"github.com/intmian/mian_go_lib/tool/misc"
 	"github.com/intmian/mian_go_lib/tool/token"
 	"github.com/intmian/mian_go_lib/xstorage"
-	"github.com/intmian/platform/global"
+	"github.com/intmian/platform/backend/global"
 	"io"
 	"os"
 	"time"
 )
 
 // GWebMgr web管理器,负责管理gin以及控制台相关，服务的鉴权与内容请从services中处理
-var GWebMgr Mgr
+var GWebMgr WebMgr
 
-func Init() {
-	GWebMgr.Init()
-}
-
-type Mgr struct {
+type WebMgr struct {
 	p   xstorage.WebPack
 	jwt token.JwtMgr
 }
 
-func (m *Mgr) Init() {
+func (m *WebMgr) Init() {
 	v, err := global.GStorage.Get("IsOpenWebDebug")
 	if err == nil && xstorage.ToBase[bool](v) {
 		gin.SetMode(gin.ReleaseMode)
@@ -52,7 +48,7 @@ func (m *Mgr) Init() {
 	}
 }
 
-func (m *Mgr) checkSignature(data *token.Data, wantPermission string) bool {
+func (m *WebMgr) checkSignature(data *token.Data, wantPermission string) bool {
 	n := time.Now()
 	return m.jwt.CheckSignature(data, n, wantPermission)
 }

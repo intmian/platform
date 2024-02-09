@@ -42,3 +42,13 @@ type ServiceMeta struct {
 	StartTime time.Time
 	Status    ServiceStatus
 }
+
+type ServicesInfo struct {
+	Name      string
+	Status    string
+	StartTime string
+}
+
+type Setting struct {
+	WebPort string
+}

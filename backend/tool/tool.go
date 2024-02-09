@@ -1,6 +1,6 @@
 package tool
 
-import "github.com/intmian/platform/core/share"
+import "github.com/intmian/platform/backend/share"
 
 type tool struct {
 	flag2name map[share.SvrFlag]share.SvrName
