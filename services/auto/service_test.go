@@ -45,7 +45,7 @@ func MakeServiceShare() *share.ServiceShare {
 	d := xlog.DefaultSetting()
 	d.LogAddr = "E:/log"
 	d.PushInfo.PushMgr = push
-	s.Log, _ = xlog.NewXlog(d)
+	s.Log, _ = xlog.NewXLog(d)
 	m, _ := xstorage.NewXStorage(xstorage.XstorageSetting{
 		Property: misc.CreateProperty(xstorage.UseCache, xstorage.MultiSafe, xstorage.UseDisk, xstorage.FullInitLoad),
 		SaveType: xstorage.SqlLiteDB,

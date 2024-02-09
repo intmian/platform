@@ -1,6 +1,7 @@
 package auto
 
 import (
+	"github.com/gin-gonic/gin"
 	"github.com/intmian/platform/services/auto/setting"
 	"github.com/intmian/platform/services/auto/task"
 	"github.com/intmian/platform/services/auto/tool"
@@ -50,4 +51,8 @@ func (s *Service) Start(share share.ServiceShare) error {
 func (s *Service) Stop() error {
 	task.GMgr.AllStop()
 	return nil
+}
+
+func (s *Service) InitRoot(gin *gin.Engine) {
+	// TODO:目前先只通过重启服务的方式进行，后续再说
 }

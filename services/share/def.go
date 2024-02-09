@@ -2,6 +2,7 @@ package share
 
 import (
 	"context"
+	"github.com/gin-gonic/gin"
 	"github.com/intmian/mian_go_lib/xlog"
 	"github.com/intmian/mian_go_lib/xpush"
 	"github.com/intmian/mian_go_lib/xstorage"
@@ -19,4 +20,5 @@ type ServiceShare struct {
 type IService interface {
 	Start(share ServiceShare) error
 	Stop() error
+	InitRoot(gin *gin.Engine)
 }
