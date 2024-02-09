@@ -15,8 +15,9 @@ import (
 var GWebMgr WebMgr
 
 type WebMgr struct {
-	p   xstorage.WebPack
-	jwt token.JwtMgr
+	platStoWebPack xstorage.WebPack
+	jwt            token.JwtMgr
+	webEngine      *gin.Engine
 }
 
 func (m *WebMgr) Init() {
@@ -29,6 +30,7 @@ func (m *WebMgr) Init() {
 		gin.DefaultWriter = io.MultiWriter(f)
 	}
 	engine := gin.Default()
+	m.webEngine = engine
 	InitRoot(engine)
 	s, _ := global.GStorage.GetAndSetDefault("WebPort", xstorage.ToUnit[string]("8080", xstorage.ValueTypeString))
 	s1v, err1 := global.GStorage.Get("WebSalt1")

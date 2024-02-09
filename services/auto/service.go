@@ -31,7 +31,7 @@ func (s *Service) Start(share share.ServiceShare) error {
 	//f, _ := os.Create("static/gin.log")
 	//gin.DefaultWriter = io.MultiWriter(f)
 	//r := gin.Default()
-	//http.InitRoot(r)
+	//http.RegisterWeb(r)
 	//tool.GLog.Info("SYS", "web初始化完成")
 	//ok, port, err := xstorage.Get[string](setting.GSetting, "web.port")
 	//if !ok {
@@ -53,6 +53,10 @@ func (s *Service) Stop() error {
 	return nil
 }
 
-func (s *Service) InitRoot(gin *gin.Engine) {
+func (s *Service) RegisterWeb(gin *gin.Engine) {
 	// TODO:目前先只通过重启服务的方式进行，后续再说
+}
+
+func (s *Service) DeregisterWeb(gin *gin.Engine) {
+	
 }

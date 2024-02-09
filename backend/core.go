@@ -62,6 +62,7 @@ func (p *PlatCore) StartService(flag coreShare.SvrFlag) error {
 		Storage: global.GStorage,
 		Ctx:     context.WithoutCancel(p.ctx),
 	})
+	p.service[flag].RegisterWeb(GWebMgr.webEngine)
 	if err != nil {
 		global.GLog.ErrorErr("PLAT", errors.WithMessagef(err, "StartService %d err", flag))
 	}
@@ -86,6 +87,7 @@ func (p *PlatCore) StopService(flag coreShare.SvrFlag) error {
 	}
 	svr := p.service[flag]
 	err = svr.Stop()
+	svr.DeregisterWeb(GWebMgr.webEngine)
 	p.serviceMeta[flag].Status = coreShare.StatusStop
 	if err != nil {
 		global.GLog.ErrorErr("PLAT", errors.WithMessagef(err, "StopService %s err", name))

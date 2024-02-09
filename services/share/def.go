@@ -20,5 +20,6 @@ type ServiceShare struct {
 type IService interface {
 	Start(share ServiceShare) error
 	Stop() error
-	InitRoot(gin *gin.Engine)
+	RegisterWeb(gin *gin.Engine)
+	DeregisterWeb(gin *gin.Engine)
 }
