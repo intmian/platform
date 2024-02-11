@@ -22,9 +22,9 @@ function Monitor() {
                 }
 
                 const result = await response.json();
-                // 等待0.1秒后加载
+                // 等待1秒后加载
                 await new Promise((resolve) => {
-                    setTimeout(resolve, 100);
+                    setTimeout(resolve, 1000);
                 });
                 setData(result);
                 console.log("http response:", result);

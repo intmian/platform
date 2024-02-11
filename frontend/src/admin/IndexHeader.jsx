@@ -26,6 +26,7 @@ function IndexHeader() {
                 minWidth: 0,
             }}
         />
+        <Button type="primary">登陆</Button>
         <Button type="link" href="https://www.intmian.com">博客</Button>
     </Header>;
 }

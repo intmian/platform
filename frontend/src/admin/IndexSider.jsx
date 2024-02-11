@@ -24,7 +24,7 @@ function IndexSider({onChooseMenuItem}) {
                     getItem('动态', 'news'),
                     getItem('debug', 'debug'),
                 ]}
-                onClick={onChooseMenuItem}
+                onSelect={onChooseMenuItem}
             />
         </Sider>
     );

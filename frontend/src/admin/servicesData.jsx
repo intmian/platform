@@ -1,4 +1,4 @@
-import {Button, List, Space} from "antd";
+import {Button, List, Space, Spin} from "antd";
 
 function service({name, startTime, status}) {
     let open = false;
@@ -42,7 +42,12 @@ export default function ServicesData(services) {
             servicesList.push(service({name, startTime, status}));
         }
     } else {
-        servicesList.push(<List.Item>loading...</List.Item>);
+        return <List
+            size="big"
+            bordered
+            dataSource={[<Spin tip="加载中" size="large"/>]}
+            renderItem={(item) => <List.Item>{item}</List.Item>}
+        />
     }
     return <List
         size="big"
