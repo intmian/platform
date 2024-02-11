@@ -115,9 +115,10 @@ func (p *PlatCore) GetWebInfo() []coreShare.ServicesInfo {
 	var ret []coreShare.ServicesInfo
 	for k, v := range p.serviceMeta {
 		ret = append(ret, coreShare.ServicesInfo{
-			Name:      string(tool.GetName(k)),
-			Status:    tool.GetStatusStr(v.Status),
-			StartTime: time.Since(v.StartTime).String(),
+			Name:   string(tool.GetName(k)),
+			Status: tool.GetStatusStr(v.Status),
+			// 到秒数为止
+			StartTime: v.StartTime.Format("2006-01-02 15:04:05"),
 		})
 	}
 	return ret

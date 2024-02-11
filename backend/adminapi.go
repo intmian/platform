@@ -36,6 +36,7 @@ func login(c *gin.Context) {
 
 func checkAdmin(c *gin.Context) {
 	// 从cookie中获得token
+	return
 	tokenS, err := c.Cookie("token")
 	if err != nil {
 		c.JSON(200, gin.H{

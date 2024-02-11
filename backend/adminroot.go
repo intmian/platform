@@ -7,14 +7,14 @@ import (
 
 func InitRoot(r *gin.Engine) {
 	// 接入前端
-	r.Static("/", "./frontend")
+	//r.Static("/page", "./frontend")
 	// 接入管理员后端
 	r.POST("/api/login", login)
-	admin := r.Group("/api/admin", checkAdmin)
-	admin.POST("/api/admin/services", getServices)
-	admin.POST("/api/admin/service/:name/start", startService)
-	admin.POST("/api/admin/service/:name/stop", stopService)
-	admin.POST("/api/admin/storage/get", global.GStoWebPack.WebGet)
-	admin.POST("/api/admin/storage/set", global.GStoWebPack.WebSet)
-	admin.POST("/api/admin/storage/get_all", global.GStoWebPack.WebGetAll)
+	admin := r.Group("/admin", checkAdmin)
+	admin.POST("/services", getServices)
+	admin.POST("/service/:name/start", startService)
+	admin.POST("/service/:name/stop", stopService)
+	admin.POST("/storage/get", global.GStoWebPack.WebGet)
+	admin.POST("/storage/set", global.GStoWebPack.WebSet)
+	admin.POST("/storage/get_all", global.GStoWebPack.WebGetAll)
 }

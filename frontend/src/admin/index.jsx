@@ -3,11 +3,13 @@ import {Layout, theme} from "antd";
 import IndexSider from "./IndexSider.jsx";
 import IndexFooter from "./IndexFooter.jsx";
 import IndexContent from "./IndexContent.jsx";
+import {useState} from "react";
 
 
 const {Content} = Layout;
 
 function Index() {
+    const [contentType, setContentType] = useState('monitor');
     const {
         token: {colorBgContainer, borderRadiusLG},
     } = theme.useToken();
@@ -30,15 +32,17 @@ function Index() {
                     padding: '24px 0',
                     background: colorBgContainer,
                     borderRadius: borderRadiusLG,
-                    minHeight: '90vh'
+                    minHeight: '80vh'
                 }}
             >
                 <IndexSider
                     onUsrSelect={(item) => {
-                        console.log(item);
+                        setContentType(item.key);
                     }}
                 />
-                <IndexContent/>
+                <IndexContent
+                    contentType={contentType}
+                />
             </Layout>
         </Content>
         <IndexFooter/>

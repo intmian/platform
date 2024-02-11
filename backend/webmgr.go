@@ -42,6 +42,8 @@ func (m *WebMgr) Init() {
 		if s1 == "" || s2 == "" {
 			panic("salt1 or salt2 is empty")
 		}
+		_ = global.GStorage.Set("WebSalt1", xstorage.ToUnit[string](s1, xstorage.ValueTypeString))
+		_ = global.GStorage.Set("WebSalt2", xstorage.ToUnit[string](s2, xstorage.ValueTypeString))
 	}
 	m.jwt.SetSalt(xstorage.ToBase[string](s1v), xstorage.ToBase[string](s2v))
 	err = engine.Run(":" + xstorage.ToBase[string](s))

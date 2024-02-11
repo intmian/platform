@@ -19,8 +19,9 @@ function IndexSider({onUsrSelect}) {
                 }}
                 items={[
                     getItem('监控', 'monitor'),
+                    getItem('debug', 'debug')
                 ]}
-                onSelect={onUsrSelect}
+                onClick={onUsrSelect}
             />
         </Sider>
     );
