@@ -32,15 +32,18 @@ function service({name, startTime, status}) {
 }
 
 export default function ServicesData(services) {
-    services = services.services;
+    let services2 = services.services;
     let servicesList = [];
-    for (let i = 0; i < services.length; i++) {
-        let name = services[i].Name;
-        let startTime = services[i].StartTime;
-        let status = services[i].Status;
-        servicesList.push(service({name, startTime, status}));
+    if (services2 !== 'loading...') {
+        for (let i = 0; i < services2.length; i++) {
+            let name = services2[i].Name;
+            let startTime = services2[i].StartTime;
+            let status = services2[i].Status;
+            servicesList.push(service({name, startTime, status}));
+        }
+    } else {
+        servicesList.push(<List.Item>loading...</List.Item>);
     }
-
     return <List
         size="big"
         bordered

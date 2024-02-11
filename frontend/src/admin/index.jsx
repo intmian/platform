@@ -3,7 +3,7 @@ import {Layout, theme} from "antd";
 import IndexSider from "./IndexSider.jsx";
 import IndexFooter from "./IndexFooter.jsx";
 import IndexContent from "./IndexContent.jsx";
-import {useState} from "react";
+import React, {useState} from "react";
 
 
 const {Content} = Layout;
@@ -13,6 +13,11 @@ function Index() {
     const {
         token: {colorBgContainer, borderRadiusLG},
     } = theme.useToken();
+    const useDebugValue = (value) => {
+        React.useDebugValue(value);
+        console.trace("State updated by:");
+    };
+    useDebugValue(contentType);
     return <Layout>
         <IndexHeader/>
         <Content
@@ -36,8 +41,9 @@ function Index() {
                 }}
             >
                 <IndexSider
-                    onUsrSelect={(item) => {
+                    onChooseMenuItem={(item) => {
                         setContentType(item.key);
+                        console.log("selected item:", item.key);
                     }}
                 />
                 <IndexContent

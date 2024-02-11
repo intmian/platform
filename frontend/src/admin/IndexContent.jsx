@@ -22,8 +22,12 @@ function Monitor() {
                 }
 
                 const result = await response.json();
+                // 等待0.1秒后加载
+                await new Promise((resolve) => {
+                    setTimeout(resolve, 100);
+                });
                 setData(result);
-                console.log(result);
+                console.log("http response:", result);
             } catch (error) {
                 console.error('Error fetching data:', error);
             }
