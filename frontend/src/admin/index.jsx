@@ -8,18 +8,48 @@ import React, {useState} from "react";
 
 const {Content} = Layout;
 
+function CheckLogin() {
+    // 请求 /api/admin 查询权限
+    const fetchData = async () => {
+        try {
+            const response = await fetch('/api/check', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+            });
+
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+
+            const result = await response.json();
+            if (result.code === 0) {
+                if (result.data.ValidTime < new Date().getTime() / 1000) {
+                    return ""
+                }
+                return result.data.User;
+            }
+        } catch (error) {
+            return ""
+        }
+    };
+
+    return fetchData();
+}
+
 function Index() {
     const [contentType, setContentType] = useState('monitor');
     const {
         token: {colorBgContainer, borderRadiusLG},
     } = theme.useToken();
-    const useDebugValue = (value) => {
-        React.useDebugValue(value);
-        console.trace("State updated by:");
-    };
-    useDebugValue(contentType);
+
+    const [loginUser, setLoginUser] = useState(null);
+    let usr = CheckLogin();
     return <Layout>
-        <IndexHeader/>
+        <IndexHeader
+            user={usr}
+        />
         <Content
             style={{
                 padding: '0 48px',

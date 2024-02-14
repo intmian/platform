@@ -1,6 +1,7 @@
 import {Layout} from "antd";
 import {useEffect, useState} from "react";
 import ServicesData from "./servicesData.jsx";
+import Login from "./login.jsx";
 
 const {Content} = Layout;
 
@@ -40,6 +41,7 @@ function Monitor() {
 }
 
 function Debug() {
+    return <Login/>;
     return <Content
         style={{
             padding: "0 48px",

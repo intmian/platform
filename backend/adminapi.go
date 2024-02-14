@@ -34,9 +34,12 @@ func login(c *gin.Context) {
 	c.SetCookie("token", string(tokenS), 60*60*24*7, "/", "", false, true)
 }
 
-func checkAdmin(c *gin.Context) {
+func logout(c *gin.Context) {
+	c.SetCookie("token", "", -1, "/", "", false, true)
+}
+
+func check(c *gin.Context) {
 	// 从cookie中获得token
-	return
 	tokenS, err := c.Cookie("token")
 	if err != nil {
 		c.JSON(200, gin.H{
@@ -54,7 +57,49 @@ func checkAdmin(c *gin.Context) {
 			"code": 1,
 			"msg":  "token invalid",
 		})
+	}
+	type res struct {
+		User       string
+		Permission map[string]bool
+		ValidTime  int64
+	}
+	var r res
+	r.User = data.User
+	r.Permission = make(map[string]bool)
+	for _, v := range data.Permission {
+		if GWebMgr.checkSignature(&data, v) {
+			r.Permission[v] = true
+		} else {
+			r.Permission[v] = false
+		}
+	}
+	r.ValidTime = data.ValidTime
+	c.JSON(200, gin.H{
+		"code": 0,
+		"msg":  "ok",
+		"data": r,
+	})
+}
+
+func checkAdmin(c *gin.Context) {
+	// 从cookie中获得token
+	tokenS, err := c.Cookie("token")
+	if err != nil {
+		c.JSON(200, gin.H{
+			"code": 1,
+			"msg":  "token not exist",
+		})
 		c.Abort()
+		return
+	}
+	// 解析token
+	var data token.Data
+	err = json.Unmarshal([]byte(tokenS), &data)
+	if err != nil {
+		c.JSON(200, gin.H{
+			"code": 1,
+			"msg":  "token invalid",
+		})
 		return
 	}
 	if !GWebMgr.checkSignature(&data, "admin") {

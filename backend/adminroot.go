@@ -9,7 +9,9 @@ func InitRoot(r *gin.Engine) {
 	// 接入前端
 	//r.Static("/page", "./frontend")
 	// 接入管理员后端
-	r.POST("/api/login", login)
+	r.POST("/login", login)
+	r.POST("/logout", logout)
+	r.POST("/check", check)
 	admin := r.Group("/admin", checkAdmin)
 	admin.POST("/services", getServices)
 	admin.POST("/service/:name/start", startService)

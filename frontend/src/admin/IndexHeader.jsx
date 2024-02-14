@@ -3,7 +3,12 @@ import {getItem} from "../tool.js";
 
 const {Header} = Layout;
 
-function IndexHeader() {
+function IndexHeader({user}) {
+    let needLogin = false;
+    if (user !== null && user !== "") {
+        needLogin = true;
+    }
+
     return <Header
         style={{
             display: 'flex',
@@ -19,6 +24,7 @@ function IndexHeader() {
             items={[
                 getItem('主页', 'home'),
                 getItem('笔记', 'note'),
+                getItem('工具', 'tool'),
             ]
             }
             style={{
