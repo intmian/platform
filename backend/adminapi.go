@@ -11,23 +11,34 @@ import (
 )
 
 func login(c *gin.Context) {
-	// 获得密码
-	usr := c.PostForm("usr")
-	sec := c.PostForm("sec")
-	if usr != "admin" && sec != "123456" {
+	// 从body中获得密码
+	body := struct {
+		Username string `json:"username"`
+		Password string `json:"password"`
+	}{}
+	err := c.BindJSON(&body)
+	if err != nil {
 		c.JSON(200, gin.H{
 			"code": 1,
-			"msg":  "password error",
+			"msg":  err.Error(),
+		})
+		return
+
+	}
+	if body.Username != "admin" && body.Password != "123456" {
+		c.JSON(200, gin.H{
+			"code": 1,
+			"msg":  "Password error",
 		})
 		return
 	}
 	// 生成token
 	data := token.Data{
-		User:       usr,
+		User:       body.Username,
 		Permission: []string{"admin"},
 		ValidTime:  int64(time.Hour * 24 * 7 / time.Second),
 	}
-	t := GWebMgr.jwt.GenToken(usr, data.Permission, data.ValidTime)
+	t := GWebMgr.jwt.GenToken(body.Username, data.Permission, data.ValidTime)
 	data.Token = t
 	// 保存token
 	tokenS, _ := json.Marshal(data)

@@ -1,7 +1,7 @@
 import {Layout} from "antd";
 import {useEffect, useState} from "react";
 import ServicesData from "./servicesData.jsx";
-import Login from "./login.jsx";
+import Login from "../common/login.jsx";
 
 const {Content} = Layout;
 
