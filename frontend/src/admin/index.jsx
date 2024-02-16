@@ -3,7 +3,7 @@ import {Layout, theme} from "antd";
 import IndexSider from "./IndexSider.jsx";
 import IndexFooter from "./IndexFooter.jsx";
 import IndexContent from "./IndexContent.jsx";
-import React, {useState} from "react";
+import React, {useEffect, useState} from "react";
 
 
 const {Content} = Layout;
@@ -43,9 +43,12 @@ function Index() {
     const {
         token: {colorBgContainer, borderRadiusLG},
     } = theme.useToken();
-
+    let usr = ""
     const [loginUser, setLoginUser] = useState(null);
-    let usr = CheckLogin();
+    useEffect(() => {
+        usr = CheckLogin();
+    }, []);
+
     return <Layout>
         <IndexHeader
             user={usr}

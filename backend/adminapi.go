@@ -36,7 +36,7 @@ func login(c *gin.Context) {
 	data := token.Data{
 		User:       body.Username,
 		Permission: []string{"admin"},
-		ValidTime:  int64(time.Hour * 24 * 7 / time.Second),
+		ValidTime:  int64(time.Hour*24*7/time.Second) + time.Now().Unix(),
 	}
 	t := GWebMgr.jwt.GenToken(body.Username, data.Permission, data.ValidTime)
 	data.Token = t
@@ -71,6 +71,7 @@ func check(c *gin.Context) {
 			"code": 1,
 			"msg":  "token invalid",
 		})
+		c.Abort()
 	}
 	type res struct {
 		User       string
@@ -88,11 +89,11 @@ func check(c *gin.Context) {
 		}
 	}
 	r.ValidTime = data.ValidTime
-	c.JSON(200, gin.H{
-		"code": 0,
-		"msg":  "ok",
-		"data": r,
-	})
+	//c.JSON(200, gin.H{
+	//	"code": 0,
+	//	"msg":  "ok",
+	//	"data": r,
+	//})
 }
 
 func checkAdmin(c *gin.Context) {
@@ -104,7 +105,6 @@ func checkAdmin(c *gin.Context) {
 			"msg":  "token not exist",
 		})
 		c.Abort()
-		return
 	}
 	// 解析token
 	var data token.Data
@@ -114,13 +114,14 @@ func checkAdmin(c *gin.Context) {
 			"code": 1,
 			"msg":  "token invalid",
 		})
-		return
+		c.Abort()
 	}
 	if !GWebMgr.checkSignature(&data, "admin") {
 		c.JSON(200, gin.H{
 			"code": 1,
 			"msg":  "token invalid",
 		})
+		c.Abort()
 	}
 }
 
