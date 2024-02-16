@@ -43,6 +43,9 @@ func login(c *gin.Context) {
 	// 保存token
 	tokenS, _ := json.Marshal(data)
 	c.SetCookie("token", string(tokenS), 60*60*24*7, "/", "", false, true)
+	c.JSON(200, gin.H{
+		"code": 0,
+	})
 }
 
 func logout(c *gin.Context) {

@@ -6,7 +6,7 @@ async function sendLogin(values) {
         const response = await fetch('/api/login', {
             method: 'POST',
             headers: {
-                'Content-Type': 'multipart/form-data',
+                'Content-Type': 'application/json',
             },
             body: JSON.stringify(values),
         });
