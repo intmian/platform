@@ -46,13 +46,30 @@ export default function ServicesData(services) {
             size="big"
             bordered
             dataSource={[<Spin tip="加载中" size="large"/>]}
-            renderItem={(item) => <List.Item>{item}</List.Item>}
+            renderItem={(item) =>
+                <List.Item
+                    // 居中
+                    style={{
+                        display: 'flex',
+                        justifyContent: 'center',
+                    }}>
+                    {item}
+                </List.Item>}
         />
     }
     return <List
         size="big"
         bordered
         dataSource={servicesList}
-        renderItem={(item) => <List.Item>{item}</List.Item>}
+        renderItem={(item) =>
+            <List.Item
+                // 居中
+                style={{
+                    display: 'flex',
+                    justifyContent: 'center',
+                }}
+            >
+                {item}
+            </List.Item>}
     />
 }
