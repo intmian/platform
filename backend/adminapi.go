@@ -25,7 +25,7 @@ func login(c *gin.Context) {
 		return
 
 	}
-	if body.Username != "admin" && body.Password != "123456" {
+	if body.Username != "admin" || body.Password != "123456" {
 		c.JSON(200, gin.H{
 			"code": 1,
 			"msg":  "Password error",
