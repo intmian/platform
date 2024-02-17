@@ -67,8 +67,18 @@ function IndexHeader({user, onLoginSuc, onLogOut}) {
             alignItems: 'center',
             // background: '#fff',
         }}
-        theme={'dark'}
     >
+        <h1
+            style={{
+                color: 'white',
+                margin: 10,
+                fontSize: 20,
+                // fontWeight: 500,
+                minWidth: 0,
+            }}
+        >
+            platform管理员界面
+        </h1>
         <Menu
             mode="horizontal"
             theme={'dark'}
