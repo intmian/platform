@@ -3,7 +3,7 @@ import {getItem} from "../tool.js";
 
 const {Sider} = Layout;
 
-function IndexSider({onChooseMenuItem}) {
+function IndexSider({onChooseMenuItem, disable}) {
     return (
         <Sider
             width={200}
@@ -12,6 +12,7 @@ function IndexSider({onChooseMenuItem}) {
             }}
         >
             <Menu
+                disabled={disable}
                 mode="inline"
                 defaultSelectedKeys={['monitor']}
                 style={{

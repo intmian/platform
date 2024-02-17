@@ -1,10 +1,10 @@
 import IndexHeader from "./IndexHeader.jsx";
-import {Layout, theme} from "antd";
+import {Layout, message, theme} from "antd";
 import IndexSider from "./IndexSider.jsx";
 import IndexFooter from "./IndexFooter.jsx";
 import IndexContent from "./IndexContent.jsx";
 import React, {useEffect, useState} from "react";
-import {CheckLogin} from "../common/sendhttp.js";
+import {SendCheckLogin} from "../common/sendhttp.js";
 
 
 const {Content} = Layout;
@@ -14,15 +14,24 @@ function Index() {
     const {
         token: {colorBgContainer, borderRadiusLG},
     } = theme.useToken();
-    let usr = ""
-    const [loginUser, setLoginUser] = useState(null);
+    const [usr, setUsr] = useState(null);
     useEffect(() => {
-        usr = CheckLogin();
+        SendCheckLogin((data) => {
+            setUsr(data);
+        })
     }, []);
 
     return <Layout>
         <IndexHeader
             user={usr}
+            onLogOut={() => {
+                setUsr(null);
+                message.success("登出成功");
+            }}
+            onLoginSuc={(user) => {
+                setUsr(user);
+                message.success("登陆成功");
+            }}
         />
         <Content
             style={{
@@ -45,14 +54,21 @@ function Index() {
                 }}
             >
                 <IndexSider
+                    disable={usr === null || usr === ""}
                     onChooseMenuItem={(item) => {
                         setContentType(item.key);
                         console.log("selected item:", item.key);
                     }}
                 />
-                <IndexContent
-                    contentType={contentType}
-                />
+                {
+                    // 未登录时显示登录提示
+                    usr === null || usr === "" ? <IndexContent
+                            contentType={'needLogin'}
+                        />
+                        : <IndexContent
+                            contentType={contentType}
+                        />
+                }
             </Layout>
         </Content>
         <IndexFooter/>

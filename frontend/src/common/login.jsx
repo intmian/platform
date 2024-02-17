@@ -1,4 +1,4 @@
-import {Button, Form, Input, Modal} from "antd";
+import {Button, Form, Input, message, Modal} from "antd";
 import {useState} from "react";
 
 async function sendLogin(values) {
@@ -17,17 +17,18 @@ async function sendLogin(values) {
 
         const result = await response.json();
         if (result.code === 0) {
-            return true
+            return result.username
         } else {
-            return false
+            return ''
         }
     } catch (error) {
-        return false
+        return ''
     }
 }
 
 
-export default function Login(onLoginSuc, onCancel) {
+export default function Login({onLoginSuc, onCancel}) {
+    console.log("onLoginSuc:", onLoginSuc);
     let labelCol = 4;
     let wrapperCol = 8;
     const [showModal, setShowModal] = useState('true');
@@ -62,9 +63,12 @@ export default function Login(onLoginSuc, onCancel) {
                     setLoading(true);
                     let result = await sendLogin(values);
                     setLoading(false);
-                    if (result) {
+                    console.log("result:", result);
+                    if (result !== '') {
                         setShowModal(false);
-                        onLoginSuc();
+                        onLoginSuc(result);
+                    } else {
+                        message.error('用户名或密码错误');
                     }
                 }}
                 autoComplete="off"

@@ -1,4 +1,4 @@
-import {Layout} from "antd";
+import {Empty, Layout} from "antd";
 import {useEffect, useState} from "react";
 import ServicesData from "./servicesData.jsx";
 import Login from "../common/login.jsx";
@@ -28,9 +28,7 @@ function Monitor() {
                     setTimeout(resolve, 1000);
                 });
                 setData(result);
-                console.log("http response:", result);
             } catch (error) {
-                console.error('Error fetching data:', error);
             }
         };
 
@@ -52,13 +50,32 @@ function Debug() {
 }
 
 function IndexContent({contentType}) {
+    if (contentType === 'needLogin') {
+        return <Content
+            style={{
+                padding: "0 48px",
+                display: "flex",
+                justifyContent: "center",
+                alignItems: "center",
+            }}
+        >
+            <Empty
+
+                description={"请先登陆"}
+            />
+        </Content>;
+    }
     return <Content
         style={{
             padding: "0 48px",
+
         }}
     >
         {contentType === 'monitor' ? Monitor() : null}
         {contentType === 'debug' ? Debug() : null}
+        {contentType === 'needLogin' ? <Empty
+            description={"请先登陆"}
+        /> : null}
     </Content>;
 }
 

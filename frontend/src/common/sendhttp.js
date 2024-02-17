@@ -1,4 +1,4 @@
-export function CheckLogin() {
+export function SendCheckLogin(callback) {
     // 请求 /api/admin 查询权限
     const fetchData = async () => {
         try {
@@ -12,18 +12,17 @@ export function CheckLogin() {
             if (!response.ok) {
                 throw new Error('Network response was not ok');
             }
-
             const result = await response.json();
             if (result.code === 0) {
                 if (result.data.ValidTime < new Date().getTime() / 1000) {
-                    return ""
+                    callback("")
+                } else {
+                    callback(result.data.User)
                 }
-                return result.data.User;
             }
         } catch (error) {
-            return ""
+            callback("")
         }
     };
-
-    return fetchData();
+    fetchData();
 }

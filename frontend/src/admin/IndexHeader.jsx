@@ -1,14 +1,61 @@
-import {Button, Layout, Menu} from "antd";
+import {Button, Layout, Menu, Popconfirm} from "antd";
 import {getItem} from "../tool.js";
+import Login from "../common/login.jsx";
+import {useState} from "react";
 
 const {Header} = Layout;
 
-function IndexHeader({user}) {
-    let needLogin = false;
-    if (user !== null && user !== "") {
-        needLogin = true;
-    }
+function UserButton({user, onLogOut}) {
+    return <Popconfirm
+        title={"确定要登出吗？"}
+        okText={"确定"}
+        cancelText={"取消"}
+        onConfirm={() => {
+            fetch('/api/logout', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({}),
+            }).then((response) => {
+                if (response.ok) {
+                    onLogOut();
+                }
+            })
+        }}
+    >
+        <Button type="primary">{user}</Button>;
+    </Popconfirm>;
+}
 
+function NeedLoginButton({onLoginSuc}) {
+    const [isLogin, setIsLogin] = useState(false);
+
+    return (
+        <>
+            {isLogin ? (
+                <Login onLoginSuc={(user) => {
+                    onLoginSuc(user);
+                }}/>
+            ) : (
+                <Button type="primary" onClick={() => {
+                    setIsLogin(true);
+                }}>登陆</Button>
+            )}
+        </>
+    );
+}
+
+
+function LoginButton({user, onLoginSuc, onLogOut}) {
+    if (user !== null && user !== "") {
+        return <UserButton user={user} onLogOut={onLogOut}/>;
+    }
+    return <NeedLoginButton onLoginSuc={onLoginSuc}/>;
+}
+
+function IndexHeader({user, onLoginSuc, onLogOut}) {
+    console.log("user:", user);
     return <Header
         style={{
             display: 'flex',
@@ -32,7 +79,11 @@ function IndexHeader({user}) {
                 minWidth: 0,
             }}
         />
-        <Button type="primary">登陆</Button>
+        <LoginButton
+            user={user}
+            onLoginSuc={onLoginSuc}
+            onLogOut={onLogOut}
+        />
         <Button type="link" href="https://www.intmian.com">博客</Button>
     </Header>;
 }

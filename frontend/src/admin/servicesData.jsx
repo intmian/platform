@@ -45,7 +45,7 @@ export default function ServicesData(services) {
         return <List
             size="big"
             bordered
-            dataSource={[<Spin tip="加载中" size="large"/>]}
+            dataSource={[<Spin key={0} tip="加载中" size="large"/>]}
             renderItem={(item) =>
                 <List.Item
                     // 居中

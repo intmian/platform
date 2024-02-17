@@ -44,7 +44,8 @@ func login(c *gin.Context) {
 	tokenS, _ := json.Marshal(data)
 	c.SetCookie("token", string(tokenS), 60*60*24*7, "/", "", false, true)
 	c.JSON(200, gin.H{
-		"code": 0,
+		"code":     0,
+		"username": body.Username,
 	})
 }
 
@@ -72,6 +73,7 @@ func check(c *gin.Context) {
 			"msg":  "token invalid",
 		})
 		c.Abort()
+		return
 	}
 	type res struct {
 		User       string
@@ -89,11 +91,11 @@ func check(c *gin.Context) {
 		}
 	}
 	r.ValidTime = data.ValidTime
-	//c.JSON(200, gin.H{
-	//	"code": 0,
-	//	"msg":  "ok",
-	//	"data": r,
-	//})
+	c.JSON(200, gin.H{
+		"code": 0,
+		"msg":  "ok",
+		"data": r,
+	})
 }
 
 func checkAdmin(c *gin.Context) {
