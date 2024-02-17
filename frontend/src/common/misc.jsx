@@ -30,7 +30,6 @@ export function TimeFromStart({startTime, width}) {
 
         setPassTimeStr(str);
         const interval = setInterval(() => {
-            console.log("passTimeReal:", passTimeReal);
             setPassTimeReal(passTimeReal + 1000);
             // 转换为xx天xx小时xx分xx秒
             let day = Math.floor(passTimeReal / (24 * 3600 * 1000));
@@ -54,7 +53,6 @@ export function TimeFromStart({startTime, width}) {
             if (seconds > 0 || str !== '') {
                 str += `${seconds} 秒`;
             }
-            console.log(str);
             setPassTimeStr(str);
         }, 1000);
         return () => clearInterval(interval);

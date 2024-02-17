@@ -1,4 +1,4 @@
-import {Button, Layout, Menu, Popconfirm, Space} from "antd";
+import {Button, Image, Layout, Menu, Popconfirm, Space} from "antd";
 import {getItem} from "../tool.js";
 import Login from "../common/login.jsx";
 import {useState} from "react";
@@ -68,17 +68,30 @@ function IndexHeader({user, onLoginSuc, onLogOut}) {
             // background: '#fff',
         }}
     >
-        <h1
-            style={{
-                color: 'white',
-                margin: 10,
-                fontSize: 20,
-                // fontWeight: 500,
-                minWidth: 0,
-            }}
+        <Space size="0"
+               style={{
+                   margin: 10,
+                   height: "100%",
+                   // 白色背景
+                   background: 'rgba(0, 0, 0, 0.2)',
+               }}
         >
-            platform管理员界面
-        </h1>
+            <Image
+                width={100}
+                preview={false}
+                src={'/src/assets/biglogo.png'}
+            />
+            <h1
+                style={{
+                    color: 'white',
+                    fontSize: 20,
+                    // fontWeight: 500,
+                    minWidth: 0,
+                }}
+            >
+                管理员界面
+            </h1>
+        </Space>
         <Menu
             mode="horizontal"
             theme={'dark'}

@@ -1,4 +1,4 @@
-import {Button, Card, Flex, List, Space, Spin, Tooltip} from "antd";
+import {Button, Card, Flex, List, Progress, Space, Spin, Tooltip} from "antd";
 import {TimeFromStart} from "../common/misc.jsx";
 
 const {Meta} = Card;
@@ -8,12 +8,22 @@ function ServiceInfo({name, startTime, status}) {
     if (status === 'start') {
         open = true;
     }
+    let statusJsx = null
     switch (status) {
         case 'stop':
-            status = '停止';
+            statusJsx = <Progress type="circle" percent={0} size={25} status="exception"/>;
             break;
         case 'start':
-            status = '运行中';
+            statusJsx = <Progress type="circle" percent={100} size={25}/>;
+            break;
+        default:
+    }
+    switch (status) {
+        case 'stop':
+            status = '已停止';
+            break;
+        case 'start':
+            status = '已运行';
             break;
         default:
     }
@@ -27,19 +37,26 @@ function ServiceInfo({name, startTime, status}) {
     let buttonStr = open ? '关闭' : '开启';
     return <Card
         style={{
-            width: 330,
+            width: '30%',
+            minWidth: 330,
+            height: 100,
         }}
     >
-        <Meta title={name}/>
         <Space>
             <Tooltip title={"状态"}>
-                <div>{status}</div>
+                {statusJsx}
             </Tooltip>
+            <Meta title={name}/>
+        </Space>
+        <Space>
             <Tooltip title={"启动时间"}>
-                <TimeFromStart
-                    startTime={startTime}
-                    width={150}
-                />
+                <Space>
+                    <div style={{width: 50}}>{status}</div>
+                    <TimeFromStart
+                        startTime={startTime}
+                        width={150}
+                    />
+                </Space>
             </Tooltip>
             <Button type="primary">{buttonStr}</Button>
         </Space>
@@ -59,7 +76,7 @@ export default function ServicesData(services) {
         }
         servicesList.push(ServiceInfo({name: '测试1', startTime: Date.now() - 10000, status: 'start'}));
         servicesList.push(ServiceInfo({name: '测试2', startTime: Date.now() - 20000, status: 'start'}));
-        servicesList.push(ServiceInfo({name: '测试3', startTime: Date.now() - 30000, status: 'start'}));
+        servicesList.push(ServiceInfo({name: '测试3', startTime: Date.now() - 30000, status: 'stop'}));
         servicesList.push(ServiceInfo({name: '测试14', startTime: Date.now() - 40000, status: 'start'}));
     } else {
         return <List
@@ -77,5 +94,10 @@ export default function ServicesData(services) {
                 </List.Item>}
         />
     }
-    return <Flex wrap={"wrap"} gap="large">{servicesList}</Flex>;
+    return <Flex
+        wrap={"wrap"}
+        gap="small"
+        justify="flex-start"
+        flex="auto"
+    >{servicesList}</Flex>;
 }
