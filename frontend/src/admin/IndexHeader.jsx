@@ -67,7 +67,7 @@ function IndexHeader({user, onLoginSuc, onLogOut}) {
         <Menu
             mode="horizontal"
             theme={'dark'}
-            defaultSelectedKeys={['主页']}
+            defaultSelectedKeys={['home']}
             items={[
                 getItem('主页', 'home'),
                 getItem('笔记', 'note'),
