@@ -1,4 +1,4 @@
-import {Button, Layout, Menu, Popconfirm} from "antd";
+import {Button, Layout, Menu, Popconfirm, Space} from "antd";
 import {getItem} from "../tool.js";
 import Login from "../common/login.jsx";
 import {useState} from "react";
@@ -34,9 +34,14 @@ function NeedLoginButton({onLoginSuc}) {
     return (
         <>
             {isLogin ? (
-                <Login onLoginSuc={(user) => {
-                    onLoginSuc(user);
-                }}/>
+                <Login
+                    onLoginSuc={(user) => {
+                        onLoginSuc(user);
+                    }}
+                    onCancel={() => {
+                        setIsLogin(false);
+                    }}
+                />
             ) : (
                 <Button type="primary" onClick={() => {
                     setIsLogin(true);
@@ -47,7 +52,7 @@ function NeedLoginButton({onLoginSuc}) {
 }
 
 
-function LoginButton({user, onLoginSuc, onLogOut}) {
+function UsrArea({user, onLoginSuc, onLogOut}) {
     if (user !== null && user !== "") {
         return <UserButton user={user} onLogOut={onLogOut}/>;
     }
@@ -79,12 +84,14 @@ function IndexHeader({user, onLoginSuc, onLogOut}) {
                 minWidth: 0,
             }}
         />
-        <LoginButton
-            user={user}
-            onLoginSuc={onLoginSuc}
-            onLogOut={onLogOut}
-        />
-        <Button type="link" href="https://www.intmian.com">博客</Button>
+        <Space>
+            <Button type="link" href="https://www.intmian.com">博客</Button>
+            <UsrArea
+                user={user}
+                onLoginSuc={onLoginSuc}
+                onLogOut={onLogOut}
+            />
+        </Space>
     </Header>;
 }
 
