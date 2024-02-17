@@ -11,7 +11,7 @@ function ServiceInfo({name, startTime, status}) {
     let statusJsx = null
     switch (status) {
         case 'stop':
-            statusJsx = <Progress type="circle" percent={0} size={25} status="exception"/>;
+            statusJsx = <Progress type="circle" percent={100} size={25} status="exception"/>;
             break;
         case 'start':
             statusJsx = <Progress type="circle" percent={100} size={25}/>;
