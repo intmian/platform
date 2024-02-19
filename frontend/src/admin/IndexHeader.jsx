@@ -3,6 +3,7 @@ import {getItem} from "../tool.js";
 import Login from "../common/login.jsx";
 import {useState} from "react";
 import biglogo from "../assets/biglogo.png";
+
 const {Header} = Layout;
 
 function UserButton({user, onLogOut}) {
@@ -88,7 +89,7 @@ function IndexHeader({user, onLoginSuc, onLogOut}) {
                     minWidth: 0,
                 }}
             >
-                管理员界面
+                后台
             </h1>
         </Space>
         <Menu
@@ -96,7 +97,7 @@ function IndexHeader({user, onLoginSuc, onLogOut}) {
             theme={'dark'}
             defaultSelectedKeys={['home']}
             items={[
-                getItem('主页', 'home'),
+                getItem('管理', 'home'),
                 getItem('笔记', 'note'),
                 getItem('工具', 'tool'),
             ]
