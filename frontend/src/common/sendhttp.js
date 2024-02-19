@@ -21,7 +21,7 @@ export function SendCheckLogin(callback) {
                 }
             }
         } catch (error) {
-            callback("")
+            callback(null)
         }
     };
     fetchData();

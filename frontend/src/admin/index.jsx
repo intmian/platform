@@ -17,6 +17,9 @@ function Index() {
     const [usr, setUsr] = useState(null);
     useEffect(() => {
         SendCheckLogin((data) => {
+            if (data === null) {
+                message.error("api错误，请重试或联系开发者");
+            }
             setUsr(data);
         })
     }, []);
