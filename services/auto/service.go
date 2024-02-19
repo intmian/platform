@@ -16,9 +16,9 @@ func (s *Service) Start(share share.ServiceShare) error {
 	s.share = share
 	setting.GSetting = share.Storage
 	tool.Init(share.Push, share.Log)
-	tool.GLog.Info("SYS", "初始化开始")
+	tool.GLog.Info("AUTO", "初始化开始")
 	task.Init()
-	tool.GLog.Info("SYS", "task初始化完成")
+	tool.GLog.Info("AUTO", "task初始化完成")
 
 	// 网页被做到了外部，因此这里不需要了
 	//ok, isDebug, err := xstorage.Get[bool](setting.GSetting, "web.debug")
@@ -43,7 +43,7 @@ func (s *Service) Start(share share.ServiceShare) error {
 	//	tool.GLog.Info("SYS", "web启动失败")
 	//}
 
-	tool.GLog.Info("SYS", "初始化完成")
+	tool.GLog.Info("AUTO", "初始化完成")
 
 	return nil
 }
@@ -58,5 +58,5 @@ func (s *Service) RegisterWeb(gin *gin.Engine) {
 }
 
 func (s *Service) DeregisterWeb(gin *gin.Engine) {
-	
+
 }

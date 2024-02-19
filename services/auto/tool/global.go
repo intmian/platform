@@ -14,7 +14,7 @@ func Init(push *xpush.XPush, log *xlog.XLog) {
 	//GLog.Printer = log_cache.GLogCache.Add
 	GPush = push
 	GLog = log
-	GLog.Info("INIT", "日志、推送初始化完成")
+	GLog.Info("AUTO", "日志、推送初始化完成")
 }
 
 var GLog *xlog.XLog

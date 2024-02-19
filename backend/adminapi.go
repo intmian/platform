@@ -182,6 +182,10 @@ func stopService(c *gin.Context) {
 
 func getLastLog(c *gin.Context) {
 	logs, err := global.GNews.GetTopic("PLAT")
+	// 翻转
+	for i, j := 0, len(logs)-1; i < j; i, j = i+1, j-1 {
+		logs[i], logs[j] = logs[j], logs[i]
+	}
 	if err != nil {
 		c.JSON(200, gin.H{
 			"code": 1,

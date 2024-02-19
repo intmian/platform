@@ -1,11 +1,12 @@
-import {List, Spin, Table} from "antd";
+import {Table, Tag} from "antd";
 import {useEffect, useState} from "react";
 import {SendGetLastLog} from "../common/sendhttp.js";
 
 export function Log() {
     const [logData, setLogData] = useState(null);
+    let loading = logData === null;
     useEffect(() => {
-        SendGetLastLog((data) => {
+        SendGetLastLog(async (data) => {
             if (data === null) {
                 return;
             }
@@ -14,6 +15,24 @@ export function Log() {
                 let item = data[i];
                 // 根据\t分割
                 item = item.split('\t');
+                let date = new Date(item[1]);
+                // 去除首位的[]
+                item[1] = item[1].slice(1, -1);
+                item[0] = item[0].slice(1, -1);
+                switch (item[0]) {
+                    case "INFO":
+                        item[0] = <Tag color="green">信息</Tag>;
+                        break;
+                    case "ERROR":
+                        item[0] = <Tag color="red">错误</Tag>;
+                        break;
+                    case "WARNING":
+                        item[0] = <Tag color="orange">警告</Tag>;
+                        break;
+                    default:
+                        break;
+                }
+                item[2] = item[2].slice(1, -1);
                 rawData.push({
                     key: i,
                     date: item[1],
@@ -22,42 +41,33 @@ export function Log() {
                     content: item[3],
                 });
             }
+            // 延时0.1s
+            await new Promise((resolve) => {
+                setTimeout(resolve, 100);
+            });
             setLogData(rawData);
             // setData(logData);
         });
     }, []);
 
-    if (logData === null) {
-        return <List
-            size="big"
-            bordered
-            dataSource={[<Spin key={0} size="large"/>]}
-            renderItem={(item) =>
-                <List.Item
-                    // 居中
-                    style={{
-                        display: 'flex',
-                        justifyContent: 'center',
-                    }}>
-                    {item}
-                </List.Item>}
-        />
-    }
     const columns = [
         {
             title: '日期',
             dataIndex: 'date',
             key: 'date',
+            width: 175,
         },
         {
             title: '等级',
             dataIndex: 'lv',
             key: 'lv',
+            width: 80
         },
         {
             title: '来源',
             dataIndex: 'src',
             key: 'src',
+            width: 100
         },
         {
             title: '内容',
@@ -65,5 +75,5 @@ export function Log() {
             key: 'content',
         },
     ];
-    return <Table dataSource={logData} columns={columns}/>;
+    return <Table dataSource={logData} loading={loading} columns={columns}/>;
 }
