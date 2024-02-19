@@ -1,10 +1,13 @@
-import {Button, Card, Flex, List, Progress, Space, Spin, Tooltip} from "antd";
+import {Button, Card, Flex, List, Progress, Space, Spin, Tag, Tooltip} from "antd";
 import {TimeFromStart} from "../common/misc.jsx";
+import {useState} from "react";
 
 const {Meta} = Card;
 
-function ServiceInfo({name, startTime, status}) {
+function ServiceInfo({name, startTime, initStatus}) {
     let open = false;
+    let initStatus2 = initStatus;
+    const [status, setStatus] = useState(initStatus2);
     if (status === 'start') {
         open = true;
     }
@@ -18,23 +21,40 @@ function ServiceInfo({name, startTime, status}) {
             break;
         default:
     }
+    let statusShow = ''
+    let nameShow = ''
     switch (status) {
         case 'stop':
-            status = '已停止';
+            statusShow = '已停止';
             break;
         case 'start':
-            status = '已运行';
+            statusShow = '已运行';
             break;
         default:
     }
     switch (name) {
         case 'auto' :
-            name = '自动任务平台';
+            nameShow = '自动任务平台';
+            break;
+        case 'core' :
+            nameShow = '系统';
             break;
         default:
 
     }
     let buttonStr = open ? '关闭' : '开启';
+    let button = null
+    if (name === 'core') {
+        button = <Button type="primary" disabled={true}>{buttonStr}</Button>;
+    } else {
+        button = <Button type="primary">{buttonStr}</Button>;
+    }
+    let tag = null;
+    if (name === 'core') {
+        tag = <Tag color="red">核心</Tag>;
+    } else {
+        tag = <Tag color="blue">微服务</Tag>;
+    }
     return <Card
         style={{
             width: '30%',
@@ -46,19 +66,20 @@ function ServiceInfo({name, startTime, status}) {
             <Tooltip title={"状态"}>
                 {statusJsx}
             </Tooltip>
-            <Meta title={name}/>
+            <Meta title={nameShow}/>
+            {tag}
         </Space>
         <Space>
             <Tooltip title={"启动时间"}>
                 <Space>
-                    <div style={{width: 50}}>{status}</div>
+                    <div style={{width: 50}}>{statusShow}</div>
                     <TimeFromStart
                         startTime={startTime}
                         width={150}
                     />
                 </Space>
             </Tooltip>
-            <Button type="primary">{buttonStr}</Button>
+            {button}
         </Space>
     </Card>
 }
@@ -72,12 +93,9 @@ export default function ServicesData(services) {
             let startTime = services2[i].StartTime;
             // 计算已经过去的时间
             let status = services2[i].Status;
-            servicesList.push(ServiceInfo({name, startTime, status}));
+            console.log(services2[i]);
+            servicesList.push(ServiceInfo({name, startTime, initStatus: status}));
         }
-        servicesList.push(ServiceInfo({name: '测试1', startTime: Date.now() - 10000, status: 'start'}));
-        servicesList.push(ServiceInfo({name: '测试2', startTime: Date.now() - 20000, status: 'start'}));
-        servicesList.push(ServiceInfo({name: '测试3', startTime: Date.now() - 30000, status: 'stop'}));
-        servicesList.push(ServiceInfo({name: '测试14', startTime: Date.now() - 40000, status: 'start'}));
     } else {
         return <List
             size="big"
