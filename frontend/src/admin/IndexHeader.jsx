@@ -26,7 +26,7 @@ function UserButton({user, onLogOut}) {
             })
         }}
     >
-        <Button type="primary">
+        <Button type="primary" danger={true}>
             <Space>
                 <Avatar size={22} icon={<UserOutlined/>}/>
                 {user}
@@ -51,7 +51,7 @@ function NeedLoginButton({onLoginSuc}) {
                     }}
                 />
             ) : (
-                <Button type="primary" onClick={() => {
+                <Button type="primary" danger={true} onClick={() => {
                     setIsLogin(true);
                 }}>登陆</Button>
             )}
@@ -115,7 +115,7 @@ function IndexHeader({user, onLoginSuc, onLogOut}) {
             }}
         />
         <Space>
-            <Button type="link" href="https://www.intmian.com">博客</Button>
+            <Button type="link" href="https://www.intmian.com">我的博客</Button>
             <UsrArea
                 user={user}
                 onLoginSuc={onLoginSuc}
