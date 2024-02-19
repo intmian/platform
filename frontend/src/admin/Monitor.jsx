@@ -1,11 +1,12 @@
 import {Button, Card, Flex, List, message, Popconfirm, Progress, Space, Spin, Tag, Tooltip} from "antd";
 import {TimeFromStart} from "../common/misc.jsx";
-import {useState} from "react";
+import {useEffect, useState} from "react";
 import {SendStartStopService} from "../common/sendhttp.js";
 
 const {Meta} = Card;
 
 function ServiceInfo({name, startTime, initStatus}) {
+    console.log('initStatus', initStatus)
     const [startTime2, setStartTime2] = useState(startTime);
     const [status, setStatus] = useState(initStatus);
     const [buttonLoading, setButtonLoading] = useState(false);
@@ -100,8 +101,9 @@ function ServiceInfo({name, startTime, initStatus}) {
                                     if (result !== null) {
                                         setStatus('stop');
                                         setButtonLoading(false);
-                                        setStartTime2(Date.now() / 1000);
-                                        console.log('start time', startTime2);
+                                        let timeStr = new Date(Date.now()).toLocaleString();
+                                        console.log('timeStr', timeStr);
+                                        setStartTime2(timeStr);
                                         message.success(nameShow + '已关闭');
                                     }
                                 }, false, name)
@@ -110,7 +112,8 @@ function ServiceInfo({name, startTime, initStatus}) {
                                     if (result !== null) {
                                         setStatus('start');
                                         setButtonLoading(false);
-                                        setStartTime2(Date.now() / 1000);
+                                        let timeStr = new Date(Date.now()).toLocaleString();
+                                        setStartTime2(timeStr);
                                         console.log('start time', startTime2);
                                         message.success(nameShow + '已开启');
                                     }
@@ -126,7 +129,7 @@ function ServiceInfo({name, startTime, initStatus}) {
     </Card>
 }
 
-export default function ServicesData(services) {
+function ServicesData(services) {
     let services2 = services.services;
     let servicesList = [];
     if (services2 !== 'loading...') {
@@ -159,4 +162,37 @@ export default function ServicesData(services) {
         justify="flex-start"
         flex="auto"
     >{servicesList}</Flex>;
+}
+
+export function Monitor() {
+    const [data, setData] = useState('loading...');
+
+    useEffect(() => {
+        const fetchData = async () => {
+            try {
+                const response = await fetch('/api/admin/services', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                });
+
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+
+                const result = await response.json();
+                // 等待1秒后加载
+                await new Promise((resolve) => {
+                    setTimeout(resolve, 100);
+                });
+                setData(result);
+            } catch (error) { /* empty */
+            }
+        };
+
+        fetchData();
+    }, []); // 空的依赖项数组，确保只在组件挂载时执行
+
+    return <ServicesData services={data}/>;
 }
