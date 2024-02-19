@@ -63,6 +63,7 @@ func (p *PlatCore) StartService(flag coreShare.SvrFlag) error {
 	if err != nil {
 		global.GLog.WarningErr("PLAT", errors.WithMessage(err, "StartService push err"))
 	}
+	global.GLog.Info("平台", fmt.Sprintf("服务 %s 成功启动", name)
 	return nil
 }
 
@@ -83,6 +84,10 @@ func (p *PlatCore) StopService(flag coreShare.SvrFlag) error {
 	p.serviceMeta[flag].Status = coreShare.StatusStop
 	if err != nil {
 		global.GLog.ErrorErr("PLAT", errors.WithMessagef(err, "StopService %s err", name))
+	}
+	err = global.GPush.Push("平台", fmt.Sprintf("服务 %s 成功启动", name), false)
+	if err != nil {
+		global.GLog.WarningErr("PLAT", errors.WithMessage(err, "StopService push err"))
 	}
 	global.GLog.Info("平台", fmt.Sprintf("服务 %s 成功停止", name))
 	return nil
