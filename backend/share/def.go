@@ -3,7 +3,7 @@ package share
 import "time"
 
 type (
-	// BaseSetting 一些最基础的配置，TODO: 需要迁移到global和比的一起
+	// BaseSetting 一些最基础的配置，基本上都是启动时候就需要的
 	// 复杂的或者需要热更的请使用xstorage
 	BaseSetting struct {
 		PlatName       string `toml:"plat_name"`       // 平台名称，会被使用在日志和推送中

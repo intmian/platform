@@ -7,6 +7,10 @@ const router = createBrowserRouter([
         path: '/',
         element: <Index/>,
     },
+    {
+        path: '/admin',
+        element: <Index/>,
+    }
 ])
 
 const App = () => {

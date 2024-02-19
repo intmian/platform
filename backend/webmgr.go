@@ -16,7 +16,7 @@ var GWebMgr WebMgr
 
 type WebMgr struct {
 	platStoWebPack xstorage.WebPack
-	jwt            token.JwtMgr
+	Jwt            token.JwtMgr
 	webEngine      *gin.Engine
 }
 
@@ -31,6 +31,20 @@ func (m *WebMgr) Init() {
 	}
 	engine := gin.Default()
 	m.webEngine = engine
+	/*
+		接入前端在gin内部只是可选方案之一，开发时建议单独启动后端与vite dev服务
+		生产环境下可以选择在这里直接接入，也可以选择在nginx中接入，此服务只做api接口
+		后续会不再支持从后端接入前端，因为前端路由会导致后端路由冲突
+	*/
+	if misc.PathExist("./front") && xstorage.ToBaseF[bool](global.GStorage.Get("UseFront")) {
+		global.GLog.Info("web", "接入前端")
+		// 所有以非/api、index、index开头的请求都返回index.html
+		engine.StaticFile("/", "./front/index.html")
+		engine.StaticFile("/admin", "./front/index.html")
+		//engine.StaticFile("/", "./front/index.html")
+		engine.Static("/index", "./front")
+		engine.Static("/assets", "./front/assets")
+	}
 	InitRoot(engine)
 	s, _ := global.GStorage.GetAndSetDefault("WebPort", xstorage.ToUnit[string]("8080", xstorage.ValueTypeString))
 	s1v, err1 := global.GStorage.Get("WebSalt1")
@@ -45,14 +59,14 @@ func (m *WebMgr) Init() {
 		_ = global.GStorage.Set("WebSalt1", xstorage.ToUnit[string](s1, xstorage.ValueTypeString))
 		_ = global.GStorage.Set("WebSalt2", xstorage.ToUnit[string](s2, xstorage.ValueTypeString))
 	}
-	m.jwt.SetSalt(xstorage.ToBase[string](s1v), xstorage.ToBase[string](s2v))
+	m.Jwt.SetSalt(xstorage.ToBase[string](s1v), xstorage.ToBase[string](s2v))
 	err = engine.Run(":" + xstorage.ToBase[string](s))
 	if err != nil {
 		panic(err)
 	}
 }
 
-func (m *WebMgr) checkSignature(data *token.Data, wantPermission string) bool {
+func (m *WebMgr) CheckSignature(data *token.Data, wantPermission string) bool {
 	n := time.Now()
-	return m.jwt.CheckSignature(data, n, wantPermission)
+	return m.Jwt.CheckSignature(data, n, wantPermission)
 }

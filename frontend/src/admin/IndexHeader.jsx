@@ -2,7 +2,7 @@ import {Button, Image, Layout, Menu, Popconfirm, Space} from "antd";
 import {getItem} from "../tool.js";
 import Login from "../common/login.jsx";
 import {useState} from "react";
-
+import biglogo from "../assets/biglogo.png";
 const {Header} = Layout;
 
 function UserButton({user, onLogOut}) {
@@ -79,7 +79,7 @@ function IndexHeader({user, onLoginSuc, onLogOut}) {
             <Image
                 width={100}
                 preview={false}
-                src={'/src/assets/biglogo.png'}
+                src={biglogo}
             />
             <h1
                 style={{

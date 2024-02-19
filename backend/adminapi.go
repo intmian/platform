@@ -38,7 +38,7 @@ func login(c *gin.Context) {
 		Permission: []string{"admin"},
 		ValidTime:  int64(time.Hour*24*7/time.Second) + time.Now().Unix(),
 	}
-	t := GWebMgr.jwt.GenToken(body.Username, data.Permission, data.ValidTime)
+	t := GWebMgr.Jwt.GenToken(body.Username, data.Permission, data.ValidTime)
 	data.Token = t
 	// 保存token
 	tokenS, _ := json.Marshal(data)
@@ -84,7 +84,7 @@ func check(c *gin.Context) {
 	r.User = data.User
 	r.Permission = make(map[string]bool)
 	for _, v := range data.Permission {
-		if GWebMgr.checkSignature(&data, v) {
+		if GWebMgr.CheckSignature(&data, v) {
 			r.Permission[v] = true
 		} else {
 			r.Permission[v] = false
@@ -118,7 +118,7 @@ func checkAdmin(c *gin.Context) {
 		})
 		c.Abort()
 	}
-	if !GWebMgr.checkSignature(&data, "admin") {
+	if !GWebMgr.CheckSignature(&data, "admin") {
 		c.JSON(200, gin.H{
 			"code": 1,
 			"msg":  "token invalid",
