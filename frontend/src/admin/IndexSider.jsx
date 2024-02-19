@@ -20,9 +20,8 @@ function IndexSider({onChooseMenuItem, disable}) {
                 }}
                 items={[
                     getItem('监控', 'monitor'),
-                    getItem('日志', 'log'),
                     getItem('全局配置', 'storage'),
-                    getItem('动态', 'news'),
+                    getItem('日志', 'log'),
                     getItem('debug', 'debug'),
                 ]}
                 onSelect={onChooseMenuItem}

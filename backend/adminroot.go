@@ -19,4 +19,5 @@ func InitRoot(r *gin.Engine) {
 	admin.POST("/storage/get", global.GStoWebPack.WebGet)
 	admin.POST("/storage/set", global.GStoWebPack.WebSet)
 	admin.POST("/storage/get_all", global.GStoWebPack.WebGetAll)
+	admin.POST("/log/get", getLastLog)
 }

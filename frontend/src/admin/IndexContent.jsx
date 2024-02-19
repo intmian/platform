@@ -1,6 +1,7 @@
 import {Empty, Layout} from "antd";
 import Login from "../common/login.jsx";
 import {Monitor} from "./Monitor.jsx";
+import {Log} from "./Log.jsx";
 
 const {Content} = Layout;
 
@@ -31,17 +32,27 @@ function IndexContent({contentType}) {
             />
         </Content>;
     }
+    let content = null;
+    switch (contentType) {
+        case 'monitor':
+            content = <Monitor/>;
+            break;
+        case 'debug':
+            content = <Debug/>;
+            break;
+        case 'log':
+            content = <Log/>;
+            break;
+        default:
+            break;
+    }
     return <Content
         style={{
             padding: "0 48px",
 
         }}
     >
-        {contentType === 'monitor' ? Monitor() : null}
-        {contentType === 'debug' ? Debug() : null}
-        {contentType === 'needLogin' ? <Empty
-            description={"请先登陆"}
-        /> : null}
+        {content}
     </Content>;
 }
 

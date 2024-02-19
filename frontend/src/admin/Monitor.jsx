@@ -6,7 +6,6 @@ import {SendStartStopService} from "../common/sendhttp.js";
 const {Meta} = Card;
 
 function ServiceInfo({name, startTime, initStatus}) {
-    console.log('initStatus', initStatus)
     const [startTime2, setStartTime2] = useState(startTime);
     const [status, setStatus] = useState(initStatus);
     const [buttonLoading, setButtonLoading] = useState(false);
@@ -64,6 +63,7 @@ function ServiceInfo({name, startTime, initStatus}) {
         tag = <Tag color="blue">微服务</Tag>;
     }
     return <Card
+        key={name}
         style={{
             width: '30%',
             minWidth: 330,
@@ -102,7 +102,6 @@ function ServiceInfo({name, startTime, initStatus}) {
                                         setStatus('stop');
                                         setButtonLoading(false);
                                         let timeStr = new Date(Date.now()).toLocaleString();
-                                        console.log('timeStr', timeStr);
                                         setStartTime2(timeStr);
                                         message.success(nameShow + '已关闭');
                                     }
@@ -114,7 +113,6 @@ function ServiceInfo({name, startTime, initStatus}) {
                                         setButtonLoading(false);
                                         let timeStr = new Date(Date.now()).toLocaleString();
                                         setStartTime2(timeStr);
-                                        console.log('start time', startTime2);
                                         message.success(nameShow + '已开启');
                                     }
                                 }, true, name)
@@ -129,22 +127,26 @@ function ServiceInfo({name, startTime, initStatus}) {
     </Card>
 }
 
-function ServicesData(services) {
-    let services2 = services.services;
+function ServicesData({services}) {
     let servicesList = [];
-    if (services2 !== 'loading...') {
-        for (let i = 0; i < services2.length; i++) {
-            let name = services2[i].Name;
-            let startTime = services2[i].StartTime;
+    if (services !== 'loading...') {
+        for (let i = 0; i < services.length; i++) {
+            let name = services[i].Name;
+            let startTime = services[i].StartTime;
             // 计算已经过去的时间
-            let status = services2[i].Status;
-            servicesList.push(ServiceInfo({name, startTime, initStatus: status}));
+            let status = services[i].Status;
+            servicesList.push(<ServiceInfo
+                key={name}
+                name={name}
+                startTime={startTime}
+                initStatus={status}
+            />);
         }
     } else {
         return <List
             size="big"
             bordered
-            dataSource={[<Spin key={0} tip="加载中" size="large"/>]}
+            dataSource={[<Spin key={0} size="large"/>]}
             renderItem={(item) =>
                 <List.Item
                     // 居中
