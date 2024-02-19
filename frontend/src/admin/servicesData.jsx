@@ -1,13 +1,15 @@
-import {Button, Card, Flex, List, Progress, Space, Spin, Tag, Tooltip} from "antd";
+import {Button, Card, Flex, List, message, Popconfirm, Progress, Space, Spin, Tag, Tooltip} from "antd";
 import {TimeFromStart} from "../common/misc.jsx";
 import {useState} from "react";
+import {SendStartStopService} from "../common/sendhttp.js";
 
 const {Meta} = Card;
 
 function ServiceInfo({name, startTime, initStatus}) {
+    const [startTime2, setStartTime2] = useState(startTime);
+    const [status, setStatus] = useState(initStatus);
+    const [buttonLoading, setButtonLoading] = useState(false);
     let open = false;
-    let initStatus2 = initStatus;
-    const [status, setStatus] = useState(initStatus2);
     if (status === 'start') {
         open = true;
     }
@@ -43,12 +45,17 @@ function ServiceInfo({name, startTime, initStatus}) {
 
     }
     let buttonStr = open ? '关闭' : '开启';
-    let button = null
+    let disabled = false;
     if (name === 'core') {
-        button = <Button type="primary" disabled={true}>{buttonStr}</Button>;
-    } else {
-        button = <Button type="primary">{buttonStr}</Button>;
+        disabled = true;
     }
+    let button = <Button
+        type="primary"
+        disabled={disabled}
+        loading={buttonLoading}
+    >
+        {buttonStr}
+    </Button>;
     let tag = null;
     if (name === 'core') {
         tag = <Tag color="red">核心</Tag>;
@@ -75,12 +82,45 @@ function ServiceInfo({name, startTime, initStatus}) {
                     <Space>
                         <div style={{width: 50}}>{statusShow}</div>
                         <TimeFromStart
-                            startTime={startTime}
+                            startTime={startTime2}
                             width={150}
                         />
                     </Space>
                 </Tooltip>
-                {button}
+                <Popconfirm
+                    title="确认"
+                    description="确认进行操作?"
+                    okText="是"
+                    cancelText="否"
+                    onConfirm={
+                        () => {
+                            setButtonLoading(true);
+                            if (open) {
+                                SendStartStopService((result) => {
+                                    if (result !== null) {
+                                        setStatus('stop');
+                                        setButtonLoading(false);
+                                        setStartTime2(Date.now() / 1000);
+                                        console.log('start time', startTime2);
+                                        message.success(nameShow + '已关闭');
+                                    }
+                                }, false, name)
+                            } else {
+                                SendStartStopService((result) => {
+                                    if (result !== null) {
+                                        setStatus('start');
+                                        setButtonLoading(false);
+                                        setStartTime2(Date.now() / 1000);
+                                        console.log('start time', startTime2);
+                                        message.success(nameShow + '已开启');
+                                    }
+                                }, true, name)
+                            }
+                        }
+                    }
+                >
+                    {button}
+                </Popconfirm>
             </Space>
         </Space>
     </Card>

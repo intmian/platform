@@ -26,3 +26,27 @@ export function SendCheckLogin(callback) {
     };
     fetchData();
 }
+
+export function SendStartStopService(callback,start,name) {
+    ///service/:name/start
+    let cmd = start ? "start" : "stop"
+    const fetchData = async () => {
+        try {
+            const response = await fetch('/api/admin/service/'+name+'/'+cmd, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+            });
+
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            const result = await response.json();
+            callback(result)
+        } catch (error) {
+            callback(null)
+        }
+    };
+    fetchData()
+}

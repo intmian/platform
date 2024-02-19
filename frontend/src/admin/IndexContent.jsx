@@ -25,11 +25,10 @@ function Monitor() {
                 const result = await response.json();
                 // 等待1秒后加载
                 await new Promise((resolve) => {
-                    setTimeout(resolve, 1000);
+                    setTimeout(resolve, 100);
                 });
                 setData(result);
-            } catch (error) {
-            }
+            } catch (error) { /* empty */ }
         };
 
         fetchData();

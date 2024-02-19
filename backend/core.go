@@ -79,6 +79,7 @@ func (p *PlatCore) StopService(flag coreShare.SvrFlag) error {
 	svr := p.service[flag]
 	err = svr.Stop()
 	svr.DeregisterWeb(GWebMgr.webEngine)
+	p.serviceMeta[flag].StartTime = time.Now()
 	p.serviceMeta[flag].Status = coreShare.StatusStop
 	if err != nil {
 		global.GLog.ErrorErr("PLAT", errors.WithMessagef(err, "StopService %s err", name))
