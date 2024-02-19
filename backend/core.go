@@ -63,7 +63,7 @@ func (p *PlatCore) StartService(flag coreShare.SvrFlag) error {
 	if err != nil {
 		global.GLog.WarningErr("PLAT", errors.WithMessage(err, "StartService push err"))
 	}
-	global.GLog.Info("平台", fmt.Sprintf("服务 %s 成功启动", name)
+	global.GLog.Info("平台", fmt.Sprintf("服务 %s 成功启动", name))
 	return nil
 }
 

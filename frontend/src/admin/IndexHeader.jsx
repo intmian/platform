@@ -1,8 +1,9 @@
-import {Button, Image, Layout, Menu, Popconfirm, Space} from "antd";
+import {Avatar, Button, Image, Layout, Menu, Popconfirm, Space} from "antd";
 import {getItem} from "../tool.js";
 import Login from "../common/login.jsx";
 import {useState} from "react";
 import biglogo from "../assets/biglogo.png";
+import {UserOutlined} from "@ant-design/icons";
 
 const {Header} = Layout;
 
@@ -25,7 +26,13 @@ function UserButton({user, onLogOut}) {
             })
         }}
     >
-        <Button type="primary">{user}</Button>;
+        <Button type="primary">
+            <Space>
+                <Avatar size={22} icon={<UserOutlined/>}/>
+                {user}
+            </Space>
+
+        </Button>;
     </Popconfirm>;
 }
 
