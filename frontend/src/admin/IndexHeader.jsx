@@ -60,7 +60,6 @@ function UsrArea({user, onLoginSuc, onLogOut}) {
 }
 
 function IndexHeader({user, onLoginSuc, onLogOut}) {
-    console.log("user:", user);
     return <Header
         style={{
             display: 'flex',

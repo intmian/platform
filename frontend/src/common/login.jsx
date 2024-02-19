@@ -28,7 +28,6 @@ async function sendLogin(values) {
 
 
 export default function Login({onLoginSuc, onCancel}) {
-    console.log("onLoginSuc:", onLoginSuc);
     let labelCol = 4;
     let wrapperCol = 8;
     const [showModal, setShowModal] = useState('true');
@@ -63,7 +62,6 @@ export default function Login({onLoginSuc, onCancel}) {
                     setLoading(true);
                     let result = await sendLogin(values);
                     setLoading(false);
-                    console.log("result:", result);
                     if (result !== '') {
                         setShowModal(false);
                         onLoginSuc(result);

@@ -60,7 +60,6 @@ function Index() {
                     disable={usr === null || usr === ""}
                     onChooseMenuItem={(item) => {
                         setContentType(item.key);
-                        console.log("selected item:", item.key);
                     }}
                 />
                 {

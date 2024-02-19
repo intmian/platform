@@ -62,24 +62,26 @@ function ServiceInfo({name, startTime, initStatus}) {
             height: 100,
         }}
     >
-        <Space>
-            <Tooltip title={"状态"}>
-                {statusJsx}
-            </Tooltip>
-            <Meta title={nameShow}/>
-            {tag}
-        </Space>
-        <Space>
-            <Tooltip title={"启动时间"}>
-                <Space>
-                    <div style={{width: 50}}>{statusShow}</div>
-                    <TimeFromStart
-                        startTime={startTime}
-                        width={150}
-                    />
-                </Space>
-            </Tooltip>
-            {button}
+        <Space direction={"vertical"} style={{width: '100%'}} size={0}>
+            <Space>
+                <Tooltip title={"状态"}>
+                    {statusJsx}
+                </Tooltip>
+                <Meta title={nameShow}/>
+                {tag}
+            </Space>
+            <Space>
+                <Tooltip title={"启动时间"}>
+                    <Space>
+                        <div style={{width: 50}}>{statusShow}</div>
+                        <TimeFromStart
+                            startTime={startTime}
+                            width={150}
+                        />
+                    </Space>
+                </Tooltip>
+                {button}
+            </Space>
         </Space>
     </Card>
 }
@@ -93,7 +95,6 @@ export default function ServicesData(services) {
             let startTime = services2[i].StartTime;
             // 计算已经过去的时间
             let status = services2[i].Status;
-            console.log(services2[i]);
             servicesList.push(ServiceInfo({name, startTime, initStatus: status}));
         }
     } else {
