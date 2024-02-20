@@ -1,4 +1,4 @@
-import config from "../../public/config.json"
+import config from "../config.json"
 
 export function SendCheckLogin(callback) {
     // 请求 /api/admin 查询权限
