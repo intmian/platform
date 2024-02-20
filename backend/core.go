@@ -57,13 +57,13 @@ func (p *PlatCore) StartService(flag coreShare.SvrFlag) error {
 	if err != nil {
 		global.GLog.ErrorErr("PLAT", errors.WithMessagef(err, "StartService %d err", flag))
 	}
-	err = global.GPush.Push("平台", fmt.Sprintf("服务 %s 成功启动", name), false)
+	err = global.GPush.Push("PLAT", fmt.Sprintf("服务 %s 成功启动", name), false)
 	p.serviceMeta[flag].Status = coreShare.StatusStart
 	p.serviceMeta[flag].StartTime = time.Now()
 	if err != nil {
 		global.GLog.WarningErr("PLAT", errors.WithMessage(err, "StartService push err"))
 	}
-	global.GLog.Info("平台", fmt.Sprintf("服务 %s 成功启动", name))
+	global.GLog.Info("PLAT", fmt.Sprintf("服务 %s 成功启动", name))
 	return nil
 }
 
@@ -85,11 +85,11 @@ func (p *PlatCore) StopService(flag coreShare.SvrFlag) error {
 	if err != nil {
 		global.GLog.ErrorErr("PLAT", errors.WithMessagef(err, "StopService %s err", name))
 	}
-	err = global.GPush.Push("平台", fmt.Sprintf("服务 %s 成功启动", name), false)
+	err = global.GPush.Push("PLAT", fmt.Sprintf("服务 %s 成功启动", name), false)
 	if err != nil {
 		global.GLog.WarningErr("PLAT", errors.WithMessage(err, "StopService push err"))
 	}
-	global.GLog.Info("平台", fmt.Sprintf("服务 %s 成功停止", name))
+	global.GLog.Info("PLAT", fmt.Sprintf("服务 %s 成功停止", name))
 	return nil
 }
 
