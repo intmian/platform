@@ -1,30 +1,6 @@
 import {Button, Form, Input, message, Modal} from "antd";
 import {useState} from "react";
-
-async function sendLogin(values) {
-    try {
-        const response = await fetch('/api/login', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(values),
-        });
-
-        if (!response.ok) {
-            throw new Error('Network response was not ok');
-        }
-
-        const result = await response.json();
-        if (result.code === 0) {
-            return result.username
-        } else {
-            return ''
-        }
-    } catch (error) {
-        return ''
-    }
-}
+import {sendLogin} from "./sendhttp.js";
 
 
 export default function Login({onLoginSuc, onCancel}) {
