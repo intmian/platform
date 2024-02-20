@@ -42,9 +42,7 @@ func (m *WebMgr) Init() {
 			contentType := c.Request.Header.Get("Content-Type")
 			if c.Request.Method != "POST" && contentType != "application/json" {
 				// 如果以assets开头的请求转发
-				println(c.Request.URL.Path)
 				if len(c.Request.URL.Path) > 7 && c.Request.URL.Path[:7] == "/assets" {
-					println("assets" + c.Request.URL.Path[7:])
 					c.File("./front/assets" + c.Request.URL.Path[7:])
 					return
 				}
