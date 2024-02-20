@@ -1,7 +1,7 @@
 import {Button, Card, Flex, List, message, Popconfirm, Progress, Space, Spin, Tag, Tooltip} from "antd";
 import {TimeFromStart} from "../common/misc.jsx";
 import {useEffect, useState} from "react";
-import {SendStartStopService} from "../common/sendhttp.js";
+import {SendGetAdminServices, SendStartStopService} from "../common/sendhttp.js";
 
 const {Meta} = Card;
 
@@ -170,30 +170,13 @@ export function Monitor() {
     const [data, setData] = useState('loading...');
 
     useEffect(() => {
-        const fetchData = async () => {
-            try {
-                const response = await fetch('/api/admin/services', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                });
-
-                if (!response.ok) {
-                    throw new Error('Network response was not ok');
-                }
-
-                const result = await response.json();
-                // 等待1秒后加载
-                await new Promise((resolve) => {
-                    setTimeout(resolve, 100);
-                });
-                setData(result);
-            } catch (error) { /* empty */
-            }
-        };
-
-        fetchData();
+        SendGetAdminServices(async (result) => {
+            // 等待1秒后加载
+            await new Promise((resolve) => {
+                setTimeout(resolve, 100);
+            });
+            setData(result);
+        })
     }, []); // 空的依赖项数组，确保只在组件挂载时执行
 
     return <ServicesData services={data}/>;

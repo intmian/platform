@@ -75,3 +75,26 @@ export function SendGetLastLog(callback) {
     };
     fetchData()
 }
+
+export function SendGetAdminServices(callback) {
+    const fetchData = async () => {
+        try {
+            const response = await fetch('/api/admin/services', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+            });
+
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+
+            const result = await response.json();
+            callback(result)
+            // 等待1秒后加载
+        } catch (error) { /* empty */
+        }
+    };
+    fetchData()
+}
