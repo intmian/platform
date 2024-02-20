@@ -21,8 +21,7 @@ type WebMgr struct {
 }
 
 func (m *WebMgr) Init() {
-	v, err := global.GStorage.Get("IsOpenWebDebug")
-	if err == nil && xstorage.ToBase[bool](v) {
+	if !global.GBaseSetting.Copy().GinDebug {
 		gin.SetMode(gin.ReleaseMode)
 		gin.DisableConsoleColor()
 		// TODO: 后续改成根据日期作区分的机制
@@ -34,16 +33,30 @@ func (m *WebMgr) Init() {
 	/*
 		接入前端在gin内部只是可选方案之一，开发时建议单独启动后端与vite dev服务
 		生产环境下可以选择在这里直接接入，也可以选择在nginx中接入，此服务只做api接口
-		后续会不再支持从后端接入前端，因为前端路由会导致后端路由冲突
+		后续会不再支持从后端接入前端，因为前端路由会导致后端路由冲突(问题已解决)
+		xstorage.ToBaseF[bool](global.GStorage.Get("UseFront"))
 	*/
-	if misc.PathExist("./front") && xstorage.ToBaseF[bool](global.GStorage.Get("UseFront")) {
+	if misc.PathExist("./front") && global.GBaseSetting.Copy().UseFront {
 		global.GLog.Info("web", "接入前端")
-		// 所有以非/api、index、index开头的请求都返回index.html
-		engine.StaticFile("/", "./front/index.html")
-		engine.StaticFile("/admin", "./front/index.html")
-		//engine.StaticFile("/", "./front/index.html")
-		engine.Static("/index", "./front")
-		engine.Static("/assets", "./front/assets")
+		m.webEngine.Use(func(c *gin.Context) {
+			contentType := c.Request.Header.Get("Content-Type")
+			if c.Request.Method != "POST" && contentType != "application/json" {
+				// 如果以assets开头的请求转发
+				println(c.Request.URL.Path)
+				if len(c.Request.URL.Path) > 7 && c.Request.URL.Path[:7] == "/assets" {
+					println("assets" + c.Request.URL.Path[7:])
+					c.File("./front/assets" + c.Request.URL.Path[7:])
+					return
+				}
+				if c.Request.URL.Path == "/vite.svg" {
+					c.File("./front/vite.svg")
+					return
+				}
+				c.File("./front/index.html")
+			} else {
+				c.Next()
+			}
+		})
 	}
 	InitRoot(engine)
 	s, _ := global.GStorage.GetAndSetDefault("WebPort", xstorage.ToUnit[string]("8080", xstorage.ValueTypeString))
@@ -60,7 +73,7 @@ func (m *WebMgr) Init() {
 		_ = global.GStorage.Set("WebSalt2", xstorage.ToUnit[string](s2, xstorage.ValueTypeString))
 	}
 	m.Jwt.SetSalt(xstorage.ToBase[string](s1v), xstorage.ToBase[string](s2v))
-	err = engine.Run(":" + xstorage.ToBase[string](s))
+	err := engine.Run(":" + xstorage.ToBase[string](s))
 	if err != nil {
 		panic(err)
 	}
