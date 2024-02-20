@@ -48,8 +48,8 @@ func (m *WebMgr) Init() {
 					c.File("./front/assets" + c.Request.URL.Path[7:])
 					return
 				}
-				if c.Request.URL.Path == "/vite.svg" {
-					c.File("./front/vite.svg")
+				if c.Request.URL.Path == "/config.json" {
+					c.File("./front/config.json")
 					return
 				}
 				c.File("./front/index.html")
