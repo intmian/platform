@@ -130,14 +130,25 @@ export function sendLogin(values, callback) {
 export function sendGetStorage(perm, useRe, callback) {
     const fetchData = async () => {
         try {
-            const response = await fetch(config.api_base_url + '/admin/storage/get', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                // 通过表单发送数据
-                body: JSON.stringify({perm: perm, useRe: useRe}),
-            });
+            let response = null
+            if (perm === "") {
+                response = await fetch(config.api_base_url + '/admin/storage/get_all', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                });
+            } else {
+                response = await fetch(config.api_base_url + '/admin/storage/get', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    // 通过表单发送数据
+                    body: JSON.stringify({perm: perm, useRe: useRe}),
+                });
+            }
+
 
             if (!response.ok) {
                 callback(null)

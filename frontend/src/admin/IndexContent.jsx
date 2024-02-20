@@ -1,6 +1,7 @@
 import {Empty, Layout} from "antd";
 import {Monitor} from "./Monitor.jsx";
 import {Log} from "./Log.jsx";
+import {Config} from "./Config.jsx";
 
 const {Content} = Layout;
 
@@ -30,6 +31,7 @@ function IndexContent({contentType}) {
             break;
         case 'config':
             content = <Config/>;
+            break;
         default:
             break;
     }
