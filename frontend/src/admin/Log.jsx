@@ -15,7 +15,6 @@ export function Log() {
                 let item = data[i];
                 // 根据\t分割
                 item = item.split('\t');
-                let date = new Date(item[1]);
                 // 去除首位的[]
                 item[1] = item[1].slice(1, -1);
                 item[0] = item[0].slice(1, -1);

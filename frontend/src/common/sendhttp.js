@@ -102,27 +102,53 @@ export function SendGetAdminServices(callback) {
     fetchData()
 }
 
-export async function sendLogin(values) {
-    try {
-        const response = await fetch(config.api_base_url + '/login', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(values),
-        });
+export function sendLogin(values, callback) {
+    const fetchData = async () => {
+        try {
+            const response = await fetch(config.api_base_url + '/login', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                // 通过表单发送数据
+                body: JSON.stringify(values),
+            });
 
-        if (!response.ok) {
-            throw new Error('Network response was not ok');
+            if (!response.ok) {
+                callback(null)
+                return
+            }
+            const result = await response.json();
+            callback(result)
+        } catch (error) {
+            callback(null)
         }
+    };
+    fetchData()
+}
 
-        const result = await response.json();
-        if (result.code === 0) {
-            return result.username
-        } else {
-            return ''
+export function sendGetStorage(perm, useRe, callback) {
+    const fetchData = async () => {
+        try {
+            const response = await fetch(config.api_base_url + '/admin/storage/get', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                // 通过表单发送数据
+                body: JSON.stringify({perm: perm, useRe: useRe}),
+            });
+
+            if (!response.ok) {
+                callback(null)
+            }
+
+            const result = await response.json();
+            callback(result)
+            // 等待1秒后加载
+        } catch (error) { /* empty */
+            callback(null)
         }
-    } catch (error) {
-        return ''
-    }
+    };
+    fetchData()
 }

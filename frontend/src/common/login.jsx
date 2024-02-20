@@ -34,16 +34,17 @@ export default function Login({onLoginSuc, onCancel}) {
                 initialValues={{
                     remember: true,
                 }}
-                onFinish={async (values) => {
+                onFinish={(values) => {
                     setLoading(true);
-                    let result = await sendLogin(values);
-                    setLoading(false);
-                    if (result !== '') {
-                        setShowModal(false);
-                        onLoginSuc(result);
-                    } else {
-                        message.error('用户名或密码错误');
-                    }
+                    sendLogin(values, (result) => {
+                        setLoading(false);
+                        if (result !== '') {
+                            setShowModal(false);
+                            onLoginSuc(result);
+                        } else {
+                            message.error('用户名或密码错误');
+                        }
+                    });
                 }}
                 autoComplete="off"
                 form={form}

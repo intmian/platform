@@ -1,20 +1,8 @@
 import {Empty, Layout} from "antd";
-import Login from "../common/login.jsx";
 import {Monitor} from "./Monitor.jsx";
 import {Log} from "./Log.jsx";
 
 const {Content} = Layout;
-
-function Debug() {
-    return <Login/>;
-    return <Content
-        style={{
-            padding: "0 48px",
-        }}
-    >
-        content
-    </Content>;
-}
 
 function IndexContent({contentType}) {
     if (contentType === 'needLogin') {
@@ -37,12 +25,11 @@ function IndexContent({contentType}) {
         case 'monitor':
             content = <Monitor/>;
             break;
-        case 'debug':
-            content = <Debug/>;
-            break;
         case 'log':
             content = <Log/>;
             break;
+        case 'config':
+            content = <Config/>;
         default:
             break;
     }
