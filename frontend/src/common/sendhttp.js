@@ -1,8 +1,11 @@
+import config from "../../public/config.json"
+
 export function SendCheckLogin(callback) {
     // 请求 /api/admin 查询权限
+
     const fetchData = async () => {
         try {
-            const response = await fetch('/api/check', {
+            const response = await fetch(config.api_base_url + '/check', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -32,7 +35,7 @@ export function SendStartStopService(callback, start, name) {
     let cmd = start ? "start" : "stop"
     const fetchData = async () => {
         try {
-            const response = await fetch('/api/admin/service/' + name + '/' + cmd, {
+            const response = await fetch(config.api_base_url + '/admin/service/' + name + '/' + cmd, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -54,7 +57,7 @@ export function SendStartStopService(callback, start, name) {
 export function SendGetLastLog(callback) {
     const fetchData = async () => {
         try {
-            const response = await fetch('/api/admin/log/get', {
+            const response = await fetch(config.api_base_url + '/admin/log/get', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -79,7 +82,7 @@ export function SendGetLastLog(callback) {
 export function SendGetAdminServices(callback) {
     const fetchData = async () => {
         try {
-            const response = await fetch('/api/admin/services', {
+            const response = await fetch(config.api_base_url + '/admin/services', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
