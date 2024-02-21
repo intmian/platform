@@ -1,5 +1,5 @@
 import {useRef, useState} from "react";
-import {Button, Checkbox, Input, Space} from "antd";
+import {Button, Checkbox, Input, Space, Table} from "antd";
 import {sendGetStorage} from "../common/sendhttp.js";
 
 const {Search} = Input;
@@ -30,21 +30,57 @@ function Header({OnDataChange}) {
             使用正则
         </Checkbox>
         <Button>
-            新增 修改
-        </Button>
-        <Button>
-            删除
-        </Button>
-        <Button>
-            刷新
+            新增
         </Button>
     </Space>
 }
 
 function Body({data}) {
-    return <div>
-        {data}
-    </div>
+    data = data.result;
+    console.log(data);
+    const columns = [
+        {
+            title: '键',
+            dataIndex: 'key',
+            key: 'key',
+            width: 175,
+        },
+        {
+            title: '类型',
+            dataIndex: 'type',
+            key: 'type',
+            width: 80
+        },
+        {
+            title: '值',
+            dataIndex: 'value',
+            key: 'value',
+            width: 100
+        },
+        {
+            title: '操作',
+            dataIndex: 'operation',
+            key: 'operation',
+        },
+    ];
+    const OprArea = <Space>
+        <Button>
+            修改
+        </Button>
+        <Button>
+            删除
+        </Button>
+    </Space>
+    let data2 = []
+    for (let key in data) {
+        data2.push({
+            key: key,
+            type: data[key].Type,
+            value: data[key].Data,
+            operation: OprArea
+        })
+    }
+    return <Table dataSource={data2} columns={columns}/>;
 }
 
 export function Config() {
