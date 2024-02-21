@@ -49,8 +49,8 @@ function Body({data}) {
     const columns = [
         {
             title: '键',
-            dataIndex: 'key',
-            key: 'key',
+            dataIndex: 'datakey',
+            key: 'datakey',
             width: 175,
         },
         {
@@ -75,7 +75,7 @@ function Body({data}) {
         <Button>
             修改
         </Button>
-        <Button>
+        <Button danger={true}>
             删除
         </Button>
     </Space>
@@ -115,6 +115,7 @@ function Body({data}) {
             }
             data2.push({
                 key: key,
+                datakey: data[key].Key,
                 type: typeStr,
                 value: data[key].Data,
                 operation: OprArea
