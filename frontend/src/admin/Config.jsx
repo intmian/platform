@@ -7,12 +7,12 @@ const {Search} = Input;
 function Header({OnDataChange}) {
     const useRe = useRef(false);
     const [loading, setLoading] = useState(false);
-    const [needRefrsh, setNeedRefrsh] = useState(false);
+    const [needRefresh, setNeedRefresh] = useState(false);
     useEffect(() => {
         sendGetStorage("", false, (data) => {
             OnDataChange(data);
         })
-    }, [needRefrsh]);
+    }, [needRefresh]);
     // TODO:loading 没有数据 返回0、1正则时，严格正则，严格搜索 模糊搜索
     return <Space>
         <Input placeholder="搜索内容"
@@ -47,7 +47,7 @@ function Header({OnDataChange}) {
             新增
         </Button>
         <Button onClick={() => {
-            setNeedRefrsh(true);
+            setNeedRefresh(true);
         }}>
             刷新
         </Button>
