@@ -1,5 +1,5 @@
 import {useEffect, useRef, useState} from "react";
-import {Button, Checkbox, Input, Space, Table} from "antd";
+import {Button, Checkbox, Input, Space, Spin, Table} from "antd";
 import {sendGetStorage} from "../common/sendhttp.js";
 
 const {Search} = Input;
@@ -7,11 +7,12 @@ const {Search} = Input;
 function Header({OnDataChange}) {
     const useRe = useRef(false);
     const [loading, setLoading] = useState(false);
+    const [needRefrsh, setNeedRefrsh] = useState(false);
     useEffect(() => {
         sendGetStorage("", false, (data) => {
             OnDataChange(data);
         })
-    }, []);
+    }, [needRefrsh]);
     // TODO:loading 没有数据 返回0、1正则时，严格正则，严格搜索 模糊搜索
     return <Space>
         <Input placeholder="搜索内容"
@@ -29,8 +30,11 @@ function Header({OnDataChange}) {
                        })
                    }
                }
+
                style={{width: 200}}
-               loading={loading}
+               addonAfter={
+                   loading ? <Spin/> : null
+               }
         />
         <Checkbox
             onChange={(choose) => {
@@ -41,6 +45,11 @@ function Header({OnDataChange}) {
         </Checkbox>
         <Button>
             新增
+        </Button>
+        <Button onClick={() => {
+            setNeedRefrsh(true);
+        }}>
+            刷新
         </Button>
     </Space>
 }
