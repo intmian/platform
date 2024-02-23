@@ -1,70 +1,13 @@
 import {useEffect, useRef, useState} from "react";
-import {Button, Checkbox, Form, Input, message, Modal, Select, Space, Spin, Table,} from "antd";
+import {Button, Checkbox, Input, message, Modal, Select, Space, Spin, Table,} from "antd";
 import {sendGetStorage, sendSetStorage} from "../common/sendhttp.js";
 import {IsSliceType, ValueTypeStr} from "../common/def.js";
+import {EditableInputOrList} from "../common/misc.jsx";
+import {DeleteOutlined, FormOutlined} from "@ant-design/icons";
 
 const {Search} = Input;
 
-function ValueInput({iniValue, disabled, type, onChange}) {
-    const onRecv = (value) => {
-        // 如果是列表
-        if (value === null || value === undefined || value === "") {
-            return;
-        }
-        onChange(value);
-    }
-    if (!IsSliceType(type)) {
-        return <Input
-            disabled={disabled}
-            defaultValue={iniValue}
-            onChange={onRecv}
-        />
-    } else {
-        return <Form.List
-            name="names"
-            initialValue={iniValue}
-            rules={[
-                {
-                    validator: async (_, names) => {
-                        if (!names || names.length < 1) {
-                            return Promise.reject(new Error('至少需要一个值'));
-                        }
-                    },
-                },
-            ]}
-        >
-            {(fields, {add, remove}) => (
-                <div>
-                    {fields.map(({key, name, fieldKey, ...restField}) => (
-                        <Space key={key} style={{display: 'flex', marginBottom: 8}} align="baseline">
-                            <Form.Item
-                                {...restField}
-                                name={[name, 'value']}
-                                fieldKey={[fieldKey, 'value']}
-                                rules={[{required: true, message: '请输入值'}]}
-                            >
-                                <Input placeholder="值"/>
-                            </Form.Item>
-                            <Button onClick={() => remove(name)}>-</Button>
-                        </Space>
-                    ))}
-                    <Form.Item>
-                        <Button
-                            type="dashed"
-                            onClick={() => add()}
-                            block
-                        >
-                            添加
-                        </Button>
-                    </Form.Item>
-                </div>
-            )}
-        </Form.List>
-    }
-
-}
-
-function ChangeModal({showini, onFinish, isAdd, originData}) {
+export function ChangeModal({showini, onFinish, isAdd, originData}) {
     const [show, setShow] = useState(showini);
     if (!show) {
         return null;
@@ -74,7 +17,6 @@ function ChangeModal({showini, onFinish, isAdd, originData}) {
 
     let keyNow = useRef(null);
     let typeNow = useRef(null);
-    const [isList, setIsList] = useState(false);
     let valueNow = useRef(null);
     if (originData !== null && !isAdd) {
         keyNow.current = originData.key;
@@ -86,9 +28,6 @@ function ChangeModal({showini, onFinish, isAdd, originData}) {
         disabled={!canChangeKey}
         defaultValue={keyNow.current}
     />
-    // let types2 = types.map((item) => {
-    //     return {value: item, label: item}
-    // })
     let types2 = [];
     for (let key in ValueTypeStr) {
         types2.push({value: key, label: ValueTypeStr[key]});
@@ -96,12 +35,15 @@ function ChangeModal({showini, onFinish, isAdd, originData}) {
     let type = <Select options={types2} disabled={!canChangeType}
                        defaultValue={originData !== null ? originData.type : types[0]}/>
 
-    let value = <Input
-        disabled={!isAdd}
-        defaultValue={originData !== null ? originData.value : ""}
-        placeholder="值"
-    >
-    </Input>
+    let value = <EditableInputOrList
+        disabled={false}
+        isArray={IsSliceType[typeNow.current]}
+        onDataChanged={(data) => {
+            valueNow.current = data;
+            console.log(data);
+        }}
+        initialValue={originData !== null ? originData.value : ""}
+    />
     let button = <Button
         onClick={() => {
             sendSetStorage(key, type.value, value.value, (data) => {
@@ -138,7 +80,7 @@ function Header({OnDataChange}) {
         sendGetStorage("", false, (data) => {
             OnDataChange(data);
         })
-    }, [needRefresh, OnDataChange]);
+    }, [needRefresh]);
     // TODO:loading 没有数据 返回0、1正则时，严格正则，严格搜索 模糊搜索 动态增减表单项
     return <Space>
         <Input placeholder="搜索内容"
@@ -206,12 +148,18 @@ function Body({data}) {
             key: 'operation',
         },
     ];
+    // 修改图标和删除图标
     const OprArea = <Space>
-        <Button>
-            修改
+        <Button
+            shape={"circle"}
+        >
+            <FormOutlined/>
         </Button>
-        <Button danger={true}>
-            删除
+        <Button
+            shape={"circle"}
+            danger
+        >
+            <DeleteOutlined/>
         </Button>
     </Space>
     let data2 = []
@@ -219,9 +167,11 @@ function Body({data}) {
         data = data.result;
         for (let key in data) {
             let typeStr = ValueTypeStr[data[key].Type];
+            console.log(key);
+            console.log(data[key]);
             data2.push({
                 key: key,
-                datakey: data[key].Key,
+                datakey: key,
                 type: typeStr,
                 value: data[key].Data,
                 operation: OprArea
@@ -234,9 +184,13 @@ function Body({data}) {
 export function Config() {
     const [data, setData] = useState(null);
     return <div>
-        <Header OnDataChange={(data) => {
-            setData(data);
-        }}/>
-        <Body data={data}/>
+        <Space
+            direction={"vertical"}
+        >
+            <Header OnDataChange={(data) => {
+                setData(data);
+            }}/>
+            <Body data={data}/>
+        </Space>
     </div>
 }

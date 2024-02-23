@@ -32,7 +32,7 @@ function Index() {
                 message.success("登出成功");
             }}
             onLoginSuc={(user) => {
-                setUsr(user);
+                setUsr(user.username);
                 message.success("登陆成功");
             }}
         />

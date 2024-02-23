@@ -1,4 +1,6 @@
 import {useEffect, useState} from "react";
+import {Button, Form, Input} from 'antd';
+import {MinusCircleOutlined, PlusOutlined} from '@ant-design/icons';
 
 export function TimeFromStart({startTime, width}) {
     // 用于在组件刷新时重新计算时间
@@ -38,4 +40,90 @@ export function TimeFromStart({startTime, width}) {
             width: width,
         }}
     >{str}</div>;
+}
+
+export function EditableInputOrList({disabled, isArray, onDataChanged, initialValue}) {
+    const [form] = Form.useForm();
+
+    // 使用useEffect钩子来设置表单的初始值
+    useEffect(() => {
+        if (isArray) {
+            // 如果是数组，我们假定initialValue也是一个数组
+            form.setFieldsValue({listValues: initialValue || []});
+        } else {
+            // 如果不是数组，则认为initialValue是一个字符串
+            form.setFieldsValue({singleValue: initialValue || ''});
+        }
+    }, [form, isArray, initialValue]);
+
+    const onValuesChange = (changedValues, allValues) => {
+        onDataChanged && onDataChanged(allValues);
+    };
+
+    if (!isArray) {
+        return (
+            <Form form={form} onValuesChange={onValuesChange}>
+                <Form.Item name="singleValue" rules={
+                    [
+                        {
+                            required: true,
+                            message: '至少输入一个值'
+                        }
+                    ]
+                }>
+                    <Input placeholder="输入值" disabled={disabled}/>
+                </Form.Item>
+            </Form>
+        );
+    }
+
+    return (
+        <Form form={form} onValuesChange={onValuesChange}>
+            <Form.List name="listValues"
+                       rules={
+                           [
+                               {
+                                   required: true,
+                                   message: '至少输入一个值'
+                               }
+                           ]
+                       }
+            >
+                {(fields, {add, remove}) => (
+                    <>
+                        {fields.map((field, index) => (
+                            <Form.Item key={field.key}>
+                                <Form.Item {...field} noStyle
+                                           rules={[{required: true, message: '请输入值'}]}
+                                >
+                                    <Input
+                                        placeholder="输入值"
+                                        style={{width: '90%'}}
+                                        disabled={disabled}
+                                    />
+                                </Form.Item>
+                                {!disabled && fields.length > 1 && (
+                                    <MinusCircleOutlined
+                                        onClick={() => remove(field.name)}
+                                        style={{margin: '0 8px'}}
+                                    />
+                                )}
+                            </Form.Item>
+                        ))}
+                        {!disabled && (
+                            <Form.Item>
+                                <Button
+                                    type="dashed"
+                                    onClick={() => add()}
+                                    icon={<PlusOutlined/>}
+                                >
+                                    Add field
+                                </Button>
+                            </Form.Item>
+                        )}
+                    </>
+                )}
+            </Form.List>
+        </Form>
+    );
 }

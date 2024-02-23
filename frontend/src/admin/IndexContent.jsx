@@ -1,7 +1,7 @@
 import {Empty, Layout} from "antd";
 import {Monitor} from "./Monitor.jsx";
 import {Log} from "./Log.jsx";
-import {Config} from "./Config.jsx";
+import {ChangeModal, Config} from "./Config.jsx";
 
 const {Content} = Layout;
 
@@ -31,6 +31,15 @@ function IndexContent({contentType}) {
             break;
         case 'config':
             content = <Config/>;
+            break;
+        case 'debug':
+            content = <ChangeModal
+                showini={true}
+                onFinish={() => {
+                    console.log("finish")
+                }}
+                isAdd={true}
+            />;
             break;
         default:
             break;
