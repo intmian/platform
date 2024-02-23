@@ -1,5 +1,5 @@
 import {useEffect, useRef, useState} from "react";
-import {Button, Checkbox, Input, message, Modal, Select, Space, Spin, Table,} from "antd";
+import {Button, Checkbox, Form, Input, message, Modal, Select, Space, Spin, Table,} from "antd";
 import {sendGetStorage, sendSetStorage} from "../common/sendhttp.js";
 import {IsSliceType, ValueTypeStr} from "../common/def.js";
 
@@ -7,6 +7,7 @@ const {Search} = Input;
 
 function ValueInput({iniValue, disabled, type, onChange}) {
     const onRecv = (value) => {
+        // 如果是列表
         if (value === null || value === undefined || value === "") {
             return;
         }
@@ -18,7 +19,49 @@ function ValueInput({iniValue, disabled, type, onChange}) {
             defaultValue={iniValue}
             onChange={onRecv}
         />
+    } else {
+        return <Form.List
+            name="names"
+            initialValue={iniValue}
+            rules={[
+                {
+                    validator: async (_, names) => {
+                        if (!names || names.length < 1) {
+                            return Promise.reject(new Error('至少需要一个值'));
+                        }
+                    },
+                },
+            ]}
+        >
+            {(fields, {add, remove}) => (
+                <div>
+                    {fields.map(({key, name, fieldKey, ...restField}) => (
+                        <Space key={key} style={{display: 'flex', marginBottom: 8}} align="baseline">
+                            <Form.Item
+                                {...restField}
+                                name={[name, 'value']}
+                                fieldKey={[fieldKey, 'value']}
+                                rules={[{required: true, message: '请输入值'}]}
+                            >
+                                <Input placeholder="值"/>
+                            </Form.Item>
+                            <Button onClick={() => remove(name)}>-</Button>
+                        </Space>
+                    ))}
+                    <Form.Item>
+                        <Button
+                            type="dashed"
+                            onClick={() => add()}
+                            block
+                        >
+                            添加
+                        </Button>
+                    </Form.Item>
+                </div>
+            )}
+        </Form.List>
     }
+
 }
 
 function ChangeModal({showini, onFinish, isAdd, originData}) {
