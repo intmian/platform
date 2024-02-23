@@ -76,13 +76,13 @@ export function ChangeModal({showini, onFinish, isAdd, originData}) {
         }}
         footer={null}
         style={
-            {
-                width: "50px"
-            }
+            {}
         }
     >
         <Space direction={"vertical"}
-
+               style={{
+                   width: '100%',
+               }}
         >
             <Space>
                 键：
