@@ -1,13 +1,14 @@
 import {useEffect, useRef, useState} from "react";
 import {Button, Checkbox, Input, message, Modal, Select, Space, Spin, Table,} from "antd";
 import {sendGetStorage, sendSetStorage} from "../common/sendhttp.js";
-import {IsSliceType, ValueTypeStr} from "../common/def.js";
+import {IsSliceType, ValueType, ValueTypeStr} from "../common/def.js";
 import {EditableInputOrList} from "../common/misc.jsx";
 import {DeleteOutlined, FormOutlined} from "@ant-design/icons";
 
 const {Search} = Input;
 
 export function ChangeModal({showini, onFinish, isAdd, originData}) {
+    const hasOriginData = (originData !== null && originData !== undefined);
     const [show, setShow] = useState(showini);
     if (!show) {
         return null;
@@ -16,11 +17,10 @@ export function ChangeModal({showini, onFinish, isAdd, originData}) {
     const canChangeType = isAdd;
 
     let keyNow = useRef(null);
-    let typeNow = useRef(null);
+    const [typeNow, setTypeNow] = useState(hasOriginData ? originData.type : ValueType.String);
     let valueNow = useRef(null);
-    if (originData !== null && !isAdd) {
+    if (hasOriginData && !isAdd) {
         keyNow.current = originData.key;
-        typeNow.current = originData.type;
         valueNow.current = originData.value;
     }
 
@@ -33,18 +33,24 @@ export function ChangeModal({showini, onFinish, isAdd, originData}) {
         types2.push({value: key, label: ValueTypeStr[key]});
     }
     let type = <Select options={types2} disabled={!canChangeType}
-                       defaultValue={originData !== null ? originData.type : types[0]}/>
-
+                       defaultValue={hasOriginData ? originData.type : types2[0]}
+                       onChange={(value) => {
+                           console.log(value);
+                           setTypeNow(value);
+                       }}
+                       style={{width: 120}}
+    />
     let value = <EditableInputOrList
         disabled={false}
-        isArray={IsSliceType[typeNow.current]}
+        isArray={IsSliceType(typeNow)}
         onDataChanged={(data) => {
             valueNow.current = data;
             console.log(data);
         }}
-        initialValue={originData !== null ? originData.value : ""}
+        initialValue={hasOriginData ? originData.value : ""}
     />
     let button = <Button
+        type={"primary"}
         onClick={() => {
             sendSetStorage(key, type.value, value.value, (data) => {
                 if (data === null || data.code !== 0) {
@@ -62,12 +68,30 @@ export function ChangeModal({showini, onFinish, isAdd, originData}) {
         {isAdd ? "新增" : "修改"}
     </Button>
 
-    return <Modal>
-        <Space>
-            {key}
-            {type}
-            {value}
-            {button}
+    return <Modal
+        title={isAdd ? "新增" : "修改"}
+        open={show}
+        onCancel={() => {
+            setShow(false);
+        }}
+        footer={null}
+    >
+        <Space direction={"vertical"}>
+            <Space>
+                键：
+                {key}
+            </Space>
+            <Space>
+                类型：
+                {type}
+            </Space>
+            <Space>
+                值：
+                {value}
+            </Space>
+            <Space>
+                {button}
+            </Space>
         </Space>
     </Modal>
 }

@@ -57,6 +57,7 @@ export function EditableInputOrList({disabled, isArray, onDataChanged, initialVa
     }, [form, isArray, initialValue]);
 
     const onValuesChange = (changedValues, allValues) => {
+        console.log('onValuesChange', changedValues, allValues);
         onDataChanged && onDataChanged(allValues);
     };
 
