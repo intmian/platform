@@ -75,8 +75,15 @@ export function ChangeModal({showini, onFinish, isAdd, originData}) {
             setShow(false);
         }}
         footer={null}
+        style={
+            {
+                width: "50px"
+            }
+        }
     >
-        <Space direction={"vertical"}>
+        <Space direction={"vertical"}
+
+        >
             <Space>
                 键：
                 {key}

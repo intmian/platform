@@ -1,5 +1,5 @@
 import {useEffect, useState} from "react";
-import {Button, Form, Input} from 'antd';
+import {Button, Form, Input, Space} from 'antd';
 import {MinusCircleOutlined, PlusOutlined} from '@ant-design/icons';
 
 export function TimeFromStart({startTime, width}) {
@@ -44,7 +44,6 @@ export function TimeFromStart({startTime, width}) {
 
 export function EditableInputOrList({disabled, isArray, onDataChanged, initialValue}) {
     const [form] = Form.useForm();
-
     // 使用useEffect钩子来设置表单的初始值
     useEffect(() => {
         if (isArray) {
@@ -93,22 +92,26 @@ export function EditableInputOrList({disabled, isArray, onDataChanged, initialVa
                 {(fields, {add, remove}) => (
                     <>
                         {fields.map((field, index) => (
-                            <Form.Item key={field.key}>
-                                <Form.Item {...field} noStyle
-                                           rules={[{required: true, message: '请输入值'}]}
-                                >
-                                    <Input
-                                        placeholder="输入值"
-                                        style={{width: '90%'}}
-                                        disabled={disabled}
-                                    />
-                                </Form.Item>
-                                {!disabled && fields.length > 1 && (
-                                    <MinusCircleOutlined
-                                        onClick={() => remove(field.name)}
-                                        style={{margin: '0 8px'}}
-                                    />
-                                )}
+                            <Form.Item key={field.key}
+
+                            >
+                                <Space>
+                                    <Form.Item {...field} noStyle
+                                               rules={[{required: true, message: '请输入值'}]}
+                                    >
+                                        <Input
+                                            placeholder="输入值"
+                                            style={{width: '90%'}}
+                                            disabled={disabled}
+                                        />
+                                    </Form.Item>
+                                    {!disabled && fields.length > 1 && (
+                                        <MinusCircleOutlined
+                                            onClick={() => remove(field.name)}
+                                            style={{margin: '0 8px'}}
+                                        />
+                                    )}
+                                </Space>
                             </Form.Item>
                         ))}
                         {!disabled && (
