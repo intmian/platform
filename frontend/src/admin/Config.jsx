@@ -107,6 +107,7 @@ function Header({OnDataChange}) {
     const useRe = useRef(false);
     const [loading, setLoading] = useState(false);
     const [needRefresh, setNeedRefresh] = useState(false);
+    const [inAdd, setInAdd] = useState(false);
     useEffect(() => {
         sendGetStorage("", false, (data) => {
             OnDataChange(data);
@@ -115,6 +116,14 @@ function Header({OnDataChange}) {
     // TODO:没有数据 返回0、1正则时，严格正则，严格搜索 模糊搜索
     // 其实应该用一个表单来做，但是当时没想太多，就这样了
     return <Space>
+        {inAdd ? <ChangeModal
+            showini={true}
+            onFinish={() => {
+                setInAdd(false);
+                setNeedRefresh(true);
+            }}
+            isAdd={true}>
+        </ChangeModal> : null}
         <Input placeholder="搜索内容"
                onChange={
                    (value) => {
@@ -154,7 +163,9 @@ function Header({OnDataChange}) {
     </Space>
 }
 
-function Body({data}) {
+function Body({data, onNeedRefresh}) {
+    const [inChange, setInChange] = useState(false);
+    const OriginData = useRef(null);
     const columns = [
         {
             title: '键',
@@ -181,19 +192,6 @@ function Body({data}) {
         },
     ];
     // 修改图标和删除图标
-    const OprArea = <Space>
-        <Button
-            shape={"circle"}
-        >
-            <FormOutlined/>
-        </Button>
-        <Button
-            shape={"circle"}
-            danger
-        >
-            <DeleteOutlined/>
-        </Button>
-    </Space>
     let data2 = []
     if (data !== null) {
         data = data.result;
@@ -206,11 +204,49 @@ function Body({data}) {
                 datakey: key,
                 type: typeStr,
                 value: data[key].Data,
-                operation: OprArea
+                operation: <Space>
+                    <Button
+                        shape={"circle"}
+                        onClick={() => {
+                            setInChange(true);
+                            OriginData.current = data[key];
+                        }}
+                    >
+                        <FormOutlined/>
+                    </Button>
+                    <Button
+                        shape={"circle"}
+                        danger
+                        onClick={() => {
+                            sendSetStorage(key, "", data[key].Type, (data) => {
+                                if (data === null || data.code !== 0) {
+                                    message.error("操作失败");
+                                } else {
+                                    message.success("操作成功");
+                                    onNeedRefresh();
+                                }
+                            })
+                        }}
+                    >
+                        <DeleteOutlined/>
+                    </Button>
+                </Space>
             })
         }
     }
-    return <Table dataSource={data2} columns={columns}/>;
+    return <>
+        {inChange ?
+            <ChangeModal
+                showini={true}
+                onFinish={() => {
+                    setInChange(false);
+                }}
+                isAdd={false}
+                originData={null}
+            /> : null
+        }
+        <Table dataSource={data2} columns={columns}/>
+    </>;
 }
 
 export function Config() {
