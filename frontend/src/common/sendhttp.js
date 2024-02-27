@@ -165,6 +165,7 @@ export function sendGetStorage(perm, useRe, callback) {
 }
 
 export function sendSetStorage(key, value, type, callback) {
+    console.log("sendSetStorage", key, value, type)
     const fetchData = async () => {
         try {
             const response = await fetch(config.api_base_url + '/admin/storage/set', {
@@ -173,7 +174,7 @@ export function sendSetStorage(key, value, type, callback) {
                     'Content-Type': 'application/json',
                 },
                 // 通过表单发送数据
-                body: JSON.stringify({key: key, value: value}),
+                body: JSON.stringify({key: key, value: value, type: type}),
             });
 
             if (!response.ok) {

@@ -42,8 +42,7 @@ export function TimeFromStart({startTime, width}) {
     >{str}</div>;
 }
 
-export function EditableInputOrList({disabled, isArray, onDataChanged, initialValue}) {
-    const [form] = Form.useForm();
+export function FormItemArray({disabled, isArray, initialValue, form}) {
     // 使用useEffect钩子来设置表单的初始值
     useEffect(() => {
         if (isArray) {
@@ -55,79 +54,70 @@ export function EditableInputOrList({disabled, isArray, onDataChanged, initialVa
         }
     }, [form, isArray, initialValue]);
 
-    const onValuesChange = (changedValues, allValues) => {
-        console.log('onValuesChange', changedValues, allValues);
-        onDataChanged && onDataChanged(allValues);
-    };
-
     if (!isArray) {
         return (
-            <Form form={form} onValuesChange={onValuesChange}>
-                <Form.Item name="singleValue" rules={
-                    [
-                        {
-                            required: true,
-                            message: '至少输入一个值'
-                        }
-                    ]
-                }
-                           label={"值"}
-                >
-                    <Input placeholder="输入值" disabled={disabled}/>
-                </Form.Item>
-            </Form>
+            <Form.Item name="singleValue" rules={
+                [
+                    {
+                        required: true,
+                        message: '至少输入一个值'
+                    }
+                ]
+            }
+                       label={"值"}
+            >
+                <Input placeholder="输入值" disabled={disabled}/>
+            </Form.Item>
         );
     }
 
     return (
-        <Form form={form} onValuesChange={onValuesChange}>
-            <Form.List name="listValues"
-                       rules={
-                           [
-                               {
-                                   required: true,
-                                   message: '至少输入一个值'
-                               }
-                           ]
-                       }
-            >
-                {(fields, {add, remove}) => (
-                    <>
-                        {fields.map((field, index) => (
-                            <Form.Item key={field.key}
+        <Form.List name="listValues"
+                   rules={
+                       [
+                           {
+                               required: true,
+                               message: '至少输入一个值'
+                           }
+                       ]
+                   }
+        >
+            {(fields, {add, remove}) => (
+                <>
+                    {fields.map((field, index) => (
+                        <Form.Item key={field.key}
 
+                        >
+                            <Form.Item {...field} noStyle
+                                       rules={[{required: true, message: '请输入值'}]}
                             >
-                                <Form.Item {...field} noStyle
-                                           rules={[{required: true, message: '请输入值'}]}
-                                >
-                                    <Input
-                                        placeholder="输入值"
-                                        style={{width: '90%'}}
-                                        disabled={disabled}
-                                    />
-                                </Form.Item>
-                                {!disabled && fields.length > 1 && (
-                                    <MinusCircleOutlined
-                                        onClick={() => remove(field.name)}
-                                        style={{margin: '0 8px'}}
-                                    />
-                                )}
+                                <Input
+                                    placeholder="输入值"
+                                    style={{width: '90%'}}
+                                    disabled={disabled}
+                                />
                             </Form.Item>
-                        ))}
-                        {!disabled && (
-                            <Form.Item>
-                                <Button
-                                    type="dashed"
-                                    onClick={() => add()}
-                                    icon={<PlusOutlined/>}
-                                >
-                                    在数组中添加值
-                                </Button>
-                            </Form.Item>
-                        )}
-                    </>
-                )}
-            </Form.List>
-        </Form>
+                            {!disabled && fields.length > 1 && (
+                                <MinusCircleOutlined
+                                    onClick={() => remove(field.name)}
+                                    style={{margin: '0 8px'}}
+                                />
+                            )}
+                        </Form.Item>
+                    ))}
+                    {!disabled && (
+                        <Form.Item>
+                            <Button
+                                type="dashed"
+                                onClick={() => add()}
+                                icon={<PlusOutlined/>}
+                            >
+                                在数组中添加值
+                            </Button>
+                        </Form.Item>
+                    )}
+                </>
+            )}
+        </Form.List>
     );
 }

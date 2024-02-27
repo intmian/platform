@@ -1,14 +1,16 @@
 import {useEffect, useRef, useState} from "react";
-import {Button, Checkbox, Input, message, Modal, Select, Space, Spin, Table,} from "antd";
+import {Button, Checkbox, Form, Input, message, Modal, Select, Space, Spin, Table,} from "antd";
 import {sendGetStorage, sendSetStorage} from "../common/sendhttp.js";
 import {IsSliceType, ValueType, ValueTypeStr} from "../common/def.js";
-import {EditableInputOrList} from "../common/misc.jsx";
+import {FormItemArray} from "../common/misc.jsx";
 import {DeleteOutlined, FormOutlined} from "@ant-design/icons";
 
 const {Search} = Input;
 
 export function ChangeModal({showini, onFinish, isAdd, originData}) {
     const hasOriginData = (originData !== null && originData !== undefined);
+    const [typeNow, setTypeNow] = useState(hasOriginData ? originData.type : ValueType.String);
+    const [form] = Form.useForm();
     const [show, setShow] = useState(showini);
     if (!show) {
         return null;
@@ -16,57 +18,10 @@ export function ChangeModal({showini, onFinish, isAdd, originData}) {
     const canChangeKey = isAdd;
     const canChangeType = isAdd;
 
-    let keyNow = useRef(null);
-    const [typeNow, setTypeNow] = useState(hasOriginData ? originData.type : ValueType.String);
-    let valueNow = useRef(null);
-    if (hasOriginData && !isAdd) {
-        keyNow.current = originData.key;
-        valueNow.current = originData.value;
-    }
-
-    let key = <Input
-        disabled={!canChangeKey}
-        defaultValue={keyNow.current}
-    />
     let types2 = [];
     for (let key in ValueTypeStr) {
         types2.push({value: key, label: ValueTypeStr[key]});
     }
-    let type = <Select options={types2} disabled={!canChangeType}
-                       defaultValue={hasOriginData ? originData.type : types2[0]}
-                       onChange={(value) => {
-                           console.log(value);
-                           setTypeNow(value);
-                       }}
-                       style={{width: 120}}
-    />
-    let value = <EditableInputOrList
-        disabled={false}
-        isArray={IsSliceType(typeNow)}
-        onDataChanged={(data) => {
-            valueNow.current = data;
-            console.log(data);
-        }}
-        initialValue={hasOriginData ? originData.value : ""}
-    />
-    let button = <Button
-        type={"primary"}
-        onClick={() => {
-            sendSetStorage(key, type.value, value.value, (data) => {
-                if (data === null || data.code !== 0) {
-                    message.error("操作失败");
-                } else {
-                    message.success("操作成功");
-                    // 通知下上层不要渲染这个节点了
-                    onFinish();
-                }
-                setShow(false);
-            })
-        }
-        }
-    >
-        {isAdd ? "新增" : "修改"}
-    </Button>
 
     return <Modal
         title={isAdd ? "新增" : "修改"}
@@ -75,28 +30,61 @@ export function ChangeModal({showini, onFinish, isAdd, originData}) {
             setShow(false);
         }}
         footer={null}
-        style={
-            {}
-        }
     >
-        <Space direction={"vertical"}
-               style={{
-                   width: '100%',
-               }}
+        <Form
+            form={form}
+            onFinish={(value) => {
+                console.log(value);
+                sendSetStorage(value.key, value.value, value.type, (data) => {
+                    if (data === null || data.code !== 0) {
+                        message.error("操作失败");
+                    } else {
+                        message.success("操作成功");
+                        // 通知下上层不要渲染这个节点了
+                        onFinish();
+                    }
+                    setShow(false);
+                })
+            }}
         >
-            <Space>
-                键：
-                {key}
-            </Space>
-            <Space>
-                类型：
-                {type}
-            </Space>
-            {value}
-            <Space>
-                {button}
-            </Space>
-        </Space>
+            <Form.Item
+                label={"键"}
+                name="key"
+            >
+                <Input
+                    disabled={!canChangeKey}
+                    defaultValue={hasOriginData ? originData.key : ""}
+                />
+            </Form.Item>
+            <Form.Item
+                label={"类型"}
+                name="type"
+            >
+                <Select options={types2} disabled={!canChangeType}
+                        defaultValue={hasOriginData ? originData.type : types2[0]}
+                        onChange={(value) => {
+                            console.log(value);
+                            setTypeNow(value);
+                        }}
+                        style={{width: 120}}
+                />
+            </Form.Item>
+            <FormItemArray
+                disabled={false}
+                form={form}
+                isArray={IsSliceType(typeNow)}
+                initialValue={hasOriginData ? originData.value : null}
+            />
+            <Form.Item>
+                <Button
+                    type={"primary"}
+                    htmlType={"submit"}
+                >
+                    {isAdd ? "新增" : "修改"}
+                </Button>
+            </Form.Item>
+        </Form>
+
     </Modal>
 }
 
