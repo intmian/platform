@@ -28,6 +28,7 @@ export function ChangeModal({showini, onFinish, isAdd, originData}) {
         open={show}
         onCancel={() => {
             setShow(false);
+            onFinish();
         }}
         footer={null}
     >
