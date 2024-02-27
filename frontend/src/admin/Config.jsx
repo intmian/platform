@@ -5,8 +5,6 @@ import {IsSliceType, ValueType, ValueTypeStr} from "../common/def.js";
 import {FormItemArray} from "../common/misc.jsx";
 import {DeleteOutlined, FormOutlined} from "@ant-design/icons";
 
-const {Search} = Input;
-
 export function ChangeModal({showini, onFinish, isAdd, originData}) {
     const hasOriginData = (originData !== null && originData !== undefined);
     const [typeNow, setTypeNow] = useState(hasOriginData ? originData.type : ValueType.String);
@@ -51,6 +49,14 @@ export function ChangeModal({showini, onFinish, isAdd, originData}) {
             <Form.Item
                 label={"键"}
                 name="key"
+                rules={
+                    [
+                        {
+                            required: true,
+                            message: "请输入键"
+                        }
+                    ]
+                }
             >
                 <Input
                     disabled={!canChangeKey}
@@ -60,6 +66,14 @@ export function ChangeModal({showini, onFinish, isAdd, originData}) {
             <Form.Item
                 label={"类型"}
                 name="type"
+                rules={
+                    [
+                        {
+                            required: true,
+                            message: "请选择类型"
+                        }
+                    ]
+                }
             >
                 <Select options={types2} disabled={!canChangeType}
                         defaultValue={hasOriginData ? originData.type : types2[0]}

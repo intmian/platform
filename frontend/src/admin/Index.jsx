@@ -3,7 +3,7 @@ import {Layout, message, theme} from "antd";
 import IndexSider from "./IndexSider.jsx";
 import IndexFooter from "./IndexFooter.jsx";
 import IndexContent from "./IndexContent.jsx";
-import React, {useEffect, useState} from "react";
+import {useEffect, useState} from "react";
 import {SendCheckLogin} from "../common/sendhttp.js";
 
 

@@ -16,5 +16,6 @@ module.exports = {
             'warn',
             {allowConstantExport: true},
         ],
+        'react/prop-types': 'off', // 可以在这里关闭 prop-types 检查
     },
 }

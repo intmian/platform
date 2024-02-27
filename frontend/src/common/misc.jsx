@@ -84,7 +84,7 @@ export function FormItemArray({disabled, isArray, initialValue, form}) {
         >
             {(fields, {add, remove}) => (
                 <>
-                    {fields.map((field, index) => (
+                    {fields.map((field) => (
                         <Form.Item key={field.key}
 
                         >
