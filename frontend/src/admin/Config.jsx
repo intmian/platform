@@ -111,8 +111,9 @@ function Header({OnDataChange}) {
         sendGetStorage("", false, (data) => {
             OnDataChange(data);
         })
-    }, [needRefresh]);
-    // TODO:loading 没有数据 返回0、1正则时，严格正则，严格搜索 模糊搜索 动态增减表单项
+    }, [OnDataChange, needRefresh]);
+    // TODO:没有数据 返回0、1正则时，严格正则，严格搜索 模糊搜索
+    // 其实应该用一个表单来做，但是当时没想太多，就这样了
     return <Space>
         <Input placeholder="搜索内容"
                onChange={
