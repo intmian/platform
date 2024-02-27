@@ -1,4 +1,4 @@
-import {useEffect, useRef, useState} from "react";
+import {useCallback, useEffect, useRef, useState} from "react";
 import {Button, Checkbox, Form, Input, message, Modal, Select, Space, Spin, Table,} from "antd";
 import {sendGetStorage, sendSetStorage} from "../common/sendhttp.js";
 import {IsSliceType, ValueType, ValueTypeStr} from "../common/def.js";
@@ -33,7 +33,6 @@ export function ChangeModal({showini, onFinish, isAdd, originData}) {
         <Form
             form={form}
             onFinish={(value) => {
-                console.log(value);
                 sendSetStorage(value.key, value.value, value.type, (data) => {
                     if (data === null || data.code !== 0) {
                         message.error("操作失败");
@@ -57,10 +56,10 @@ export function ChangeModal({showini, onFinish, isAdd, originData}) {
                         }
                     ]
                 }
+                initialValue={hasOriginData ? originData.Key : ""}
             >
                 <Input
                     disabled={!canChangeKey}
-                    defaultValue={hasOriginData ? originData.key : ""}
                 />
             </Form.Item>
             <Form.Item
@@ -74,11 +73,10 @@ export function ChangeModal({showini, onFinish, isAdd, originData}) {
                         }
                     ]
                 }
+                initialValue={hasOriginData ? ValueTypeStr[originData.Type] : types2[0]}
             >
                 <Select options={types2} disabled={!canChangeType}
-                        defaultValue={hasOriginData ? originData.type : types2[0]}
                         onChange={(value) => {
-                            console.log(value);
                             setTypeNow(value);
                         }}
                         style={{width: 120}}
@@ -88,7 +86,7 @@ export function ChangeModal({showini, onFinish, isAdd, originData}) {
                 disabled={false}
                 form={form}
                 isArray={IsSliceType(typeNow)}
-                initialValue={hasOriginData ? originData.value : null}
+                initialValue={hasOriginData ? originData.Data : null}
             />
             <Form.Item>
                 <Button
@@ -132,7 +130,6 @@ function Header({OnDataChange}) {
                        }
                        let content = value.target.value;
                        setLoading(true);
-                       console.log(content);
                        sendGetStorage(content, useRe.current, (data) => {
                            OnDataChange(data);
                            setLoading(false);
@@ -197,8 +194,6 @@ function Body({data, onNeedRefresh}) {
         data = data.result;
         for (let key in data) {
             let typeStr = ValueTypeStr[data[key].Type];
-            console.log(key);
-            console.log(data[key]);
             data2.push({
                 key: key,
                 datakey: key,
@@ -208,8 +203,10 @@ function Body({data, onNeedRefresh}) {
                     <Button
                         shape={"circle"}
                         onClick={() => {
-                            setInChange(true);
                             OriginData.current = data[key];
+                            OriginData.current.Key = key;
+                            console.log(OriginData);
+                            setInChange(true);
                         }}
                     >
                         <FormOutlined/>
@@ -219,6 +216,7 @@ function Body({data, onNeedRefresh}) {
                         danger
                         onClick={() => {
                             sendSetStorage(key, "", data[key].Type, (data) => {
+                                console.log(data)
                                 if (data === null || data.code !== 0) {
                                     message.error("操作失败");
                                 } else {
@@ -242,7 +240,7 @@ function Body({data, onNeedRefresh}) {
                     setInChange(false);
                 }}
                 isAdd={false}
-                originData={null}
+                originData={OriginData.current}
             /> : null
         }
         <Table dataSource={data2} columns={columns}/>
@@ -251,13 +249,14 @@ function Body({data, onNeedRefresh}) {
 
 export function Config() {
     const [data, setData] = useState(null);
+    const OnDataChange = useCallback((data) => {
+        setData(data);
+    }, [setData]);
     return <div>
         <Space
             direction={"vertical"}
         >
-            <Header OnDataChange={(data) => {
-                setData(data);
-            }}/>
+            <Header OnDataChange={OnDataChange}/>
             <Body data={data}/>
         </Space>
     </div>
