@@ -1,5 +1,5 @@
 import {useEffect, useState} from "react";
-import {Button, Form, Input, Space} from 'antd';
+import {Button, Form, Input} from 'antd';
 import {MinusCircleOutlined, PlusOutlined} from '@ant-design/icons';
 
 export function TimeFromStart({startTime, width}) {
@@ -70,7 +70,9 @@ export function EditableInputOrList({disabled, isArray, onDataChanged, initialVa
                             message: '至少输入一个值'
                         }
                     ]
-                }>
+                }
+                           label={"值"}
+                >
                     <Input placeholder="输入值" disabled={disabled}/>
                 </Form.Item>
             </Form>
@@ -95,23 +97,21 @@ export function EditableInputOrList({disabled, isArray, onDataChanged, initialVa
                             <Form.Item key={field.key}
 
                             >
-                                <Space>
-                                    <Form.Item {...field} noStyle
-                                               rules={[{required: true, message: '请输入值'}]}
-                                    >
-                                        <Input
-                                            placeholder="输入值"
-                                            style={{width: '90%'}}
-                                            disabled={disabled}
-                                        />
-                                    </Form.Item>
-                                    {!disabled && fields.length > 1 && (
-                                        <MinusCircleOutlined
-                                            onClick={() => remove(field.name)}
-                                            style={{margin: '0 8px'}}
-                                        />
-                                    )}
-                                </Space>
+                                <Form.Item {...field} noStyle
+                                           rules={[{required: true, message: '请输入值'}]}
+                                >
+                                    <Input
+                                        placeholder="输入值"
+                                        style={{width: '90%'}}
+                                        disabled={disabled}
+                                    />
+                                </Form.Item>
+                                {!disabled && fields.length > 1 && (
+                                    <MinusCircleOutlined
+                                        onClick={() => remove(field.name)}
+                                        style={{margin: '0 8px'}}
+                                    />
+                                )}
                             </Form.Item>
                         ))}
                         {!disabled && (
@@ -121,7 +121,7 @@ export function EditableInputOrList({disabled, isArray, onDataChanged, initialVa
                                     onClick={() => add()}
                                     icon={<PlusOutlined/>}
                                 >
-                                    Add field
+                                    在数组中添加值
                                 </Button>
                             </Form.Item>
                         )}

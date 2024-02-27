@@ -33,6 +33,11 @@ function IndexContent({contentType}) {
             content = <Config/>;
             break;
         case 'debug':
+            // const [hasFocus, resetFocus] = useHasLostFocus();
+            // content = <div>
+            //     <p>The browser has {hasFocus ? 'not' : ''} lost focus before.</p>
+            //     <button onClick={resetFocus}>Reset Focus</button>
+            // </div>
             content = <ChangeModal
                 showini={true}
                 onFinish={() => {

@@ -92,10 +92,7 @@ export function ChangeModal({showini, onFinish, isAdd, originData}) {
                 类型：
                 {type}
             </Space>
-            <Space>
-                值：
-                {value}
-            </Space>
+            {value}
             <Space>
                 {button}
             </Space>
