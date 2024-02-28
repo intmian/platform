@@ -194,11 +194,16 @@ function Body({data, onNeedRefresh}) {
         data = data.result;
         for (let key in data) {
             let typeStr = ValueTypeStr[data[key].Type];
+            // 如果是布尔，就显示是或者否
+            let valueStr = data[key].Data;
+            if (data[key].Type === ValueType.Bool) {
+                valueStr = data[key].Data ? "是" : "否";
+            }
             data2.push({
                 key: key,
                 datakey: key,
                 type: typeStr,
-                value: data[key].Data,
+                value: valueStr,
                 operation: <Space>
                     <Button
                         shape={"circle"}
