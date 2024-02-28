@@ -87,7 +87,7 @@ export function ChangeModal({showini, onFinish, isAdd, originData}) {
             <FormItemArray
                 disabled={false}
                 form={form}
-                isArray={IsSliceType(typeNow)}
+                isArray={IsSliceType(originData.Type)}
                 initialValue={hasOriginData ? originData.Data : null}
             />
             <Form.Item>
@@ -106,15 +106,11 @@ function GetFilterData(data, perm, useRe) {
     // 如果不启用正则，就进行模糊搜索，如果启用正则，就进行正则的严格搜索，返回筛选后的数据
     // 转化为字符串
     perm = perm.toString();
-    console.log("data", data, "perm", perm, "useRe", useRe)
-    // 打印类型
-    console.log("perm", typeof perm, "useRe", typeof useRe)
     let result = {};
     if (perm === "") {
         return data;
     }
     for (let key in data) {
-        console.log("key", key, typeof key, "perm", perm, "useRe", useRe)
         if (useRe) {
             let re = new RegExp(perm);
             if (re.test(key)) {
@@ -126,7 +122,6 @@ function GetFilterData(data, perm, useRe) {
             }
         }
     }
-    console.log("result", result)
     return result;
 }
 
@@ -196,6 +191,9 @@ function Body({dataLastGet}) {
     const [inChange, setInChange] = useState(false);
     const OriginData = useRef(null);
     const [data, setData] = useState(dataLastGet);
+    useEffect(() => {
+        setData(dataLastGet);
+    }, [dataLastGet]);
     const columns = [
         {
             title: '键',
@@ -242,7 +240,6 @@ function Body({dataLastGet}) {
                         onClick={() => {
                             OriginData.current = data[key];
                             OriginData.current.Key = key;
-                            console.log(OriginData);
                             setInChange(true);
                         }}
                     >
@@ -299,7 +296,7 @@ export function Config() {
             direction={"vertical"}
         >
             <Header OnDataChange={OnDataChange}/>
-            <Body data={data}/>
+            <Body dataLastGet={data}/>
         </Space>
     </div>
 }
