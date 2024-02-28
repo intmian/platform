@@ -7,9 +7,13 @@ import {DeleteOutlined, FormOutlined} from "@ant-design/icons";
 
 export function ChangeModal({showini, onFinish, isAdd, originData}) {
     const hasOriginData = (originData !== null && originData !== undefined);
-    const [typeNow, setTypeNow] = useState(hasOriginData ? originData.type : ValueType.String);
+    const [typeNow, setTypeNow] = useState(hasOriginData ? originData.Type : ValueType.String);
+    const isSlice = IsSliceType(parseInt(typeNow));
     const [form] = Form.useForm();
     const [show, setShow] = useState(showini);
+    useEffect(() => {
+        setShow(showini);
+    }, [showini]);
     if (!show) {
         return null;
     }
@@ -33,16 +37,15 @@ export function ChangeModal({showini, onFinish, isAdd, originData}) {
         <Form
             form={form}
             onFinish={(value) => {
-                console.log(value);
-                sendSetStorage(value.key, value.value, value.type.value, (data) => {
+                sendSetStorage(value.key, value.value, typeNow, (data) => {
                     console.log(data)
                     if (data === null || data.code !== 0) {
                         message.error("操作失败");
                     } else {
                         message.success("操作成功");
                         // 通知下上层不要渲染这个节点了
-                        onFinish();
                     }
+                    onFinish();
                     setShow(false);
                 })
             }}
@@ -87,7 +90,7 @@ export function ChangeModal({showini, onFinish, isAdd, originData}) {
             <FormItemArray
                 disabled={false}
                 form={form}
-                isArray={IsSliceType(originData.Type)}
+                isArray={isSlice}
                 initialValue={hasOriginData ? originData.Data : null}
             />
             <Form.Item>
@@ -135,6 +138,10 @@ function Header({OnDataChange}) {
     useEffect(() => {
         // 需要刷新了就重新获取数据
         sendGetStorage("", false, (data) => {
+            if (data === null || data.code !== 0) {
+                message.error("获取数据失败");
+                return;
+            }
             OriginData.current = data.result;
             const result = GetFilterData(data.result, perm.current, useRe.current);
             OnDataChange(result);

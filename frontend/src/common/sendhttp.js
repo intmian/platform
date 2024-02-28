@@ -166,8 +166,8 @@ export function sendGetStorage(perm, useRe, callback) {
 
 export function sendSetStorage(key, value, type, callback) {
     type = parseInt(type)
-    // value 需要全部转化为字符串
-    value = value.toString()
+    // 转换成json字符串
+    value = JSON.stringify(value)
     const fetchData = async () => {
         try {
             const response = await fetch(config.api_base_url + '/admin/storage/set', {
