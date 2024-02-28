@@ -148,7 +148,7 @@ function Header({OnDataChange}) {
             setLoading(false);
         })
     }, [OnDataChange, refreshFlag]);
-    // TODO:没有数据 返回0、1正则时，严格正则，严格搜索 模糊搜索
+    // TODO: 不会刷新，false显示为空白的问题
     // 其实应该用一个表单来做，但是当时没想太多，就这样了
     return <Space>
         {inAdd ? <ChangeModal
@@ -218,12 +218,12 @@ function Body({dataLastGet}) {
             title: '值',
             dataIndex: 'value',
             key: 'value',
-            width: 100
         },
         {
             title: '操作',
             dataIndex: 'operation',
             key: 'operation',
+            width: 100
         },
     ];
     // 修改图标和删除图标
@@ -235,6 +235,17 @@ function Body({dataLastGet}) {
             let valueStr = data[key].Data;
             if (data[key].Type === ValueType.Bool) {
                 valueStr = data[key].Data ? "是" : "否";
+            }
+            if (IsSliceType(data[key].Type)) {
+                valueStr = data[key].Data.join(",");
+                if (valueStr.length > 100) {
+                    valueStr = valueStr.substring(0, 10) + "...";
+                }
+                if (data[key].Type === ValueType.SliceBool) {
+                    valueStr = data[key].Data.map((value) => {
+                        return value ? "是" : "否";
+                    }).join(",");
+                }
             }
             data2.push({
                 key: key,
@@ -299,11 +310,11 @@ export function Config() {
         setData(data);
     }, [setData]);
     return <div>
-        <Space
-            direction={"vertical"}
+        <
+
         >
             <Header OnDataChange={OnDataChange}/>
             <Body dataLastGet={data}/>
-        </Space>
+        </>
     </div>
 }

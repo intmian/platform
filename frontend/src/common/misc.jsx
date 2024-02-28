@@ -44,15 +44,16 @@ export function TimeFromStart({startTime, width}) {
 
 export function FormItemArray({disabled, isArray, initialValue, form}) {
     // 使用useEffect钩子来设置表单的初始值
-    useEffect(() => {
-        if (isArray) {
-            // 如果是数组，我们假定initialValue也是一个数组
-            form.setFieldsValue({value: initialValue || []});
-        } else {
-            // 如果不是数组，则认为initialValue是一个字符串
-            form.setFieldsValue({value: initialValue || ''});
-        }
-    }, [form, isArray, initialValue]);
+    if (isArray) {
+        // 如果是数组，我们假定initialValue也是一个数组
+        // 全部转换为字符串
+        const newValue = initialValue.map((item) => item.toString());
+        form.setFieldsValue({value: newValue || []});
+    } else {
+        // 如果不是数组，则认为initialValue是一个字符串
+        form.setFieldsValue({value: initialValue || ''});
+    }
+    console.log("render");
 
     if (!isArray) {
         return (

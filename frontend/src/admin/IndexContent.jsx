@@ -1,7 +1,7 @@
 import {Empty, Layout} from "antd";
 import {Monitor} from "./Monitor.jsx";
 import {Log} from "./Log.jsx";
-import {ChangeModal, Config} from "./Config.jsx";
+import {Config} from "./Config.jsx";
 
 const {Content} = Layout;
 
@@ -32,20 +32,20 @@ function IndexContent({contentType}) {
         case 'config':
             content = <Config/>;
             break;
-        case 'debug':
-            // const [hasFocus, resetFocus] = useHasLostFocus();
-            // content = <div>
-            //     <p>The browser has {hasFocus ? 'not' : ''} lost focus before.</p>
-            //     <button onClick={resetFocus}>Reset Focus</button>
-            // </div>
-            content = <ChangeModal
-                showini={true}
-                onFinish={() => {
-                    console.log("finish")
-                }}
-                isAdd={true}
-            />;
-            break;
+        // case 'debug':
+        //     // const [hasFocus, resetFocus] = useHasLostFocus();
+        //     // content = <div>
+        //     //     <p>The browser has {hasFocus ? 'not' : ''} lost focus before.</p>
+        //     //     <button onClick={resetFocus}>Reset Focus</button>
+        //     // </div>
+        //     content = <ChangeModal
+        //         showini={true}
+        //         onFinish={() => {
+        //             console.log("finish")
+        //         }}
+        //         isAdd={true}
+        //     />;
+        //     break;
         default:
             break;
     }
