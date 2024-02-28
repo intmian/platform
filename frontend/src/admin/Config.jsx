@@ -192,9 +192,10 @@ function Header({OnDataChange}) {
     </Space>
 }
 
-function Body({data, onNeedRefresh}) {
+function Body({dataLastGet}) {
     const [inChange, setInChange] = useState(false);
     const OriginData = useRef(null);
+    const [data, setData] = useState(dataLastGet);
     const columns = [
         {
             title: '键',
@@ -252,12 +253,14 @@ function Body({data, onNeedRefresh}) {
                         danger
                         onClick={() => {
                             sendSetStorage(key, "", data[key].Type, (data) => {
-                                console.log(data)
                                 if (data === null || data.code !== 0) {
                                     message.error("操作失败");
                                 } else {
                                     message.success("操作成功");
-                                    onNeedRefresh();
+                                    // 从data中删除这个键
+                                    let newD = {...data};
+                                    delete newD[key];
+                                    setData(newD);
                                 }
                             })
                         }}
@@ -274,6 +277,9 @@ function Body({data, onNeedRefresh}) {
                 showini={true}
                 onFinish={() => {
                     setInChange(false);
+                    let newD = {...data};
+                    newD[OriginData.current.Key] = OriginData.current;
+                    setData(newD);
                 }}
                 isAdd={false}
                 originData={OriginData.current}
