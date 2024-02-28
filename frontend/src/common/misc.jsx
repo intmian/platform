@@ -47,16 +47,16 @@ export function FormItemArray({disabled, isArray, initialValue, form}) {
     useEffect(() => {
         if (isArray) {
             // 如果是数组，我们假定initialValue也是一个数组
-            form.setFieldsValue({listValues: initialValue || []});
+            form.setFieldsValue({value: initialValue || []});
         } else {
             // 如果不是数组，则认为initialValue是一个字符串
-            form.setFieldsValue({singleValue: initialValue || ''});
+            form.setFieldsValue({value: initialValue || ''});
         }
     }, [form, isArray, initialValue]);
 
     if (!isArray) {
         return (
-            <Form.Item name="singleValue" rules={
+            <Form.Item name="value" rules={
                 [
                     {
                         required: true,
@@ -72,7 +72,7 @@ export function FormItemArray({disabled, isArray, initialValue, form}) {
     }
 
     return (
-        <Form.List name="listValues"
+        <Form.List name="value"
                    rules={
                        [
                            {

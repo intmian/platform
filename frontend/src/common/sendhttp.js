@@ -165,6 +165,7 @@ export function sendGetStorage(perm, useRe, callback) {
 }
 
 export function sendSetStorage(key, value, type, callback) {
+    type = parseInt(type)
     console.log("sendSetStorage", key, value, type)
     const fetchData = async () => {
         try {

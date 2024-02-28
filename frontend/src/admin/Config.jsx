@@ -33,7 +33,9 @@ export function ChangeModal({showini, onFinish, isAdd, originData}) {
         <Form
             form={form}
             onFinish={(value) => {
-                sendSetStorage(value.key, value.value, value.type, (data) => {
+                console.log(value);
+                sendSetStorage(value.key, value.value, value.type.value, (data) => {
+                    console.log(data)
                     if (data === null || data.code !== 0) {
                         message.error("操作失败");
                     } else {
@@ -97,20 +99,53 @@ export function ChangeModal({showini, onFinish, isAdd, originData}) {
                 </Button>
             </Form.Item>
         </Form>
-
     </Modal>
+}
+
+function GetFilterData(data, perm, useRe) {
+    // 如果不启用正则，就进行模糊搜索，如果启用正则，就进行正则的严格搜索，返回筛选后的数据
+    // 转化为字符串
+    perm = perm.toString();
+    console.log("data", data, "perm", perm, "useRe", useRe)
+    // 打印类型
+    console.log("perm", typeof perm, "useRe", typeof useRe)
+    let result = {};
+    if (perm === "") {
+        return data;
+    }
+    for (let key in data) {
+        console.log("key", key, typeof key, "perm", perm, "useRe", useRe)
+        if (useRe) {
+            let re = new RegExp(perm);
+            if (re.test(key)) {
+                result[key] = data[key];
+            }
+        } else {
+            if (key.indexOf(perm) !== -1) {
+                result[key] = data[key];
+            }
+        }
+    }
+    console.log("result", result)
+    return result;
 }
 
 function Header({OnDataChange}) {
     const useRe = useRef(false);
-    const [loading, setLoading] = useState(false);
-    const [needRefresh, setNeedRefresh] = useState(false);
+    const perm = useRef("");
+    const [loading, setLoading] = useState(true);
+    const [refreshFlag, setRefreshFlag] = useState(false);
     const [inAdd, setInAdd] = useState(false);
+    const OriginData = useRef(null);
     useEffect(() => {
+        // 需要刷新了就重新获取数据
         sendGetStorage("", false, (data) => {
-            OnDataChange(data);
+            OriginData.current = data.result;
+            const result = GetFilterData(data.result, perm.current, useRe.current);
+            OnDataChange(result);
+            setLoading(false);
         })
-    }, [OnDataChange, needRefresh]);
+    }, [OnDataChange, refreshFlag]);
     // TODO:没有数据 返回0、1正则时，严格正则，严格搜索 模糊搜索
     // 其实应该用一个表单来做，但是当时没想太多，就这样了
     return <Space>
@@ -118,22 +153,15 @@ function Header({OnDataChange}) {
             showini={true}
             onFinish={() => {
                 setInAdd(false);
-                setNeedRefresh(true);
+                setRefreshFlag(true);
             }}
             isAdd={true}>
         </ChangeModal> : null}
         <Input placeholder="搜索内容"
                onChange={
                    (value) => {
-                       if (loading) {
-                           return;
-                       }
-                       let content = value.target.value;
-                       setLoading(true);
-                       sendGetStorage(content, useRe.current, (data) => {
-                           OnDataChange(data);
-                           setLoading(false);
-                       })
+                       perm.current = value.target.value;
+                       OnDataChange(GetFilterData(OriginData.current, perm.current, useRe.current));
                    }
                }
 
@@ -149,11 +177,15 @@ function Header({OnDataChange}) {
         >
             使用正则
         </Checkbox>
-        <Button>
+        <Button
+            onClick={() => {
+                setInAdd(true);
+            }}
+        >
             新增
         </Button>
         <Button onClick={() => {
-            setNeedRefresh(true);
+            setRefreshFlag(!refreshFlag);
         }}>
             刷新
         </Button>
@@ -191,7 +223,6 @@ function Body({data, onNeedRefresh}) {
     // 修改图标和删除图标
     let data2 = []
     if (data !== null) {
-        data = data.result;
         for (let key in data) {
             let typeStr = ValueTypeStr[data[key].Type];
             // 如果是布尔，就显示是或者否
