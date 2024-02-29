@@ -13,6 +13,7 @@ type (
 		DingDingSecret string `toml:"dingding_secret"` // 钉钉secret
 		UseFront       bool   `toml:"use_front"`       // 是否使用前端
 		GinDebug       bool   `toml:"gin_debug"`       // 是否使用gin的debug模式
+		AdminPwd       string `toml:"admin_pwd"`       // 管理员密码
 	}
 )
 
