@@ -1,5 +1,5 @@
 import IndexHeader from "./IndexHeader.jsx";
-import {Layout, message, theme} from "antd";
+import {Layout, message, notification, theme} from "antd";
 import IndexSider from "./IndexSider.jsx";
 import IndexFooter from "./IndexFooter.jsx";
 import IndexContent from "./IndexContent.jsx";
@@ -9,7 +9,17 @@ import {SendCheckLogin} from "../common/sendhttp.js";
 
 const {Content} = Layout;
 
+
 function Index() {
+    const [api, contextHolder] = notification.useNotification();
+    const openNotificationWithIcon = (type, msg, desc) => {
+        api[type]({
+            message: msg,
+            description: desc,
+            duration: 3,
+        });
+    };
+
     const [contentType, setContentType] = useState('monitor');
     const {
         token: {colorBgContainer, borderRadiusLG},
@@ -20,11 +30,13 @@ function Index() {
             if (data === null) {
                 message.error("api错误，请重试或联系开发者");
             }
+            openNotificationWithIcon('success', '自动登录', `欢迎回来，${data}`)
             setUsr(data);
         })
     }, []);
 
     return <Layout>
+        {contextHolder}
         <IndexHeader
             user={usr}
             onLogOut={() => {
