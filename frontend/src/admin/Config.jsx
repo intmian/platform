@@ -30,7 +30,7 @@ export function ChangeModal({showini, onFinish, isAdd, originData}) {
         open={show}
         onCancel={() => {
             setShow(false);
-            onFinish();
+            onFinish(form.getFieldValue("value"));
         }}
         footer={null}
     >
@@ -45,7 +45,7 @@ export function ChangeModal({showini, onFinish, isAdd, originData}) {
                         message.success("操作成功");
                         // 通知下上层不要渲染这个节点了
                     }
-                    onFinish();
+                    onFinish(form.getFieldValue("value"));
                     setShow(false);
                 })
             }}
@@ -267,8 +267,8 @@ function Body({dataLastGet}) {
                         title="删除"
                         description="删除这个配置项"
                         onConfirm={() => {
-                            sendSetStorage(key, "", data[key].Type, (data) => {
-                                if (data === null || data.code !== 0) {
+                            sendSetStorage(key, "", data[key].Type, (result) => {
+                                if (result === null || result.code !== 0) {
                                     message.error("操作失败");
                                 } else {
                                     message.success("操作成功");
@@ -297,10 +297,10 @@ function Body({dataLastGet}) {
         {inChange ?
             <ChangeModal
                 showini={true}
-                onFinish={() => {
+                onFinish={(result) => {
                     setInChange(false);
                     let newD = {...data};
-                    newD[OriginData.current.Key] = OriginData.current;
+                    newD[OriginData.current.Key].Data = JSON.parse(result);
                     setData(newD);
                 }}
                 isAdd={false}
