@@ -29,8 +29,9 @@ function Index() {
         SendCheckLogin((data) => {
             if (data === null) {
                 message.error("api错误，请重试或联系开发者");
+            } else {
+                openNotificationWithIcon('success', '自动登录', `欢迎回来，${data}`)
             }
-            openNotificationWithIcon('success', '自动登录', `欢迎回来，${data}`)
             setUsr(data);
         })
     }, []);

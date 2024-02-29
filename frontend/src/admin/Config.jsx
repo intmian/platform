@@ -1,5 +1,5 @@
 import {useCallback, useEffect, useRef, useState} from "react";
-import {Button, Checkbox, Form, Input, message, Modal, Select, Space, Spin, Table,} from "antd";
+import {Button, Checkbox, Form, Input, message, Modal, Popconfirm, Select, Space, Spin, Table,} from "antd";
 import {sendGetStorage, sendSetStorage} from "../common/sendhttp.js";
 import {IsSliceType, ValueType, ValueTypeStr} from "../common/def.js";
 import {FormItemArray} from "../common/misc.jsx";
@@ -263,10 +263,10 @@ function Body({dataLastGet}) {
                     >
                         <FormOutlined/>
                     </Button>
-                    <Button
-                        shape={"circle"}
-                        danger
-                        onClick={() => {
+                    <Popconfirm
+                        title="删除"
+                        description="删除这个配置项"
+                        onConfirm={() => {
                             sendSetStorage(key, "", data[key].Type, (data) => {
                                 if (data === null || data.code !== 0) {
                                     message.error("操作失败");
@@ -279,9 +279,16 @@ function Body({dataLastGet}) {
                                 }
                             })
                         }}
+                        okText="是"
+                        cancelText="否"
                     >
-                        <DeleteOutlined/>
-                    </Button>
+                        <Button
+                            shape={"circle"}
+                            danger
+                        >
+                            <DeleteOutlined/>
+                        </Button>
+                    </Popconfirm>
                 </Space>
             })
         }

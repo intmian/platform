@@ -51,10 +51,14 @@ export function FormItemArray({disabled, isArray, initialValue, form}) {
         form.setFieldsValue({value: newValue || []});
     } else {
         // 如果不是数组，则认为initialValue是一个字符串
+        if (typeof initialValue === "boolean" && !initialValue) {
+            initialValue = 'false';
+        }
         form.setFieldsValue({value: initialValue || ''});
     }
     console.log("render");
-
+    // 显示form的值
+    console.log(form.getFieldValue("value"));
     if (!isArray) {
         return (
             <Form.Item name="value" rules={

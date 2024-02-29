@@ -27,8 +27,6 @@ export const ValueType = {
 }
 
 export function IsSliceType(type) {
-    console.log(type, type >= ValueType.SliceBegin);
-    console.log(typeof type);
     return type >= ValueType.SliceBegin;
 }
 
