@@ -6,10 +6,10 @@ import platform
 def compile_and_move_go_binary(plat):
     # 编译Go二进制文件
     if plat == "windows":
-        go_build_command = ["go", "build", "-o", "main.exe"]
+        go_build_command = ["go", "build","-x","-v", "-o", "main.exe"]
+        subprocess.run(go_build_command, cwd="backend/main")
     else:
-        go_build_command = ["go", "build", "-o", "main"]
-    subprocess.run(go_build_command, cwd="backend/main")
+        os.system(".\\buildback.bat")
     if plat == "windows":
         shutil.move("backend/main/main.exe", "pack/main.exe")
     else:
@@ -36,7 +36,7 @@ def main():
         os.remove("pack/main.exe")
     if os.path.exists("pack/front"):
         shutil.rmtree("pack/front")
-    compile_and_move_go_binary(system_platform)
+    compile_and_move_go_binary("linux")
     build_and_move_frontend()
 
 if __name__ == "__main__":

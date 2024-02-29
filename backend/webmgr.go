@@ -57,7 +57,6 @@ func (m *WebMgr) Init() {
 		})
 	}
 	InitRoot(engine)
-	s, _ := global.GStorage.GetAndSetDefault("WebPort", xstorage.ToUnit[string]("8080", xstorage.ValueTypeString))
 	s1v, err1 := global.GStorage.Get("WebSalt1")
 	s2v, err2 := global.GStorage.Get("WebSalt2")
 	var s1, s2 string
@@ -71,7 +70,7 @@ func (m *WebMgr) Init() {
 		_ = global.GStorage.Set("WebSalt2", xstorage.ToUnit[string](s2, xstorage.ValueTypeString))
 	}
 	m.Jwt.SetSalt(xstorage.ToBase[string](s1v), xstorage.ToBase[string](s2v))
-	err := engine.Run(":" + xstorage.ToBase[string](s))
+	err := engine.Run(":" + global.GBaseSetting.Copy().WebPort)
 	if err != nil {
 		panic(err)
 	}
