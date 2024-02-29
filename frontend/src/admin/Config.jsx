@@ -148,14 +148,13 @@ function Header({OnDataChange}) {
             setLoading(false);
         })
     }, [OnDataChange, refreshFlag]);
-    // TODO: 不会刷新，false显示为空白的问题
     // 其实应该用一个表单来做，但是当时没想太多，就这样了
     return <Space>
         {inAdd ? <ChangeModal
             showini={true}
             onFinish={() => {
                 setInAdd(false);
-                setRefreshFlag(true);
+                setRefreshFlag(!refreshFlag);
             }}
             isAdd={true}>
         </ChangeModal> : null}
