@@ -31,7 +31,7 @@ def main():
     if not os.path.exists("pack"):
         os.mkdir("pack")
     if os.path.exists("pack/main"):
-        shutil.remove("pack/main")
+        os.remove("pack/main")
     if os.path.exists("pack/main.exe"):
         os.remove("pack/main.exe")
     if os.path.exists("pack/front"):
