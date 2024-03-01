@@ -299,7 +299,11 @@ function Body({dataLastGet}) {
                 onFinish={(result) => {
                     setInChange(false);
                     let newD = {...data};
-                    newD[OriginData.current.Key].Data = JSON.parse(result);
+                    try {
+                        newD[OriginData.current.Key].Data = JSON.parse(result);
+                    } catch (e) {
+                        newD[OriginData.current.Key].Data = result;
+                    }
                     setData(newD);
                 }}
                 isAdd={false}
