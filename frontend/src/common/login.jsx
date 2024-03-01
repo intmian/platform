@@ -38,7 +38,7 @@ export default function Login({onLoginSuc, onCancel}) {
                     setLoading(true);
                     sendLogin(values, (result) => {
                         setLoading(false);
-                        if (result !== '') {
+                        if (result !== '' && result.code === 0) {
                             setShowModal(false);
                             onLoginSuc(result);
                         } else {

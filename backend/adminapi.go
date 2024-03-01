@@ -107,6 +107,7 @@ func checkAdmin(c *gin.Context) {
 			"msg":  "token not exist",
 		})
 		c.Abort()
+		return
 	}
 	// 解析token
 	var data token.Data
@@ -117,6 +118,7 @@ func checkAdmin(c *gin.Context) {
 			"msg":  "token invalid",
 		})
 		c.Abort()
+		return
 	}
 	if !GWebMgr.CheckSignature(&data, "admin") {
 		c.JSON(200, gin.H{
@@ -124,6 +126,7 @@ func checkAdmin(c *gin.Context) {
 			"msg":  "token invalid",
 		})
 		c.Abort()
+		return
 	}
 }
 
