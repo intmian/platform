@@ -85,7 +85,7 @@ func (p *PlatCore) StopService(flag coreShare.SvrFlag) error {
 	if err != nil {
 		global.GLog.ErrorErr("PLAT", errors.WithMessagef(err, "StopService %s err", name))
 	}
-	err = global.GPush.Push("PLAT", fmt.Sprintf("服务 %s 成功启动", name), false)
+	err = global.GPush.Push("PLAT", fmt.Sprintf("服务 %s 成功停止", name), false)
 	if err != nil {
 		global.GLog.WarningErr("PLAT", errors.WithMessage(err, "StopService push err"))
 	}
