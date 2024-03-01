@@ -64,6 +64,8 @@ func Init() error {
 	}
 	logS := xlog.DefaultSetting()
 	logS.LogAddr = s.LogAddr
+	logS.IfPush = true
+	logS.PushMgr = push
 	logS.OnLog = func(content string) {
 		_ = GNews.AddMessage("PLAT", content)
 	}
