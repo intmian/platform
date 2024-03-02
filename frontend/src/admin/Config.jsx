@@ -211,7 +211,7 @@ function Body({dataLastGet}) {
             title: '类型',
             dataIndex: 'type',
             key: 'type',
-            width: 80
+            width: 120
         },
         {
             title: '值',
