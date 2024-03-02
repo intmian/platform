@@ -61,8 +61,8 @@ func (m *WebMgr) Init() {
 	s2v, err2 := global.GStorage.Get("WebSalt2")
 	var s1, s2 string
 	if err1 != nil || err2 != nil || s1v == nil || s2v == nil {
-		_ = misc.Input("input web salt1", 10, &s1)
-		_ = misc.Input("input web salt2", 10, &s2)
+		_ = misc.Input("input web salt1:", 10, &s1)
+		_ = misc.Input("input web salt2:", 10, &s2)
 		if s1 == "" || s2 == "" {
 			panic("salt1 or salt2 is empty")
 		}

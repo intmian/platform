@@ -47,6 +47,9 @@ export function FormItemArray({disabled, isArray, initialValue, form}) {
     if (isArray) {
         // 如果是数组，我们假定initialValue也是一个数组
         // 全部转换为字符串
+        if (initialValue === null) {
+            initialValue = [];
+        }
         const newValue = initialValue.map((item) => item.toString());
         form.setFieldsValue({value: newValue || []});
     } else {
