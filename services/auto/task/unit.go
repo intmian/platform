@@ -52,13 +52,13 @@ func (u *Unit) Start() {
 	if u.status != StatusClose {
 		return
 	}
-	err := setting.GSetting.Set(xstorage.Join(u.name, "open"), xstorage.ToUnit(true, xstorage.ValueTypeBool))
-	if err != nil {
-		tool.GLog.Error(u.name, "start失败:"+err.Error())
-		return
-	}
+	//err := setting.GSetting.Set(xstorage.Join(u.name, "open"), xstorage.ToUnit(true, xstorage.ValueTypeBool))
+	//if err != nil {
+	//	tool.GLog.Error(u.name, "start失败:"+err.Error())
+	//	return
+	//}
 	u.c = cron.New()
-	err = u.c.AddFunc(u.timeStr, u.do)
+	err := u.c.AddFunc(u.timeStr, u.do)
 	if err != nil {
 		tool.GLog.Error(u.name, "start失败:"+err.Error())
 	}
