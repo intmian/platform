@@ -174,6 +174,7 @@ function Header({OnDataChange}) {
         <Checkbox
             onChange={(choose) => {
                 useRe.current = choose.target.checked;
+                setRefreshFlag(!refreshFlag);
             }}
         >
             使用正则
