@@ -40,22 +40,16 @@ func (b *Baidu) Do() {
 	}
 	var keywords []string
 	var newss [][]spider.BaiduNew
-	hasErrAll := false
 	noNewsAll := false
 	for _, v := range keys {
-		news, hasErr, noNews := spider.GetBaiduNews(v, true)
+		news, noNews := spider.GetTodayBaiduNews(v)
 		keywords = append(keywords, v)
 		newss = append(newss, news)
-		hasErrAll = hasErrAll || hasErr
 		noNewsAll = noNewsAll && noNews
-	}
-	if hasErrAll {
-		tool.GLog.Warning("BAIDU", "接口存在错误")
 	}
 	if noNewsAll {
 		tool.GLog.Warning("BAIDU", "接口为空")
 	}
-
 	s := spider.ParseNewToMarkdown(keywords, newss)
 	err = tool.GPush.Push("百度新闻", s, true)
 	if err != nil {
