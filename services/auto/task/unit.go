@@ -70,11 +70,11 @@ func (u *Unit) Stop() {
 	if u.status == StatusClose {
 		return
 	}
-	err := setting.GSetting.Set(u.name+".open", xstorage.ToUnit(false, xstorage.ValueTypeBool))
-	if err != nil {
-		tool.GLog.Error(u.name, "stop失败:"+err.Error())
-		return
-	}
+	//err := setting.GSetting.Set(u.name+".openwhenstart", xstorage.ToUnit(false, xstorage.ValueTypeBool))
+	//if err != nil {
+	//	tool.GLog.Error(u.name, "stop失败:"+err.Error())
+	//	return
+	//}
 	u.c.Stop()
 	u.status = StatusClose
 }
@@ -174,7 +174,7 @@ func (u *Unit) Init() {
 	//	}
 	//}
 	v := &xstorage.ValueUnit{}
-	ok, err, c := setting.GSetting.GetAndSetDefaultAsync(u.name+".open", xstorage.ToUnit(true, xstorage.ValueTypeBool), v)
+	ok, err, c := setting.GSetting.GetAndSetDefaultAsync(u.name+".openwhenstart", xstorage.ToUnit(true, xstorage.ValueTypeBool), v)
 	if err != nil {
 		tool.GLog.Error(u.name, fmt.Sprintf("Unit.Init() GetAndSetDefaultAsync error:%v", err))
 		return

@@ -30,6 +30,11 @@ func (p *PlatCore) Init() error {
 	p.serviceMeta = make(map[coreShare.SvrFlag]*coreShare.ServiceMeta)
 	p.startTime = time.Now()
 	p.registerSvr()
+	err := global.GPush.Push("PLAT", "初始化完成", false)
+	if err != nil {
+		global.GLog.WarningErr("PLAT", errors.WithMessage(err, "push Init err"))
+	}
+	global.GLog.Info("PLAT", "初始化完成")
 	return nil
 }
 
