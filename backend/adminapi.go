@@ -198,3 +198,10 @@ func getLastLog(c *gin.Context) {
 	}
 	c.JSON(200, logs)
 }
+
+func serviceHandle(c *gin.Context) {
+	c.JSON(200, gin.H{
+		"code": 0,
+		"msg":  "ok",
+	})
+}

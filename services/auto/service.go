@@ -12,6 +12,20 @@ type Service struct {
 	share share.ServiceShare
 }
 
+func (s *Service) HandleRpc(msg share.Msg) (interface{}, error) {
+	switch msg.Cmd() {
+	default:
+	}
+	return nil, nil
+}
+
+func (s *Service) Handle(msg share.Msg) error {
+	switch msg.Cmd() {
+	default:
+	}
+	return nil
+}
+
 func (s *Service) Start(share share.ServiceShare) error {
 	s.share = share
 	setting.GSetting = share.Storage
