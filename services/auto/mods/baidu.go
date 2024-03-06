@@ -45,7 +45,7 @@ func (b *Baidu) Do() {
 		keywords = append(keywords, v)
 		newss = append(newss, news)
 		if err != nil {
-			tool.GLog.ErrorErr("BAIDU", errors.Join(errors.New("func Do() spider.GetTodayBaiduNews error"), err))
+			tool.GLog.WarningErr("BAIDU", errors.Join(errors.New("func Do() spider.GetTodayBaiduNews error"), err))
 		}
 	}
 	s := spider.ParseNewToMarkdown(keywords, newss)
