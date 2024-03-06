@@ -54,11 +54,7 @@ func (b *Baidu) Do() {
 	s := spider.ParseNewToMarkdown(keywords, newss)
 	if allRetry > 0 {
 		retryStr := fmt.Sprintf("百度新闻 总重试次数: %d", allRetry)
-		err = tool.GPush.Push("百度新闻", retryStr, false)
-		if err != nil {
-			tool.GLog.ErrorErr("BAIDU", errors.Join(errors.New("func Do() Push retryStr error"), err))
-			return
-		}
+		tool.GLog.Debug("BAIDU", retryStr)
 	}
 	err = tool.GPush.Push("百度新闻", s, true)
 	if err != nil {
