@@ -2,6 +2,7 @@ package mods
 
 import (
 	"errors"
+	"fmt"
 	"github.com/intmian/mian_go_lib/tool/spider"
 	"github.com/intmian/mian_go_lib/xstorage"
 	"github.com/intmian/platform/services/auto/setting"
@@ -40,8 +41,10 @@ func (b *Baidu) Do() {
 	}
 	var keywords []string
 	var newss [][]spider.BaiduNew
+	allRetry := 0
 	for _, v := range keys {
-		news, err := spider.GetTodayBaiduNews(v)
+		news, err, retry := spider.GetTodayBaiduNews(v)
+		allRetry += retry
 		keywords = append(keywords, v)
 		newss = append(newss, news)
 		if err != nil {
@@ -49,6 +52,14 @@ func (b *Baidu) Do() {
 		}
 	}
 	s := spider.ParseNewToMarkdown(keywords, newss)
+	if allRetry > 0 {
+		retryStr := fmt.Sprintf("百度新闻 总重试次数: %d", allRetry)
+		err = tool.GPush.Push("百度新闻", retryStr, false)
+		if err != nil {
+			tool.GLog.ErrorErr("BAIDU", errors.Join(errors.New("func Do() Push retryStr error"), err))
+			return
+		}
+	}
 	err = tool.GPush.Push("百度新闻", s, true)
 	if err != nil {
 		tool.GLog.ErrorErr("BAIDU", errors.Join(errors.New("func Do() Push error"), err))
