@@ -245,10 +245,10 @@ func serviceHandle(c *gin.Context) {
 	t1 := time.Now()
 	finish := make(chan interface{})
 	go func() {
-		select {
-		case <-time.After(time.Second * 60):
-			global.GLog.Warning("PLAT", "Rpc timeout [%s] [%s] [%s]", name, cmd, bodyStr)
-		case <-finish:
+		<-finish
+		delta := time.Now().Sub(t1)
+		if delta > time.Minute {
+			global.GLog.Warning("PLAT", "serviceHandle too long [%s] [%s] [%s]", name, cmd, delta.String())
 		}
 	}()
 	rec, err := GPlatCore.OnRecRpc(flag, msg, valid)
