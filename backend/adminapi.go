@@ -7,6 +7,7 @@ import (
 	"github.com/intmian/platform/backend/global"
 	"github.com/intmian/platform/backend/share"
 	"github.com/intmian/platform/backend/tool"
+	share2 "github.com/intmian/platform/services/share"
 	"time"
 )
 
@@ -53,6 +54,37 @@ func logout(c *gin.Context) {
 	c.SetCookie("token", "", -1, "/", "", false, true)
 }
 
+type Valid struct {
+	FromSys    bool // 代表是由系统发起的请求，不需要验证
+	User       string
+	Permission map[string]bool
+	ValidTime  int64
+}
+
+func getValid(c *gin.Context) Valid {
+	tokenS, err := c.Cookie("token")
+	if err != nil {
+		return Valid{}
+	}
+	var data token.Data
+	err = json.Unmarshal([]byte(tokenS), &data)
+	if err != nil {
+		return Valid{}
+	}
+	var r Valid
+	r.User = data.User
+	r.Permission = make(map[string]bool)
+	for _, v := range data.Permission {
+		if GWebMgr.CheckSignature(&data, v) {
+			r.Permission[v] = true
+		} else {
+			r.Permission[v] = false
+		}
+	}
+	r.ValidTime = data.ValidTime
+	return r
+}
+
 func check(c *gin.Context) {
 	// 从cookie中获得token
 	tokenS, err := c.Cookie("token")
@@ -75,12 +107,8 @@ func check(c *gin.Context) {
 		c.Abort()
 		return
 	}
-	type res struct {
-		User       string
-		Permission map[string]bool
-		ValidTime  int64
-	}
-	var r res
+
+	var r Valid
 	r.User = data.User
 	r.Permission = make(map[string]bool)
 	for _, v := range data.Permission {
@@ -94,7 +122,15 @@ func check(c *gin.Context) {
 	c.JSON(200, gin.H{
 		"code": 0,
 		"msg":  "ok",
-		"data": r,
+		"data": struct {
+			User       string
+			Permission map[string]bool
+			ValidTime  int64
+		}{
+			User:       r.User,
+			Permission: r.Permission,
+			ValidTime:  r.ValidTime,
+		},
 	})
 }
 
@@ -200,8 +236,26 @@ func getLastLog(c *gin.Context) {
 }
 
 func serviceHandle(c *gin.Context) {
-	c.JSON(200, gin.H{
-		"code": 0,
-		"msg":  "ok",
-	})
+	name := c.Param("name")
+	cmd := c.Param("cmd")
+	bodyStr, err := c.GetRawData()
+	if err != nil {
+		c.JSON(200, gin.H{
+			"code": 1,
+			"msg":  "Get body error",
+		})
+		return
+	}
+	flag := tool.GetFlag(share.SvrName(name))
+	msg := share2.MakeMsgJson(cmd, string(bodyStr))
+	valid := getValid(c)
+	rec, err := GPlatCore.OnRecRpc(flag, msg, valid)
+	if err != nil {
+		c.JSON(200, gin.H{
+			"code": 1,
+			"msg":  "Rpc error",
+		})
+		return
+	}
+	c.JSON(200, rec)
 }

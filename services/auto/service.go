@@ -2,6 +2,7 @@ package auto
 
 import (
 	"github.com/gin-gonic/gin"
+	"github.com/intmian/platform/backend"
 	"github.com/intmian/platform/services/auto/setting"
 	"github.com/intmian/platform/services/auto/task"
 	"github.com/intmian/platform/services/auto/tool"
@@ -12,14 +13,14 @@ type Service struct {
 	share share.ServiceShare
 }
 
-func (s *Service) HandleRpc(msg share.Msg) (interface{}, error) {
+func (s *Service) HandleRpc(msg share.Msg, valid backend.Valid) (interface{}, error) {
 	switch msg.Cmd() {
 	default:
 	}
 	return nil, nil
 }
 
-func (s *Service) Handle(msg share.Msg) error {
+func (s *Service) Handle(msg share.Msg, valid backend.Valid) error {
 	switch msg.Cmd() {
 	default:
 	}

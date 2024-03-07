@@ -21,5 +21,5 @@ func InitRoot(r *gin.Engine) {
 	admin.POST("/storage/get_all", global.GStoWebPack.WebGetAll)
 	admin.POST("/log/get", getLastLog)
 
-	admin.POST("/service/:name/cmd", serviceHandle)
+	admin.POST("/service/:name/:cmd", serviceHandle)
 }

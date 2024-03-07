@@ -58,7 +58,6 @@ func (p *PlatCore) StartService(flag coreShare.SvrFlag) error {
 		Storage: global.GStorage,
 		Ctx:     context.WithoutCancel(p.ctx),
 	})
-	p.service[flag].RegisterWeb(GWebMgr.webEngine)
 	if err != nil {
 		global.GLog.ErrorErr("PLAT", errors.WithMessagef(err, "StartService %d err", flag))
 	}
@@ -84,7 +83,6 @@ func (p *PlatCore) StopService(flag coreShare.SvrFlag) error {
 	}
 	svr := p.service[flag]
 	err = svr.Stop()
-	svr.DeregisterWeb(GWebMgr.webEngine)
 	p.serviceMeta[flag].StartTime = time.Now()
 	p.serviceMeta[flag].Status = coreShare.StatusStop
 	if err != nil {
@@ -143,4 +141,12 @@ func (p *PlatCore) GetWebInfo() []coreShare.ServicesInfo {
 
 func (p *PlatCore) GetStartTime() time.Time {
 	return p.startTime
+}
+
+func (p *PlatCore) OnRecRpc(flag coreShare.SvrFlag, msg share.Msg, valid Valid) (interface{}, error) {
+	rpc, err := p.service[flag].HandleRpc(msg)
+	if err != nil {
+		return nil, err
+	}
+	return rpc, nil
 }
