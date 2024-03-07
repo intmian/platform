@@ -174,7 +174,7 @@ func (u *Unit) Init() {
 	//	}
 	//}
 	v := &xstorage.ValueUnit{}
-	ok, err, c := setting.GSetting.GetAndSetDefaultAsync(u.name+".openwhenstart", xstorage.ToUnit(true, xstorage.ValueTypeBool), v)
+	ok, err, c := setting.GSetting.GetAndSetDefaultAsync(u.name+".open_when_start", xstorage.ToUnit(true, xstorage.ValueTypeBool), v)
 	if err != nil {
 		tool.GLog.Error(u.name, fmt.Sprintf("Unit.Init() GetAndSetDefaultAsync error:%v", err))
 		return

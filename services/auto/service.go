@@ -1,6 +1,7 @@
 package auto
 
 import (
+	"errors"
 	"github.com/gin-gonic/gin"
 	"github.com/intmian/platform/backend"
 	"github.com/intmian/platform/services/auto/setting"
@@ -14,6 +15,9 @@ type Service struct {
 }
 
 func (s *Service) HandleRpc(msg share.Msg, valid backend.Valid) (interface{}, error) {
+	if !(valid.HasPermission("admin") || valid.HasPermission("auto")) {
+		return nil, errors.New("no permission")
+	}
 	switch msg.Cmd() {
 	default:
 	}

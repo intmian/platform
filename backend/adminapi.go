@@ -61,6 +61,19 @@ type Valid struct {
 	ValidTime  int64
 }
 
+func (v *Valid) HasPermission(name string) bool {
+	if v.ValidTime < time.Now().Unix() {
+		return false
+	}
+	if v.FromSys {
+		return true
+	}
+	if v.Permission[name] {
+		return true
+	}
+	return false
+}
+
 func getValid(c *gin.Context) Valid {
 	tokenS, err := c.Cookie("token")
 	if err != nil {

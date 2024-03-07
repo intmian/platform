@@ -44,15 +44,15 @@ func (p *PlatCore) Update() {
 
 func (p *PlatCore) StartService(flag coreShare.SvrFlag) error {
 	name := tool.GetName(flag)
-	v := xstorage.ToUnit[bool](true, xstorage.ValueTypeBool)
-	err := global.GStorage.Set(xstorage.Join(string(name), "open"), v)
-	if err != nil {
-		global.GLog.ErrorErr("PLAT", errors.WithMessagef(err, "StartService %d err", flag))
-	}
+	//v := xstorage.ToUnit[bool](true, xstorage.ValueTypeBool)
+	//err := global.GStorage.Set(xstorage.Join(string(name), "open"), v)
+	//if err != nil {
+	//	global.GLog.ErrorErr("PLAT", errors.WithMessagef(err, "StartService %d err", flag))
+	//}
 	if _, ok := p.service[flag]; !ok {
 		return errors.New("service not exist")
 	}
-	err = p.service[flag].Start(share.ServiceShare{
+	err := p.service[flag].Start(share.ServiceShare{
 		Log:     global.GLog,
 		Push:    global.GPush,
 		Storage: global.GStorage,
@@ -73,16 +73,16 @@ func (p *PlatCore) StartService(flag coreShare.SvrFlag) error {
 
 func (p *PlatCore) StopService(flag coreShare.SvrFlag) error {
 	name := tool.GetName(flag)
-	v := xstorage.ToUnit[bool](false, xstorage.ValueTypeBool)
-	err := global.GStorage.Set(xstorage.Join(string(name), "open"), v)
-	if err != nil {
-		global.GLog.ErrorErr("PLAT", errors.WithMessagef(err, "StopService %s err", name))
-	}
+	//v := xstorage.ToUnit[bool](false, xstorage.ValueTypeBool)
+	//err := global.GStorage.Set(xstorage.Join(string(name), "open"), v)
+	//if err != nil {
+	//	global.GLog.ErrorErr("PLAT", errors.WithMessagef(err, "StopService %s err", name))
+	//}
 	if _, ok := p.service[flag]; !ok {
 		return errors.New("service not exist")
 	}
 	svr := p.service[flag]
-	err = svr.Stop()
+	err := svr.Stop()
 	p.serviceMeta[flag].StartTime = time.Now()
 	p.serviceMeta[flag].Status = coreShare.StatusStop
 	if err != nil {
@@ -102,7 +102,7 @@ func (p *PlatCore) registerSvr() {
 	for k, _ := range p.service {
 		p.serviceMeta[k] = &coreShare.ServiceMeta{}
 		u := xstorage.ToUnit[bool](true, xstorage.ValueTypeBool)
-		openV, err := global.GStorage.GetAndSetDefault(xstorage.Join(string(coreShare.NameAuto), "open"), u)
+		openV, err := global.GStorage.GetAndSetDefault(xstorage.Join(string(coreShare.NameAuto), "open_when_start"), u)
 		if err != nil {
 			global.GLog.ErrorErr("PLAT", errors.WithMessagef(err, "registerSvr get %s open err", coreShare.NameAuto))
 			continue
@@ -144,7 +144,7 @@ func (p *PlatCore) GetStartTime() time.Time {
 }
 
 func (p *PlatCore) OnRecRpc(flag coreShare.SvrFlag, msg share.Msg, valid Valid) (interface{}, error) {
-	rpc, err := p.service[flag].HandleRpc(msg)
+	rpc, err := p.service[flag].HandleRpc(msg, valid)
 	if err != nil {
 		return nil, err
 	}
