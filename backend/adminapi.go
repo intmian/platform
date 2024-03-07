@@ -54,37 +54,17 @@ func logout(c *gin.Context) {
 	c.SetCookie("token", "", -1, "/", "", false, true)
 }
 
-type Valid struct {
-	FromSys    bool // 代表是由系统发起的请求，不需要验证
-	User       string
-	Permission map[string]bool
-	ValidTime  int64
-}
-
-func (v *Valid) HasPermission(name string) bool {
-	if v.ValidTime < time.Now().Unix() {
-		return false
-	}
-	if v.FromSys {
-		return true
-	}
-	if v.Permission[name] {
-		return true
-	}
-	return false
-}
-
-func getValid(c *gin.Context) Valid {
+func getValid(c *gin.Context) share.Valid {
 	tokenS, err := c.Cookie("token")
 	if err != nil {
-		return Valid{}
+		return share.Valid{}
 	}
 	var data token.Data
 	err = json.Unmarshal([]byte(tokenS), &data)
 	if err != nil {
-		return Valid{}
+		return share.Valid{}
 	}
-	var r Valid
+	var r share.Valid
 	r.User = data.User
 	r.Permission = make(map[string]bool)
 	for _, v := range data.Permission {
@@ -121,7 +101,7 @@ func check(c *gin.Context) {
 		return
 	}
 
-	var r Valid
+	var r share.Valid
 	r.User = data.User
 	r.Permission = make(map[string]bool)
 	for _, v := range data.Permission {

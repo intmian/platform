@@ -1,7 +1,7 @@
 package account
 
 import (
-	"github.com/intmian/platform/backend"
+	share2 "github.com/intmian/platform/backend/share"
 	"github.com/intmian/platform/services/share"
 )
 
@@ -19,12 +19,12 @@ func (s *Service) Stop() error {
 	panic("implement me")
 }
 
-func (s *Service) Handle(msg share.Msg, valid backend.Valid) error {
+func (s *Service) Handle(msg share.Msg, valid share2.Valid) error {
 	//TODO implement me
 	panic("implement me")
 }
 
-func (s *Service) HandleRpc(msg share.Msg, valid backend.Valid) (interface{}, error) {
+func (s *Service) HandleRpc(msg share.Msg, valid share2.Valid) (interface{}, error) {
 	//TODO implement me
 	panic("implement me")
 }

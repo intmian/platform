@@ -143,7 +143,7 @@ func (p *PlatCore) GetStartTime() time.Time {
 	return p.startTime
 }
 
-func (p *PlatCore) OnRecRpc(flag coreShare.SvrFlag, msg share.Msg, valid Valid) (interface{}, error) {
+func (p *PlatCore) OnRecRpc(flag coreShare.SvrFlag, msg share.Msg, valid coreShare.Valid) (interface{}, error) {
 	rpc, err := p.service[flag].HandleRpc(msg, valid)
 	if err != nil {
 		return nil, err

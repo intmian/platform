@@ -3,7 +3,7 @@ package auto
 import (
 	"errors"
 	"github.com/gin-gonic/gin"
-	"github.com/intmian/platform/backend"
+	share2 "github.com/intmian/platform/backend/share"
 	"github.com/intmian/platform/services/auto/setting"
 	"github.com/intmian/platform/services/auto/task"
 	"github.com/intmian/platform/services/auto/tool"
@@ -14,7 +14,7 @@ type Service struct {
 	share share.ServiceShare
 }
 
-func (s *Service) HandleRpc(msg share.Msg, valid backend.Valid) (interface{}, error) {
+func (s *Service) HandleRpc(msg share.Msg, valid share2.Valid) (interface{}, error) {
 	if !(valid.HasPermission("admin") || valid.HasPermission("auto")) {
 		return nil, errors.New("no permission")
 	}
@@ -24,7 +24,7 @@ func (s *Service) HandleRpc(msg share.Msg, valid backend.Valid) (interface{}, er
 	return nil, nil
 }
 
-func (s *Service) Handle(msg share.Msg, valid backend.Valid) error {
+func (s *Service) Handle(msg share.Msg, valid share2.Valid) error {
 	switch msg.Cmd() {
 	default:
 	}

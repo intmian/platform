@@ -56,3 +56,23 @@ type ServicesInfo struct {
 type Setting struct {
 	WebPort string
 }
+
+type Valid struct {
+	FromSys    bool // 代表是由系统发起的请求，不需要验证
+	User       string
+	Permission map[string]bool
+	ValidTime  int64
+}
+
+func (v *Valid) HasPermission(name string) bool {
+	if v.ValidTime < time.Now().Unix() {
+		return false
+	}
+	if v.FromSys {
+		return true
+	}
+	if v.Permission[name] {
+		return true
+	}
+	return false
+}

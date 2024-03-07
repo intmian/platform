@@ -7,7 +7,7 @@ import (
 	"github.com/intmian/mian_go_lib/xlog"
 	"github.com/intmian/mian_go_lib/xpush"
 	"github.com/intmian/mian_go_lib/xstorage"
-	"github.com/intmian/platform/backend"
+	"github.com/intmian/platform/backend/share"
 	"reflect"
 )
 
@@ -63,6 +63,6 @@ func (m *Msg) Data(bind interface{}) error {
 type IService interface {
 	Start(share ServiceShare) error
 	Stop() error
-	Handle(msg Msg, valid backend.Valid) error
-	HandleRpc(msg Msg, valid backend.Valid) (interface{}, error)
+	Handle(msg Msg, valid share.Valid) error
+	HandleRpc(msg Msg, valid share.Valid) (interface{}, error)
 }
