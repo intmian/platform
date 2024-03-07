@@ -14,11 +14,11 @@ import (
 // ServiceShare 服务共享的资源
 // 例如配置、日志、推送、存储等等
 type ServiceShare struct {
-	Log          *xlog.XLog                         // 共用的日志服务
-	Push         *xpush.XPush                       // 共用的推送服务
-	Storage      *xstorage.XStorage                 // 共用的存储服务，如果有自己私有的数据，在用户内部自己起一个
-	CallOther    func(msg Msg) error                // 向别的服务发送请求，可能没有返回值或者通过msg返回
-	CallOtherRpc func(msg Msg) (interface{}, error) // 向别的服务发送rpc请求
+	Log          *xlog.XLog                                           // 共用的日志服务
+	Push         *xpush.XPush                                         // 共用的推送服务
+	Storage      *xstorage.XStorage                                   // 共用的存储服务，如果有自己私有的数据，在用户内部自己起一个
+	CallOther    func(to share.SvrFlag, msg Msg) error                // 向别的服务发送请求，可能没有返回值或者通过msg返回
+	CallOtherRpc func(to share.SvrFlag, msg Msg) (interface{}, error) // 向别的服务发送rpc请求
 	Ctx          context.Context
 }
 

@@ -56,7 +56,13 @@ func (p *PlatCore) StartService(flag coreShare.SvrFlag) error {
 		Log:     global.GLog,
 		Push:    global.GPush,
 		Storage: global.GStorage,
-		Ctx:     context.WithoutCancel(p.ctx),
+		CallOther: func(to coreShare.SvrFlag, msg share.Msg) error {
+			return p.OnRec(to, msg, coreShare.Valid{FromSys: true})
+		},
+		CallOtherRpc: func(to coreShare.SvrFlag, msg share.Msg) (interface{}, error) {
+			return p.OnRecRpc(to, msg, coreShare.Valid{FromSys: true})
+		},
+		Ctx: context.WithoutCancel(p.ctx),
 	})
 	if err != nil {
 		global.GLog.ErrorErr("PLAT", errors.WithMessagef(err, "StartService %d err", flag))
@@ -149,4 +155,12 @@ func (p *PlatCore) OnRecRpc(flag coreShare.SvrFlag, msg share.Msg, valid coreSha
 		return nil, err
 	}
 	return rpc, nil
+}
+
+func (p *PlatCore) OnRec(flag coreShare.SvrFlag, msg share.Msg, valid coreShare.Valid) error {
+	err := p.service[flag].Handle(msg, valid)
+	if err != nil {
+		return err
+	}
+	return nil
 }
