@@ -242,7 +242,17 @@ func serviceHandle(c *gin.Context) {
 	flag := tool.GetFlag(share.SvrName(name))
 	msg := share2.MakeMsgJson(cmd, string(bodyStr))
 	valid := getValid(c)
+	t1 := time.Now()
+	finish := make(chan interface{})
+	go func() {
+		select {
+		case <-time.After(time.Second * 60):
+			global.GLog.Warning("PLAT", "Rpc timeout [%s] [%s] [%s]", name, cmd, bodyStr)
+		case <-finish:
+		}
+	}()
 	rec, err := GPlatCore.OnRecRpc(flag, msg, valid)
+	finish <- nil
 	if err != nil {
 		c.JSON(200, gin.H{
 			"code": 1,
