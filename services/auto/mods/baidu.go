@@ -42,14 +42,20 @@ func (b *Baidu) Do() {
 	var keywords []string
 	var newss [][]spider.BaiduNew
 	allRetry := 0
+	errs := make([]error, 0)
 	for _, v := range keys {
 		news, err, retry := spider.GetTodayBaiduNews(v)
 		allRetry += retry
 		keywords = append(keywords, v)
 		newss = append(newss, news)
 		if err != nil {
-			tool.GLog.WarningErr("BAIDU", errors.Join(errors.New("func Do() spider.GetTodayBaiduNews error"), err))
+			e := fmt.Errorf("百度新闻 %s 获取失败: %s", v, err.Error())
+			errs = append(errs, e)
 		}
+	}
+	if len(errs) > 0 {
+		tool.GLog.ErrorErr("BAIDU", errors.Join(errors.New("func Do() spider.GetTodayBaiduNews error"), errors.New(fmt.Sprint(errs))))
+		return
 	}
 	s := spider.ParseNewToMarkdown(keywords, newss)
 	if allRetry > 0 {
