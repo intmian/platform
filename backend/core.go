@@ -62,7 +62,8 @@ func (p *PlatCore) StartService(flag coreShare.SvrFlag) error {
 		CallOtherRpc: func(to coreShare.SvrFlag, msg share.Msg) (interface{}, error) {
 			return p.OnRecRpc(to, msg, coreShare.Valid{FromSys: true})
 		},
-		Ctx: context.WithoutCancel(p.ctx),
+		BaseSetting: global.GBaseSetting.Copy(),
+		Ctx:         context.WithoutCancel(p.ctx),
 	})
 	if err != nil {
 		global.GLog.ErrorErr("PLAT", errors.WithMessagef(err, "StartService %d err", flag))

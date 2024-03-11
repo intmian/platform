@@ -19,6 +19,7 @@ type ServiceShare struct {
 	Storage      *xstorage.XStorage                                   // 共用的存储服务，如果有自己私有的数据，在用户内部自己起一个
 	CallOther    func(to share.SvrFlag, msg Msg) error                // 向别的服务发送请求，可能没有返回值或者通过msg返回
 	CallOtherRpc func(to share.SvrFlag, msg Msg) (interface{}, error) // 向别的服务发送rpc请求
+	BaseSetting  share.BaseSetting
 	Ctx          context.Context
 }
 

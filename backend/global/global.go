@@ -30,7 +30,7 @@ func Init() error {
 		return errors.WithMessage(err, "Init baseSetting err")
 	}
 	s := GBaseSetting.Copy()
-	storage, err := xstorage.NewXStorage(xstorage.XstorageSetting{
+	storage, err := xstorage.NewXStorage(xstorage.XStorageSetting{
 		Property: misc.CreateProperty(xstorage.UseCache, xstorage.UseDisk, xstorage.MultiSafe, xstorage.FullInitLoad),
 		SaveType: xstorage.SqlLiteDB,
 		DBAddr:   s.DBAddr,

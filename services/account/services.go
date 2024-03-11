@@ -3,15 +3,19 @@ package account
 import (
 	share2 "github.com/intmian/platform/backend/share"
 	"github.com/intmian/platform/services/share"
+	"github.com/pkg/errors"
 )
 
 type Service struct {
 	share share.ServiceShare
+	acc   accountMgr
 }
 
 func (s *Service) Start(share share.ServiceShare) error {
-	//TODO implement me
-	panic("implement me")
+	err := s.acc.Init()
+	if err != nil {
+		return errors.WithMessage(err, "acc Init err")
+	}
 }
 
 func (s *Service) Stop() error {
