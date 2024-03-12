@@ -1,9 +1,9 @@
 package account
 
 import (
+	"errors"
 	share2 "github.com/intmian/platform/backend/share"
 	"github.com/intmian/platform/services/share"
-	"github.com/pkg/errors"
 )
 
 type Service struct {
@@ -12,15 +12,16 @@ type Service struct {
 }
 
 func (s *Service) Start(share share.ServiceShare) error {
-	err := s.acc.Init()
+	err := s.acc.Init(share.BaseSetting.AdminPwd)
 	if err != nil {
-		return errors.WithMessage(err, "acc Init err")
+		return errors.Join(err, ErrAccInitErr)
 	}
+	return nil
 }
 
 func (s *Service) Stop() error {
-	//TODO implement me
-	panic("implement me")
+	// 无状态的，不用什么操作
+	return nil
 }
 
 func (s *Service) Handle(msg share.Msg, valid share2.Valid) error {
@@ -29,6 +30,8 @@ func (s *Service) Handle(msg share.Msg, valid share2.Valid) error {
 }
 
 func (s *Service) HandleRpc(msg share.Msg, valid share2.Valid) (interface{}, error) {
-	//TODO implement me
-	panic("implement me")
+	switch msg.Cmd() {
+	case :
+
+	}
 }

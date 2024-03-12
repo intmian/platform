@@ -1,10 +1,10 @@
 package account
 
 import (
+	"errors"
 	"github.com/intmian/mian_go_lib/tool/cipher"
 	"github.com/intmian/mian_go_lib/tool/misc"
 	"github.com/intmian/mian_go_lib/xstorage"
-	"github.com/pkg/errors"
 	"regexp"
 )
 
@@ -14,8 +14,9 @@ accountMgr 账户管理
 密码以 sha256(salt1+密码+账户) 存储
 */
 type accountMgr struct {
-	accDb   xstorage.XStorage
-	initTag misc.InitTag
+	accDb       xstorage.XStorage
+	iniAdminPwd string
+	initTag     misc.InitTag
 }
 
 const salt = "秋天真猪23333"
@@ -24,15 +25,16 @@ func getToken(account string, password string) string {
 	return cipher.Sha2562String(salt + password + account)
 }
 
-func (a *accountMgr) Init() error {
+func (a *accountMgr) Init(iniAdminPwd string) error {
 	err := a.accDb.Init(xstorage.XStorageSetting{
 		Property: misc.CreateProperty(xstorage.UseCache, xstorage.MultiSafe, xstorage.UseDisk, xstorage.FullInitLoad),
 		SaveType: xstorage.SqlLiteDB,
 		DBAddr:   "test.db",
 	})
 	if err != nil {
-		return errors.WithMessage(err, "accDb Init err")
+		return errors.Join(err, ErrAccDbInitErr)
 	}
+	a.iniAdminPwd = iniAdminPwd
 	a.initTag.SetInitialized()
 	return nil
 }
@@ -46,42 +48,51 @@ func checkPwd(pwd string) bool {
 
 func (a *accountMgr) register(account string, password string) error {
 	if !a.initTag.IsInitialized() {
-		return errors.New("accountMgr not init")
+		return ErrAccountMgrNotInit
+	}
+	if !checkPwd(password) {
+		return ErrPasswordFormatError
 	}
 	token := getToken(account, password)
 	err := a.accDb.Set(account, xstorage.ToUnit[string](token, xstorage.ValueTypeString))
 	if err != nil {
-		return errors.WithMessage(err, "accDb Set err")
+		return errors.Join(err, ErrAccDbSetErr)
 	}
 	return nil
 }
 
 func (a *accountMgr) deregister(account string) error {
 	if !a.initTag.IsInitialized() {
-		return errors.New("accountMgr not init")
+		return ErrAccountMgrNotInit
 	}
 	// 先判断有没有
 	_, err := a.accDb.Get(account)
 	if err != nil {
-		return errors.WithMessage(err, "accDb Get err")
+		return errors.Join(err, ErrAccDbGetErr)
 	}
 	// 删除
 	err = a.accDb.Delete(account)
 	if err != nil {
-		return errors.WithMessage(err, "accDb Delete err")
+		return errors.Join(err, ErrAccDbDeleteErr)
 	}
 	return nil
 }
 
-func (a *accountMgr) checkToken(account string, password string) bool {
+func (a *accountMgr) checkToken(account string, token string) bool {
 	if !a.initTag.IsInitialized() {
 		return false
 	}
-	token, err := a.accDb.Get(account)
+	token2, err := a.accDb.Get(account)
 	if err != nil {
 		return false
 	}
-	if xstorage.ToBase[string](token) != getToken(account, password) {
+	if token2 == nil && account == "admin" {
+		if token == getToken(account, a.iniAdminPwd) {
+			return true
+		}
+		return false
+	}
+	if xstorage.ToBase[string](token2) != getToken(account, token) {
 		return false
 	}
 	return true
