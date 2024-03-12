@@ -29,6 +29,19 @@ type Msg struct {
 	dataStr string
 }
 
+type ServiceProp uint32
+
+const (
+	// SvrPropNull 服务的属性
+	SvrPropNull ServiceProp = 1 << iota
+	// SvrPropCore 核心服务
+	SvrPropCore
+	// SvrPropCoreOptional 可选的核心服务
+	SvrPropCoreOptional
+	// SvrPropMicro 微服务
+	SvrPropMicro
+)
+
 func MakeMsg(cmd string, data interface{}) Msg {
 	return Msg{
 		cmd:  cmd,
@@ -66,4 +79,5 @@ type IService interface {
 	Stop() error
 	Handle(msg Msg, valid share.Valid) error
 	HandleRpc(msg Msg, valid share.Valid) (interface{}, error)
+	GetProp() ServiceProp
 }

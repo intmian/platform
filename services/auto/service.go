@@ -3,6 +3,7 @@ package auto
 import (
 	"errors"
 	"github.com/gin-gonic/gin"
+	"github.com/intmian/mian_go_lib/tool/misc"
 	share2 "github.com/intmian/platform/backend/share"
 	"github.com/intmian/platform/services/auto/setting"
 	"github.com/intmian/platform/services/auto/task"
@@ -12,6 +13,10 @@ import (
 
 type Service struct {
 	share share.ServiceShare
+}
+
+func (s *Service) GetProp() share.ServiceProp {
+	return misc.CreateProperty(share.SvrPropMicro)
 }
 
 func (s *Service) HandleRpc(msg share.Msg, valid share2.Valid) (interface{}, error) {

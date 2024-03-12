@@ -51,6 +51,7 @@ type ServicesInfo struct {
 	Name      string
 	Status    string
 	StartTime string
+	Props     int
 }
 
 type Setting struct {

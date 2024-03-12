@@ -2,6 +2,7 @@ package account
 
 import (
 	"errors"
+	"github.com/intmian/mian_go_lib/tool/misc"
 	share2 "github.com/intmian/platform/backend/share"
 	"github.com/intmian/platform/services/share"
 )
@@ -9,6 +10,10 @@ import (
 type Service struct {
 	share share.ServiceShare
 	acc   accountMgr
+}
+
+func (s *Service) GetProp() share.ServiceProp {
+	return misc.CreateProperty(share.SvrPropCoreOptional)
 }
 
 func (s *Service) Start(share share.ServiceShare) error {
@@ -31,7 +36,7 @@ func (s *Service) Handle(msg share.Msg, valid share2.Valid) error {
 
 func (s *Service) HandleRpc(msg share.Msg, valid share2.Valid) (interface{}, error) {
 	switch msg.Cmd() {
-	case :
+	case de:
 
 	}
 }

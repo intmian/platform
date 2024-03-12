@@ -3,6 +3,7 @@ package backend
 import (
 	"context"
 	"fmt"
+	"github.com/intmian/mian_go_lib/tool/misc"
 	"github.com/intmian/mian_go_lib/xstorage"
 	"github.com/intmian/platform/backend/global"
 	coreShare "github.com/intmian/platform/backend/share"
@@ -89,6 +90,9 @@ func (p *PlatCore) StopService(flag coreShare.SvrFlag) error {
 		return errors.New("service not exist")
 	}
 	svr := p.service[flag]
+	if misc.HasProperty(svr.GetProp(), share.SvrPropCore) || misc.HasProperty(svr.GetProp(), share.SvrPropCoreOptional) {
+		return errors.New("can't stop core service")
+	}
 	err := svr.Stop()
 	p.serviceMeta[flag].StartTime = time.Now()
 	p.serviceMeta[flag].Status = coreShare.StatusStop
@@ -134,14 +138,18 @@ func (p *PlatCore) GetWebInfo() []coreShare.ServicesInfo {
 		Name:      "core",
 		Status:    tool.GetStatusStr(coreShare.StatusStart),
 		StartTime: p.startTime.Format("2006-01-02 15:04:05"),
+		Props:     int(misc.CreateProperty(share.SvrPropCore)),
 	})
 	for k, v := range p.serviceMeta {
-		ret = append(ret, coreShare.ServicesInfo{
-			Name:   string(tool.GetName(k)),
-			Status: tool.GetStatusStr(v.Status),
-			// 到秒数为止
-			StartTime: v.StartTime.Format("2006-01-02 15:04:05"),
-		})
+		service := p.service[k]
+		if service != nil {
+			ret = append(ret, coreShare.ServicesInfo{
+				Name:      string(tool.GetName(k)),
+				Status:    tool.GetStatusStr(v.Status),
+				StartTime: v.StartTime.Format("2006-01-02 15:04:05"),
+				Props:     int(service.GetProp()),
+			})
+		}
 	}
 	return ret
 }

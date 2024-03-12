@@ -1,11 +1,14 @@
 package account
 
 import (
+	"encoding/json"
 	"errors"
 	"github.com/intmian/mian_go_lib/tool/cipher"
 	"github.com/intmian/mian_go_lib/tool/misc"
 	"github.com/intmian/mian_go_lib/xstorage"
+	"github.com/intmian/platform/services/account/share"
 	"regexp"
+	"time"
 )
 
 /*
@@ -17,6 +20,13 @@ type accountMgr struct {
 	accDb       xstorage.XStorage
 	iniAdminPwd string
 	initTag     misc.InitTag
+}
+
+type accountDbData struct {
+	Token2permissions map[string][]share.Permission `json:"token2Permissions"`
+	Creator           string                        `json:"creator"`
+	CreateAt          time.Time                     `json:"createAt"`
+	ModifyAt          time.Time                     `json:"modifyAt"`
 }
 
 const salt = "秋天真猪23333"
@@ -46,17 +56,36 @@ func checkPwd(pwd string) bool {
 	return reg.MatchString(pwd)
 }
 
-func (a *accountMgr) register(account string, password string) error {
+func (a *accountMgr) register(account string, password string, permission share.Permission, creator string) error {
 	if !a.initTag.IsInitialized() {
 		return ErrAccountMgrNotInit
 	}
 	if !checkPwd(password) {
 		return ErrPasswordFormatError
 	}
+	sv, err := a.accDb.Get(account)
+	if err != nil {
+		return errors.Join(err, ErrAccDbGetErr)
+	}
+	var ad accountDbData
+	if sv != nil {
+		dbStr := xstorage.ToBase[string](sv)
+		err = json.Unmarshal([]byte(dbStr), &ad)
+	} else {
+		ad.CreateAt = time.Now()
+		ad.Creator = creator
+	}
+	ad.ModifyAt = time.Now()
 	token := getToken(account, password)
-	err := a.accDb.Set(account, xstorage.ToUnit[string](token, xstorage.ValueTypeString))
+	ad.Token2permissions[token] = append(ad.Token2permissions[token], permission)
+	dbStr, err := json.Marshal(ad)
+	if err != nil {
+		return errors.Join(err, ErrJsonMarshalErr)
+	}
+	err = a.accDb.Set(account, xstorage.ToUnit[string](string(dbStr), xstorage.ValueTypeString))
 	if err != nil {
 		return errors.Join(err, ErrAccDbSetErr)
+
 	}
 	return nil
 }

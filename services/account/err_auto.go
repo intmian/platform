@@ -11,6 +11,7 @@ const(
     ErrAccDbGetErr = ErrStr("accDb Get err")  // auto generated from .\accountMgr.go
     ErrAccDbDeleteErr = ErrStr("accDb Delete err")  // auto generated from .\accountMgr.go
     ErrAccInitErr = ErrStr("acc Init err")  // auto generated from .\services.go
+    ErrJsonMarshalErr = ErrStr("json marshal err")  // auto generated from .\accountMgr.go
 )
 
 func (e ErrStr) Error() string { return string(e) }
