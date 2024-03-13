@@ -119,7 +119,7 @@ func getNews(newsToken, base, token string, cheap bool) (string, error) {
 		"你具备强大的语言能力，能像文学专家那样写作，也能像专业记者那样编写新闻，请根据这些内容写一篇通信稿" +
 		"使用中文汇总以下新闻的内容为几段话，允许在其中加入文学修饰或者自己的评价。" +
 		"要求言语通顺、优美、专业，具备文学美感，不能丢失任何一个新闻热点，同时转折尽量自然，可以根据地区、主题进行合理安排，允许调换新闻顺序。" +
-		"要求总字数在250以内，分段需要使用两个换行符\n" + s)
+		"要求总字数在200以内，分段需要使用两个换行符\n" + s)
 	if err != nil {
 		return "", errors.WithMessage(err, "func getNews() o.Chat error")
 	}
@@ -131,7 +131,7 @@ func getNews(newsToken, base, token string, cheap bool) (string, error) {
 	//`
 	//		md += fmt.Sprintf(s, v.Title, v.Url, v.Description)
 	//	}
-	md += `> 以上是今日热点新闻。数据由GNews提供, 由OpenAI生成。`
+	md += `> 以上是今日热点新闻。原始数据由GNews提供, 基础行文由OpenAI生成。`
 	return md, nil
 }
 
