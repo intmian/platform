@@ -109,16 +109,16 @@ func getNews(newsToken, base, token string, cheap bool) (string, error) {
 		return "", errors.WithMessage(err, "func getNews() spider.QueryGNewsTop error")
 	}
 	s := ""
-	for _, v := range result.Articles {
-		s += "title" + v.Title + "\n"
+	for i, v := range result.Articles {
+		s += fmt.Sprintf("%d. [%s](%s)\n", i+1, v.Title, v.Url)
 		s += "Description" + v.Description + "\n"
 	}
-	o := ai.NewOpenAI(base, token, cheap, "你是一台由mian研发的新闻机器人，你具备强大的语言能力，能像文学专家那样写作，也能像专业记者那样编写新闻")
+	o := ai.NewOpenAI(base, token, cheap, "你是一台由mian研发的新闻机器人")
 	re, err := o.Chat("" +
-		"以下是一天内发生的热点新闻。" +
-		"你具备强大的语言能力，能像文学专家那样写作，也能像专业记者那样编写新闻，请根据这些内容写一篇通信稿" +
-		"使用中文汇总以下新闻的内容为几段话，允许在其中加入文学修饰或者自己的评价。" +
-		"要求言语通顺、优美、专业，具备文学美感，不能丢失任何一个新闻热点，同时转折尽量自然，可以根据地区、主题进行合理安排，允许调换新闻顺序。" +
+		"以下使用爬虫爬取的过去一天的热点新闻的数据，请根据这些内容做以下处理" +
+		"使用中文，允许在其中加入修饰或者自己的评价。" +
+		"不需要将专有名词、人名翻译为中文" +
+		"要求简洁切要的内容、平易友善的叙述与高度的可读性。文章里必须提到每一个新闻热点，同时转折尽量自然。" +
 		"要求总字数在200以内，分段需要使用两个换行符\n" + s)
 	if err != nil {
 		return "", errors.WithMessage(err, "func getNews() o.Chat error")
