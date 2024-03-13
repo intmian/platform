@@ -24,7 +24,7 @@ type ServiceShare struct {
 }
 
 type Msg struct {
-	cmd     string
+	cmd     Cmd
 	data    interface{}
 	dataStr string
 }
@@ -42,21 +42,21 @@ const (
 	SvrPropMicro
 )
 
-func MakeMsg(cmd string, data interface{}) Msg {
+func MakeMsg(cmd Cmd, data interface{}) Msg {
 	return Msg{
 		cmd:  cmd,
 		data: data,
 	}
 }
 
-func MakeMsgJson(cmd string, dataStr string) Msg {
+func MakeMsgJson(cmd Cmd, dataStr string) Msg {
 	return Msg{
 		cmd:     cmd,
 		dataStr: dataStr,
 	}
 }
 
-func (m *Msg) Cmd() string {
+func (m *Msg) Cmd() Cmd {
 	return m.cmd
 }
 
@@ -81,3 +81,5 @@ type IService interface {
 	HandleRpc(msg Msg, valid share.Valid) (interface{}, error)
 	GetProp() ServiceProp
 }
+
+type Cmd string

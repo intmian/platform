@@ -13,7 +13,7 @@ import (
 
 /*
 accountMgr 账户管理
-必须拥有admin权限才能分配账户
+仅进行数据管理，鉴权请去上层
 密码以 sha256(salt1+密码+账户) 存储
 */
 type accountMgr struct {
@@ -90,6 +90,37 @@ func (a *accountMgr) register(account string, password string, permission share.
 	return nil
 }
 
+func (a *accountMgr) changePermission(account string, token string, permission share.Permission) error {
+	if !a.initTag.IsInitialized() {
+		return ErrAccountMgrNotInit
+	}
+	sv, err := a.accDb.Get(account)
+	if err != nil {
+		return errors.Join(err, ErrAccDbGetErr)
+	}
+	if sv == nil {
+		return ErrAccountNotExist
+	}
+	var ad accountDbData
+	dbStr := xstorage.ToBase[string](sv)
+	err = json.Unmarshal([]byte(dbStr), &ad)
+	if err != nil {
+		return errors.Join(err)
+	}
+	ad.ModifyAt = time.Now()
+	ad.Token2permissions[token] = append(ad.Token2permissions[token], permission)
+	dbStrB, err := json.Marshal(ad)
+	if err != nil {
+		return errors.Join(err, ErrJsonMarshalErr)
+	}
+	dbStr = string(dbStrB)
+	err = a.accDb.Set(account, xstorage.ToUnit[string](string(dbStr), xstorage.ValueTypeString))
+	if err != nil {
+		return errors.Join(err, ErrAccDbSetErr)
+	}
+	return nil
+}
+
 func (a *accountMgr) deregister(account string) error {
 	if !a.initTag.IsInitialized() {
 		return ErrAccountMgrNotInit
@@ -107,22 +138,46 @@ func (a *accountMgr) deregister(account string) error {
 	return nil
 }
 
-func (a *accountMgr) checkToken(account string, token string) bool {
+func (a *accountMgr) getPermission(account string) (map[string][]share.Permission, error) {
 	if !a.initTag.IsInitialized() {
-		return false
+		return nil, ErrAccountMgrNotInit
 	}
-	token2, err := a.accDb.Get(account)
+	sv, err := a.accDb.Get(account)
 	if err != nil {
-		return false
+		return nil, errors.Join(err, ErrAccDbGetErr)
 	}
-	if token2 == nil && account == "admin" {
-		if token == getToken(account, a.iniAdminPwd) {
-			return true
-		}
-		return false
+	if sv == nil {
+		return nil, ErrAccountNotExist
 	}
-	if xstorage.ToBase[string](token2) != getToken(account, token) {
-		return false
+	var ad accountDbData
+	dbStr := xstorage.ToBase[string](sv)
+	err = json.Unmarshal([]byte(dbStr), &ad)
+	if err != nil {
+		return nil, errors.Join(err, ErrJsonUnmarshalFailed)
 	}
-	return true
+	return ad.Token2permissions, nil
+}
+
+func (a *accountMgr) checkPermission(account string, token string) ([]share.Permission, error) {
+	if !a.initTag.IsInitialized() {
+		return nil, ErrAccountMgrNotInit
+	}
+	sv, err := a.accDb.Get(account)
+	if err != nil {
+		return nil, errors.Join(err, ErrAccDbGetErr)
+	}
+	if sv == nil {
+		return nil, ErrAccountNotExist
+	}
+	var ad accountDbData
+	dbStr := xstorage.ToBase[string](sv)
+	err = json.Unmarshal([]byte(dbStr), &ad)
+	if err != nil {
+		return nil, errors.Join(err, ErrJsonUnmarshalFailed)
+	}
+	pers, ok := ad.Token2permissions[token]
+	if !ok {
+		return nil, ErrTokenNotExist
+	}
+	return pers, nil
 }

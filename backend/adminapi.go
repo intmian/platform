@@ -240,7 +240,7 @@ func serviceHandle(c *gin.Context) {
 		return
 	}
 	flag := tool.GetFlag(share.SvrName(name))
-	msg := share2.MakeMsgJson(cmd, string(bodyStr))
+	msg := share2.MakeMsgJson(share2.Cmd(cmd), string(bodyStr))
 	valid := getValid(c)
 	t1 := time.Now()
 	finish := make(chan interface{})
