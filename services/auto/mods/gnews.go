@@ -114,18 +114,27 @@ func getNews(newsToken, base, token string, cheap bool) (string, error) {
 		s += "Description" + v.Description + "\n"
 		s += "Url" + v.Url + "\n"
 	}
-	o := ai.NewOpenAI(base, token, cheap, ai.DefaultRenshe)
-	re, err := o.Chat("" +
-		"以下使用爬虫爬取的过去一天的热点新闻的数据，请根据这些内容做以下处理。\n" +
-		"整理为一篇总结文章\n" +
-		"使用中文，允许在其中加入修饰或者自己的评价\n" +
-		"不需要将专有名词、人名翻译为中文\n" +
-		"文章满足简洁切要的内容、平易友善的叙述与高度的可读性。文章里必须提到每一个新闻热点，同时转折尽量自然。\n" +
-		"以不同的地区和领域来区分各个段落\n" +
-		"每个新闻热点后需要用[序号](url)的形式标注引用\n" +
-		"要求总字数在150中文字符以内，分段需要使用两个换行符\n\n" + s)
-	if err != nil {
-		return "", errors.WithMessage(err, "func getNews() o.Chat error")
+	retry := 0
+	var re string
+	for retry < 3 {
+		o := ai.NewOpenAI(base, token, cheap, ai.DefaultRenshe)
+		re, err = o.Chat("" +
+			"以下使用爬虫爬取的过去一天的热点新闻的数据，请根据这些内容做以下处理。\n" +
+			"整理为一篇总结文章\n" +
+			"使用中文，允许在其中加入修饰或者自己的评价\n" +
+			"不需要将专有名词、人名翻译为中文\n" +
+			"文章满足简洁切要的内容、平易友善的叙述与高度的可读性。文章里必须提到每一个新闻热点，同时转折尽量自然。\n" +
+			"以不同的地区和领域来区分各个段落\n" +
+			"每个新闻热点后需要用[序号](url)的形式标注引用\n" +
+			"要求总字数在150中文字符以内，分段需要使用两个换行符\n\n" + s)
+		if err != nil {
+			return "", errors.WithMessage(err, "func getNews() o.Chat error")
+		}
+		if re != "" {
+			break
+		}
+		tool.GLog.Info("GNews", "open ai response is empty, retry %d", retry)
+		retry++
 	}
 	md := fmt.Sprintf("### %d月%d日每日热点\n", time.Now().Month(), time.Now().Day())
 	md += re + "\n"
