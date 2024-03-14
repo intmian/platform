@@ -112,6 +112,7 @@ func getNews(newsToken, base, token string, cheap bool) (string, error) {
 	for i, v := range result.Articles {
 		s += fmt.Sprintf("%d. [%s](%s)\n", i+1, v.Title, v.Url)
 		s += "Description" + v.Description + "\n"
+		s += "Url" + v.Url + "\n"
 	}
 	o := ai.NewOpenAI(base, token, cheap, ai.DefaultRenshe)
 	re, err := o.Chat("" +
@@ -121,6 +122,7 @@ func getNews(newsToken, base, token string, cheap bool) (string, error) {
 		"不需要将专有名词、人名翻译为中文\n" +
 		"文章满足简洁切要的内容、平易友善的叙述与高度的可读性。文章里必须提到每一个新闻热点，同时转折尽量自然。\n" +
 		"以不同的地区和领域来区分各个段落\n" +
+		"每个新闻热点后需要用[序号](url)的形式标注引用\n" +
 		"要求总字数在150中文字符以内，分段需要使用两个换行符\n\n" + s)
 	if err != nil {
 		return "", errors.WithMessage(err, "func getNews() o.Chat error")
