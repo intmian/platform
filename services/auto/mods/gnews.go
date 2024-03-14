@@ -110,9 +110,8 @@ func getNews(newsToken, base, token string, cheap bool) (string, error) {
 	}
 	s := ""
 	for i, v := range result.Articles {
-		s += fmt.Sprintf("%d. [%s](%s)\n", i+1, v.Title, v.Url)
+		s += fmt.Sprintf("%d. %s-%s:\n", i+1, v.Title, v.Url)
 		s += "Description" + v.Description + "\n"
-		s += "Url" + v.Url + "\n"
 	}
 	retry := 0
 	done := false
@@ -132,9 +131,9 @@ func getNews(newsToken, base, token string, cheap bool) (string, error) {
 			done = true
 			break
 		}
-		time.Sleep(time.Minute)
 		tool.GLog.Info("auto.GNews", "open ai response is empty, retry %d", retry+1)
 		retry++
+		time.Sleep(time.Minute)
 	}
 	if !done {
 		return "", errors.WithMessage(err, "func getNews() open ai response is empty after retry.")
