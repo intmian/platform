@@ -116,7 +116,7 @@ func getNews(newsToken, base, token string, cheap bool) (string, error) {
 	retry := 0
 	done := false
 	var re string
-	for retry < 3 {
+	for retry < 2 {
 		o := ai.NewOpenAI(base, token, cheap, ai.DefaultRenshe)
 		re, err = o.Chat("" +
 			"以下使用爬虫爬取的过去一天的热点新闻的数据，请根据这些内容做以下处理。\n" +
