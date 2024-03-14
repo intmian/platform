@@ -115,6 +115,7 @@ func getNews(newsToken, base, token string, cheap bool) (string, error) {
 		s += "Url" + v.Url + "\n"
 	}
 	retry := 0
+	done := false
 	var re string
 	for retry < 3 {
 		o := ai.NewOpenAI(base, token, cheap, ai.DefaultRenshe)
@@ -127,14 +128,16 @@ func getNews(newsToken, base, token string, cheap bool) (string, error) {
 			"以不同的地区和领域来区分各个段落\n" +
 			"每个新闻热点后需要用[序号](url)的形式标注引用\n" +
 			"要求总字数在150中文字符以内，分段需要使用两个换行符\n\n" + s)
-		if err != nil {
-			return "", errors.WithMessage(err, "func getNews() o.Chat error")
-		}
-		if re != "" {
+		if re != "" && err == nil {
+			done = true
 			break
 		}
-		tool.GLog.Info("GNews", "open ai response is empty, retry %d", retry)
+		time.Sleep(time.Minute)
+		tool.GLog.Info("GNews", "open ai response is empty, retry %d", retry+1)
 		retry++
+	}
+	if !done {
+		return "", errors.WithMessage(err, "func getNews() open ai response is empty after retry.")
 	}
 	md := fmt.Sprintf("### %d月%d日每日热点\n", time.Now().Month(), time.Now().Day())
 	md += re + "\n"
