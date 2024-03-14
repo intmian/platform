@@ -133,7 +133,7 @@ func getNews(newsToken, base, token string, cheap bool) (string, error) {
 			break
 		}
 		time.Sleep(time.Minute)
-		tool.GLog.Info("GNews", "open ai response is empty, retry %d", retry+1)
+		tool.GLog.Info("auto.GNews", "open ai response is empty, retry %d", retry+1)
 		retry++
 	}
 	if !done {
