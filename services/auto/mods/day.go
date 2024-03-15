@@ -225,6 +225,10 @@ func (d Day) Do() {
 	} else {
 		md.AddMd(baidu)
 	}
+	err := tool.GPush.Push("日报", md.ToStr(), true)
+	if err != nil {
+		tool.GLog.WarningErr("auto.Day", errors.Join(errors.New("func Do() Push error"), err))
+	}
 }
 
 func (d Day) GetName() string {
