@@ -204,8 +204,8 @@ func (d Day) Do() {
 
 	// 推送
 	md := misc.MarkdownTool{}
-	md.AddTitle(fmt.Sprintf("日安，以下是%s的播报", todayStr), 3)
-	md.AddTitle("天气", 4)
+	md.AddTitle(fmt.Sprintf("日安，以下是%s的播报", todayStr), 2)
+	md.AddTitle("天气", 3)
 	if !weatherDone {
 		md.AddContent("今日天气获取失败")
 	} else {
@@ -213,18 +213,23 @@ func (d Day) Do() {
 		md.AddList(weather.IndexMap["穿衣"].Status, 1)
 		md.AddList(weather.IndexMap["污染"].Status, 1)
 	}
-	md.AddTitle("热点新闻", 4)
+	md.AddTitle("热点新闻", 3)
 	if hot == "" {
 		md.AddContent("今日热点新闻获取失败")
 	} else {
 		md.AddMd(hot)
 	}
-	md.AddTitle("关注新闻", 4)
+	md.AddTitle("关注新闻", 3)
 	if baidu == "" {
 		md.AddContent("今日关注新闻获取失败")
 	} else {
 		md.AddMd(baidu)
 	}
+	timeStr := time.Now().Format("2006-01-02 15:04:05")
+	md2 := "> 原始数据由GNews、百度新闻、百度天气提供, 热点新闻基础行文由OpenAI生成。\n"
+	md2 += "> \n"
+	md2 += fmt.Sprintf("> 生成时间: %s。\n", timeStr)
+	md.AddMd(md2)
 	err := tool.GPush.Push("日报", md.ToStr(), true)
 	if err != nil {
 		tool.GLog.WarningErr("auto.Day", errors.Join(errors.New("func Do() Push error"), err))

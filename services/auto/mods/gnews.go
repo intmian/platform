@@ -145,10 +145,6 @@ func getNews(newsToken, base, token string, cheap bool) (string, error) {
 	//`
 	//		md += fmt.Sprintf(s, v.Title, v.Url, v.Description)
 	//	}
-	timeStr := time.Now().Format("2006-01-02 15:04:05")
-	md += "> 原始数据由GNews提供, 基础行文由OpenAI生成。\n"
-	md += "> \n"
-	md += fmt.Sprintf("> 生成时间: %s。\n", timeStr)
 	return md, nil
 }
 
