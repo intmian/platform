@@ -213,17 +213,17 @@ func (d Day) Do() {
 		md.AddList(weather.IndexMap["穿衣"].Status, 1)
 		md.AddList(weather.IndexMap["污染"].Status, 1)
 	}
-	md.AddTitle("热点新闻", 3)
-	if hot == "" {
-		md.AddContent("今日热点新闻获取失败")
-	} else {
-		md.AddMd(hot)
-	}
 	md.AddTitle("关注新闻", 3)
 	if baidu == "" {
 		md.AddContent("今日关注新闻获取失败")
 	} else {
 		md.AddMd(baidu)
+	}
+	md.AddTitle("热点新闻", 3)
+	if hot == "" {
+		md.AddContent("今日热点新闻获取失败")
+	} else {
+		md.AddMd(hot)
 	}
 	timeStr := time.Now().Format("2006-01-02 15:04:05")
 	md2 := "> 原始数据由GNews、百度新闻、百度天气提供, 热点新闻基础行文由OpenAI生成。\n"
