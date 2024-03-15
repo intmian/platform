@@ -138,8 +138,7 @@ func getNews(newsToken, base, token string, cheap bool) (string, error) {
 	if !done {
 		return "", errors.WithMessage(err, "func getNews() open ai response is empty after retry.")
 	}
-	md := fmt.Sprintf("### %d月%d日每日热点\n", time.Now().Month(), time.Now().Day())
-	md += re + "\n"
+	md := re + "\n"
 	//	for _, v := range result.Articles {
 	//		s := `> [%s](%s)
 	//> %s
