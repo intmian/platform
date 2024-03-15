@@ -228,7 +228,7 @@ func (d Day) Do() {
 }
 
 func (d Day) GetName() string {
-	return "Day"
+	return "auto.Day"
 }
 
 func (d Day) GetInitTimeStr() string {
