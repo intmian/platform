@@ -146,6 +146,7 @@ func (d Day) Do() {
 		}
 		hot = md
 	}()
+	var pro, city string
 	go func() {
 		defer wg.Done()
 		proV, err := setting.GSetting.Get("auto.weather.province")
@@ -153,13 +154,13 @@ func (d Day) Do() {
 			tool.GLog.WarningErr("WEATHER", errors.Join(errors.New("func Do() Get auto.weather.province error"), err))
 			return
 		}
-		pro := xstorage.ToBase[string](proV)
+		pro = xstorage.ToBase[string](proV)
 		cityV, err := setting.GSetting.Get("auto.weather.city")
 		if err != nil {
 			tool.GLog.WarningErr("WEATHER", errors.Join(errors.New("func Do() Get auto.weather.city error"), err))
 			return
 		}
-		city := xstorage.ToBase[string](cityV)
+		city = xstorage.ToBase[string](cityV)
 		s, err := spider.GetWeatherDataOri(pro, city)
 		if err != nil {
 			tool.GLog.WarningErr("WEATHER", errors.Join(errors.New("func Do() spider.GetWeatherDataOri error"), err))
@@ -175,7 +176,7 @@ func (d Day) Do() {
 	wg.Wait()
 
 	// 留档方便别的地方使用
-	todayStr := time.Now().Format("2006-01-02")
+	todayStr := time.Now().Format("01月02日")
 	if weatherDone {
 		strJ, err1 := json.Marshal(weather)
 		err2 := setting.GSetting.Set(xstorage.Join("auto", "weather", "today"), xstorage.ToUnit[string](string(strJ), xstorage.ValueTypeString))
@@ -204,12 +205,12 @@ func (d Day) Do() {
 
 	// 推送
 	md := misc.MarkdownTool{}
-	md.AddTitle(fmt.Sprintf("日安，以下是%s的播报", todayStr), 2)
+	md.AddTitle(fmt.Sprintf("日安，%s的播报", todayStr), 2)
 	md.AddTitle("天气", 3)
 	if !weatherDone {
 		md.AddContent("今日天气获取失败")
 	} else {
-		md.AddContent(fmt.Sprintf("%s %s %s", weather.Condition, weather.IndexMap["穿衣"].Why, weather.IndexMap["污染"].Why))
+		md.AddContent(fmt.Sprintf("%s %s %s %s", pro+city, weather.Condition, weather.IndexMap["穿衣"].Why, weather.IndexMap["污染"].Why))
 		md.AddList(weather.IndexMap["穿衣"].Status, 1)
 		md.AddList(weather.IndexMap["污染"].Status, 1)
 	}
@@ -226,9 +227,9 @@ func (d Day) Do() {
 		md.AddMd(hot)
 	}
 	timeStr := time.Now().Format("2006-01-02 15:04:05")
-	md2 := "> 原始数据由GNews、百度新闻、百度天气提供, 热点新闻基础行文由OpenAI生成。\n"
-	md2 += "> \n"
-	md2 += fmt.Sprintf("> 生成时间: %s。\n", timeStr)
+	//md2 := "> 原始数据由GNews、百度新闻、百度天气提供, 热点新闻基础行文由OpenAI生成。\n"
+	//md2 += "> \n"
+	md2 := fmt.Sprintf("> 生成时间: %s。\n", timeStr)
 	md.AddMd(md2)
 	err := tool.GPush.Push("日报", md.ToStr(), true)
 	if err != nil {
