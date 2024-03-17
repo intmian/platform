@@ -150,7 +150,7 @@ func getNews(newsToken, base, token string, cheap bool) (string, error) {
   <summary>原始链接</summary>
 `
 	for i, v := range result.Articles {
-		re = strings.Replace(re, fmt.Sprintf("#No.%d", i+1), fmt.Sprintf("[%d](%s)", i+1, v.Url), -1)
+		re = strings.Replace(re, fmt.Sprintf("[#No.%d]", i+1), fmt.Sprintf("[[%d](%s)]", i+1, v.Url), -1)
 		html += fmt.Sprintf("<a href=\"%s\">[%d]%s</a><br>", v.Url, i+1, v.Title)
 	}
 	html += "</details>"
