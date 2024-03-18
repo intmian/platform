@@ -247,6 +247,12 @@ function Body({dataLastGet}) {
                     }).join(",");
                 }
             }
+            if (valueStr.length > 30) {
+                valueStr = valueStr.substring(0, 10) + "...";
+            }
+            // 如果有换行符，就换成\n
+            valueStr = valueStr.replace(/\n/g, "\\n");
+
             data2.push({
                 key: key,
                 datakey: key,
