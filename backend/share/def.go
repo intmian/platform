@@ -59,20 +59,33 @@ type Setting struct {
 }
 
 type Valid struct {
-	FromSys    bool // 代表是由系统发起的请求，不需要验证
-	User       string
-	Permission map[string]bool
-	ValidTime  int64
+	FromSys       bool // 代表是由系统发起的请求，不需要验证
+	User          string
+	PermissionMap map[Permission]bool
+	ValidTime     int64
 }
 
-func (v *Valid) HasPermission(name string) bool {
-	if v.ValidTime < time.Now().Unix() {
-		return false
+type Permission string
+
+const (
+	PermissionAdmin Permission = "admin"
+)
+
+func (v *Valid) GetFrom() string {
+	if v.FromSys {
+		return "sys"
 	}
+	return v.User
+}
+
+func (v *Valid) HasPermission(name Permission) bool {
 	if v.FromSys {
 		return true
 	}
-	if v.Permission[name] {
+	if v.ValidTime < time.Now().Unix() {
+		return false
+	}
+	if v.PermissionMap[name] {
 		return true
 	}
 	return false

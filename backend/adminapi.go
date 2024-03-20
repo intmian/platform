@@ -66,12 +66,12 @@ func getValid(c *gin.Context) share.Valid {
 	}
 	var r share.Valid
 	r.User = data.User
-	r.Permission = make(map[string]bool)
+	r.PermissionMap = make(map[share.Permission]bool)
 	for _, v := range data.Permission {
 		if GWebMgr.CheckSignature(&data, v) {
-			r.Permission[v] = true
+			r.PermissionMap[share.Permission(v)] = true
 		} else {
-			r.Permission[v] = false
+			r.PermissionMap[share.Permission(v)] = false
 		}
 	}
 	r.ValidTime = data.ValidTime
@@ -103,12 +103,12 @@ func check(c *gin.Context) {
 
 	var r share.Valid
 	r.User = data.User
-	r.Permission = make(map[string]bool)
+	r.PermissionMap = make(map[share.Permission]bool)
 	for _, v := range data.Permission {
 		if GWebMgr.CheckSignature(&data, v) {
-			r.Permission[v] = true
+			r.PermissionMap[share.Permission(v)] = true
 		} else {
-			r.Permission[v] = false
+			r.PermissionMap[share.Permission(v)] = false
 		}
 	}
 	r.ValidTime = data.ValidTime
@@ -117,11 +117,11 @@ func check(c *gin.Context) {
 		"msg":  "ok",
 		"data": struct {
 			User       string
-			Permission map[string]bool
+			Permission map[share.Permission]bool
 			ValidTime  int64
 		}{
 			User:       r.User,
-			Permission: r.Permission,
+			Permission: r.PermissionMap,
 			ValidTime:  r.ValidTime,
 		},
 	})

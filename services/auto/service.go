@@ -29,11 +29,11 @@ func (s *Service) HandleRpc(msg share.Msg, valid share2.Valid) (interface{}, err
 	return nil, nil
 }
 
-func (s *Service) Handle(msg share.Msg, valid share2.Valid) error {
+func (s *Service) Handle(msg share.Msg, valid share2.Valid) {
 	switch msg.Cmd() {
 	default:
 	}
-	return nil
+	return
 }
 
 func (s *Service) Start(share share.ServiceShare) error {

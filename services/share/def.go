@@ -17,7 +17,7 @@ type ServiceShare struct {
 	Log          *xlog.XLog                                           // 共用的日志服务
 	Push         *xpush.XPush                                         // 共用的推送服务
 	Storage      *xstorage.XStorage                                   // 共用的存储服务，如果有自己私有的数据，在用户内部自己起一个
-	CallOther    func(to share.SvrFlag, msg Msg) error                // 向别的服务发送请求，可能没有返回值或者通过msg返回
+	CallOther    func(to share.SvrFlag, msg Msg)                      // 向别的服务发送请求，可能没有返回值或者通过msg返回，错误也自己处理吧
 	CallOtherRpc func(to share.SvrFlag, msg Msg) (interface{}, error) // 向别的服务发送rpc请求
 	BaseSetting  share.BaseSetting
 	Ctx          context.Context
@@ -77,7 +77,7 @@ func (m *Msg) Data(bind interface{}) error {
 type IService interface {
 	Start(share ServiceShare) error
 	Stop() error
-	Handle(msg Msg, valid share.Valid) error
+	Handle(msg Msg, valid share.Valid)
 	HandleRpc(msg Msg, valid share.Valid) (interface{}, error)
 	GetProp() ServiceProp
 }

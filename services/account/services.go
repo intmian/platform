@@ -3,7 +3,7 @@ package account
 import (
 	"errors"
 	"github.com/intmian/mian_go_lib/tool/misc"
-	share2 "github.com/intmian/platform/backend/share"
+	backendshare "github.com/intmian/platform/backend/share"
 	accShare "github.com/intmian/platform/services/account/share"
 	"github.com/intmian/platform/services/share"
 )
@@ -31,26 +31,44 @@ func (s *Service) Stop() error {
 	return nil
 }
 
-func (s *Service) Handle(msg share.Msg, valid share2.Valid) error {
+func (s *Service) Handle(msg share.Msg, valid backendshare.Valid) {
 	// NOTHING
-	return errors.New("nothing")
+	return
 }
 
-func (s *Service) HandleRpc(msg share.Msg, valid share2.Valid) (interface{}, error) {
-	type reqRet struct {
-		req interface{}
-		ret interface{}
-	}
-	cmdMap := map[share.Cmd]reqRet{}
-	cmdMap[accShare.CmdRegister] = reqRet{req: &accShare.RegisterReq{}, ret: &accShare.RegisterRet{}}
-	cmdMap[accShare.CmdDeregister] = reqRet{req: &accShare.DeregisterReq{}, ret: &accShare.DeregisterRet{}}
-	cmdMap[accShare.CmdCheckToken] = reqRet{req: &accShare.CheckTokenReq{}, ret: &accShare.CheckTokenRet{}}
+func (s *Service) HandleRpc(msg share.Msg, valid backendshare.Valid) (interface{}, error) {
 	switch msg.Cmd() {
 	case accShare.CmdRegister:
-		var req *accShare.RegisterReq
+		var req accShare.RegisterReq
 		err := msg.Data(&req)
 		if err != nil {
-			return nil, errors.Join(err, errors.New("json.Unmarshal failed"))
+			return nil, errors.Join(err, errors.New("CmdRegister data err"))
+		}
+		ret, err := s.OnRegister(valid, req)
+		if err != nil {
+			return nil, errors.Join(err, errors.New("CmdRegister handle err"))
+		}
+		return ret, err
+	default:
+		return nil, errors.New("unknown cmd")
+	}
+}
+
+func (s *Service) OnRegister(valid backendshare.Valid, req accShare.RegisterReq) (accShare.RegisterRet, error) {
+	var ret accShare.RegisterRet
+	if !valid.HasPermission(backendshare.PermissionAdmin) {
+		return ret, nil
+	}
+	var errs []error
+	for pwd, pers := range req.Pwd2permissions {
+		for _, per := range pers {
+			err := s.acc.register(req.Account, pwd, per, valid.GetFrom())
+			errs = append(errs, err)
+			if err == nil {
+				ret.Suc[pwd] = append(ret.Suc[pwd], per)
+			}
 		}
 	}
+	err := errors.Join(errs...)
+	return ret, err
 }
