@@ -83,3 +83,17 @@ type IService interface {
 }
 
 type Cmd string
+
+func HandleRpcTool[ReqT any, RetT any](name string, msg Msg, valid share.Valid, handle func(share.Valid, ReqT) (RetT, error)) (RetT, error) {
+	var req ReqT
+	var ret RetT
+	err := msg.Data(&req)
+	if err != nil {
+		return ret, errors.Join(err, errors.New(name+" data err"))
+	}
+	ret, err = handle(valid, req)
+	if err != nil {
+		return ret, errors.Join(err, errors.New(name+" handle err"))
+	}
+	return ret, nil
+}

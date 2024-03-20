@@ -6,7 +6,7 @@ import (
 	"github.com/intmian/mian_go_lib/tool/cipher"
 	"github.com/intmian/mian_go_lib/tool/misc"
 	"github.com/intmian/mian_go_lib/xstorage"
-	"github.com/intmian/platform/services/account/share"
+	share2 "github.com/intmian/platform/backend/share"
 	"regexp"
 	"time"
 )
@@ -23,10 +23,10 @@ type accountMgr struct {
 }
 
 type accountDbData struct {
-	Token2permissions map[string][]share.Permission `json:"token2Permissions"`
-	Creator           string                        `json:"creator"`
-	CreateAt          time.Time                     `json:"createAt"`
-	ModifyAt          time.Time                     `json:"modifyAt"`
+	Token2permissions map[string][]share2.Permission `json:"token2Permissions"`
+	Creator           string                         `json:"creator"`
+	CreateAt          time.Time                      `json:"createAt"`
+	ModifyAt          time.Time                      `json:"modifyAt"`
 }
 
 const salt = "秋天真猪23333"
@@ -56,7 +56,7 @@ func checkPwd(pwd string) bool {
 	return reg.MatchString(pwd)
 }
 
-func (a *accountMgr) register(account string, password string, permission share.Permission, creator string) error {
+func (a *accountMgr) register(account string, password string, permission share2.Permission, creator string) error {
 	if !a.initTag.IsInitialized() {
 		return ErrAccountMgrNotInit
 	}
@@ -90,7 +90,7 @@ func (a *accountMgr) register(account string, password string, permission share.
 	return nil
 }
 
-func (a *accountMgr) changePermission(account string, token string, permission share.Permission) error {
+func (a *accountMgr) changePermission(account string, token string, permission share2.Permission) error {
 	if !a.initTag.IsInitialized() {
 		return ErrAccountMgrNotInit
 	}
@@ -138,7 +138,7 @@ func (a *accountMgr) deregister(account string) error {
 	return nil
 }
 
-func (a *accountMgr) getPermission(account string) (map[string][]share.Permission, error) {
+func (a *accountMgr) getPermission(account string) (map[string][]share2.Permission, error) {
 	if !a.initTag.IsInitialized() {
 		return nil, ErrAccountMgrNotInit
 	}
@@ -158,7 +158,7 @@ func (a *accountMgr) getPermission(account string) (map[string][]share.Permissio
 	return ad.Token2permissions, nil
 }
 
-func (a *accountMgr) checkPermission(account string, token string) ([]share.Permission, error) {
+func (a *accountMgr) checkPermission(account string, token string) ([]share2.Permission, error) {
 	if !a.initTag.IsInitialized() {
 		return nil, ErrAccountMgrNotInit
 	}

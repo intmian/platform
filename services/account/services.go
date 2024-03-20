@@ -39,23 +39,17 @@ func (s *Service) Handle(msg share.Msg, valid backendshare.Valid) {
 func (s *Service) HandleRpc(msg share.Msg, valid backendshare.Valid) (interface{}, error) {
 	switch msg.Cmd() {
 	case accShare.CmdRegister:
-		var req accShare.RegisterReq
-		err := msg.Data(&req)
-		if err != nil {
-			return nil, errors.Join(err, errors.New("CmdRegister data err"))
-		}
-		ret, err := s.OnRegister(valid, req)
-		if err != nil {
-			return nil, errors.Join(err, errors.New("CmdRegister handle err"))
-		}
-		return ret, err
+		return share.HandleRpcTool("register", msg, valid, s.OnRegister)
+	case accShare.CmdDeregister:
+		return share.HandleRpcTool("deregister", msg, valid, s.OnDeregister)
+	case accShare.CmdCheckToken:
+		return share.HandleRpcTool("checkToken", msg, valid, s.OnCheckToken)
 	default:
 		return nil, errors.New("unknown cmd")
 	}
 }
 
-func (s *Service) OnRegister(valid backendshare.Valid, req accShare.RegisterReq) (accShare.RegisterRet, error) {
-	var ret accShare.RegisterRet
+func (s *Service) OnRegister(valid backendshare.Valid, req accShare.RegisterReq) (ret accShare.RegisterRet, err error) {
 	if !valid.HasPermission(backendshare.PermissionAdmin) {
 		return ret, nil
 	}
@@ -69,6 +63,17 @@ func (s *Service) OnRegister(valid backendshare.Valid, req accShare.RegisterReq)
 			}
 		}
 	}
-	err := errors.Join(errs...)
-	return ret, err
+	err = errors.Join(errs...)
+	return
+}
+
+func (s *Service) OnDeregister(valid backendshare.Valid, req accShare.DeregisterReq) (ret accShare.DeregisterRet, err error) {
+	if !valid.HasPermission(backendshare.PermissionAdmin) {
+		return ret, nil
+	}
+	err = s.acc.deregister(req.Account)
+	if err == nil {
+		ret.Suc = true
+	}
+	return
 }

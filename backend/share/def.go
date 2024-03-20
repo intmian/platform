@@ -58,18 +58,18 @@ type Setting struct {
 	WebPort string
 }
 
+type Permission string
+
+const (
+	PermissionAdmin Permission = "admin"
+)
+
 type Valid struct {
 	FromSys       bool // 代表是由系统发起的请求，不需要验证
 	User          string
 	PermissionMap map[Permission]bool
 	ValidTime     int64
 }
-
-type Permission string
-
-const (
-	PermissionAdmin Permission = "admin"
-)
 
 func (v *Valid) GetFrom() string {
 	if v.FromSys {
