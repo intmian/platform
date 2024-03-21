@@ -28,7 +28,7 @@ func login(c *gin.Context) {
 		return
 
 	}
-	ret, err := GPlatCore.OnRecRpc(share.FlagAccount, share2.MakeMsg(share3.CmdCheckToken, share3.CheckTokenReq{
+	ret, err := GPlatCore.SendAndRec(share.FlagAccount, share2.MakeMsg(share3.CmdCheckToken, share3.CheckTokenReq{
 		Account: body.Username,
 		Token:   body.Password,
 	}), share.MakeSysValid())

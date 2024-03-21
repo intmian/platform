@@ -168,6 +168,10 @@ func (p *PlatCore) OnRecRpc(flag coreShare.SvrFlag, msg share.Msg, valid coreSha
 	return rpc, nil
 }
 
+func (p *PlatCore) SendAndRec(flag coreShare.SvrFlag, msg share.Msg, valid coreShare.Valid) (interface{}, error) {
+	return p.OnRecRpc(flag, msg, valid)
+}
+
 func (p *PlatCore) OnRec(flag coreShare.SvrFlag, msg share.Msg, valid coreShare.Valid) {
 	go p.service[flag].Handle(msg, valid)
 }
