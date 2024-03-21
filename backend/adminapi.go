@@ -12,6 +12,7 @@ import (
 	"time"
 )
 
+// login 进行登录。需要去账号服务验证账号密码，然后在web mgr签名才行
 func login(c *gin.Context) {
 	// 从body中获得密码
 	body := struct {
@@ -27,13 +28,6 @@ func login(c *gin.Context) {
 		return
 
 	}
-	//if body.Username != "admin" || body.Password != global.GBaseSetting.Copy().AdminPwd {
-	//	c.JSON(200, gin.H{
-	//		"code": 1,
-	//		"msg":  "Password error",
-	//	})
-	//	return
-	//}
 	ret, err := GPlatCore.OnRecRpc(share.FlagAccount, share2.MakeMsg(share3.CmdCheckToken, share3.CheckTokenReq{
 		Account: body.Username,
 		Token:   body.Password,

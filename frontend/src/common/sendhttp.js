@@ -17,11 +17,7 @@ export function SendCheckLogin(callback) {
             }
             const result = await response.json();
             if (result.code === 0) {
-                if (result.data.ValidTime < new Date().getTime() / 1000) {
-                    callback("")
-                } else {
-                    callback(result.data.User)
-                }
+                callback(result.data)
             }
         } catch (error) {
             callback(null)

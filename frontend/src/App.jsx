@@ -1,5 +1,6 @@
 import Index from "./admin/index.jsx";
 import {createBrowserRouter, RouterProvider} from "react-router-dom";
+import {GlobalCtx} from "./common/globalCtx.jsx";
 
 
 const router = createBrowserRouter([
@@ -15,8 +16,8 @@ const router = createBrowserRouter([
 
 const App = () => {
 
-    return (
+    return <GlobalCtx>
         <RouterProvider router={router}/>
-    );
+    </GlobalCtx>;
 };
 export default App;

@@ -2,10 +2,16 @@ import {Empty, Layout} from "antd";
 import {Monitor} from "./Monitor.jsx";
 import {Log} from "./Log.jsx";
 import {Config} from "./Config.jsx";
+import {Loginctx} from "../common/loginctx.jsx";
+import {useContext} from "react";
 
 const {Content} = Layout;
 
 function IndexContent({contentType}) {
+    const LoginCtr = useContext(Loginctx);
+    if (!LoginCtr.loginInfo.isValid() || !LoginCtr.loginInfo.hasPermission('admin')) {
+        contentType = 'needLogin';
+    }
     if (contentType === 'needLogin') {
         return <Content
             style={{

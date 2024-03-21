@@ -1,10 +1,10 @@
 import IndexHeader from "./IndexHeader.jsx";
-import {Layout, message, notification, theme} from "antd";
+import {Layout, message, notification, Spin, theme} from "antd";
 import IndexSider from "./IndexSider.jsx";
 import IndexFooter from "./IndexFooter.jsx";
 import IndexContent from "./IndexContent.jsx";
-import {useEffect, useState} from "react";
-import {SendCheckLogin} from "../common/sendhttp.js";
+import {useContext, useState} from "react";
+import {Loginctx} from "../common/loginctx.jsx";
 
 
 const {Content} = Layout;
@@ -24,28 +24,23 @@ function Index() {
     const {
         token: {colorBgContainer, borderRadiusLG},
     } = theme.useToken();
-    const [usr, setUsr] = useState(null);
-    useEffect(() => {
-        SendCheckLogin((data) => {
-            if (data === null) {
-                message.error("api错误，请重试或联系开发者");
-            } else {
-                openNotificationWithIcon('success', '自动登录', `欢迎回来，${data}`)
-            }
-            setUsr(data);
-        })
-    }, []);
+
+    const loginCtr = useContext(Loginctx);
+    if (loginCtr.loginInfo === false) {
+        return <Spin size="large"/>;
+    } else {
+        openNotificationWithIcon('success', '自动登录', `欢迎回来，${loginCtr.loginInfo.usr}`)
+    }
 
     return <Layout>
         {contextHolder}
         <IndexHeader
-            user={usr}
             onLogOut={() => {
-                setUsr(null);
+                loginCtr.onLogout()
                 message.success("登出成功");
             }}
             onLoginSuc={(user) => {
-                setUsr(user.username);
+                loginCtr.onLogin(user);
                 message.success("登陆成功");
             }}
         />
@@ -70,19 +65,16 @@ function Index() {
                 }}
             >
                 <IndexSider
-                    disable={usr === null || usr === ""}
+                    disable={!loginCtr.loginInfo.isValid() || !loginCtr.loginInfo.hasPermission('admin')}
                     onChooseMenuItem={(item) => {
                         setContentType(item.key);
                     }}
                 />
                 {
                     // 未登录时显示登录提示
-                    usr === null || usr === "" ? <IndexContent
-                            contentType={'needLogin'}
-                        />
-                        : <IndexContent
-                            contentType={contentType}
-                        />
+                    <IndexContent
+                        contentType={contentType}
+                    />
                 }
             </Layout>
         </Content>

@@ -1,9 +1,10 @@
 import {Avatar, Button, Image, Layout, Menu, Popconfirm, Space} from "antd";
 import {getItem} from "../tool.js";
 import Login from "../common/login.jsx";
-import {useState} from "react";
+import {useContext, useState} from "react";
 import biglogo from "../assets/biglogo.png";
 import {UserOutlined} from "@ant-design/icons";
+import {Loginctx} from "../common/loginctx.jsx";
 
 const {Header} = Layout;
 
@@ -67,7 +68,8 @@ function UsrArea({user, onLoginSuc, onLogOut}) {
     return <NeedLoginButton onLoginSuc={onLoginSuc}/>;
 }
 
-function IndexHeader({user, onLoginSuc, onLogOut}) {
+function IndexHeader({onLoginSuc, onLogOut}) {
+    const loginCtr = useContext(Loginctx);
     return <Header
         style={{
             display: 'flex',
@@ -117,7 +119,7 @@ function IndexHeader({user, onLoginSuc, onLogOut}) {
         <Space>
             <Button type="link" href="https://www.intmian.com">我的博客</Button>
             <UsrArea
-                user={user}
+                user={loginCtr.loginInfo.usr}
                 onLoginSuc={onLoginSuc}
                 onLogOut={onLogOut}
             />

@@ -20,5 +20,7 @@ func InitRoot(r *gin.Engine) {
 	admin.POST("/storage/set", global.GStoWebPack.WebSet)
 	admin.POST("/storage/get_all", global.GStoWebPack.WebGetAll)
 	admin.POST("/log/get", getLastLog)
-	admin.POST("/service/:name/:cmd", serviceHandle)
+
+	// 服务的直通接口
+	r.POST("/service/:name/:cmd", serviceHandle)
 }
