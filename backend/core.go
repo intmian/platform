@@ -109,6 +109,7 @@ func (p *PlatCore) StopService(flag coreShare.SvrFlag) error {
 
 func (p *PlatCore) registerSvr() {
 	p.service[coreShare.FlagAuto] = &auto.Service{}
+	p.service[coreShare.FlagAccount] = &auto.Service{}
 	// 新增于此处
 	for k, _ := range p.service {
 		p.serviceMeta[k] = &coreShare.ServiceMeta{}

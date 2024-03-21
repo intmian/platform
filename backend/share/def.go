@@ -25,14 +25,16 @@ type (
 type SvrName string
 
 const (
-	NameAuto SvrName = "auto"
-	NameNote SvrName = "note"
+	NameAuto    SvrName = "auto"
+	NameNote    SvrName = "note"
+	NameAccount SvrName = "account"
 )
 
 const (
 	FlagNone SvrFlag = iota
 	FlagAuto
 	FlagNote
+	FlagAccount
 )
 
 type ServiceStatus int
@@ -89,4 +91,10 @@ func (v *Valid) HasPermission(name Permission) bool {
 		return true
 	}
 	return false
+}
+
+func MakeSysValid() Valid {
+	return Valid{
+		FromSys: true,
+	}
 }

@@ -14,6 +14,7 @@ func Init() {
 	gTool.name2flag = make(map[share.SvrName]share.SvrFlag)
 	gTool.flag2name[share.FlagAuto] = share.NameAuto
 	gTool.flag2name[share.FlagNote] = share.NameNote
+	gTool.flag2name[share.FlagAccount] = share.NameAccount
 	// 新增服务要在这里注册
 	for k, v := range gTool.flag2name {
 		gTool.name2flag[v] = k

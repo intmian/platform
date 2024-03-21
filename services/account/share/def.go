@@ -34,5 +34,5 @@ type CheckTokenReq struct {
 }
 
 type CheckTokenRet struct {
-	Suc bool
+	Pers []share2.Permission
 }

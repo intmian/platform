@@ -77,3 +77,11 @@ func (s *Service) OnDeregister(valid backendshare.Valid, req accShare.Deregister
 	}
 	return
 }
+
+func (s *Service) OnCheckToken(valid backendshare.Valid, req accShare.CheckTokenReq) (ret accShare.CheckTokenRet, err error) {
+	if !valid.HasPermission(backendshare.PermissionAdmin) {
+		return ret, nil
+	}
+	ret.Pers, err = s.acc.checkPermission(req.Account, req.Token)
+	return
+}

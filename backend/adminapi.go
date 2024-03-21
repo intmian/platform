@@ -7,6 +7,7 @@ import (
 	"github.com/intmian/platform/backend/global"
 	"github.com/intmian/platform/backend/share"
 	"github.com/intmian/platform/backend/tool"
+	share3 "github.com/intmian/platform/services/account/share"
 	share2 "github.com/intmian/platform/services/share"
 	"time"
 )
@@ -26,17 +27,33 @@ func login(c *gin.Context) {
 		return
 
 	}
-	if body.Username != "admin" || body.Password != global.GBaseSetting.Copy().AdminPwd {
+	//if body.Username != "admin" || body.Password != global.GBaseSetting.Copy().AdminPwd {
+	//	c.JSON(200, gin.H{
+	//		"code": 1,
+	//		"msg":  "Password error",
+	//	})
+	//	return
+	//}
+	ret, err := GPlatCore.OnRecRpc(share.FlagAccount, share2.MakeMsg(share3.CmdCheckToken, share3.CheckTokenReq{
+		Account: body.Username,
+		Token:   body.Password,
+	}), share.MakeSysValid())
+	retr := ret.(share3.CheckTokenRet)
+	if err != nil || retr.Pers == nil {
 		c.JSON(200, gin.H{
 			"code": 1,
 			"msg":  "Password error",
 		})
 		return
 	}
+	var permission []string
+	for _, v := range retr.Pers {
+		permission = append(permission, string(v))
+	}
 	// 生成token
 	data := token.Data{
 		User:       body.Username,
-		Permission: []string{"admin"},
+		Permission: permission,
 		ValidTime:  int64(time.Hour*24*7/time.Second) + time.Now().Unix(),
 	}
 	t := GWebMgr.Jwt.GenToken(body.Username, data.Permission, data.ValidTime)
