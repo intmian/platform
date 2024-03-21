@@ -39,7 +39,7 @@ func (a *accountMgr) Init(iniAdminPwd string) error {
 	err := a.accDb.Init(xstorage.XStorageSetting{
 		Property: misc.CreateProperty(xstorage.UseCache, xstorage.MultiSafe, xstorage.UseDisk, xstorage.FullInitLoad),
 		SaveType: xstorage.SqlLiteDB,
-		DBAddr:   "test.db",
+		DBAddr:   "account.db",
 	})
 	if err != nil {
 		return errors.Join(err, ErrAccDbInitErr)
@@ -167,6 +167,14 @@ func (a *accountMgr) checkPermission(account string, token string) ([]share2.Per
 		return nil, errors.Join(err, ErrAccDbGetErr)
 	}
 	if sv == nil {
+		if account == "admin" {
+			// 没有账号去读初始密码
+			if getToken(account, token) == getToken(account, a.iniAdminPwd) {
+				return []share2.Permission{share2.PermissionAdmin}, nil
+			} else {
+				return nil, ErrTokenNotExist
+			}
+		}
 		return nil, ErrAccountNotExist
 	}
 	var ad accountDbData

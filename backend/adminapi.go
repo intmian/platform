@@ -57,7 +57,7 @@ func login(c *gin.Context) {
 	c.SetCookie("token", string(tokenS), 60*60*24*7, "/", "", false, true)
 	c.JSON(200, gin.H{
 		"code":     0,
-		"username": body.Username,
+		"username": data,
 	})
 }
 

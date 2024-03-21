@@ -8,6 +8,7 @@ import (
 	"github.com/intmian/platform/backend/global"
 	coreShare "github.com/intmian/platform/backend/share"
 	"github.com/intmian/platform/backend/tool"
+	"github.com/intmian/platform/services/account"
 	"github.com/intmian/platform/services/auto"
 	"github.com/intmian/platform/services/share"
 	"github.com/pkg/errors"
@@ -109,7 +110,7 @@ func (p *PlatCore) StopService(flag coreShare.SvrFlag) error {
 
 func (p *PlatCore) registerSvr() {
 	p.service[coreShare.FlagAuto] = &auto.Service{}
-	p.service[coreShare.FlagAccount] = &auto.Service{}
+	p.service[coreShare.FlagAccount] = &account.Service{}
 	// 新增于此处
 	for k, _ := range p.service {
 		p.serviceMeta[k] = &coreShare.ServiceMeta{}
