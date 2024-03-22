@@ -40,7 +40,7 @@ export default function Login({onLoginSuc, onCancel}) {
                         setLoading(false);
                         if (result !== '' && result.code === 0) {
                             setShowModal(false);
-                            onLoginSuc(result);
+                            onLoginSuc(result.data);
                         } else {
                             message.error('用户名或密码错误');
                         }

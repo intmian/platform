@@ -18,6 +18,8 @@ export function SendCheckLogin(callback) {
             const result = await response.json();
             if (result.code === 0) {
                 callback(result.data)
+            } else {
+                callback(null)
             }
         } catch (error) {
             callback(null)

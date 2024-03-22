@@ -251,7 +251,9 @@ function Body({dataLastGet}) {
                 valueStr = valueStr.substring(0, 10) + "...";
             }
             // 如果有换行符，就换成\n
-            valueStr = valueStr.replace(/\n/g, "\\n");
+            if (typeof valueStr === "string") {
+                valueStr = valueStr.replace(/\n/g, "\\n");
+            }
 
             data2.push({
                 key: key,

@@ -35,10 +35,12 @@ function Index() {
                 height: '100vh',
             }}
         >
-            <Spin size="large" tip={"正在自动登录..."}/>
+            <Spin size="large"/>
         </Flex>
     } else {
-        openNotificationWithIcon('success', '自动登录', `欢迎回来，${loginCtr.loginInfo.usr}`)
+        if (loginCtr.loginInfo.isValid() && loginCtr.loginInfo.autoLogin) {
+            openNotificationWithIcon('success', '自动登录', `欢迎回来，${loginCtr.loginInfo.usr}`)
+        }
     }
 
     return <Layout>

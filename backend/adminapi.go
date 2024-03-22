@@ -55,9 +55,21 @@ func login(c *gin.Context) {
 	// 保存token
 	tokenS, _ := json.Marshal(data)
 	c.SetCookie("token", string(tokenS), 60*60*24*7, "/", "", false, true)
+	permissionMap := make(map[share.Permission]bool)
+	for _, v := range permission {
+		permissionMap[share.Permission(v)] = true
+	}
 	c.JSON(200, gin.H{
-		"code":     0,
-		"username": data,
+		"code": 0,
+		"data": struct {
+			User       string
+			Permission map[share.Permission]bool
+			ValidTime  int64
+		}{
+			User:       data.User,
+			Permission: permissionMap,
+			ValidTime:  data.ValidTime,
+		},
 	})
 }
 
