@@ -15,7 +15,6 @@ const router = createBrowserRouter([
 ])
 
 const App = () => {
-
     return <GlobalCtx>
         <RouterProvider router={router}/>
     </GlobalCtx>;

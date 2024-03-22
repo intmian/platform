@@ -29,18 +29,9 @@ export const Loginctx = createContext({
     },
 });
 
-export function LoginProvider(children) {
+export function LoginProvider({children}) {
     // 每隔一小时检查一次是否过期
-    const [loginInfo, setLoginInfo] = UseLogin();
-    return (
-        <Loginctx.Provider value={{loginInfo, setLoginInfo}}>
-            {children}
-        </Loginctx.Provider>
-    );
-}
-
-export function UseLogin() {
-    const [currentUser, setCurrentUser] = useState(new LoginInfo());
+    const loginCtr = UseLogin();
     useEffect(() => {
         const interval = setInterval(() => {
             SendCheckLogin((data) => {
@@ -52,15 +43,30 @@ export function UseLogin() {
                 newDate.permissions = data.PermissionMap;
                 newDate.lastValid = data.ValidTime;
                 newDate.init = true;
-                setCurrentUser(newDate);
+                loginCtr.onLogin(newDate);
             })
         }, 1000);
         return () => clearInterval(interval);
     }, []);
+    return (
+        <Loginctx.Provider value={loginCtr}>
+            {children}
+        </Loginctx.Provider>
+    );
+}
+
+// 用来触发账号变更，不直接使用这个，因为这个会导致所有使用这个的组件都刷新
+export function UseLogin() {
+    const [currentUser, setCurrentUser] = useState(new LoginInfo());
     return {
         loginInfo: currentUser,
-        setLoginInfo: (newData) => setCurrentUser(newData),
-        logout: () => {
+        onLogin: (newData) => {
+            currentUser.usr = newData.User;
+            currentUser.permissions = newData.PermissionMap;
+            currentUser.lastValid = newData.ValidTime;
+            setCurrentUser(currentUser)
+        },
+        onLogout: () => {
             currentUser.usr = null;
             currentUser.permissions = [];
             currentUser.lastValid = null;
