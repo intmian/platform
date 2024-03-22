@@ -55,19 +55,15 @@ func login(c *gin.Context) {
 	// 保存token
 	tokenS, _ := json.Marshal(data)
 	c.SetCookie("token", string(tokenS), 60*60*24*7, "/", "", false, true)
-	permissionMap := make(map[share.Permission]bool)
-	for _, v := range permission {
-		permissionMap[share.Permission(v)] = true
-	}
 	c.JSON(200, gin.H{
 		"code": 0,
 		"data": struct {
 			User       string
-			Permission map[share.Permission]bool
+			Permission []share.Permission
 			ValidTime  int64
 		}{
 			User:       data.User,
-			Permission: permissionMap,
+			Permission: retr.Pers,
 			ValidTime:  data.ValidTime,
 		},
 	})
@@ -89,12 +85,9 @@ func getValid(c *gin.Context) share.Valid {
 	}
 	var r share.Valid
 	r.User = data.User
-	r.PermissionMap = make(map[share.Permission]bool)
 	for _, v := range data.Permission {
 		if GWebMgr.CheckSignature(&data, v) {
-			r.PermissionMap[share.Permission(v)] = true
-		} else {
-			r.PermissionMap[share.Permission(v)] = false
+			r.Permissions = append(r.Permissions, share.Permission(v))
 		}
 	}
 	r.ValidTime = data.ValidTime
@@ -126,12 +119,9 @@ func check(c *gin.Context) {
 
 	var r share.Valid
 	r.User = data.User
-	r.PermissionMap = make(map[share.Permission]bool)
 	for _, v := range data.Permission {
 		if GWebMgr.CheckSignature(&data, v) {
-			r.PermissionMap[share.Permission(v)] = true
-		} else {
-			r.PermissionMap[share.Permission(v)] = false
+			r.Permissions = append(r.Permissions, share.Permission(v))
 		}
 	}
 	r.ValidTime = data.ValidTime
@@ -140,11 +130,11 @@ func check(c *gin.Context) {
 		"msg":  "ok",
 		"data": struct {
 			User       string
-			Permission map[share.Permission]bool
+			Permission []share.Permission
 			ValidTime  int64
 		}{
 			User:       r.User,
-			Permission: r.PermissionMap,
+			Permission: r.Permissions,
 			ValidTime:  r.ValidTime,
 		},
 	})

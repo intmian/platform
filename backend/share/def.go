@@ -67,10 +67,10 @@ const (
 )
 
 type Valid struct {
-	FromSys       bool // 代表是由系统发起的请求，不需要验证
-	User          string
-	PermissionMap map[Permission]bool
-	ValidTime     int64
+	FromSys     bool // 代表是由系统发起的请求，不需要验证
+	User        string
+	Permissions []Permission
+	ValidTime   int64
 }
 
 func (v *Valid) GetFrom() string {
@@ -87,8 +87,11 @@ func (v *Valid) HasPermission(name Permission) bool {
 	if v.ValidTime < time.Now().Unix() {
 		return false
 	}
-	if v.PermissionMap[name] {
-		return true
+	for _, p := range v.Permissions {
+		if p == name {
+			return true
+		}
+
 	}
 	return false
 }

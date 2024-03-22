@@ -3,7 +3,7 @@ import {SendCheckLogin} from "./sendhttp.js";
 
 export class LoginInfo {
     usr = "";
-    permissions = {};
+    permissions = [];
     lastValid = null;
     init = false;
     autoLogin = false;
@@ -12,10 +12,7 @@ export class LoginInfo {
         if (!this.isValid()) {
             return false;
         }
-        if (permission in this.permissions) {
-            return this.permissions[permission];
-        }
-        return false;
+        return this.permissions.includes(permission);
     }
 
     isValid() {
