@@ -4,7 +4,7 @@ import Login from "../common/login.jsx";
 import {useContext, useState} from "react";
 import biglogo from "../assets/biglogo.png";
 import {UserOutlined} from "@ant-design/icons";
-import {Loginctx} from "../common/loginctx.jsx";
+import {LoginCtx} from "../common/loginCtx.jsx";
 
 const {Header} = Layout;
 
@@ -69,7 +69,7 @@ function UsrArea({user, onLoginSuc, onLogOut}) {
 }
 
 function IndexHeader({onLoginSuc, onLogOut}) {
-    const loginCtr = useContext(Loginctx);
+    const loginCtr = useContext(LoginCtx);
     return <Header
         style={{
             display: 'flex',

@@ -1,10 +1,10 @@
 import IndexHeader from "./IndexHeader.jsx";
-import {Layout, message, notification, Spin, theme} from "antd";
+import {Flex, Layout, message, notification, Spin, theme} from "antd";
 import IndexSider from "./IndexSider.jsx";
 import IndexFooter from "./IndexFooter.jsx";
 import IndexContent from "./IndexContent.jsx";
 import {useContext, useState} from "react";
-import {Loginctx} from "../common/loginctx.jsx";
+import {LoginCtx} from "../common/loginCtx.jsx";
 
 
 const {Content} = Layout;
@@ -25,9 +25,18 @@ function Index() {
         token: {colorBgContainer, borderRadiusLG},
     } = theme.useToken();
 
-    const loginCtr = useContext(Loginctx);
-    if (loginCtr.loginInfo === false) {
-        return <Spin size="large"/>;
+    const loginCtr = useContext(LoginCtx);
+    if (!loginCtr.loginInfo.init) {
+        // 居中显示，提示正在自动登录
+        return <Flex
+            style={{
+                justifyContent: 'center',
+                alignItems: 'center',
+                height: '100vh',
+            }}
+        >
+            <Spin size="large" tip={"正在自动登录..."}/>
+        </Flex>
     } else {
         openNotificationWithIcon('success', '自动登录', `欢迎回来，${loginCtr.loginInfo.usr}`)
     }
