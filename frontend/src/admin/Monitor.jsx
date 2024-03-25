@@ -63,8 +63,8 @@ function ServiceInfo({name, startTime, initStatus, type}) {
     let tag = null;
     if (type === '核心') {
         tag = <Tag color="red">核心</Tag>;
-    } else if (type === '核心模组') {
-        tag = <Tag color="red">核心模组</Tag>;
+    } else if (type === '模组') {
+        tag = <Tag color="red">模组</Tag>;
     } else {
         tag = <Tag color="blue">微服务</Tag>;
     }
@@ -146,7 +146,7 @@ function ServicesData({services}) {
             if ((prop & 2) !== 0) {
                 type = '核心';
             } else if ((prop & 4) !== 0) {
-                type = '核心模组';
+                type = '模组';
             } else if ((prop & 8) !== 0) {
                 type = '微服务';
             } else {
@@ -166,9 +166,9 @@ function ServicesData({services}) {
                 return -1;
             } else if (b.props.type === '核心') {
                 return 1;
-            } else if (a.props.type === '核心模组') {
+            } else if (a.props.type === '模组') {
                 return -1;
-            } else if (b.props.type === '核心模组') {
+            } else if (b.props.type === '模组') {
                 return 1;
             } else if (a.props.type === '微服务') {
                 return -1;
