@@ -5,7 +5,7 @@ import {SendGetAdminServices, SendStartStopService} from "../common/sendhttp.js"
 
 const {Meta} = Card;
 
-function ServiceInfo({name, startTime, initStatus}) {
+function ServiceInfo({name, startTime, initStatus, type}) {
     // TODO: 做下关闭后询问是否立刻开启或者同时关闭自启动配置
     const [startTime2, setStartTime2] = useState(startTime);
     const [status, setStatus] = useState(initStatus);
@@ -50,7 +50,7 @@ function ServiceInfo({name, startTime, initStatus}) {
     }
     let buttonStr = open ? '关闭' : '开启';
     let disabled = false;
-    if (name === 'core' || name === 'account') {
+    if (type === '核心' || type === '核心模组') {
         disabled = true;
     }
     let button = <Button
@@ -61,9 +61,9 @@ function ServiceInfo({name, startTime, initStatus}) {
         {buttonStr}
     </Button>;
     let tag = null;
-    if (name === 'core') {
+    if (type === '核心') {
         tag = <Tag color="red">核心</Tag>;
-    } else if (name === 'account') {
+    } else if (type === '核心模组') {
         tag = <Tag color="red">核心模组</Tag>;
     } else {
         tag = <Tag color="blue">微服务</Tag>;
@@ -141,13 +141,43 @@ function ServicesData({services}) {
             let startTime = services[i].StartTime;
             // 计算已经过去的时间
             let status = services[i].Status;
+            let prop = services[i].Props;
+            let type = '';
+            if ((prop & 2) !== 0) {
+                type = '核心';
+            } else if ((prop & 4) !== 0) {
+                type = '核心模组';
+            } else if ((prop & 8) !== 0) {
+                type = '微服务';
+            } else {
+                type = '未知';
+            }
             servicesList.push(<ServiceInfo
                 key={name}
                 name={name}
                 startTime={startTime}
                 initStatus={status}
+                type={type}
             />);
         }
+        // 排序，核心第一，核心模组第二，微服务第三，空的最后
+        servicesList.sort((a, b) => {
+            if (a.props.type === '核心') {
+                return -1;
+            } else if (b.props.type === '核心') {
+                return 1;
+            } else if (a.props.type === '核心模组') {
+                return -1;
+            } else if (b.props.type === '核心模组') {
+                return 1;
+            } else if (a.props.type === '微服务') {
+                return -1;
+            } else if (b.props.type === '微服务') {
+                return 1;
+            } else {
+                return 0;
+            }
+        });
     } else {
         return <List
             size="big"

@@ -3,7 +3,7 @@ import {Flex, Layout, message, notification, Spin, theme} from "antd";
 import IndexSider from "./IndexSider.jsx";
 import IndexFooter from "./IndexFooter.jsx";
 import IndexContent from "./IndexContent.jsx";
-import {useContext, useState} from "react";
+import {useContext, useRef, useState} from "react";
 import {LoginCtx} from "../common/loginCtx.jsx";
 
 
@@ -26,6 +26,7 @@ function Index() {
     } = theme.useToken();
 
     const loginCtr = useContext(LoginCtx);
+    const loginShow = useRef(false);
     if (!loginCtr.loginInfo.init) {
         // 居中显示，提示正在自动登录
         return <Flex
@@ -38,8 +39,9 @@ function Index() {
             <Spin size="large"/>
         </Flex>
     } else {
-        if (loginCtr.loginInfo.isValid() && loginCtr.loginInfo.autoLogin) {
+        if (loginCtr.loginInfo.isValid() && loginCtr.loginInfo.autoLogin && !loginShow.current) {
             openNotificationWithIcon('success', '自动登录', `欢迎回来，${loginCtr.loginInfo.usr}`)
+            loginShow.current = true;
         }
     }
 
