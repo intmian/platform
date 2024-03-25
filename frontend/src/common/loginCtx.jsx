@@ -74,7 +74,7 @@ export function LoginProvider({children}) {
 
         const interval = setInterval(() => {
             SendCheckLogin((result) => {
-                if (result !== null || result.usr !== loginCtr.loginInfo.usr) {
+                if (result === null || result.usr !== loginCtr.loginInfo.usr) {
                     loginCtr.onLogout();
                 }
             });
