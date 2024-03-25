@@ -6,6 +6,7 @@ import {SendGetAdminServices, SendStartStopService} from "../common/sendhttp.js"
 const {Meta} = Card;
 
 function ServiceInfo({name, startTime, initStatus}) {
+    // TODO: 做下关闭后询问是否立刻开启或者同时关闭自启动配置
     const [startTime2, setStartTime2] = useState(startTime);
     const [status, setStatus] = useState(initStatus);
     const [buttonLoading, setButtonLoading] = useState(false);
@@ -41,12 +42,15 @@ function ServiceInfo({name, startTime, initStatus}) {
         case 'core' :
             nameShow = '系统';
             break;
+        case 'account' :
+            nameShow = '账号服务';
+            break;
         default:
 
     }
     let buttonStr = open ? '关闭' : '开启';
     let disabled = false;
-    if (name === 'core') {
+    if (name === 'core' || name === 'account') {
         disabled = true;
     }
     let button = <Button
@@ -59,6 +63,8 @@ function ServiceInfo({name, startTime, initStatus}) {
     let tag = null;
     if (name === 'core') {
         tag = <Tag color="red">核心</Tag>;
+    } else if (name === 'account') {
+        tag = <Tag color="red">核心模组</Tag>;
     } else {
         tag = <Tag color="blue">微服务</Tag>;
     }

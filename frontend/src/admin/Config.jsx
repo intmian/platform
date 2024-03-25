@@ -5,6 +5,8 @@ import {IsSliceType, ValueType, ValueTypeStr} from "../common/def.js";
 import {FormItemArray} from "../common/misc.jsx";
 import {DeleteOutlined, FormOutlined} from "@ant-design/icons";
 
+// TODO: 做一下个别配置项的删除和修改，不同类型不同的展示组件
+
 export function ChangeModal({showini, onFinish, isAdd, originData}) {
     const hasOriginData = (originData !== null && originData !== undefined);
     const [typeNow, setTypeNow] = useState(hasOriginData ? originData.Type : ValueType.String);
