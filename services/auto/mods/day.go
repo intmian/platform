@@ -39,51 +39,11 @@ func (d Day) Init() {
 
 func (d Day) Do() {
 	wg := sync.WaitGroup{}
-	wg.Add(3)
-	// 分别获取天气、百度新闻、GNews
-	baidu := ""
+	wg.Add(2)
+	// 分别获取天气、GNews
 	hot := ""
 	weather := spider.Weather{}
 	weatherDone := false
-	go func() {
-		defer wg.Done()
-		keysV, err := setting.GSetting.Get("auto.baidu.keys")
-		if keysV == nil {
-			tool.GLog.Error("BAIDU", "baidu.keys not exist")
-			return
-		}
-		if err != nil {
-			tool.GLog.ErrorErr("BAIDU", errors.Join(errors.New("func Do() Get auto.baidu.keys error"), err))
-			return
-		}
-		keys := xstorage.ToBase[[]string](keysV)
-		if keys == nil || len(keys) == 0 {
-			return
-		}
-		var keywords []string
-		var newss [][]spider.BaiduNew
-		allRetry := 0
-		errs := make([]error, 0)
-		for _, v := range keys {
-			news, err, retry := spider.GetTodayBaiduNews(v)
-			allRetry += retry
-			keywords = append(keywords, v)
-			newss = append(newss, news)
-			if err != nil {
-				e := fmt.Errorf("百度新闻 %s 获取失败: %s", v, err.Error())
-				errs = append(errs, e)
-			}
-		}
-		if len(errs) > 0 {
-			tool.GLog.ErrorErr("BAIDU", errors.Join(errors.New("func Do() spider.GetTodayBaiduNews error"), errors.New(fmt.Sprint(errs))))
-			return
-		}
-		baidu = spider.ParseNewToMarkdown(keywords, newss)
-		if allRetry > 0 {
-			retryStr := fmt.Sprintf("百度新闻 总重试次数: %d", allRetry)
-			tool.GLog.Info("BAIDU", retryStr)
-		}
-	}()
 	go func() {
 		defer wg.Done()
 		// 获得token和base
@@ -186,14 +146,6 @@ func (d Day) Do() {
 			tool.GLog.WarningErr("auto.Day", errors.Join(errors.New("func Do() Set auto.weather.today error"), err))
 		}
 	}
-	if baidu != "" {
-		err1 := setting.GSetting.Set(xstorage.Join("auto", "baidu", "today"), xstorage.ToUnit[string](baidu, xstorage.ValueTypeString))
-		err2 := setting.GSetting.Set(xstorage.Join("auto", "baidu", "todayStr"), xstorage.ToUnit[string](todayStr, xstorage.ValueTypeString))
-		err := misc.JoinErr(err1, err2)
-		if err != nil {
-			tool.GLog.WarningErr("auto.Day", errors.Join(errors.New("func Do() Set auto.baidu.today error"), err))
-		}
-	}
 	if hot != "" {
 		err1 := setting.GSetting.Set(xstorage.Join("auto", "GNews", "today"), xstorage.ToUnit[string](hot, xstorage.ValueTypeString))
 		err2 := setting.GSetting.Set(xstorage.Join("auto", "GNews", "todayStr"), xstorage.ToUnit[string](todayStr, xstorage.ValueTypeString))
@@ -211,15 +163,18 @@ func (d Day) Do() {
 		md.AddContent("今日天气获取失败")
 	} else {
 		md.AddContent(fmt.Sprintf("%s %s %s %s", pro+city, weather.Condition, weather.IndexMap["穿衣"].Why, weather.IndexMap["污染"].Why))
-		md.AddList(weather.IndexMap["穿衣"].Status, 1)
-		md.AddList(weather.IndexMap["污染"].Status, 1)
+		//md.AddList(weather.IndexMap["穿衣"].Status, 1)
+		//md.AddList(weather.IndexMap["污染"].Status, 1)
+		for k, v := range weather.IndexMap {
+			md.AddList(fmt.Sprintf("%s:%s∵%s", k, v.Status, v.Why), 1)
+		}
 	}
-	md.AddTitle("关注新闻", 3)
-	if baidu == "" {
-		md.AddContent("今日关注新闻获取失败")
-	} else {
-		md.AddMd(baidu)
-	}
+	//md.AddTitle("关注新闻", 3)
+	//if baidu == "" {
+	//	md.AddContent("今日关注新闻获取失败")
+	//} else {
+	//	md.AddMd(baidu)
+	//}
 	md.AddTitle("热点新闻", 3)
 	if hot == "" {
 		md.AddContent("今日热点新闻获取失败")

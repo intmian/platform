@@ -62,7 +62,7 @@ func (b *Baidu) Do() {
 		retryStr := fmt.Sprintf("百度新闻 总重试次数: %d", allRetry)
 		tool.GLog.Debug("BAIDU", retryStr)
 	}
-	err = tool.GPush.Push("百度新闻", s, true)
+	err = tool.GPush.Push("关注新闻", s, true)
 	if err != nil {
 		tool.GLog.ErrorErr("BAIDU", errors.Join(errors.New("func Do() Push error"), err))
 		return
