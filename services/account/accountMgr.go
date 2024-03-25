@@ -90,7 +90,7 @@ func (a *accountMgr) register(account string, password string, permission share2
 	return nil
 }
 
-func (a *accountMgr) changePermission(account string, token string, permission share2.Permission) error {
+func (a *accountMgr) changePermission(account string, pwd string, permission []share2.Permission) error {
 	if !a.initTag.IsInitialized() {
 		return ErrAccountMgrNotInit
 	}
@@ -101,20 +101,45 @@ func (a *accountMgr) changePermission(account string, token string, permission s
 	if sv == nil {
 		return ErrAccountNotExist
 	}
-	var ad accountDbData
-	dbStr := xstorage.ToBase[string](sv)
-	err = json.Unmarshal([]byte(dbStr), &ad)
-	if err != nil {
-		return errors.Join(err)
+	var ad *accountDbData
+	ad = xstorage.UnitToJStruct[accountDbData](sv)
+	token := getToken(account, pwd)
+	// 判断是否存在
+	_, ok := ad.Token2permissions[token]
+	if !ok {
+		return ErrTokenNotExist
 	}
-	ad.ModifyAt = time.Now()
-	ad.Token2permissions[token] = append(ad.Token2permissions[token], permission)
-	dbStrB, err := json.Marshal(ad)
+	ad.Token2permissions[token] = permission
+	err = a.accDb.Set(account, xstorage.JStructToUnit(ad))
 	if err != nil {
-		return errors.Join(err, ErrJsonMarshalErr)
+		return errors.Join(err, ErrAccDbSetErr)
 	}
-	dbStr = string(dbStrB)
-	err = a.accDb.Set(account, xstorage.ToUnit[string](string(dbStr), xstorage.ValueTypeString))
+	return nil
+}
+
+func (a *accountMgr) deletePermission(account string, pwd string) error {
+	if !a.initTag.IsInitialized() {
+		return ErrAccountMgrNotInit
+	}
+	sv, err := a.accDb.Get(account)
+	if err != nil {
+		return errors.Join(err, ErrAccDbGetErr)
+	}
+	if sv == nil {
+		return ErrAccountNotExist
+	}
+	var ad *accountDbData
+	ad = xstorage.UnitToJStruct[accountDbData](sv)
+	token := getToken(account, pwd)
+	// 判断是否存在
+	_, ok := ad.Token2permissions[token]
+	if !ok {
+		return ErrTokenNotExist
+	}
+	if len(ad.Token2permissions[token]) == 1 {
+		return ErrCanNotDeleteTheLastPermission
+	}
+	err = a.accDb.Set(account, xstorage.JStructToUnit(ad))
 	if err != nil {
 		return errors.Join(err, ErrAccDbSetErr)
 	}

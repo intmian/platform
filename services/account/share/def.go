@@ -30,9 +30,32 @@ const CmdCheckToken share.Cmd = "checkToken"
 
 type CheckTokenReq struct {
 	Account string
-	Token   string
+	Pwd     string
 }
 
 type CheckTokenRet struct {
 	Pers []share2.Permission
+}
+
+const CmdDelToken share.Cmd = "delToken"
+
+type DelTokenReq struct {
+	Account string
+	Pwd     string
+}
+
+type DelTokenRet struct {
+	Suc bool
+}
+
+const CmdChangeToken share.Cmd = "changeToken"
+
+type ChangeTokenReq struct {
+	Account string
+	NewPwd  string
+	Pers    []share2.Permission
+}
+
+type ChangeTokenRet struct {
+	Suc bool
 }

@@ -30,7 +30,7 @@ func login(c *gin.Context) {
 	}
 	ret, err := GPlatCore.SendAndRec(share.FlagAccount, share2.MakeMsg(share3.CmdCheckToken, share3.CheckTokenReq{
 		Account: body.Username,
-		Token:   body.Password,
+		Pwd:     body.Password,
 	}), share.MakeSysValid())
 	retr := ret.(share3.CheckTokenRet)
 	if err != nil || retr.Pers == nil {

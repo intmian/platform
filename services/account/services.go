@@ -44,8 +44,12 @@ func (s *Service) HandleRpc(msg share.Msg, valid backendshare.Valid) (interface{
 		return share.HandleRpcTool("deregister", msg, valid, s.OnDeregister)
 	case accShare.CmdCheckToken:
 		return share.HandleRpcTool("checkToken", msg, valid, s.OnCheckToken)
+	case accShare.CmdDelToken:
+		return share.HandleRpcTool("delToken", msg, valid, s.OnDelToken)
+	case accShare.CmdChangeToken:
+		return share.HandleRpcTool("changeToken", msg, valid, s.OnChangeToken)
 	default:
-		return nil, errors.New("unknown cmd")
+		return nil, ErrUnknownCmd
 	}
 }
 
@@ -82,6 +86,29 @@ func (s *Service) OnCheckToken(valid backendshare.Valid, req accShare.CheckToken
 	if !valid.HasPermission(backendshare.PermissionAdmin) {
 		return ret, nil
 	}
-	ret.Pers, err = s.acc.checkPermission(req.Account, req.Token)
+	ret.Pers, err = s.acc.checkPermission(req.Account, req.Pwd)
+	return
+}
+
+func (s *Service) OnDelToken(valid backendshare.Valid, req accShare.DelTokenReq) (ret accShare.DelTokenRet, err error) {
+	if !valid.HasPermission(backendshare.PermissionAdmin) {
+		return ret, nil
+	}
+	err = s.acc.deletePermission(req.Account, req.Pwd)
+	if err == nil {
+		ret.Suc = true
+	}
+	return
+}
+
+func (s *Service) OnChangeToken(valid backendshare.Valid, req accShare.ChangeTokenReq) (ret accShare.ChangeTokenRet, err error) {
+	if !valid.HasPermission(backendshare.PermissionAdmin) {
+		return ret, nil
+	}
+	// 目前先不支持自己改自己的
+	err = s.acc.changePermission(req.Account, req.NewPwd, req.Pers)
+	if err == nil {
+		ret.Suc = true
+	}
 	return
 }
