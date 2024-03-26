@@ -128,8 +128,8 @@ func getNews(newsToken, base, token string, cheap bool) (string, error) {
 		re, err = o.Chat(`The following data of 20 hot news stories from the past day crawled using a crawler, please do the following based on these contents.
 1. categorize these news according to regions and fields, and organize them into a daily news summary article.
 2. Use Chinese.
-3. Do not need to translate proper nouns and names into Chinese. 4.
-4. The article should be concise, friendly and highly readable. The article must refer to every news topic, with as many natural twists and turns as possible. 5. 
+3. Do not need to translate proper nouns and names into Chinese.
+4. The article should be concise, friendly and highly readable. The article must refer to every news topic, with as many natural twists and turns as possible.
 5. Distinguish paragraphs by region and field, and allow news to be reordered or categorized.
 6. citation in the form of [serial number] is required after each hot news item.
 7. The total word count should be less than 800 Chinese characters, and the use of markdown syntax is prohibited.
