@@ -165,8 +165,8 @@ func (d Day) Do() {
 		md.AddContent(fmt.Sprintf("%s %s %s %s", pro+city, weather.Condition, weather.IndexMap["穿衣"].Why, weather.IndexMap["污染"].Why))
 		//md.AddList(weather.IndexMap["穿衣"].Status, 1)
 		//md.AddList(weather.IndexMap["污染"].Status, 1)
-		for k, v := range weather.IndexMap {
-			md.AddList(fmt.Sprintf("%s:%s∵%s", k, v.Status, v.Why), 1)
+		for _, v := range weather.IndexMap {
+			md.AddList(fmt.Sprintf("%s∵%s", v.Status, v.Why), 1)
 		}
 	}
 	//md.AddTitle("关注新闻", 3)
