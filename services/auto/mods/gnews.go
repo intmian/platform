@@ -125,15 +125,18 @@ func getNews(newsToken, base, token string, cheap bool) (string, error) {
 	var re string
 	for retry < 2 {
 		o := ai.NewOpenAI(base, token, cheap, ai.DefaultRenshe)
-		re, err = o.Chat("" +
-			"以下使用爬虫爬取的过去一天的20条热点新闻的数据，请根据这些内容做以下处理。\n" +
-			"将这些新闻根据地区和领域归类，整理为一篇每日新闻总结文章\n" +
-			"使用中文，允许在其中加入修饰或者自己的评价\n" +
-			"不需要将专有名词、人名翻译为中文\n" +
-			"文章满足简洁切要的内容、平易友善的叙述与高度的可读性。文章里必须提到每一个新闻热点，同时转折尽量自然。\n" +
-			"以不同的地区和领域来区分各个段落，允许调换新闻顺序或者归类新闻\n" +
-			"每个新闻热点后需要用[序号]的形式标注引用\n" +
-			"要求总字数在800中文字符以内，禁止使用markdown语法\n\n" + s)
+		re, err = o.Chat(`The following data of 20 hot news stories from the past day crawled using a crawler, please do the following based on these contents.
+1. categorize these news according to regions and fields, and organize them into a daily news summary article.
+2. Use Chinese.
+3. Do not need to translate proper nouns and names into Chinese. 4.
+4. The article should be concise, friendly and highly readable. The article must refer to every news topic, with as many natural twists and turns as possible. 5. 
+5. Distinguish paragraphs by region and field, and allow news to be reordered or categorized.
+6. citation in the form of [serial number] is required after each hot news item.
+7. The total word count should be less than 800 Chinese characters, and the use of markdown syntax is prohibited.
+8. Be brief and concise, don't make any nonsense.
+
+The following is the original content：
+` + s)
 		if re != "" && err == nil {
 			done = true
 			break
