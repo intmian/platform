@@ -50,7 +50,7 @@ function ServiceInfo({name, startTime, initStatus, type}) {
     }
     let buttonStr = open ? '关闭' : '开启';
     let disabled = false;
-    if (type === '核心' || type === '核心模组') {
+    if (type === '核心' || type === '模组') {
         disabled = true;
     }
     let button = <Button
@@ -71,8 +71,7 @@ function ServiceInfo({name, startTime, initStatus, type}) {
     return <Card
         key={name}
         style={{
-            width: '30%',
-            minWidth: 330,
+            width: 330,
             height: 100,
         }}
     >
