@@ -20,49 +20,44 @@ export class LoginInfo {
     }
 }
 
+// LoginCtr 提供目前的用户信息，并且在发生变更时调用回调，建议使用含set函数的callback
+// 可以复合到provider中，提供全局的用户信息和用户控制（例如子组件触发注销逻辑）
 export class LoginCtr {
     loginInfo = new LoginInfo();
-    onLogin = () => {
-    };
-    onAutoLogin = () => {
+    useChangeCallBack = () => {
+        console.log("UserChangeCallBack not set");
     }
-    onLogout = () => {
-    };
-}
 
-export const LoginCtx = createContext(LoginCtr);
-
-export function LoginProvider({children}) {
-    const [currentUser, setCurrentUser] = useState(new LoginInfo());
-    let loginCtr = new LoginCtr();
-
-    loginCtr.loginInfo = currentUser;
-
-    loginCtr.onLogin = (newData) => {
+    onLogin(newData) {
         let newUser = new LoginInfo();
         newUser.usr = newData.User;
         newUser.permissions = newData.Permission;
         newUser.lastValid = newData.ValidTime;
         newUser.init = true;
-        setCurrentUser(newUser);
-    };
+        // 不用刷新loginInfo，因为回调的上层会刷新，仅做类型转换，newData是golang返回的json对象
+        this.useChangeCallBack(newUser);
+    }
 
-    loginCtr.onAutoLogin = (newData) => {
+    onAutoLogin(newData) {
         let newUser = new LoginInfo();
         newUser.usr = newData.User;
         newUser.permissions = newData.Permission;
         newUser.lastValid = newData.ValidTime;
         newUser.init = true;
         newUser.autoLogin = true;
-        setCurrentUser(newUser);
+        this.useChangeCallBack(newUser);
     }
 
-    loginCtr.onLogout = () => {
+    onLogout() {
         let newUser = new LoginInfo();
         newUser.init = true;
-        setCurrentUser(newUser); // 或创建等于初始状态的新对象
-    };
+        this.useChangeCallBack(newUser);
+    }
+}
 
+export const LoginCtx = createContext(LoginCtr);
+
+function useAutoCheckLogin(loginCtr) {
     useEffect(() => {
         SendCheckLogin((result) => {
             if (result !== null) {
@@ -82,6 +77,19 @@ export function LoginProvider({children}) {
 
         return () => clearInterval(interval);
     }, []);
+}
+
+// LoginProvider 提供全局的用户信息和用户控制，建议放到根组件上，或者将逻辑抽离到别的全局provider中
+export function LoginProvider({children}) {
+    const [currentUser, setCurrentUser] = useState(new LoginInfo());
+
+    let loginCtr = new LoginCtr();
+    loginCtr.loginInfo = currentUser;
+    loginCtr.useChangeCallBack = (newData) => {
+        setCurrentUser(newData);
+    }
+
+    useAutoCheckLogin(loginCtr);
 
     return (
         <LoginCtx.Provider value={loginCtr}>

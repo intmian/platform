@@ -1,6 +1,6 @@
 import {Avatar, Button, Image, Layout, Menu, Popconfirm, Space} from "antd";
 import {getItem} from "../tool.js";
-import Login from "../common/login.jsx";
+import LoginPanel from "../common/loginPanel.jsx";
 import {useContext, useState} from "react";
 import biglogo from "../assets/biglogo.png";
 import {UserOutlined} from "@ant-design/icons";
@@ -43,7 +43,7 @@ function NeedLoginButton({onLoginSuc}) {
     return (
         <>
             {isLogin ? (
-                <Login
+                <LoginPanel
                     onLoginSuc={(user) => {
                         onLoginSuc(user);
                     }}

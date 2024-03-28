@@ -3,7 +3,7 @@ import {useState} from "react";
 import {sendLogin} from "./sendhttp.js";
 
 
-export default function Login({onLoginSuc, onCancel}) {
+export default function LoginPanel({onLoginSuc, onCancel}) {
     let labelCol = 4;
     let wrapperCol = 8;
     const [showModal, setShowModal] = useState('true');
