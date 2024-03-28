@@ -24,7 +24,7 @@ export class LoginInfo {
 // 可以复合到provider中，提供全局的用户信息和用户控制（例如子组件触发注销逻辑）
 export class LoginCtr {
     loginInfo = new LoginInfo();
-    useChangeCallBack = () => {
+    onUserChange = () => {
         console.log("UserChangeCallBack not set");
     }
 
@@ -35,7 +35,7 @@ export class LoginCtr {
         newUser.lastValid = newData.ValidTime;
         newUser.init = true;
         // 不用刷新loginInfo，因为回调的上层会刷新，仅做类型转换，newData是golang返回的json对象
-        this.useChangeCallBack(newUser);
+        this.onUserChange(newUser);
     }
 
     onAutoLogin(newData) {
@@ -45,13 +45,13 @@ export class LoginCtr {
         newUser.lastValid = newData.ValidTime;
         newUser.init = true;
         newUser.autoLogin = true;
-        this.useChangeCallBack(newUser);
+        this.onUserChange(newUser);
     }
 
     onLogout() {
         let newUser = new LoginInfo();
         newUser.init = true;
-        this.useChangeCallBack(newUser);
+        this.onUserChange(newUser);
     }
 }
 
@@ -85,7 +85,7 @@ export function LoginProvider({children}) {
 
     let loginCtr = new LoginCtr();
     loginCtr.loginInfo = currentUser;
-    loginCtr.useChangeCallBack = (newData) => {
+    loginCtr.onUserChange = (newData) => {
         setCurrentUser(newData);
     }
 

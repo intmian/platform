@@ -23,7 +23,7 @@ export function AccountPanel({name, initPermissions}) {
                         <List.Item key={item.token}>
                             <div>{item.token}</div>
                             <Divider type="vertical"/>
-                            <TagInput tagOps={AllPermission} tags={item.permissions}/>
+                            <TagInput tagOps={AllPermission} tags={item.permission}/>
                         </List.Item>
                     )}
                 </VirtualList>
