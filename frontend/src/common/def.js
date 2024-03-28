@@ -51,3 +51,7 @@ export const ValueTypeStr = {
     103: '浮点数组',
     104: '布尔数组',
 }
+
+export const AllPermission = [
+    'admin',
+]

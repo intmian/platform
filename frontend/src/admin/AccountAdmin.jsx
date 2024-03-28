@@ -2,6 +2,8 @@ import {Avatar, Card, Divider, List} from "antd";
 import {UserOutlined} from "@ant-design/icons";
 import {useState} from "react";
 import VirtualList from 'rc-virtual-list';
+import TagInput from "../common/TagInput.jsx";
+import {AllPermission} from "../common/def.js";
 
 // AccountPanel 用于展示用户的权限信息，并管理密码对应的权限列表
 export function AccountPanel({name, initPermissions}) {
@@ -21,9 +23,7 @@ export function AccountPanel({name, initPermissions}) {
                         <List.Item key={item.token}>
                             <div>{item.token}</div>
                             <Divider type="vertical"/>
-                            (item.permissions) => (
-                            <div>{item.permissions}</div>
-                            )
+                            <TagInput tagOps={AllPermission} tags={item.permissions}/>
                         </List.Item>
                     )}
                 </VirtualList>
