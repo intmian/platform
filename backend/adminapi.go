@@ -32,6 +32,13 @@ func login(c *gin.Context) {
 		Account: body.Username,
 		Pwd:     body.Password,
 	}), share.MakeSysValid())
+	if ret == nil {
+		c.JSON(200, gin.H{
+			"code": 1,
+			"msg":  "Password error",
+		})
+		return
+	}
 	retr := ret.(share3.CheckTokenRet)
 	if err != nil || retr.Pers == nil {
 		c.JSON(200, gin.H{

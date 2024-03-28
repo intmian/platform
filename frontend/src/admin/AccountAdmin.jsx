@@ -1,9 +1,10 @@
-import {Avatar, Card, List} from "antd";
+import {Avatar, Card, Divider, List} from "antd";
 import {UserOutlined} from "@ant-design/icons";
 import {useState} from "react";
 import VirtualList from 'rc-virtual-list';
 
-function AccountPanel({name, initPermissions}) {
+// AccountPanel 用于展示用户的权限信息，并管理密码对应的权限列表
+export function AccountPanel({name, initPermissions}) {
     const [permissions, setPermissions] = useState(initPermissions);
     return (
         <Card
@@ -13,11 +14,16 @@ function AccountPanel({name, initPermissions}) {
             }
         >
             <List>
-                <VirtualList data={permissions} itemKey="permissions">
-                    {(item: UserItem) => (
-                        <List.Item key={item.email}>
-
-                            <div>Content</div>
+                <VirtualList data={permissions} itemKey="permissions"
+                             height={100} itemHeight={30}
+                >
+                    {(item) => (
+                        <List.Item key={item.token}>
+                            <div>{item.token}</div>
+                            <Divider type="vertical"/>
+                            (item.permissions) => (
+                            <div>{item.permissions}</div>
+                            )
                         </List.Item>
                     )}
                 </VirtualList>

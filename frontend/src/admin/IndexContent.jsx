@@ -4,6 +4,7 @@ import {Log} from "./Log.jsx";
 import {Config} from "./Config.jsx";
 import {LoginCtx} from "../common/loginCtx.jsx";
 import {useContext} from "react";
+import TagInput from "../common/TagInput.jsx";
 
 const {Content} = Layout;
 
@@ -38,20 +39,37 @@ function IndexContent({contentType}) {
         case 'config':
             content = <Config/>;
             break;
-        // case 'debug':
-        //     // const [hasFocus, resetFocus] = useHasLostFocus();
-        //     // content = <div>
-        //     //     <p>The browser has {hasFocus ? 'not' : ''} lost focus before.</p>
-        //     //     <button onClick={resetFocus}>Reset Focus</button>
-        //     // </div>
-        //     content = <ChangeModal
-        //         showini={true}
-        //         onFinish={() => {
-        //             console.log("finish")
-        //         }}
-        //         isAdd={true}
-        //     />;
-        //     break;
+        case 'debug':
+            // content = <AccountPanel
+            //     name={"debug"}
+            //     initPermissions={[
+            //         {
+            //             token: 'token222222',
+            //             permissions: ['admin', 'debug'],
+            //         },
+            //         {
+            //             token: 'token333333',
+            //             permissions: ['admin', 'debug'],
+            //         },
+            //         {
+            //             token: 'token333333',
+            //             permissions: ['admin', 'debug'],
+            //         },
+            //         {
+            //             token: 'token333333',
+            //             permissions: ['admin', 'debug'],
+            //         },
+            //         {
+            //             token: 'token333333',
+            //             permissions: ['admin', 'debug'],
+            //         },
+            //     ]}
+            // />;
+            content = <TagInput
+                tagOps={['admin', 'debug', 'aaa-111']}
+                tags={['admin', 'debug']}
+            />;
+            break;
         default:
             break;
     }
