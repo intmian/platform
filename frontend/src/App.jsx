@@ -1,7 +1,7 @@
 import Index from "./admin/index.jsx";
 import {createBrowserRouter, RouterProvider} from "react-router-dom";
 import {GlobalCtx} from "./common/globalCtx.jsx";
-import {Debug} from "./debug.jsx";
+import {Debug} from "./debug/debug.jsx";
 
 
 const router = createBrowserRouter([
