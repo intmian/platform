@@ -8,12 +8,11 @@ import (
 const CmdRegister share.Cmd = "register"
 
 type RegisterReq struct {
-	Account         string
-	Pwd2permissions map[string][]share2.Permission
+	Account string
 }
 
 type RegisterRet struct {
-	Suc map[string][]share2.Permission
+	Suc bool
 }
 
 const CmdDeregister share.Cmd = "deregister"
@@ -41,7 +40,7 @@ const CmdDelToken share.Cmd = "delToken"
 
 type DelTokenReq struct {
 	Account string
-	Pwd     string
+	TokenID int
 }
 
 type DelTokenRet struct {
@@ -52,10 +51,19 @@ const CmdChangeToken share.Cmd = "changeToken"
 
 type ChangeTokenReq struct {
 	Account string
-	NewPwd  string
+	TokenID int
 	Pers    []share2.Permission
 }
 
 type ChangeTokenRet struct {
 	Suc bool
+}
+
+const CmdGetAllAccount share.Cmd = "getAllAccount"
+
+type GetAllAccountReq struct{}
+
+type GetAllAccountRet struct {
+	// Account -> token -> Pers 这个token经过混淆，不是真实的token
+	Accounts map[string]map[string][]share2.Permission
 }

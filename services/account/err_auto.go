@@ -19,6 +19,9 @@ const(
     ErrNothing = ErrStr("nothing")  // auto generated from .\services.go
     ErrCanNotDeleteTheLastPermission = ErrStr("can not delete the last permission")  // auto generated from .\accountMgr.go
     ErrUnknownCmd = ErrStr("unknown cmd")  // auto generated from .\services.go
+    ErrGetAllAccountFailed = ErrStr("get all account failed")  // auto generated from .\accountMgr.go
+    ErrTokenAlreadyExist = ErrStr("token already exist")  // auto generated from .\accountMgr.go
+    ErrRegisterFailed = ErrStr("register failed")  // auto generated from .\services.go
 )
 
 func (e ErrStr) Error() string { return string(e) }

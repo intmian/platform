@@ -48,6 +48,8 @@ func (s *Service) HandleRpc(msg share.Msg, valid backendshare.Valid) (interface{
 		return share.HandleRpcTool("delToken", msg, valid, s.OnDelToken)
 	case accShare.CmdChangeToken:
 		return share.HandleRpcTool("changeToken", msg, valid, s.OnChangeToken)
+	case accShare.CmdGetAllAccount:
+		return share.HandleRpcTool("getAllAccount", msg, valid, s.OnGetAllAccount)
 	default:
 		return nil, ErrUnknownCmd
 	}
@@ -57,17 +59,14 @@ func (s *Service) OnRegister(valid backendshare.Valid, req accShare.RegisterReq)
 	if !valid.HasPermission(backendshare.PermissionAdmin) {
 		return ret, nil
 	}
-	var errs []error
-	for pwd, pers := range req.Pwd2permissions {
-		for _, per := range pers {
-			err := s.acc.register(req.Account, pwd, per, valid.GetFrom())
-			errs = append(errs, err)
-			if err == nil {
-				ret.Suc[pwd] = append(ret.Suc[pwd], per)
-			}
-		}
+	creator := valid.User
+	if creator == "" {
+		creator = "system"
 	}
-	err = errors.Join(errs...)
+	err = s.acc.register(req.Account, valid.User)
+	if err != nil {
+		err = errors.Join(err, ErrRegisterFailed)
+	}
 	return
 }
 
@@ -94,7 +93,7 @@ func (s *Service) OnDelToken(valid backendshare.Valid, req accShare.DelTokenReq)
 	if !valid.HasPermission(backendshare.PermissionAdmin) {
 		return ret, nil
 	}
-	err = s.acc.deletePermission(req.Account, req.Pwd)
+	err = s.acc.deletePermission(req.Account, req.TokenID)
 	if err == nil {
 		ret.Suc = true
 	}
@@ -106,9 +105,25 @@ func (s *Service) OnChangeToken(valid backendshare.Valid, req accShare.ChangeTok
 		return ret, nil
 	}
 	// 目前先不支持自己改自己的
-	err = s.acc.changePermission(req.Account, req.NewPwd, req.Pers)
+	err = s.acc.changePermission(req.Account, req.TokenID, req.Pers)
 	if err == nil {
 		ret.Suc = true
+	}
+	return
+}
+
+func (s *Service) OnGetAllAccount(valid backendshare.Valid, req accShare.GetAllAccountReq) (ret accShare.GetAllAccountRet, err error) {
+	if !valid.HasPermission(backendshare.PermissionAdmin) {
+		return ret, nil
+	}
+	accountsInfos, err := s.acc.getAllAccount()
+	if err != nil {
+		return
+	}
+	for account, infos := range accountsInfos {
+		for _, info := range infos {
+			ret.Accounts[account][info.Token] = info.Permissions
+		}
 	}
 	return
 }

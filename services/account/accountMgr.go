@@ -5,6 +5,7 @@ import (
 	"errors"
 	"github.com/intmian/mian_go_lib/tool/cipher"
 	"github.com/intmian/mian_go_lib/tool/misc"
+	"github.com/intmian/mian_go_lib/tool/multi"
 	"github.com/intmian/mian_go_lib/xstorage"
 	share2 "github.com/intmian/platform/backend/share"
 	"regexp"
@@ -20,13 +21,20 @@ type accountMgr struct {
 	accDb       xstorage.XStorage
 	iniAdminPwd string
 	initTag     misc.InitTag
+	idLock      *multi.UnitLock[string] // 避免同事操作
+}
+
+type PermissionInfo struct {
+	Token       string
+	Permissions []share2.Permission
 }
 
 type accountDbData struct {
-	Token2permissions map[string][]share2.Permission `json:"token2Permissions"`
-	Creator           string                         `json:"creator"`
-	CreateAt          time.Time                      `json:"createAt"`
-	ModifyAt          time.Time                      `json:"modifyAt"`
+	ID2PerInfos    map[int]*PermissionInfo `json:"token2Permissions"`
+	LastTokenIndex int                     `json:"lastTokenIndex"`
+	Creator        string                  `json:"creator"`
+	CreateAt       time.Time               `json:"createAt"`
+	ModifyAt       time.Time               `json:"modifyAt"`
 }
 
 const salt = "秋天真猪23333"
@@ -37,7 +45,8 @@ func getToken(account string, password string) string {
 
 func (a *accountMgr) Init(iniAdminPwd string) error {
 	err := a.accDb.Init(xstorage.XStorageSetting{
-		Property: misc.CreateProperty(xstorage.UseCache, xstorage.MultiSafe, xstorage.UseDisk, xstorage.FullInitLoad),
+		// 上层用unitLock了，但是有些操作还是会并发的,不要全局锁
+		Property: misc.CreateProperty(xstorage.UseCache, xstorage.UseDisk, xstorage.FullInitLoad, xstorage.MultiSafe),
 		SaveType: xstorage.SqlLiteDB,
 		DBAddr:   "account.db",
 	})
@@ -46,6 +55,7 @@ func (a *accountMgr) Init(iniAdminPwd string) error {
 	}
 	a.iniAdminPwd = iniAdminPwd
 	a.initTag.SetInitialized()
+	a.idLock = multi.NewUnitLock[string]()
 	return nil
 }
 
@@ -56,12 +66,36 @@ func checkPwd(pwd string) bool {
 	return reg.MatchString(pwd)
 }
 
-func (a *accountMgr) register(account string, password string, permission share2.Permission, creator string) error {
+func (a *accountMgr) getAllAccount() (map[string][]PermissionInfo, error) {
+	if !a.initTag.IsInitialized() {
+		return nil, ErrAccountMgrNotInit
+	}
+	// 直接从数据库读最新的 不考虑锁
+	dataMap, err := a.accDb.GetAll()
+	if err != nil {
+		return nil, errors.Join(err, ErrGetAllAccountFailed)
+	}
+	ret := make(map[string][]PermissionInfo)
+	for k, v := range dataMap {
+		var ad accountDbData
+		err = json.Unmarshal([]byte(xstorage.ToBase[string](v)), &ad)
+		if err != nil {
+			return nil, errors.Join(err, ErrJsonUnmarshalFailed)
+		}
+		var perInfos []PermissionInfo
+		for _, v := range ad.ID2PerInfos {
+			perInfos = append(perInfos, *v)
+		}
+		ret[k] = perInfos
+	}
+	return ret, nil
+}
+
+func (a *accountMgr) register(account string, creator string) error {
+	a.idLock.Lock(account)
+	defer a.idLock.Unlock(account)
 	if !a.initTag.IsInitialized() {
 		return ErrAccountMgrNotInit
-	}
-	if !checkPwd(password) {
-		return ErrPasswordFormatError
 	}
 	sv, err := a.accDb.Get(account)
 	if err != nil {
@@ -76,8 +110,6 @@ func (a *accountMgr) register(account string, password string, permission share2
 		ad.Creator = creator
 	}
 	ad.ModifyAt = time.Now()
-	token := getToken(account, password)
-	ad.Token2permissions[token] = append(ad.Token2permissions[token], permission)
 	dbStr, err := json.Marshal(ad)
 	if err != nil {
 		return errors.Join(err, ErrJsonMarshalErr)
@@ -90,7 +122,9 @@ func (a *accountMgr) register(account string, password string, permission share2
 	return nil
 }
 
-func (a *accountMgr) changePermission(account string, pwd string, permission []share2.Permission) error {
+func (a *accountMgr) changePermission(account string, tokenID int, permissions []share2.Permission) error {
+	a.idLock.Lock(account)
+	defer a.idLock.Unlock(account)
 	if !a.initTag.IsInitialized() {
 		return ErrAccountMgrNotInit
 	}
@@ -103,13 +137,12 @@ func (a *accountMgr) changePermission(account string, pwd string, permission []s
 	}
 	var ad *accountDbData
 	ad = xstorage.UnitToJStruct[accountDbData](sv)
-	token := getToken(account, pwd)
-	// 判断是否存在
-	_, ok := ad.Token2permissions[token]
-	if !ok {
+	// 判断是否存在,如果存在就更改
+	if tokenID >= len(ad.ID2PerInfos) {
 		return ErrTokenNotExist
 	}
-	ad.Token2permissions[token] = permission
+	ad.ID2PerInfos[tokenID].Permissions = permissions
+
 	err = a.accDb.Set(account, xstorage.JStructToUnit(ad))
 	if err != nil {
 		return errors.Join(err, ErrAccDbSetErr)
@@ -117,10 +150,55 @@ func (a *accountMgr) changePermission(account string, pwd string, permission []s
 	return nil
 }
 
-func (a *accountMgr) deletePermission(account string, pwd string) error {
+func (a *accountMgr) addPermission(account string, password string, permissions []share2.Permission) error {
+	a.idLock.Lock(account)
+	defer a.idLock.Unlock(account)
 	if !a.initTag.IsInitialized() {
 		return ErrAccountMgrNotInit
 	}
+	if !checkPwd(password) {
+		return ErrPasswordFormatError
+	}
+	sv, err := a.accDb.Get(account)
+	if err != nil {
+		return errors.Join(err, ErrAccDbGetErr)
+	}
+	if sv == nil {
+		return ErrAccountNotExist
+	}
+	var ad accountDbData
+	dbStr := xstorage.ToBase[string](sv)
+	err = json.Unmarshal([]byte(dbStr), &ad)
+	if err != nil {
+		return errors.Join(err, ErrJsonUnmarshalFailed)
+	}
+	token := getToken(account, password)
+
+	// 检查是否有token重复
+	for _, v := range ad.ID2PerInfos {
+		if v.Token == token {
+			return ErrTokenAlreadyExist
+		}
+	}
+
+	per := new(PermissionInfo)
+	per.Token = token
+	per.Permissions = permissions
+	ad.LastTokenIndex++
+	ad.ID2PerInfos[ad.LastTokenIndex] = per
+	err = a.accDb.Set(account, xstorage.JStructToUnit[accountDbData](&ad))
+	if err != nil {
+		return errors.Join(err, ErrAccDbSetErr)
+	}
+	return nil
+}
+
+func (a *accountMgr) deletePermission(account string, tokenID int) error {
+	if !a.initTag.IsInitialized() {
+		return ErrAccountMgrNotInit
+	}
+	a.idLock.Lock(account)
+	defer a.idLock.Unlock(account)
 	sv, err := a.accDb.Get(account)
 	if err != nil {
 		return errors.Join(err, ErrAccDbGetErr)
@@ -130,15 +208,14 @@ func (a *accountMgr) deletePermission(account string, pwd string) error {
 	}
 	var ad *accountDbData
 	ad = xstorage.UnitToJStruct[accountDbData](sv)
-	token := getToken(account, pwd)
 	// 判断是否存在
-	_, ok := ad.Token2permissions[token]
+	_, ok := ad.ID2PerInfos[tokenID]
 	if !ok {
 		return ErrTokenNotExist
 	}
-	if len(ad.Token2permissions[token]) == 1 {
-		return ErrCanNotDeleteTheLastPermission
-	}
+
+	delete(ad.ID2PerInfos, tokenID)
+
 	err = a.accDb.Set(account, xstorage.JStructToUnit(ad))
 	if err != nil {
 		return errors.Join(err, ErrAccDbSetErr)
@@ -150,6 +227,8 @@ func (a *accountMgr) deregister(account string) error {
 	if !a.initTag.IsInitialized() {
 		return ErrAccountMgrNotInit
 	}
+	a.idLock.Lock(account)
+	defer a.idLock.Unlock(account)
 	// 先判断有没有
 	_, err := a.accDb.Get(account)
 	if err != nil {
@@ -163,10 +242,12 @@ func (a *accountMgr) deregister(account string) error {
 	return nil
 }
 
-func (a *accountMgr) getPermission(account string) (map[string][]share2.Permission, error) {
+func (a *accountMgr) getPermission(account string) (map[int]*PermissionInfo, error) {
 	if !a.initTag.IsInitialized() {
 		return nil, ErrAccountMgrNotInit
 	}
+	a.idLock.RLock(account)
+	defer a.idLock.RUnlock(account)
 	sv, err := a.accDb.Get(account)
 	if err != nil {
 		return nil, errors.Join(err, ErrAccDbGetErr)
@@ -180,13 +261,15 @@ func (a *accountMgr) getPermission(account string) (map[string][]share2.Permissi
 	if err != nil {
 		return nil, errors.Join(err, ErrJsonUnmarshalFailed)
 	}
-	return ad.Token2permissions, nil
+	return ad.ID2PerInfos, nil
 }
 
-func (a *accountMgr) checkPermission(account string, token string) ([]share2.Permission, error) {
+func (a *accountMgr) checkPermission(account string, pwd string) ([]share2.Permission, error) {
 	if !a.initTag.IsInitialized() {
 		return nil, ErrAccountMgrNotInit
 	}
+	a.idLock.Lock(account)
+	defer a.idLock.Unlock(account)
 	sv, err := a.accDb.Get(account)
 	if err != nil {
 		return nil, errors.Join(err, ErrAccDbGetErr)
@@ -194,7 +277,7 @@ func (a *accountMgr) checkPermission(account string, token string) ([]share2.Per
 	if sv == nil {
 		if account == "admin" {
 			// 没有账号去读初始密码
-			if getToken(account, token) == getToken(account, a.iniAdminPwd) {
+			if getToken(account, pwd) == getToken(account, a.iniAdminPwd) {
 				return []share2.Permission{share2.PermissionAdmin}, nil
 			} else {
 				return nil, ErrTokenNotExist
@@ -208,9 +291,11 @@ func (a *accountMgr) checkPermission(account string, token string) ([]share2.Per
 	if err != nil {
 		return nil, errors.Join(err, ErrJsonUnmarshalFailed)
 	}
-	pers, ok := ad.Token2permissions[token]
-	if !ok {
-		return nil, ErrTokenNotExist
+	token := getToken(account, pwd)
+	for _, v := range ad.ID2PerInfos {
+		if v.Token == token {
+			return v.Permissions, nil
+		}
 	}
-	return pers, nil
+	return nil, ErrTokenNotExist
 }
