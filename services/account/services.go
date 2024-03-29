@@ -104,7 +104,7 @@ func (s *Service) OnChangeToken(valid backendshare.Valid, req accShare.ChangeTok
 	if !valid.HasPermission(backendshare.PermissionAdmin) {
 		return ret, nil
 	}
-	// 目前先不支持自己改自己的
+	// 目前先不支持自己改自己的,
 	err = s.acc.changePermission(req.Account, req.TokenID, req.Pers)
 	if err == nil {
 		ret.Suc = true

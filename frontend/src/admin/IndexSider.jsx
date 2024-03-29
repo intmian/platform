@@ -23,7 +23,6 @@ function IndexSider({onChooseMenuItem, disable}) {
                     getItem('后台数据', 'config'),
                     getItem('日志', 'log'),
                     getItem('账号', 'account'),
-                    getItem('debug', 'debug'),
                 ]}
                 onSelect={onChooseMenuItem}
             />

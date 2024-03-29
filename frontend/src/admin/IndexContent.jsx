@@ -4,7 +4,6 @@ import {Log} from "./Log.jsx";
 import {Config} from "./Config.jsx";
 import {LoginCtx} from "../common/loginCtx.jsx";
 import {useContext} from "react";
-import TagInput from "../common/TagInput.jsx";
 
 const {Content} = Layout;
 
@@ -38,37 +37,6 @@ function IndexContent({contentType}) {
             break;
         case 'config':
             content = <Config/>;
-            break;
-        case 'debug':
-            // content = <AccountPanel
-            //     name={"debug"}
-            //     initPermissions={[
-            //         {
-            //             token: 'token222222',
-            //             permissions: ['admin', 'debug'],
-            //         },
-            //         {
-            //             token: 'token333333',
-            //             permissions: ['admin', 'debug'],
-            //         },
-            //         {
-            //             token: 'token333333',
-            //             permissions: ['admin', 'debug'],
-            //         },
-            //         {
-            //             token: 'token333333',
-            //             permissions: ['admin', 'debug'],
-            //         },
-            //         {
-            //             token: 'token333333',
-            //             permissions: ['admin', 'debug'],
-            //         },
-            //     ]}
-            // />;
-            content = <TagInput
-                tagOps={['admin', 'debug', 'aaa-111']}
-                tags={['admin', 'debug']}
-            />;
             break;
         default:
             break;
