@@ -1,4 +1,4 @@
-import {AccountPanel} from "../admin/AccountAdmin.jsx";
+import {AccountPanelShow} from "../admin/AccountAdmin.jsx";
 import {useState} from "react";
 import {Col, InputNumber, Row, Slider, Space} from "antd";
 import {CustomDeviceSimulator, DeviceSimulator} from "./DeviceSim.jsx";
@@ -6,7 +6,7 @@ import {MenuPlus} from "../common/MenuPlus.jsx";
 
 function SmallDebug() {
     // 需要测试的组件添加到这里
-    let debug = <AccountPanel
+    let debug = <AccountPanelShow
         name="admin"
         initPermissions={[
             {
