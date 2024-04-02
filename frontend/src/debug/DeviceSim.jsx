@@ -90,14 +90,17 @@ export function DeviceSimulator({children}) {
                             value={key}>{deviceSizes[key].name}({deviceSizes[key].width}x{deviceSizes[key].height} {deviceSizes[key].screenSize}in)</Option>
                 ))}
             </Select>
+            <span>真实大小？</span>
+            <Switch defaultChecked={false} onChange={handleRealSizeChange}/>
             <div>
                 <span>显示设备尺寸 (英尺):</span>
-                <InputNumber min={1} max={100} defaultValue={24} onChange={handleUserScreenSizeChange}/>
+                <InputNumber disabled={!realSize} min={1} max={100} defaultValue={24}
+                             onChange={handleUserScreenSizeChange}/>
                 <span>像素比: </span>
-                <InputNumber min={320} max={7680} defaultValue={1920} onChange={handleUserScreenWidthChange}/>
-                <InputNumber min={240} max={4320} defaultValue={1080} onChange={handleUserScreenHeightChange}/>
-                <span>真实大小？</span>
-                <Switch defaultChecked={false} onChange={handleRealSizeChange}/>
+                <InputNumber disabled={!realSize} min={320} max={7680} defaultValue={1920}
+                             onChange={handleUserScreenWidthChange}/>
+                <InputNumber disabled={!realSize} min={240} max={4320} defaultValue={1080}
+                             onChange={handleUserScreenHeightChange}/>
             </div>
             <ResizeObserver onResize={({width, height}) => {
             }}>
