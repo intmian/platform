@@ -1,7 +1,6 @@
 package mods
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/intmian/mian_go_lib/tool/misc"
@@ -28,10 +27,9 @@ func (d Day) Init() {
 	err2 := setting.GSetting.SetDefault(xstorage.Join("openai", "base"), xstorage.ToUnit[string]("need input", xstorage.ValueTypeString))
 	err3 := setting.GSetting.SetDefault(xstorage.Join("openai", "token"), xstorage.ToUnit[string]("need input", xstorage.ValueTypeString))
 	err4 := setting.GSetting.SetDefault(xstorage.Join("openai", "cheap"), xstorage.ToUnit[bool](true, xstorage.ValueTypeBool))
-	err5 := setting.GSetting.SetDefault(xstorage.Join("auto", "GNews", "newsToken"), xstorage.ToUnit[string]("need input", xstorage.ValueTypeString))
-	err6 := setting.GSetting.SetDefault(xstorage.Join("auto", "weather", "province"), xstorage.ToUnit[string]("浙江", xstorage.ValueTypeString))
-	err7 := setting.GSetting.SetDefault(xstorage.Join("auto", "weather", "city"), xstorage.ToUnit[string]("杭州", xstorage.ValueTypeString))
-	err := misc.JoinErr(err1, err2, err3, err4, err5, err6, err7)
+	err5 := setting.GSetting.SetDefault(xstorage.Join("qweather", "key"), xstorage.ToUnit[string]("need input", xstorage.ValueTypeString))
+	err6 := setting.GSetting.SetDefault(xstorage.Join("auto", "weather", "city"), xstorage.ToUnit[string]("杭州", xstorage.ValueTypeString))
+	err := misc.JoinErr(err1, err2, err3, err4, err5, err6)
 	if err != nil {
 		tool.GLog.WarningErr("auto.Day", errors.Join(errors.New("func Init() GetAndSetDefault error"), err))
 	}
@@ -42,7 +40,7 @@ func (d Day) Do() {
 	wg.Add(2)
 	// 分别获取天气、GNews
 	hot := ""
-	weather := spider.Weather{}
+	weather := ""
 	weatherDone := false
 	go func() {
 		defer wg.Done()
@@ -106,31 +104,26 @@ func (d Day) Do() {
 		}
 		hot = md
 	}()
-	var pro, city string
+	var city string
 	go func() {
 		defer wg.Done()
-		proV, err := setting.GSetting.Get("auto.weather.province")
-		if err != nil {
-			tool.GLog.WarningErr("WEATHER", errors.Join(errors.New("func Do() Get auto.weather.province error"), err))
-			return
-		}
-		pro = xstorage.ToBase[string](proV)
 		cityV, err := setting.GSetting.Get("auto.weather.city")
 		if err != nil {
 			tool.GLog.WarningErr("WEATHER", errors.Join(errors.New("func Do() Get auto.weather.city error"), err))
 			return
 		}
 		city = xstorage.ToBase[string](cityV)
-		s, err := spider.GetWeatherDataOri(pro, city)
-		if err != nil {
-			tool.GLog.WarningErr("WEATHER", errors.Join(errors.New("func Do() spider.GetWeatherDataOri error"), err))
+		keyV, err := setting.GSetting.Get("qweather.key")
+		if keyV == nil {
+			tool.GLog.Warning("WEATHER", "qweather.key not exist")
 			return
 		}
-		weather, err = spider.GetTodayWeather(s)
 		if err != nil {
-			tool.GLog.WarningErr("WEATHER", errors.Join(errors.New("func Do() spider.GetTodayWeather error"), err))
+			tool.GLog.WarningErr("WEATHER", errors.Join(errors.New("func Do() Get qweather.key error"), err))
 			return
 		}
+		key := xstorage.ToBase[string](keyV)
+		weather, err = spider.GetTodayWeatherMD(city, key)
 		weatherDone = true
 	}()
 	wg.Wait()
@@ -138,18 +131,13 @@ func (d Day) Do() {
 	// 留档方便别的地方使用
 	todayStr := time.Now().Format("01月02日")
 	if weatherDone {
-		strJ, err1 := json.Marshal(weather)
-		err2 := setting.GSetting.Set(xstorage.Join("auto", "weather", "today"), xstorage.ToUnit[string](string(strJ), xstorage.ValueTypeString))
-		err3 := setting.GSetting.Set(xstorage.Join("auto", "weather", "todayStr"), xstorage.ToUnit[string](todayStr, xstorage.ValueTypeString))
-		err := misc.JoinErr(err1, err2, err3)
+		err := setting.GSetting.Set(xstorage.Join("auto", "weather", "today"), xstorage.ToUnit[string](weather, xstorage.ValueTypeString))
 		if err != nil {
 			tool.GLog.WarningErr("auto.Day", errors.Join(errors.New("func Do() Set auto.weather.today error"), err))
 		}
 	}
 	if hot != "" {
-		err1 := setting.GSetting.Set(xstorage.Join("auto", "GNews", "today"), xstorage.ToUnit[string](hot, xstorage.ValueTypeString))
-		err2 := setting.GSetting.Set(xstorage.Join("auto", "GNews", "todayStr"), xstorage.ToUnit[string](todayStr, xstorage.ValueTypeString))
-		err := misc.JoinErr(err1, err2)
+		err := setting.GSetting.Set(xstorage.Join("auto", "GNews", "today"), xstorage.ToUnit[string](hot, xstorage.ValueTypeString))
 		if err != nil {
 			tool.GLog.WarningErr("auto.Day", errors.Join(errors.New("func Do() Set auto.GNews.today error"), err))
 		}
@@ -158,16 +146,10 @@ func (d Day) Do() {
 	// 推送
 	md := misc.MarkdownTool{}
 	md.AddTitle(fmt.Sprintf("日安，%s的播报", todayStr), 2)
-	md.AddTitle("天气", 3)
-	if !weatherDone {
+	if !weatherDone || weather == "" {
 		md.AddContent("今日天气获取失败")
 	} else {
-		md.AddContent(fmt.Sprintf("%s %s %s %s", pro+city, weather.Condition, weather.IndexMap["穿衣"].Why, weather.IndexMap["污染"].Why))
-		//md.AddList(weather.IndexMap["穿衣"].Status, 1)
-		//md.AddList(weather.IndexMap["污染"].Status, 1)
-		for _, v := range weather.IndexMap {
-			md.AddList(fmt.Sprintf("%s∵%s", v.Status, v.Why), 1)
-		}
+		md.AddMd(weather)
 	}
 	//md.AddTitle("关注新闻", 3)
 	//if baidu == "" {
