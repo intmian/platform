@@ -14,9 +14,6 @@ export function MenuPlus({disable, label2node}) {
     const nowNode = label2node.get(nowSelected);
     const [collapsed, setCollapsed] = useState(false);
 
-    console.log(nowSelected);
-    console.log(nowNode);
-
     return (
         <Layout>
             <Sider

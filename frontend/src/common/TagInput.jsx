@@ -13,7 +13,6 @@ export function TagInput({tagOps, tags, onChange, disabled, width = 380, maxTagW
     const handleSelect = (value, option) => {
         setInputValue('');
     };
-    console.log(tagOps);
     const options = tagOps.map((tag) => (
         {
             label: tag,
