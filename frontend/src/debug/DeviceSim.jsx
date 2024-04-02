@@ -5,13 +5,13 @@ import ResizeObserver from 'rc-resize-observer';
 const {Option} = Select;
 
 const deviceSizes = {
-    iPhone12: {
-        name: 'iPhone12',
+    iPhone: {
+        name: 'iPhone12 mini',
         width: 1080,
         height: 2340,
         screenSize: 5.4 // 假定的iPhone 12屏幕大小（英寸）
     },
-    iPadAir2: {
+    iPad: {
         name: 'iPad air2',
         width: 1640,
         height: 2360,
@@ -48,7 +48,7 @@ const simulatorStyle = {
 };
 
 export function DeviceSimulator({children}) {
-    const [device, setDevice] = useState('iPhone12');
+    const [device, setDevice] = useState('iPhone');
     const [userScreenSize, setUserScreenSize] = useState(24); // 用户屏幕大小（英寸），默认值
     const [userScreenResolution, setUserScreenResolution] = useState({width: 1920, height: 1080}); // 用户屏幕分辨率，默认值
 
@@ -84,10 +84,10 @@ export function DeviceSimulator({children}) {
 
     return (
         <div>
-            <Select defaultValue="iPhone12" style={{width: 200}} onChange={handleDeviceChange}>
+            <Select defaultValue="iPhone" style={{width: 300}} onChange={handleDeviceChange}>
                 {Object.keys(deviceSizes).map((key) => (
                     <Option key={key}
-                            value={key}>{deviceSizes[key].name}({deviceSizes[key].width}x{deviceSizes[key].height} {deviceSizes[key].screenSize}in)</Option>
+                            value={key}>{deviceSizes[key].name}({deviceSizes[key].width}x{deviceSizes[key].height} {deviceSizes[key].screenSize}寸)</Option>
                 ))}
             </Select>
             <span>真实大小？</span>
