@@ -38,14 +38,6 @@ const deviceSizes = {
     // ... 可以添加更多设备和它们的尺寸
 };
 
-const simulatorStyle = {
-    marginTop: '20px',
-    border: '1px solid #ccc',
-    overflow: 'hidden',
-    position: 'relative',
-    backgroundColor: '#fff',
-    boxShadow: '0 0 10px rgba(0, 0, 0, 0.5)',
-};
 
 export function DeviceSimulator({children}) {
     const [device, setDevice] = useState('iPhone');
@@ -102,11 +94,17 @@ export function DeviceSimulator({children}) {
                 <InputNumber disabled={!realSize} min={240} max={4320} defaultValue={1080}
                              onChange={handleUserScreenHeightChange}/>
             </div>
-            <ResizeObserver onResize={({width, height}) => {
-            }}>
-                <Card
+            <ResizeObserver
+                onResize={({width, height}) => {
+                }}>
+                <div
                     style={{
-                        ...simulatorStyle,
+                        marginTop: '20px',
+                        border: '1px solid #ccc',
+                        overflow: 'hidden',
+                        position: 'relative',
+                        backgroundColor: '#fff',
+                        boxShadow: '0 0 10px rgba(0, 0, 0, 0.5)',
                         width: deviceSizes[device].width,
                         height: deviceSizes[device].height,
                         transform: `scale(${!realSize ? 1 : scale})`,
@@ -115,7 +113,7 @@ export function DeviceSimulator({children}) {
                     }}
                 >
                     {children}
-                </Card>
+                </div>
             </ResizeObserver>
         </div>
     );
@@ -126,7 +124,12 @@ export function CustomDeviceSimulator({width, height, children}) {
     return (
         <Card
             style={{
-                ...simulatorStyle,
+                marginTop: '20px',
+                border: '1px solid #ccc',
+                overflow: 'hidden',
+                position: 'relative',
+                backgroundColor: '#fff',
+                boxShadow: '0 0 10px rgba(0, 0, 0, 0.5)',
                 width,
                 height,
                 transform: 'scale(1)',
