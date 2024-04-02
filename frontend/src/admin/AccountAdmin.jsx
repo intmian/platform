@@ -6,12 +6,15 @@ import TagInput from "../common/TagInput.jsx";
 import {AllPermission} from "../common/def.js";
 
 // AccountPanel 用于展示用户的权限信息，并管理密码对应的权限列表
-export function AccountPanelShow({name, initPermissions}) {
+//
+export function AccountPanel({name, initPermissions}) {
     const [permissions, setPermissions] = useState(initPermissions);
     return (
         <Card
+            // body padding 设为0
             style={{
                 width: 410,
+                // padding: 0,
             }}
             title={name}
             extra={<Space>
@@ -27,7 +30,14 @@ export function AccountPanelShow({name, initPermissions}) {
             actions={[]}
         >
             <div>
-                <List>
+                <List
+                    // 10pxpadding 后 灰色边框
+                    style={{
+                        border: '1px solid #f0f0f0',
+                        borderRadius: 4,
+                        padding: 5,
+                    }}
+                >
                     <VirtualList data={permissions} itemKey="permissions"
                                  height={200} itemHeight={30}
                     >

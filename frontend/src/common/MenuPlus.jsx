@@ -26,7 +26,7 @@ export function MenuPlus({disable, label2node}) {
                 // }}
                 collapsible
                 style={{
-                    height: '100vh',
+                    minHeight: '100vh',
                 }}
                 collapsed={collapsed}
                 onCollapse={(value) => setCollapsed(value)}
