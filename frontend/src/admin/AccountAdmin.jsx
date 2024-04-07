@@ -6,9 +6,32 @@ import TagInput from "../common/TagInput.jsx";
 import {AllPermission} from "../common/def.js";
 
 // AccountPanel 用于展示用户的权限信息，并管理密码对应的权限列表
-//
-export function AccountPanel({name, initPermissions}) {
-    const [permissions, setPermissions] = useState(initPermissions);
+// AccountPanel 负责显示相关
+
+class PermissonShowData {
+    tokenID = '';
+    permission = [];
+    saving = false;
+    deleting = false;
+}
+
+class AccountPanelShowData {
+    name = '';
+    permissions = [];
+    Adding = false;
+    deleting = false;
+}
+
+export function AccountPanel({name, initPermissions, onDelete}) {
+    let initShowData = new AccountPanelShowData();
+    initShowData.name = name;
+    for (let permission of initPermissions) {
+        let data = new PermissonShowData();
+        data.tokenID = permission.token;
+        data.permission = permission.permission;
+        initShowData.permissions.push(data);
+    }
+    const [showData, setShowData] = useState(initShowData);
     return (
         <Card
             // body padding 设为0
@@ -18,10 +41,18 @@ export function AccountPanel({name, initPermissions}) {
             }}
             title={name}
             extra={<Space>
-                <Button type="text">
+                <Button type="text" onClick={
+                    () => {
+                        // TODO: 发送
+                    }
+                }>
                     <PlusOutlined/>
                 </Button>
-                <Popconfirm title={`确认删除用户${name}吗？`} okText="确认" cancelText="取消" key="delete">
+                <Popconfirm title={`确认删除用户${name}吗？`} okText="确认" cancelText="取消" key="delete" onConfirm={
+                    () => {
+                        // TODO: 发送
+                    }
+                }>
                     <Button type="text" danger>
                         <CloseOutlined/>
                     </Button>
