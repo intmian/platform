@@ -59,6 +59,19 @@ type ChangeTokenRet struct {
 	Suc bool
 }
 
+const CmdCreateToken share.Cmd = "createToken"
+
+type CreateTokenReq struct {
+	Account string
+	Pwd     string
+	Pers    []share2.Permission
+}
+
+type CreateTokenRet struct {
+	TokenID int
+	Suc     bool
+}
+
 const CmdGetAllAccount share.Cmd = "getAllAccount"
 
 type GetAllAccountReq struct{}

@@ -2,31 +2,39 @@ import {useState} from "react";
 import {Col, InputNumber, Row, Slider} from "antd";
 import {CustomDeviceSimulator, DeviceSimulator} from "./DeviceSim.jsx";
 import {MenuPlus} from "../common/MenuPlus.jsx";
-import Index from "../admin/Index.jsx";
+import {AccountPanel} from "../admin/AccountAdmin.jsx";
+import {accountHttp2ShowData} from "../admin/acoountdata.js";
 
-// const debug = <AccountPanel
-//     name="admin"
-//     initPermissions={[
-//         {
-//             token: 'admin',
-//             permission: ['admin', 'debug']
-//         },
-//         {
-//             token: 'debug',
-//             permission: ['debug']
-//         },
-//         {
-//             token: 'aaa-111',
-//             permission: ['aaa-111']
-//         },
-//         {
-//             token: 'aaa-1112323232323',
-//             permission: ['123456', '123456', '123456']
-//         },
-//     ]}
-// />
+// const debug = <AddPermissionPanel/>
 
-const debug = <Index/>
+const debug = <AccountPanel
+    name="admin"
+    initShowData={accountHttp2ShowData(
+        {
+            name: 'admin',
+            permissionData: [
+                {
+                    token: 'admin',
+                    permission: ['admin', 'debug']
+                },
+                {
+                    token: 'debug',
+                    permission: ['debug']
+                },
+                {
+                    token: 'aaa-111',
+                    permission: ['aaa-111']
+                },
+                {
+                    token: 'aaa-1112323232323',
+                    permission: ['123456', '123456', '123456']
+                },
+            ]
+        }
+    )}
+/>
+
+// const debug = <Index/>
 
 
 export function Debug() {

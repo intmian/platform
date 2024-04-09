@@ -260,6 +260,13 @@ func serviceHandle(c *gin.Context) {
 		return
 	}
 	flag := tool.GetFlag(share.SvrName(name))
+	if flag == share.FlagNone {
+		c.JSON(200, gin.H{
+			"code": 1,
+			"msg":  "service not exist",
+		})
+		return
+	}
 	msg := share2.MakeMsgJson(share2.Cmd(cmd), string(bodyStr))
 	valid := getValid(c)
 	t1 := time.Now()
@@ -280,5 +287,8 @@ func serviceHandle(c *gin.Context) {
 		})
 		return
 	}
-	c.JSON(200, rec)
+	c.JSON(200, gin.H{
+		"code": 0,
+		"data": rec,
+	})
 }

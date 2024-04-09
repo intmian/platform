@@ -189,3 +189,75 @@ export function sendSetStorage(key, value, type, callback) {
     };
     fetchData()
 }
+
+async function UniPost(url, req) {
+    try {
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(req),
+        });
+
+        if (!response.ok) {
+            return null
+        }
+        return await response.json()
+    } catch (error) {
+        return null
+    }
+}
+
+export function sendRegister(account, callback) {
+    let req = {
+        account: account,
+    }
+    UniPost(config.api_base_url + '/service/account/register', req).then(callback)
+}
+
+export function sendDeregister(account, callback) {
+    let req = {
+        account: account,
+    }
+    UniPost(config.api_base_url + '/service/account/deregister', req).then(callback)
+}
+
+export function sendCheckToken(account, pwd, callback) {
+    let req = {
+        account: account,
+        pwd: pwd,
+    }
+    UniPost(config.api_base_url + '/service/account/checkToken', req).then(callback)
+}
+
+export function sendDelToken(account, tokenID, callback) {
+    let req = {
+        account: account,
+        tokenID: tokenID,
+    }
+    UniPost(config.api_base_url + '/service/account/delToken', req).then(callback)
+}
+
+export function sendChangeToken(account, tokenID, pers, callback) {
+    let req = {
+        account: account,
+        tokenID: tokenID,
+        pers: pers,
+    }
+    UniPost(config.api_base_url + '/service/account/changeToken', req).then(callback)
+}
+
+export function sendGetAllAccount(callback) {
+    let req = {}
+    UniPost(config.api_base_url + '/service/account/getAllAccount', req).then(callback)
+}
+
+export function sendCreateToken(account, pwd, pers, callback) {
+    let req = {
+        account: account,
+        pwd: pwd,
+        pers: pers,
+    }
+    UniPost(config.api_base_url + '/service/account/createToken', req).then(callback)
+}

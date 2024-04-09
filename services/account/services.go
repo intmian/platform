@@ -50,6 +50,8 @@ func (s *Service) HandleRpc(msg share.Msg, valid backendshare.Valid) (interface{
 		return share.HandleRpcTool("changeToken", msg, valid, s.OnChangeToken)
 	case accShare.CmdGetAllAccount:
 		return share.HandleRpcTool("getAllAccount", msg, valid, s.OnGetAllAccount)
+	case accShare.CmdCreateToken:
+		return share.HandleRpcTool("createToken", msg, valid, s.OnCreateToken)
 	default:
 		return nil, ErrUnknownCmd
 	}
@@ -124,6 +126,18 @@ func (s *Service) OnGetAllAccount(valid backendshare.Valid, req accShare.GetAllA
 		for _, info := range infos {
 			ret.Accounts[account][info.Token] = info.Permissions
 		}
+	}
+	return
+}
+
+func (s *Service) OnCreateToken(valid backendshare.Valid, req accShare.CreateTokenReq) (ret accShare.CreateTokenRet, err error) {
+	if !valid.HasPermission(backendshare.PermissionAdmin) {
+		return ret, nil
+	}
+	tokenID, err := s.acc.addPermission(req.Account, req.Pwd, req.Pers)
+	if err == nil {
+		ret.TokenID = tokenID
+		ret.Suc = true
 	}
 	return
 }

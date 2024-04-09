@@ -150,34 +150,34 @@ func (a *accountMgr) changePermission(account string, tokenID int, permissions [
 	return nil
 }
 
-func (a *accountMgr) addPermission(account string, password string, permissions []share2.Permission) error {
+func (a *accountMgr) addPermission(account string, password string, permissions []share2.Permission) (int, error) {
 	a.idLock.Lock(account)
 	defer a.idLock.Unlock(account)
 	if !a.initTag.IsInitialized() {
-		return ErrAccountMgrNotInit
+		return -1, ErrAccountMgrNotInit
 	}
 	if !checkPwd(password) {
-		return ErrPasswordFormatError
+		return -1, ErrPasswordFormatError
 	}
 	sv, err := a.accDb.Get(account)
 	if err != nil {
-		return errors.Join(err, ErrAccDbGetErr)
+		return -1, errors.Join(err, ErrAccDbGetErr)
 	}
 	if sv == nil {
-		return ErrAccountNotExist
+		return -1, ErrAccountNotExist
 	}
 	var ad accountDbData
 	dbStr := xstorage.ToBase[string](sv)
 	err = json.Unmarshal([]byte(dbStr), &ad)
 	if err != nil {
-		return errors.Join(err, ErrJsonUnmarshalFailed)
+		return -1, errors.Join(err, ErrJsonUnmarshalFailed)
 	}
 	token := getToken(account, password)
 
 	// 检查是否有token重复
 	for _, v := range ad.ID2PerInfos {
 		if v.Token == token {
-			return ErrTokenAlreadyExist
+			return -1, ErrTokenAlreadyExist
 		}
 	}
 
@@ -188,9 +188,9 @@ func (a *accountMgr) addPermission(account string, password string, permissions 
 	ad.ID2PerInfos[ad.LastTokenIndex] = per
 	err = a.accDb.Set(account, xstorage.JStructToUnit[accountDbData](&ad))
 	if err != nil {
-		return errors.Join(err, ErrAccDbSetErr)
+		return -1, errors.Join(err, ErrAccDbSetErr)
 	}
-	return nil
+	return ad.LastTokenIndex, nil
 }
 
 func (a *accountMgr) deletePermission(account string, tokenID int) error {
@@ -276,7 +276,7 @@ func (a *accountMgr) checkPermission(account string, pwd string) ([]share2.Permi
 	}
 	if sv == nil {
 		if account == "admin" {
-			// 没有账号去读初始密码
+			// 没有账号去读初始密码，换言之建立了第一个账户以后默认的这个admin账号密码就没用了
 			if getToken(account, pwd) == getToken(account, a.iniAdminPwd) {
 				return []share2.Permission{share2.PermissionAdmin}, nil
 			} else {

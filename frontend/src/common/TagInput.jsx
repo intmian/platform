@@ -3,7 +3,7 @@ import {Select} from 'antd';
 
 const {Option} = Select;
 
-export function TagInput({tagOps, tags, onChange, disabled, width = 380, maxTagWidth = 5}) {
+export function TagInput({tagOps, tags, onChange, disabled, style, maxTagWidth = 5, tips = '选择或新增标签'}) {
     const [inputValue, setInputValue] = useState('');
 
     const handleSearch = (value) => {
@@ -36,9 +36,9 @@ export function TagInput({tagOps, tags, onChange, disabled, width = 380, maxTagW
         <Select
             mode="multiple"
             disabled={disabled}
-            style={{width: width}}
+            style={style}
             defaultValue={tags}
-            placeholder="选择或新增标签"
+            placeholder={tips}
             searchValue={inputValue}
             onSearch={handleSearch}
             onSelect={handleSelect}
