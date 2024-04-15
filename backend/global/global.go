@@ -19,6 +19,7 @@ var GStorage *xstorage.XStorage
 var GStoWebPack *xstorage.WebPack
 var GNews *xnews.XNews // 用来保存最近的日志 方便查询
 var GBaseSetting *misc.FileUnit[coreShare.BaseSetting]
+var GCfg *xstorage.CfgExt
 
 func Init() error {
 	if !misc.PathExist("base_setting.toml") {
@@ -83,6 +84,10 @@ func Init() error {
 	)
 	if err != nil {
 		return errors.WithMessage(err, "Init WebPack err")
+	}
+	err = GCfg.Init(storage)
+	if err != nil {
+		return errors.WithMessage(err, "Init cfg err")
 	}
 	GPush = push
 	GLog = log

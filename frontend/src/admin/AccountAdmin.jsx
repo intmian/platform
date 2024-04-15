@@ -8,7 +8,7 @@ import {sendChangeToken, sendCreateToken, sendDelToken, sendDeregister, sendGetA
 import {accountHttp2ShowData} from "./acoountdata.js";
 
 // AddPermissionPanel 用于添加权限 onAdd为添加权限的回调 onCancel为取消添加权限的回调
-export function AddPermissionPanel(account, onAdd, onCancel) {
+export function AddPermissionPanel({account, onAdd, onCancel}) {
     // 密码、权限
     const [messageApi, contextHolder] = message.useMessage();
     const permissopns = useRef([]);

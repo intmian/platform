@@ -2,8 +2,10 @@ package backend
 
 import (
 	"encoding/json"
+	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/intmian/mian_go_lib/tool/token"
+	"github.com/intmian/mian_go_lib/xstorage"
 	"github.com/intmian/platform/backend/global"
 	"github.com/intmian/platform/backend/share"
 	"github.com/intmian/platform/backend/tool"
@@ -51,6 +53,25 @@ func login(c *gin.Context) {
 	for _, v := range retr.Pers {
 		permission = append(permission, string(v))
 	}
+
+	// 打印登录日志，如果是admin，还需要推送
+	loginInfo := "login usr[%s] permission[%v] time[%s] ip[%s]"
+	loginInfo = fmt.Sprintf(loginInfo, body.Username, permission, time.Now().Format("2006-01-02 15:04:05"), c.ClientIP())
+	global.GLog.Info("PLAT", loginInfo)
+	isAdmin := false
+	for _, v := range retr.Pers {
+		if v == share.PermissionAdmin {
+			isAdmin = true
+			break
+		}
+	}
+	if isAdmin {
+		err = global.GPush.Push("账号安全", loginInfo, false)
+		if err != nil {
+			global.GLog.Warning("PLAT", "push error [%s]", err.Error())
+		}
+	}
+
 	// 生成token
 	data := token.Data{
 		User:       body.Username,
@@ -291,4 +312,77 @@ func serviceHandle(c *gin.Context) {
 		"code": 0,
 		"data": rec,
 	})
+}
+
+func cfgPlatSet(c *gin.Context) {
+	valid := getValid(c)
+	if !valid.HasPermission("admin") {
+		c.JSON(200, gin.H{
+			"code": 1,
+			"msg":  "no permission",
+		})
+		return
+	}
+	// 从body中获得密码
+	opr := struct {
+		Key       string `json:"key"`
+		Val       string `json:"val"`
+		ValueType int    `json:"value_type"`
+	}{}
+	err := c.BindJSON(&opr)
+	if err != nil {
+		c.JSON(200, gin.H{
+			"code": 1,
+			"msg":  "illegal param",
+		})
+		return
+	}
+	v := xstorage.StringToUnit(opr.Val, xstorage.ValueType(opr.ValueType))
+	if v == nil {
+		c.JSON(200, gin.H{
+			"code": 1,
+			"msg":  "illegal param",
+		})
+		return
+	}
+	err = global.GCfg.SetCfg(opr.Key, *v)
+	if err != nil {
+		c.JSON(200, gin.H{
+			"code": 1,
+			"msg":  "inner error",
+		})
+		return
+	}
+}
+
+func cfgServiceSet(c *gin.Context) {
+	name := c.Param("name")
+	opr := struct {
+		SvrFlag   int    `json:"svr_flag"`
+		Key       string `json:"key"`
+		Val       string `json:"val"`
+		ValueType int
+	}{}
+	err := c.BindJSON(&opr)
+	if err != nil {
+		c.JSON(200, gin.H{
+			"code": 1,
+			"msg":  "illegal param",
+		})
+		return
+	}
+	svrName := tool.GetName(share.SvrFlag(opr.SvrFlag))
+	if svrName == "" {
+		c.JSON(200, gin.H{
+			"code": 1,
+			"msg":  "service not exist",
+		})
+		return
+	}
+	// 目前所有的配置还是存在plat下，方便迁移，如果有私有的配置，可以在加一层穿透
+
+}
+
+func cfgServiceUserSet(c *gin.Context) {
+
 }
