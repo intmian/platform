@@ -14,6 +14,33 @@ import (
 	"time"
 )
 
+type UniReturn struct {
+	Code int         `json:"code"`
+	Msg  string      `json:"msg"`
+	Data interface{} `json:"data"`
+}
+
+func makeSErrReturn(code int, msg string) UniReturn {
+	return UniReturn{
+		Code: code,
+		Msg:  msg,
+	}
+}
+
+func makeErrReturn(msg string) UniReturn {
+	return UniReturn{
+		Code: 1,
+		Msg:  msg,
+	}
+}
+
+func makeOkReturn(data interface{}) UniReturn {
+	return UniReturn{
+		Code: 0,
+		Data: data,
+	}
+}
+
 // login 进行登录。需要去账号服务验证账号密码，然后在web mgr签名才行
 func login(c *gin.Context) {
 	// 从body中获得密码
@@ -316,18 +343,16 @@ func serviceHandle(c *gin.Context) {
 
 func cfgPlatSet(c *gin.Context) {
 	valid := getValid(c)
-	if !valid.HasPermission("admin") {
+	if !valid.HasPermission("admin") && !valid.HasPermission("plat.cfg") {
 		c.JSON(200, gin.H{
 			"code": 1,
 			"msg":  "no permission",
 		})
 		return
 	}
-	// 从body中获得密码
 	opr := struct {
-		Key       string `json:"key"`
-		Val       string `json:"val"`
-		ValueType int    `json:"value_type"`
+		Key string `json:"key"`
+		Val string `json:"val"`
 	}{}
 	err := c.BindJSON(&opr)
 	if err != nil {
@@ -337,15 +362,8 @@ func cfgPlatSet(c *gin.Context) {
 		})
 		return
 	}
-	v := xstorage.StringToUnit(opr.Val, xstorage.ValueType(opr.ValueType))
-	if v == nil {
-		c.JSON(200, gin.H{
-			"code": 1,
-			"msg":  "illegal param",
-		})
-		return
-	}
-	err = global.GCfg.SetCfg(opr.Key, *v)
+
+	err = global.GCfg.SetCfg(xstorage.Join("PLAT", opr.Key), opr.Val)
 	if err != nil {
 		c.JSON(200, gin.H{
 			"code": 1,
@@ -356,12 +374,26 @@ func cfgPlatSet(c *gin.Context) {
 }
 
 func cfgServiceSet(c *gin.Context) {
-	name := c.Param("name")
+	// 暂时先全在core校验权限，后续可以考虑拆分
+	svr := c.Param("svr")
+	if tool.GetFlag(share.SvrName(svr)) == share.FlagNone {
+		c.JSON(200, gin.H{
+			"code": 1,
+			"msg":  "service not exist",
+		})
+		return
+	}
+	valid := getValid(c)
+	if !valid.HasPermission(tool.GetStr2Permission(svr, "cfg")) && !valid.HasPermission("admin") {
+		c.JSON(200, gin.H{
+			"code": 1,
+			"msg":  "no permission",
+		})
+		return
+	}
 	opr := struct {
-		SvrFlag   int    `json:"svr_flag"`
-		Key       string `json:"key"`
-		Val       string `json:"val"`
-		ValueType int
+		Key string `json:"key"`
+		Val string `json:"val"`
 	}{}
 	err := c.BindJSON(&opr)
 	if err != nil {
@@ -371,18 +403,73 @@ func cfgServiceSet(c *gin.Context) {
 		})
 		return
 	}
-	svrName := tool.GetName(share.SvrFlag(opr.SvrFlag))
-	if svrName == "" {
-		c.JSON(200, gin.H{
-			"code": 1,
-			"msg":  "service not exist",
-		})
-		return
-	}
-	// 目前所有的配置还是存在plat下，方便迁移，如果有私有的配置，可以在加一层穿透
 
+	err = global.GCfg.SetCfg(xstorage.Join(svr, opr.Key), opr.Val)
 }
 
 func cfgServiceUserSet(c *gin.Context) {
+	// 暂时先不校验权限，后面看情况再说
+	svr := c.Param("svr")
+	user := c.Param("user")
+	opr := struct {
+		Key string `json:"key"`
+		Val string `json:"val"`
+	}{}
+	err := c.BindJSON(&opr)
+	if err != nil {
+		c.JSON(200, makeErrReturn("illegal param"))
+		return
+	}
 
+	err = global.GCfg.SetUserCfg(user, xstorage.Join(svr, opr.Key), opr.Val)
+	if err != nil {
+		c.JSON(200, makeErrReturn("inner error"))
+		return
+	}
+
+	c.JSON(200, makeOkReturn(nil))
+}
+
+func cfgPlatGet(c *gin.Context) {
+	valid := getValid(c)
+	if !valid.HasPermission("admin") && !valid.HasPermission("plat.cfg") {
+		c.JSON(200, makeErrReturn("no permission"))
+		return
+	}
+	val, err := global.GCfg.GetAllCfg()
+	if err != nil {
+		c.JSON(200, makeErrReturn("inner error"))
+		return
+	}
+	c.JSON(200, makeOkReturn(val))
+}
+
+func cfgServiceGet(c *gin.Context) {
+	svr := c.Param("svr")
+	if tool.GetFlag(share.SvrName(svr)) == share.FlagNone {
+		c.JSON(200, makeErrReturn("service not exist"))
+		return
+	}
+	valid := getValid(c)
+	if !valid.HasPermission(tool.GetStr2Permission(svr, "cfg")) && !valid.HasPermission("admin") {
+		c.JSON(200, makeErrReturn("no permission"))
+		return
+	}
+	val, err := global.GCfg.GetCfgWithFilter(svr+".", "")
+	if err != nil {
+		c.JSON(200, makeErrReturn("inner error"))
+		return
+	}
+	c.JSON(200, makeOkReturn(val))
+}
+
+func cfgServiceUserGet(c *gin.Context) {
+	svr := c.Param("svr")
+	user := c.Param("user")
+	val, err := global.GCfg.GetCfgWithFilter(svr+".", user)
+	if err != nil {
+		c.JSON(200, makeErrReturn("inner error"))
+		return
+	}
+	c.JSON(200, makeOkReturn(val))
 }

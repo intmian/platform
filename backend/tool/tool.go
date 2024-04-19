@@ -1,6 +1,9 @@
 package tool
 
-import "github.com/intmian/platform/backend/share"
+import (
+	"github.com/intmian/platform/backend/share"
+	"strings"
+)
 
 type tool struct {
 	flag2name map[share.SvrFlag]share.SvrName
@@ -38,4 +41,15 @@ func GetStatusStr(status share.ServiceStatus) string {
 	default:
 		return "unknown"
 	}
+}
+
+func GetStr2Permission(strs ...string) share.Permission {
+	var buffer strings.Builder
+	for i, s := range strs {
+		buffer.WriteString(s)
+		if i != len(strs)-1 {
+			buffer.WriteString(".")
+		}
+	}
+	return share.Permission(buffer.String())
 }
