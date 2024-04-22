@@ -30,6 +30,29 @@ export function IsSliceType(type) {
     return type >= ValueType.SliceBegin;
 }
 
+export function Str2Unit(str, type) {
+    type = parseInt(type)
+    if (type === ValueType.String) {
+        return str
+    } else if (type === ValueType.Int) {
+        return parseInt(str)
+    } else if (type === ValueType.Float) {
+        return parseFloat(str)
+    } else if (type === ValueType.Bool) {
+        return str === 'true'
+    } else if (type === ValueType.SliceString) {
+        return str
+    } else if (type === ValueType.SliceInt) {
+        return str.map((item) => parseInt(item))
+    } else if (type === ValueType.SliceFloat) {
+        return str.map((item) => parseFloat(item))
+    } else if (type === ValueType.SliceBool) {
+        return str.map((item) => item === 'true')
+    } else {
+        return null
+    }
+}
+
 export const TypeFromValueType = {
     1: ValueType.String,
     2: ValueType.Int,

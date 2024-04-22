@@ -1,7 +1,7 @@
 import {useCallback, useEffect, useRef, useState} from "react";
 import {Button, Checkbox, Form, Input, message, Modal, Popconfirm, Select, Space, Spin, Table,} from "antd";
 import {sendGetStorage, sendSetStorage} from "../common/sendhttp.js";
-import {IsSliceType, ValueType, ValueTypeStr} from "../common/def.js";
+import {IsSliceType, Str2Unit, ValueType, ValueTypeStr} from "../common/def.js";
 import {FormItemArray} from "../common/misc.jsx";
 import {DeleteOutlined, FormOutlined} from "@ant-design/icons";
 
@@ -39,7 +39,7 @@ export function ChangeModal({showini, onFinish, isAdd, originData}) {
         <Form
             form={form}
             onFinish={(value) => {
-                sendSetStorage(value.key, value.value, typeNow, (data) => {
+                sendSetStorage(value.key, Str2Unit(value.value, typeNow), typeNow, (data) => {
                     console.log(data)
                     if (data === null || data.code !== 0) {
                         message.error("操作失败");

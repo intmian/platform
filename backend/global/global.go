@@ -85,10 +85,11 @@ func Init() error {
 	if err != nil {
 		return errors.WithMessage(err, "Init WebPack err")
 	}
-	err = GCfg.Init(storage)
+	cfg, err := xstorage.NewCfgExt(storage)
 	if err != nil {
 		return errors.WithMessage(err, "Init cfg err")
 	}
+	GCfg = cfg
 	GPush = push
 	GLog = log
 	return nil
