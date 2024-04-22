@@ -44,24 +44,21 @@ export function TimeFromStart({startTime, width}) {
 
 export function FormItemArray({disabled, isArray, initialValue, form}) {
     // 使用useEffect钩子来设置表单的初始值
-    if (isArray) {
-        // 如果是数组，我们假定initialValue也是一个数组
-        // 全部转换为字符串
-        if (initialValue === null) {
-            initialValue = [];
+    useEffect(() => {
+        if (isArray) {
+            // 如果是数组，我们假定initialValue也是一个数组
+            // 全部转换为字符串
+            const newValue = (initialValue || []).map((item) => item.toString());
+            form.setFieldsValue({value: newValue});
+        } else {
+            // 如果不是数组，则认为initialValue是一个字符串或者布尔值
+            let finalValue = initialValue;
+            if (typeof initialValue === "boolean") {
+                finalValue = initialValue.toString();
+            }
+            form.setFieldsValue({value: finalValue || ''});
         }
-        const newValue = initialValue.map((item) => item.toString());
-        form.setFieldsValue({value: newValue || []});
-    } else {
-        // 如果不是数组，则认为initialValue是一个字符串
-        if (typeof initialValue === "boolean" && !initialValue) {
-            initialValue = 'false';
-        }
-        form.setFieldsValue({value: initialValue || ''});
-    }
-    console.log("render");
-    // 显示form的值
-    console.log(form.getFieldValue("value"));
+    }, [form, initialValue, isArray]);
     if (!isArray) {
         return (
             <Form.Item name="value" rules={
