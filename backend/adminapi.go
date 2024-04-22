@@ -363,7 +363,7 @@ func cfgPlatSet(c *gin.Context) {
 		return
 	}
 
-	err = global.GCfg.SetCfg(xstorage.Join("PLAT", opr.Key), opr.Val)
+	err = global.GCfg.Set(xstorage.Join("PLAT", opr.Key), opr.Val)
 	if err != nil {
 		c.JSON(200, gin.H{
 			"code": 1,
@@ -404,7 +404,7 @@ func cfgServiceSet(c *gin.Context) {
 		return
 	}
 
-	err = global.GCfg.SetCfg(xstorage.Join(svr, opr.Key), opr.Val)
+	err = global.GCfg.Set(xstorage.Join(svr, opr.Key), opr.Val)
 }
 
 func cfgServiceUserSet(c *gin.Context) {
@@ -421,7 +421,7 @@ func cfgServiceUserSet(c *gin.Context) {
 		return
 	}
 
-	err = global.GCfg.SetUserCfg(user, xstorage.Join(svr, opr.Key), opr.Val)
+	err = global.GCfg.SetUser(user, xstorage.Join(svr, opr.Key), opr.Val)
 	if err != nil {
 		c.JSON(200, makeErrReturn("inner error"))
 		return
@@ -436,7 +436,7 @@ func cfgPlatGet(c *gin.Context) {
 		c.JSON(200, makeErrReturn("no permission"))
 		return
 	}
-	val, err := global.GCfg.GetAllCfg()
+	val, err := global.GCfg.GetAll()
 	if err != nil {
 		c.JSON(200, makeErrReturn("inner error"))
 		return
@@ -455,7 +455,7 @@ func cfgServiceGet(c *gin.Context) {
 		c.JSON(200, makeErrReturn("no permission"))
 		return
 	}
-	val, err := global.GCfg.GetCfgWithFilter(svr+".", "")
+	val, err := global.GCfg.GetWithFilter(svr+".", "")
 	if err != nil {
 		c.JSON(200, makeErrReturn("inner error"))
 		return
@@ -466,7 +466,7 @@ func cfgServiceGet(c *gin.Context) {
 func cfgServiceUserGet(c *gin.Context) {
 	svr := c.Param("svr")
 	user := c.Param("user")
-	val, err := global.GCfg.GetCfgWithFilter(svr+".", user)
+	val, err := global.GCfg.GetWithFilter(svr+".", user)
 	if err != nil {
 		c.JSON(200, makeErrReturn("inner error"))
 		return
