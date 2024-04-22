@@ -1,4 +1,5 @@
 import config from "../config.json"
+import {IsSliceType} from "./def.js";
 
 export function SendCheckLogin(callback) {
     // 请求 /api/admin 查询权限
@@ -164,7 +165,15 @@ export function sendGetStorage(perm, useRe, callback) {
 
 export function sendSetStorage(key, value, type, callback) {
     type = parseInt(type)
-    // 转换成json字符串
+    // 将value从字符串或者字符串数组转换为对应的类型
+    if (IsSliceType(type)) {
+        for (let i = 0; i < value.length; i++) {
+            value[i] = JSON.parse(value[i])
+        }
+    } else {
+        value = JSON.parse(value)
+    }
+    // 为了方便后端json解析，这里将value转换为json字符串
     value = JSON.stringify(value)
     const fetchData = async () => {
         try {
