@@ -8,7 +8,6 @@ import (
 	"github.com/intmian/platform/services/auto/setting"
 	"github.com/intmian/platform/services/auto/tool"
 	"github.com/pkg/errors"
-	"strings"
 	"time"
 )
 
@@ -132,7 +131,7 @@ func getNews(newsToken, base, token string, cheap bool) (string, error) {
 4. The article should be concise, friendly and highly readable. The article must refer to every news topic, with as many natural twists and turns as possible.
 5. Distinguish paragraphs by region and field, and allow news to be reordered or categorized.
 6. citation in the form of [serial number] is required after each hot news item.
-7. The total word count should be less than 800 Chinese characters, and the use of markdown syntax is prohibited.
+7. The total word count should be less than 800 simplified Chinese characters.
 8. Be brief and concise, don't make any nonsense.
 
 The following is the original content：
@@ -148,7 +147,7 @@ The following is the original content：
 	if !done {
 		return "", errors.WithMessage(err, "func getNews() open ai response is empty after retry.")
 	}
-	re = strings.Replace(re, "\n", "\n\n", -1)
+	//re = strings.Replace(re, "\n", "\n\n", -1)
 	//	html := `<details>
 	//  <summary>原始链接</summary>
 	//`
