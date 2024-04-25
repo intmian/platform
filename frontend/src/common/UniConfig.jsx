@@ -1,5 +1,5 @@
-import {Badge, Button, Input, InputNumber, Space, Spin, Switch, Tooltip} from "antd";
-import {useState} from "react";
+import {Badge, Button, Input, InputNumber, List, Space, Spin, Switch, Tooltip} from "antd";
+import {useEffect, useState} from "react";
 import {UniConfigType} from "./UniConfigDef.js";
 import {CloseOutlined} from "@ant-design/icons";
 
@@ -163,20 +163,51 @@ function MultiInput({value, onValueChange, operating, type}) {
 }
 
 class Configs {
-    configs = []
+    params = []
 
     addBase(key, text, defaultValue, uniConfigType, tips) {
-        let param = new Config();
-        param.meta.key = key;
-        param.meta.text = text;
-        param.meta.defaultValue = defaultValue;
-        param.meta.uniConfigType = uniConfigType;
-        param.meta.tips = tips;
-        this.configs.push(param);
+        let param = new ConfigParam();
+        param.key = key;
+        param.text = text;
+        param.defaultValue = defaultValue;
+        param.uniConfigType = uniConfigType;
+        param.tips = tips;
+        this.params.push(param);
     }
 }
 
 // UniConfig 一个通用的配置界面，用于显示和修改配置
-export function UniConfig({data}) {
+export function UniConfig({configs, cfgMode}) {
+    // 加载中
+    const [loading, setLoading] = useState(true);
+    // 配置
+    const [configData, setConfigs] = useState(null);
 
+    // 初始化
+    useEffect(() => {
+        // TODO: 从后端获取配置的值
+    }, []);
+
+    // 配置面板
+    let panels = [];
+    for (let i = 0; i < configs.params.length; i++) {
+        let data = null;
+        if (configData !== null && configData.length >= i) {
+            data = configData[i];
+        }
+        panels.push(<ConfigPanel
+            key={i}
+            ConfigMeta={configs.params[i].meta}
+            InitLoading={loading}
+            InitValue={data}
+        />)
+    }
+    return <List
+        dataSource={panels}
+        renderItem={item => (
+            <List.Item>
+                {item}
+            </List.Item>
+        )}
+    />
 }
