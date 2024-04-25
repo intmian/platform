@@ -8,3 +8,9 @@ export const UniConfigType = {
     // 以下是特殊的功能面板
     button: 2001,  // 用于执行某些操作
 }
+
+export class ConfigType {
+    static Plat = 0;
+    static Server = 1;
+    static User = 2;
+}
