@@ -1,4 +1,4 @@
-import {Badge, Button, Input, InputNumber, List, Space, Spin, Switch, Tooltip} from "antd";
+import {Badge, Button, Col, Input, InputNumber, List, Row, Space, Spin, Switch, Tooltip} from "antd";
 import {useEffect, useState} from "react";
 import {UniConfigType} from "./UniConfigDef.js";
 import {CloseOutlined} from "@ant-design/icons";
@@ -139,26 +139,30 @@ function MultiInput({value, onValueChange, operating, type}) {
                 />
                 break
         }
-        coms.push(<Badge
-            count={
-                < CloseOutlined
-                    style={{fontSize: '20px'}}
-                    onClick={() => console.log('删除')}
-                />}
-            key={i}
-        >
-            {editor}
-        </Badge>)
+        coms.push(<Col>
+            <Badge
+                count={
+                    < CloseOutlined
+                        style={{fontSize: '20px'}}
+                        onClick={() => console.log('删除')}
+                    />}
+                key={i}>
+
+                {editor}
+            </Badge>)
+        </Col>)
     }
     return <Space>
-        {coms}
-        <Button
-            onClick={() => {
-                value.push(false);
-                // 默认添加零值，这里不需要默认值
-                onValueChange(value);
-            }}
-        >添加</Button>
+        <Row style={{overflow: 'auto', width: '100%', height: '100vh'}}>
+            {coms}
+            <Button
+                onClick={() => {
+                    value.push(false);
+                    // 默认添加零值，这里不需要默认值
+                    onValueChange(value);
+                }}
+            >添加</Button>
+        </Row>
     </Space>
 }
 
