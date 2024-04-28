@@ -1,7 +1,15 @@
-import {Badge, Button, Col, Input, InputNumber, List, Row, Space, Spin, Switch, Tooltip} from "antd";
+import {Badge, Button, Col, Input, InputNumber, List, notification, Row, Space, Spin, Switch, Tooltip} from "antd";
 import {useEffect, useState} from "react";
-import {UniConfigType} from "./UniConfigDef.js";
+import {ConfigType, UniConfigType} from "./UniConfigDef.js";
 import {CloseOutlined} from "@ant-design/icons";
+import {
+    sendCfgPlatGet,
+    sendCfgPlatSet,
+    sendCfgServiceGet,
+    sendCfgServiceSet,
+    sendCfgServiceUserGet,
+    sendCfgServiceUserSet
+} from "./sendhttp.js";
 
 // ConfigParam 配置的参数
 class ConfigParam {
@@ -21,9 +29,12 @@ class ConfigParam {
 * ConfigParam 配置的参数
 * InitLoading 是否正在初始化
 * InitValue 初始化的值
+* cfgMode 配置的模式 平台、服务、用户
+* server 服务的名字
+* user 用户的名字
 * 如果正在加载中，会显示加载中的状态，否在会在底层未改变初始值的情况下显示值。
 * */
-function ConfigPanel({ConfigMeta, InitLoading, InitValue}) {
+function ConfigPanel({ConfigMeta, InitLoading, InitValue, cfgMode, server, user}) {
     // 是否正在进行网络操作，内部加载中
     const [operating, setOperating] = useState(false);
     // 当前的值
@@ -85,16 +96,43 @@ function ConfigPanel({ConfigMeta, InitLoading, InitValue}) {
     }
 
     // 保存区
+    const [api, contextHolder] = notification.useNotification();
+    const openNotificationWithIcon = (type, msg, desc) => {
+        api[type]({
+            message: msg,
+            description: desc,
+            duration: 3,
+        });
+    };
     let foot = <Button
         onClick={() => {
             setOperating(true);
-            // TODO: 根据类型进行保存
-            setOperating(false);
-            setNeedSave(false);
+            let callback = (ret) => {
+                if (ret.ok) {
+                    openNotificationWithIcon('success', '保存成功', '保存成功');
+                    setOperating(false);
+                    setNeedSave(false);
+                } else {
+                    openNotificationWithIcon('error', '保存失败', '保存失败');
+                    setOperating(false);
+                }
+            }
+            switch (cfgMode) {
+                case ConfigType.Plat:
+                    sendCfgPlatSet(ConfigMeta.key, value, ConfigMeta.uniConfigType, callback)
+                    break
+                case ConfigType.Server:
+                    sendCfgServiceSet(server, ConfigMeta.key, value, ConfigMeta.uniConfigType, callback)
+                    break
+                case ConfigType.User:
+                    sendCfgServiceUserSet(server, user, ConfigMeta.key, value, ConfigMeta.uniConfigType, callback)
+                    break
+            }
         }}
         disabled={!needSave}
     />
     return <Space>
+        {contextHolder}
         {head}
         {body}
         {foot}
@@ -174,14 +212,14 @@ class Configs {
         param.key = key;
         param.text = text;
         param.defaultValue = defaultValue;
-        param.uniConfigType = uniConfigType;
+        param.uniConfigType = uniConfigType
         param.tips = tips;
         this.params.push(param);
     }
 }
 
-// UniConfig 一个通用的配置界面，用于显示和修改配置
-export function UniConfig({configs, cfgMode}) {
+// UniConfig 一个通用的配置界面，用于显示和修改配置。建议不要和ctx一起耦合，单独处理全局的已有配置
+export function UniConfig({configs, cfgMode, server, user}) {
     // 加载中
     const [loading, setLoading] = useState(true);
     // 配置
@@ -189,8 +227,18 @@ export function UniConfig({configs, cfgMode}) {
 
     // 初始化
     useEffect(() => {
-        // TODO: 从后端获取配置的值
-    }, []);
+        let callback = (ret) => {
+            setConfigs(ret.data);
+            setLoading(false);
+        }
+        if (cfgMode === ConfigType.Plat) {
+            sendCfgPlatGet(callback)
+        } else if (cfgMode === ConfigType.Server) {
+            sendCfgServiceGet(server, callback)
+        } else if (cfgMode === ConfigType.User) {
+            sendCfgServiceUserGet(server, user, callback)
+        }
+    }, [cfgMode, server, user]);
 
     // 配置面板
     let panels = [];

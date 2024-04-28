@@ -25,7 +25,7 @@ export function AddPermissionPanel({account, onAdd, onCancel}) {
                 () => {
                     setLoading(true);
                     sendCreateToken(account, pwd.current, permissopns.current, (ret) => {
-                        if (ret.data.code === 0) {
+                        if (ret.ok) {
                             // 成功，通知上层加入数据并关闭窗口
                             onAdd(ret.data.tokenID, permissopns.current);
                             messageApi.success("添加成功");
@@ -184,7 +184,7 @@ export function AccountPanel({name, initShowData, onDelete}) {
                                                 item.saving = true;
                                                 setShowData({...showData});
                                                 sendChangeToken(name, item.tokenID, item.permission, (ret) => {
-                                                    if (ret.data.code === 0) {
+                                                    if (ret.ok) {
                                                         messageApi.success("保存成功");
                                                         item.needSave = false;
                                                     } else {
@@ -205,7 +205,7 @@ export function AccountPanel({name, initShowData, onDelete}) {
                                                             item.deleting = true;
                                                             setShowData({...showData});
                                                             sendDelToken(name, item.tokenID, (ret) => {
-                                                                if (ret.data.code === 0) {
+                                                                if (ret.ok) {
                                                                     messageApi.success("删除成功");
                                                                     showData.permissionData = showData.permissionData.filter(
                                                                         (value) => {
@@ -252,7 +252,7 @@ export function AccountAdmin() {
     useEffect(() => {
         let httpDatas = [];
         sendGetAllAccount((ret) => {
-            if (ret.data.code === 0) {
+            if (ret.ok) {
                 httpDatas = ret.data.Accounts;
                 for (let account in httpDatas) {
                     data.accountData.push(accountHttp2ShowData(httpDatas[account], account));

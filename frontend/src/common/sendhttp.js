@@ -190,7 +190,9 @@ export function sendSetStorage(key, value, type, callback) {
     fetchData()
 }
 
+// 通用的异步POST请求，只适配platform的通用后端返回格式，如果code不为0，或者没有code字段，返回null或者不为200的状态码，返回null
 async function UniPost(url, req) {
+    let result = {}
     try {
         const response = await fetch(url, {
             method: 'POST',
@@ -200,12 +202,18 @@ async function UniPost(url, req) {
             body: JSON.stringify(req),
         });
 
-        if (!response.ok) {
-            return null
+        if (!response.ok || (response.code !== undefined && response.code !== 0)) {
+            console.debug('UniPost failed:', response)
+            result.ok = false
+            return result
         }
-        return await response.json()
+        result.ok = true
+        result.data = await response.json()
+        return result
     } catch (error) {
-        return null
+        result.ok = false
+        console.debug('UniPost failed:', error)
+        return result
     }
 }
 
@@ -260,4 +268,48 @@ export function sendCreateToken(account, pwd, pers, callback) {
         pers: pers,
     }
     UniPost(config.api_base_url + '/service/account/createToken', req).then(callback)
+}
+
+export function sendCfgPlatGet(callback) {
+    let req = {}
+    UniPost(config.api_base_url + '/cfg/plat/get', req).then(callback)
+}
+
+export function sendCfgPlatSet(key, value, callback) {
+    let req = {
+        key: key,
+        val: value,
+    }
+    UniPost(config.api_base_url + '/cfg/plat/set', req).then(callback)
+}
+
+export function sendCfgServiceGet(svr, callback) {
+    let req = {
+        svr: svr,
+    }
+    UniPost(config.api_base_url + '/cfg/' + svr + '/get', req).then(callback)
+}
+
+export function sendCfgServiceSet(svr, key, value, callback) {
+    let req = {
+        key: key,
+        val: value,
+    }
+    UniPost(config.api_base_url + '/cfg/' + svr + '/set', req).then(callback)
+}
+
+export function sendCfgServiceUserGet(svr, user, callback) {
+    let req = {
+        svr: svr,
+        user: user,
+    }
+    UniPost(config.api_base_url + '/cfg/' + svr + '/' + user + '/get', req).then(callback)
+}
+
+export function sendCfgServiceUserSet(svr, user, key, value, callback) {
+    let req = {
+        key: key,
+        val: value,
+    }
+    UniPost(config.api_base_url + '/cfg/' + svr + '/' + user + '/set', req).then(callback)
 }
