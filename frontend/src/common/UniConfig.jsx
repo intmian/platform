@@ -140,7 +140,7 @@ function ConfigPanel({ConfigMeta, InitLoading, InitValue, cfgMode, server, user}
 }
 
 function MultiInput({value, onValueChange, operating, type}) {
-    // 一组Switch，每个Switch右上角有一个删除按钮，点击删除按钮会删除这个Switch，后面有一个按钮可以添加新的Switch
+    // 一组editor，每个editor右上角有一个删除按钮，点击删除按钮会删除这个editor，后面有一个按钮可以添加新的editor
     let coms = []
     for (let i = 0; i < value.length; i++) {
         let editor = null;
@@ -190,16 +190,32 @@ function MultiInput({value, onValueChange, operating, type}) {
             </Badge>)
         </Col>)
     }
+
+    let defaultNew = null;
+    switch (type) {
+        case UniConfigType.SliceBool:
+            defaultNew = false;
+            break
+        case UniConfigType.SliceInt:
+        case UniConfigType.SliceFloat:
+            defaultNew = 0;
+            break
+        case UniConfigType.SliceString:
+            defaultNew = '';
+            break
+    }
+    let adder = <Button
+        onClick={() => {
+            value.push(defaultNew);
+            // 默认添加零值，这里不需要默认值
+            onValueChange(value);
+        }}
+    >添加</Button>
+
     return <Space>
         <Row style={{overflow: 'auto', width: '100%', height: '100vh'}}>
             {coms}
-            <Button
-                onClick={() => {
-                    value.push(false);
-                    // 默认添加零值，这里不需要默认值
-                    onValueChange(value);
-                }}
-            >添加</Button>
+            {adder}
         </Row>
     </Space>
 }
