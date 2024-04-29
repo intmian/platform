@@ -1,4 +1,18 @@
-import {Badge, Button, Col, Input, InputNumber, List, notification, Row, Space, Spin, Switch, Tooltip} from "antd";
+import {
+    Badge,
+    Button,
+    Col,
+    Input,
+    InputNumber,
+    List,
+    notification,
+    Row,
+    Select,
+    Space,
+    Spin,
+    Switch,
+    Tooltip
+} from "antd";
 import {useEffect, useState} from "react";
 import {ConfigType, UniConfigType} from "./UniConfigDef.js";
 import {CloseOutlined} from "@ant-design/icons";
@@ -24,17 +38,31 @@ class ConfigParam {
     buttonFunc = null;  // 如果是button类型，这里是点击按钮的回调
 }
 
-/*
-* ConfigPanel 单项配置的面板
-* ConfigParam 配置的参数
-* InitLoading 是否正在初始化
-* InitValue 初始化的值
-* cfgMode 配置的模式 平台、服务、用户
-* server 服务的名字
-* user 用户的名字
-* 如果正在加载中，会显示加载中的状态，否在会在底层未改变初始值的情况下显示值。
-* */
-function ConfigPanel({ConfigMeta, InitLoading, InitValue, cfgMode, server, user}) {
+function enumPanel(ConfigMeta, value, onValueChange, operating) {
+    let options = {}
+    for (const [enumVar, text] of ConfigMeta.enum2text) {
+        options[enumVar] = text
+    }
+    return <Select
+        value={value}
+        onChange={onValueChange}
+        disabled={operating}
+    />
+}
+
+function ButtonPanel(ConfigParam) {
+    const [operating, setOperating] = useState(false);
+    return <Button
+        onClick={() => {
+            setOperating(true)
+            ConfigParam.buttonFunc()
+            setOperating(false)
+        }}
+        disabled={operating}
+    />
+}
+
+function ShowControlSavePanel(InitValue, ConfigParam, InitLoading, cfgMode, server, user) {
     // 是否正在进行网络操作，内部加载中
     const [operating, setOperating] = useState(false);
     // 当前的值
@@ -43,8 +71,8 @@ function ConfigPanel({ConfigMeta, InitLoading, InitValue, cfgMode, server, user}
     const [needSave, setNeedSave] = useState(false);
 
     // 头部
-    const head = <Tooltip title={ConfigMeta.tips}>
-        <div>{ConfigMeta.text}</div>
+    const head = <Tooltip title={ConfigParam.tips}>
+        <div>{ConfigParam.text}</div>
     </Tooltip>
 
     // 数据操作区，处理value，并提示保存
@@ -57,7 +85,7 @@ function ConfigPanel({ConfigMeta, InitLoading, InitValue, cfgMode, server, user}
         body = <Spin/>
     } else {
         // 根据类型显示不同的内容
-        switch (ConfigMeta.uniConfigType) {
+        switch (ConfigParam.uniConfigType) {
             case UniConfigType.Bool:
                 body = <Switch
                     checked={value}
@@ -71,6 +99,10 @@ function ConfigPanel({ConfigMeta, InitLoading, InitValue, cfgMode, server, user}
                     onChange={onValueChange}
                     disabled={operating}
                 />
+                break
+            case UniConfigType.Enum:
+                // 显示时显示value对应enum2text,选择项也从中取
+                body = enumPanel(ConfigParam, value, onValueChange, operating);
                 break
             case UniConfigType.Int:
             case UniConfigType.Float:
@@ -88,10 +120,9 @@ function ConfigPanel({ConfigMeta, InitLoading, InitValue, cfgMode, server, user}
                     value={value}
                     onValueChange={onValueChange}
                     operating={operating}
-                    type={ConfigMeta.uniConfigType}
+                    type={ConfigParam.uniConfigType}
                 />
                 break
-
         }
     }
 
@@ -119,13 +150,13 @@ function ConfigPanel({ConfigMeta, InitLoading, InitValue, cfgMode, server, user}
             }
             switch (cfgMode) {
                 case ConfigType.Plat:
-                    sendCfgPlatSet(ConfigMeta.key, value, ConfigMeta.uniConfigType, callback)
+                    sendCfgPlatSet(ConfigParam.key, value, ConfigParam.uniConfigType, callback)
                     break
                 case ConfigType.Server:
-                    sendCfgServiceSet(server, ConfigMeta.key, value, ConfigMeta.uniConfigType, callback)
+                    sendCfgServiceSet(server, ConfigParam.key, value, ConfigParam.uniConfigType, callback)
                     break
                 case ConfigType.User:
-                    sendCfgServiceUserSet(server, user, ConfigMeta.key, value, ConfigMeta.uniConfigType, callback)
+                    sendCfgServiceUserSet(server, user, ConfigParam.key, value, ConfigParam.uniConfigType, callback)
                     break
             }
         }}
@@ -137,6 +168,25 @@ function ConfigPanel({ConfigMeta, InitLoading, InitValue, cfgMode, server, user}
         {body}
         {foot}
     </Space>
+}
+
+/*
+* ConfigPanel 单项配置的面板
+* ConfigParam 配置的参数
+* InitLoading 是否正在初始化
+* InitValue 初始化的值
+* cfgMode 配置的模式 平台、服务、用户
+* server 服务的名字
+* user 用户的名字
+* 如果正在加载中，会显示加载中的状态，否在会在底层未改变初始值的情况下显示值。
+* */
+function ConfigPanel({ConfigParam, InitLoading, InitValue, cfgMode, server, user}) {
+    // 特殊处理的一些类型
+    if (ConfigParam.uniConfigType === UniConfigType.Button) {
+        return ButtonPanel(ConfigParam);
+    }
+    // 通用的展示、控制、保存组件
+    return ShowControlSavePanel(InitValue, ConfigParam, InitLoading, cfgMode, server, user);
 }
 
 function MultiInput({value, onValueChange, operating, type}) {
@@ -265,7 +315,7 @@ export function UniConfig({configs, cfgMode, server, user}) {
         }
         panels.push(<ConfigPanel
             key={i}
-            ConfigMeta={configs.params[i].meta}
+            ConfigParam={configs.params[i]}
             InitLoading={loading}
             InitValue={data}
         />)
