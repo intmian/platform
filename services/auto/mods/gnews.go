@@ -123,18 +123,33 @@ func getNews(newsToken, base, token string, cheap bool) (string, error) {
 	done := false
 	var re string
 	for retry < 2 {
-		o := ai.NewOpenAI(base, token, cheap, ai.DefaultRenshe)
-		re, err = o.Chat(`The following data of 20 hot news stories from the past day crawled using a crawler, please do the following based on these contents.
-1. categorize these news according to regions and fields, and organize them into a daily news summary article.
-2. Use Chinese.
-3. Do not need to translate proper nouns and names into Chinese.
-4. The article should be concise, friendly and highly readable. The article must refer to every news topic, with as many natural twists and turns as possible.
-5. Distinguish paragraphs by region and field, and allow news to be reordered or categorized.
-6. citation in the form of [serial number] is required after each hot news item.
-7. The total word count should be less than 800 simplified Chinese characters.
-8. Be brief and concise, don't make any nonsense.
+		/*
+			如果不行改成单体输出 Below are the headline and summary of a news segment. Based on these, please generate a concise, friendly, and readable summary in Simplified Chinese (no more than 40 words). And score the news according to its importance to an average Chinese person, using a scale of 1-5. And analyze the type of news (e.g. politics, sports, technology).
+			Output in the following json format
+			{
+			“type” : “...” ,
+			“important” : 0-5.
+			“content”:“......”
+			}
+		*/
+		o := ai.NewOpenAI(base, token, cheap, ai.NewsRenshe)
+		re, err = o.Chat(`The following is the data of the hot news of the past day crawled by using crawler (including title and summary), please do the following processing according to these contents.
+1. if the content of the news is not in Simplified Chinese, then translate it into Simplified Chinese (there is no need to translate proper nouns and people's names into Chinese).
+2. Generate a concise, friendly and readable summary (no more than 40 words) for each news item based on the news title and abstract. Each news item is scored according to its importance to an average Chinese person, using a scale of 1-5. 3.
+3. categorize the processed news according to the type of news (e.g. politics, sports, technology) and output it in the following form
+4. finally generate a 100-word summary. Requires a summary and evaluation of all the news of the day along with a corresponding evaluation of the importance of the news of the day
+5. All responses must be in simplified Chinese. No news can be omitted.
 
-The following is the original content：
+### Type 1
+* Use ⭐ to denote scores, e.g. a three is ⭐⭐⭐ News 1 specifics. [corresponding raw numbers]
+* Use ⭐ to denote scores, e.g. a four is ⭐⭐⭐⭐ News 2 specifics. [corresponding raw numbers]
+* ...
+### Type 2
+...
+### Summary
+Summarize the specifics of the summary.
+
+The following is the original content:
 ` + s)
 		if re != "" && err == nil {
 			done = true
@@ -158,6 +173,7 @@ The following is the original content：
 	//	}
 	//	html += "</details>"
 	md := re + "\n"
+
 	//md += html
 	//	for _, v := range result.Articles {
 	//		s := `> [%s](%s)
