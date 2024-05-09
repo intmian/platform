@@ -56,7 +56,8 @@ func (m *WebMgr) Init() {
 			}
 		})
 	}
-	InitRoot(engine)
+	InitAdminRoot(engine)
+	InitSvrRoot(engine)
 	s1v, err1 := global.GStorage.Get("WebSalt1")
 	s2v, err2 := global.GStorage.Get("WebSalt2")
 	var s1, s2 string
