@@ -15,9 +15,8 @@ import (
 	"time"
 )
 
-var GPlatCore *PlatCore
-
 // PlatCore 提供共用的核心共享服务，并负责启动关闭各项服务
+// 向外部提供接口，允许部分参与服务业务
 // TODO:后续可以考虑多机，一个服务一个进程起多个或者一个进程n个，网关服务，同时考虑在服务间转发等等，现在就是一个单机单进程系统。接入netext后就行，将信息在core内接通，然后在core内部转发
 type PlatCore struct {
 	ctx         context.Context

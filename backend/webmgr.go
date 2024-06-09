@@ -11,9 +11,7 @@ import (
 	"time"
 )
 
-// GWebMgr web管理器,负责管理gin以及控制台相关，服务的鉴权与内容请从services中处理
-var GWebMgr WebMgr
-
+// WebMgr web管理器,负责管理gin以及控制台相关，服务的鉴权与内容请从services中处理
 type WebMgr struct {
 	platStoWebPack xstorage.WebPack
 	Jwt            token.JwtMgr

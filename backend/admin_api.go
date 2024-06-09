@@ -56,7 +56,7 @@ func login(c *gin.Context) {
 		return
 
 	}
-	ret, err := GPlatCore.SendAndRec(share.FlagAccount, share2.MakeMsg(share3.CmdCheckToken, share3.CheckTokenReq{
+	ret, err := global.GPlatCore.SendAndRec(share.FlagAccount, share2.MakeMsg(share3.CmdCheckToken, share3.CheckTokenReq{
 		Account: body.Username,
 		Pwd:     body.Password,
 	}), share.MakeSysValid())
@@ -104,7 +104,7 @@ func login(c *gin.Context) {
 		Permission: permission,
 		ValidTime:  int64(time.Hour*24*7/time.Second) + time.Now().Unix(),
 	}
-	t := GWebMgr.Jwt.GenToken(body.Username, data.Permission, data.ValidTime)
+	t := global.GWebMgr.Jwt.GenToken(body.Username, data.Permission, data.ValidTime)
 	data.Token = t
 	// 保存token
 	tokenS, _ := json.Marshal(data)
@@ -140,7 +140,7 @@ func getValid(c *gin.Context) share.Valid {
 	var r share.Valid
 	r.User = data.User
 	for _, v := range data.Permission {
-		if GWebMgr.CheckSignature(&data, v) {
+		if global.GWebMgr.CheckSignature(&data, v) {
 			r.Permissions = append(r.Permissions, share.Permission(v))
 		}
 	}
@@ -174,7 +174,7 @@ func check(c *gin.Context) {
 	var r share.Valid
 	r.User = data.User
 	for _, v := range data.Permission {
-		if GWebMgr.CheckSignature(&data, v) {
+		if global.GWebMgr.CheckSignature(&data, v) {
 			r.Permissions = append(r.Permissions, share.Permission(v))
 		}
 	}
@@ -216,7 +216,7 @@ func checkAdmin(c *gin.Context) {
 		c.Abort()
 		return
 	}
-	if !GWebMgr.CheckSignature(&data, "admin") {
+	if !global.GWebMgr.CheckSignature(&data, "admin") {
 		c.JSON(200, gin.H{
 			"code": 1,
 			"msg":  "token invalid",
@@ -227,7 +227,7 @@ func checkAdmin(c *gin.Context) {
 }
 
 func getServices(c *gin.Context) {
-	info := GPlatCore.GetWebInfo()
+	info := global.GPlatCore.GetWebInfo()
 	c.JSON(200, info)
 }
 
@@ -241,7 +241,7 @@ func startService(c *gin.Context) {
 		})
 		return
 	}
-	err := GPlatCore.StartService(flag)
+	err := global.GPlatCore.StartService(flag)
 	if err != nil {
 		c.JSON(200, gin.H{
 			"code": 1,
@@ -265,7 +265,7 @@ func stopService(c *gin.Context) {
 		})
 		return
 	}
-	err := GPlatCore.StopService(flag)
+	err := global.GPlatCore.StopService(flag)
 	if err != nil {
 		c.JSON(200, gin.H{
 			"code": 1,

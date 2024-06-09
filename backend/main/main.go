@@ -10,6 +10,5 @@ func main() {
 		panic(err)
 	}
 	backend.Init()
-	backend.Init()
-	backend.GPlatCore.Update()
+	global.GPlatCore.Update()
 }

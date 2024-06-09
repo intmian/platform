@@ -8,7 +8,9 @@ import (
 	"github.com/intmian/mian_go_lib/xpush"
 	"github.com/intmian/mian_go_lib/xpush/pushmod"
 	"github.com/intmian/mian_go_lib/xstorage"
+	"github.com/intmian/platform/backend"
 	coreShare "github.com/intmian/platform/backend/share"
+	"github.com/intmian/platform/backend/tool"
 	"github.com/pkg/errors"
 )
 
@@ -20,6 +22,8 @@ var GStoWebPack *xstorage.WebPack
 var GNews *xnews.XNews // 用来保存最近的日志 方便查询
 var GBaseSetting *misc.FileUnit[coreShare.BaseSetting]
 var GCfg *xstorage.CfgExt
+var GWebMgr backend.WebMgr
+var GPlatCore *backend.PlatCore
 
 func Init() error {
 	if !misc.PathExist("base_setting.toml") {
@@ -92,5 +96,11 @@ func Init() error {
 	GCfg = cfg
 	GPush = push
 	GLog = log
+	GWebMgr.Init()
+	err = GPlatCore.Init()
+	if err != nil {
+		return errors.WithMessage(err, "Init platCore err")
+	}
+	tool.Init()
 	return nil
 }

@@ -40,7 +40,7 @@ func serviceHandle(c *gin.Context) {
 			global.GLog.Warning("PLAT", "serviceHandle too long [%s] [%s] [%s]", name, cmd, delta.String())
 		}
 	}()
-	rec, err := GPlatCore.OnRecRpc(flag, msg, valid)
+	rec, err := global.GPlatCore.OnRecRpc(flag, msg, valid)
 	finish <- nil
 	if err != nil {
 		c.JSON(200, gin.H{
