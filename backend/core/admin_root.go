@@ -4,8 +4,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func InitAdminRoot(r *gin.Engine) {
-
+func initAdminRoot(r *gin.Engine) {
 	//r.Static("/page", "./frontend")
 	// 接入管理员后端
 	r.POST("/login", login)
@@ -15,8 +14,8 @@ func InitAdminRoot(r *gin.Engine) {
 	admin.POST("/services", getServices)
 	admin.POST("/service/:name/start", startService)
 	admin.POST("/service/:name/stop", stopService)
-	admin.POST("/storage/get", GStoWebPack.WebGet)
-	admin.POST("/storage/set", GStoWebPack.WebSet)
-	admin.POST("/storage/get_all", GStoWebPack.WebGetAll)
+	admin.POST("/storage/get", gStoWebPack.WebGet)
+	admin.POST("/storage/set", gStoWebPack.WebSet)
+	admin.POST("/storage/get_all", gStoWebPack.WebGetAll)
 	admin.POST("/log/get", getLastLog)
 }

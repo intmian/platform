@@ -11,28 +11,28 @@ import (
 	"time"
 )
 
-type UniReturn struct {
+type uniReturn struct {
 	Code int         `json:"code"`
 	Msg  string      `json:"msg"`
 	Data interface{} `json:"data"`
 }
 
-func makeSErrReturn(code int, msg string) UniReturn {
-	return UniReturn{
+func makeSErrReturn(code int, msg string) uniReturn {
+	return uniReturn{
 		Code: code,
 		Msg:  msg,
 	}
 }
 
-func makeErrReturn(msg string) UniReturn {
-	return UniReturn{
+func makeErrReturn(msg string) uniReturn {
+	return uniReturn{
 		Code: 1,
 		Msg:  msg,
 	}
 }
 
-func makeOkReturn(data interface{}) UniReturn {
-	return UniReturn{
+func makeOkReturn(data interface{}) uniReturn {
+	return uniReturn{
 		Code: 0,
 		Data: data,
 	}
@@ -54,7 +54,7 @@ func login(c *gin.Context) {
 		return
 
 	}
-	ret, err := GPlatCore.SendAndRec(share.FlagAccount, share2.MakeMsg(share3.CmdCheckToken, share3.CheckTokenReq{
+	ret, err := GPlatCore.sendAndRec(share.FlagAccount, share2.MakeMsg(share3.CmdCheckToken, share3.CheckTokenReq{
 		Account: body.Username,
 		Pwd:     body.Password,
 	}), share.MakeSysValid())
@@ -81,7 +81,7 @@ func login(c *gin.Context) {
 	// 打印登录日志，如果是admin，还需要推送
 	loginInfo := "login usr[%s] permission[%v] time[%s] ip[%s]"
 	loginInfo = fmt.Sprintf(loginInfo, body.Username, permission, time.Now().Format("2006-01-02 15:04:05"), c.ClientIP())
-	GLog.Info("PLAT", loginInfo)
+	gLog.Info("PLAT", loginInfo)
 	isAdmin := false
 	for _, v := range retr.Pers {
 		if v == share.PermissionAdmin {
@@ -90,9 +90,9 @@ func login(c *gin.Context) {
 		}
 	}
 	if isAdmin {
-		err = GPush.Push("账号安全", loginInfo, false)
+		err = gPush.Push("账号安全", loginInfo, false)
 		if err != nil {
-			GLog.Warning("PLAT", "push error [%s]", err.Error())
+			gLog.Warning("PLAT", "push error [%s]", err.Error())
 		}
 	}
 
@@ -102,7 +102,7 @@ func login(c *gin.Context) {
 		Permission: permission,
 		ValidTime:  int64(time.Hour*24*7/time.Second) + time.Now().Unix(),
 	}
-	t := GWebMgr.Jwt.GenToken(body.Username, data.Permission, data.ValidTime)
+	t := gWebMgr.jwt.GenToken(body.Username, data.Permission, data.ValidTime)
 	data.Token = t
 	// 保存token
 	tokenS, _ := json.Marshal(data)
@@ -138,7 +138,7 @@ func getValid(c *gin.Context) share.Valid {
 	var r share.Valid
 	r.User = data.User
 	for _, v := range data.Permission {
-		if GWebMgr.CheckSignature(&data, v) {
+		if gWebMgr.CheckSignature(&data, v) {
 			r.Permissions = append(r.Permissions, share.Permission(v))
 		}
 	}
@@ -172,7 +172,7 @@ func check(c *gin.Context) {
 	var r share.Valid
 	r.User = data.User
 	for _, v := range data.Permission {
-		if GWebMgr.CheckSignature(&data, v) {
+		if gWebMgr.CheckSignature(&data, v) {
 			r.Permissions = append(r.Permissions, share.Permission(v))
 		}
 	}
@@ -214,7 +214,7 @@ func checkAdmin(c *gin.Context) {
 		c.Abort()
 		return
 	}
-	if !GWebMgr.CheckSignature(&data, "admin") {
+	if !gWebMgr.CheckSignature(&data, "admin") {
 		c.JSON(200, gin.H{
 			"code": 1,
 			"msg":  "token invalid",
@@ -225,13 +225,13 @@ func checkAdmin(c *gin.Context) {
 }
 
 func getServices(c *gin.Context) {
-	info := GPlatCore.GetWebInfo()
+	info := GPlatCore.getWebInfo()
 	c.JSON(200, info)
 }
 
 func startService(c *gin.Context) {
 	name := c.Param("name")
-	flag := GetFlag(share.SvrName(name))
+	flag := getFlag(share.SvrName(name))
 	if flag == share.FlagNone {
 		c.JSON(200, gin.H{
 			"code": 1,
@@ -239,7 +239,7 @@ func startService(c *gin.Context) {
 		})
 		return
 	}
-	err := GPlatCore.StartService(flag)
+	err := GPlatCore.startService(flag)
 	if err != nil {
 		c.JSON(200, gin.H{
 			"code": 1,
@@ -255,7 +255,7 @@ func startService(c *gin.Context) {
 
 func stopService(c *gin.Context) {
 	name := c.Param("name")
-	flag := GetFlag(share.SvrName(name))
+	flag := getFlag(share.SvrName(name))
 	if flag == share.FlagNone {
 		c.JSON(200, gin.H{
 			"code": 1,
@@ -263,7 +263,7 @@ func stopService(c *gin.Context) {
 		})
 		return
 	}
-	err := GPlatCore.StopService(flag)
+	err := GPlatCore.stopService(flag)
 	if err != nil {
 		c.JSON(200, gin.H{
 			"code": 1,
@@ -278,7 +278,7 @@ func stopService(c *gin.Context) {
 }
 
 func getLastLog(c *gin.Context) {
-	logs, err := GNews.GetTopic("PLAT")
+	logs, err := gNews.GetTopic("PLAT")
 	// 翻转
 	for i, j := 0, len(logs)-1; i < j; i, j = i+1, j-1 {
 		logs[i], logs[j] = logs[j], logs[i]

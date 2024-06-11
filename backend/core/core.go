@@ -24,16 +24,16 @@ type PlatCore struct {
 }
 
 func (p *PlatCore) Init() error {
-	p.ctx = context.WithoutCancel(GCtx)
+	p.ctx = context.WithoutCancel(gCtx)
 	p.service = make(map[coreShare.SvrFlag]share.IService)
 	p.serviceMeta = make(map[coreShare.SvrFlag]*coreShare.ServiceMeta)
 	p.startTime = time.Now()
 	p.registerSvr()
-	err := GPush.Push("PLAT", "初始化完成", false)
+	err := gPush.Push("PLAT", "初始化完成", false)
 	if err != nil {
-		GLog.WarningErr("PLAT", errors.WithMessage(err, "push Init err"))
+		gLog.WarningErr("PLAT", errors.WithMessage(err, "push Init err"))
 	}
-	GLog.Info("PLAT", "初始化完成")
+	gLog.Info("PLAT", "初始化完成")
 	return nil
 }
 
@@ -41,48 +41,48 @@ func (p *PlatCore) Update() {
 	<-p.ctx.Done()
 }
 
-func (p *PlatCore) StartService(flag coreShare.SvrFlag) error {
-	name := GetName(flag)
+func (p *PlatCore) startService(flag coreShare.SvrFlag) error {
+	name := getName(flag)
 	//v := xstorage.ToUnit[bool](true, xstorage.ValueTypeBool)
-	//err := global.GStorage.Set(xstorage.Join(string(name), "open"), v)
+	//err := global.gStorage.Set(xstorage.Join(string(name), "open"), v)
 	//if err != nil {
-	//	global.GLog.ErrorErr("PLAT", errors.WithMessagef(err, "StartService %d err", flag))
+	//	global.gLog.ErrorErr("PLAT", errors.WithMessagef(err, "startService %d err", flag))
 	//}
 	if _, ok := p.service[flag]; !ok {
 		return errors.New("service not exist")
 	}
 	err := p.service[flag].Start(share.ServiceShare{
-		Log:     GLog,
-		Push:    GPush,
-		Storage: GStorage,
+		Log:     gLog,
+		Push:    gPush,
+		Storage: gStorage,
 		CallOther: func(to coreShare.SvrFlag, msg share.Msg) {
-			p.OnRec(to, msg, coreShare.Valid{FromSys: true})
+			p.onRec(to, msg, coreShare.Valid{FromSys: true})
 		},
 		CallOtherRpc: func(to coreShare.SvrFlag, msg share.Msg) (interface{}, error) {
-			return p.OnRecRpc(to, msg, coreShare.Valid{FromSys: true})
+			return p.onRecRpc(to, msg, coreShare.Valid{FromSys: true})
 		},
-		BaseSetting: GBaseSetting.Copy(),
+		BaseSetting: gBaseSetting.Copy(),
 		Ctx:         context.WithoutCancel(p.ctx),
 	})
 	if err != nil {
-		GLog.ErrorErr("PLAT", errors.WithMessagef(err, "StartService %d err", flag))
+		gLog.ErrorErr("PLAT", errors.WithMessagef(err, "startService %d err", flag))
 	}
-	err = GPush.Push("PLAT", fmt.Sprintf("服务 %s 成功启动", name), false)
+	err = gPush.Push("PLAT", fmt.Sprintf("服务 %s 成功启动", name), false)
 	p.serviceMeta[flag].Status = coreShare.StatusStart
 	p.serviceMeta[flag].StartTime = time.Now()
 	if err != nil {
-		GLog.WarningErr("PLAT", errors.WithMessage(err, "StartService push err"))
+		gLog.WarningErr("PLAT", errors.WithMessage(err, "startService push err"))
 	}
-	GLog.Info("PLAT", fmt.Sprintf("服务 %s 成功启动", name))
+	gLog.Info("PLAT", fmt.Sprintf("服务 %s 成功启动", name))
 	return nil
 }
 
-func (p *PlatCore) StopService(flag coreShare.SvrFlag) error {
-	name := GetName(flag)
+func (p *PlatCore) stopService(flag coreShare.SvrFlag) error {
+	name := getName(flag)
 	//v := xstorage.ToUnit[bool](false, xstorage.ValueTypeBool)
-	//err := global.GStorage.Set(xstorage.Join(string(name), "open"), v)
+	//err := global.gStorage.Set(xstorage.Join(string(name), "open"), v)
 	//if err != nil {
-	//	global.GLog.ErrorErr("PLAT", errors.WithMessagef(err, "StopService %s err", name))
+	//	global.gLog.ErrorErr("PLAT", errors.WithMessagef(err, "stopService %s err", name))
 	//}
 	if _, ok := p.service[flag]; !ok {
 		return errors.New("service not exist")
@@ -95,13 +95,13 @@ func (p *PlatCore) StopService(flag coreShare.SvrFlag) error {
 	p.serviceMeta[flag].StartTime = time.Now()
 	p.serviceMeta[flag].Status = coreShare.StatusStop
 	if err != nil {
-		GLog.ErrorErr("PLAT", errors.WithMessagef(err, "StopService %s err", name))
+		gLog.ErrorErr("PLAT", errors.WithMessagef(err, "stopService %s err", name))
 	}
-	err = GPush.Push("PLAT", fmt.Sprintf("服务 %s 成功停止", name), false)
+	err = gPush.Push("PLAT", fmt.Sprintf("服务 %s 成功停止", name), false)
 	if err != nil {
-		GLog.WarningErr("PLAT", errors.WithMessage(err, "StopService push err"))
+		gLog.WarningErr("PLAT", errors.WithMessage(err, "stopService push err"))
 	}
-	GLog.Info("PLAT", fmt.Sprintf("服务 %s 成功停止", name))
+	gLog.Info("PLAT", fmt.Sprintf("服务 %s 成功停止", name))
 	return nil
 }
 
@@ -112,30 +112,30 @@ func (p *PlatCore) registerSvr() {
 	for k, _ := range p.service {
 		p.serviceMeta[k] = &coreShare.ServiceMeta{}
 		u := xstorage.ToUnit[bool](true, xstorage.ValueTypeBool)
-		openV, err := GStorage.GetAndSetDefault(xstorage.Join(string(coreShare.NameAuto), "open_when_start"), u)
+		openV, err := gStorage.GetAndSetDefault(xstorage.Join(string(coreShare.NameAuto), "open_when_start"), u)
 		if err != nil {
-			GLog.ErrorErr("PLAT", errors.WithMessagef(err, "registerSvr get %s open err", coreShare.NameAuto))
+			gLog.ErrorErr("PLAT", errors.WithMessagef(err, "registerSvr get %s open err", coreShare.NameAuto))
 			continue
 		}
 		if openV == nil || !xstorage.ToBase[bool](openV) {
 			continue
 		}
-		err = p.StartService(k)
+		err = p.startService(k)
 		if err != nil {
-			GLog.ErrorErr("PLAT", errors.WithMessage(err, "registerSvr start err"))
+			gLog.ErrorErr("PLAT", errors.WithMessage(err, "registerSvr start err"))
 		}
 	}
 }
 
-func (p *PlatCore) GetServiceMeta(flag coreShare.SvrFlag) *coreShare.ServiceMeta {
+func (p *PlatCore) getServiceMeta(flag coreShare.SvrFlag) *coreShare.ServiceMeta {
 	return p.serviceMeta[flag]
 }
 
-func (p *PlatCore) GetWebInfo() []coreShare.ServicesInfo {
+func (p *PlatCore) getWebInfo() []coreShare.ServicesInfo {
 	var ret []coreShare.ServicesInfo
 	ret = append(ret, coreShare.ServicesInfo{
 		Name:      "core",
-		Status:    GetStatusStr(coreShare.StatusStart),
+		Status:    getStatusStr(coreShare.StatusStart),
 		StartTime: p.startTime.Format("2006-01-02 15:04:05"),
 		Props:     int(misc.CreateProperty(share.SvrPropCore)),
 	})
@@ -143,8 +143,8 @@ func (p *PlatCore) GetWebInfo() []coreShare.ServicesInfo {
 		service := p.service[k]
 		if service != nil {
 			ret = append(ret, coreShare.ServicesInfo{
-				Name:      string(GetName(k)),
-				Status:    GetStatusStr(v.Status),
+				Name:      string(getName(k)),
+				Status:    getStatusStr(v.Status),
 				StartTime: v.StartTime.Format("2006-01-02 15:04:05"),
 				Props:     int(service.GetProp()),
 			})
@@ -153,11 +153,11 @@ func (p *PlatCore) GetWebInfo() []coreShare.ServicesInfo {
 	return ret
 }
 
-func (p *PlatCore) GetStartTime() time.Time {
+func (p *PlatCore) getStartTime() time.Time {
 	return p.startTime
 }
 
-func (p *PlatCore) OnRecRpc(flag coreShare.SvrFlag, msg share.Msg, valid coreShare.Valid) (interface{}, error) {
+func (p *PlatCore) onRecRpc(flag coreShare.SvrFlag, msg share.Msg, valid coreShare.Valid) (interface{}, error) {
 	rpc, err := p.service[flag].HandleRpc(msg, valid)
 	if err != nil {
 		return nil, err
@@ -165,10 +165,10 @@ func (p *PlatCore) OnRecRpc(flag coreShare.SvrFlag, msg share.Msg, valid coreSha
 	return rpc, nil
 }
 
-func (p *PlatCore) SendAndRec(flag coreShare.SvrFlag, msg share.Msg, valid coreShare.Valid) (interface{}, error) {
-	return p.OnRecRpc(flag, msg, valid)
+func (p *PlatCore) sendAndRec(flag coreShare.SvrFlag, msg share.Msg, valid coreShare.Valid) (interface{}, error) {
+	return p.onRecRpc(flag, msg, valid)
 }
 
-func (p *PlatCore) OnRec(flag coreShare.SvrFlag, msg share.Msg, valid coreShare.Valid) {
+func (p *PlatCore) onRec(flag coreShare.SvrFlag, msg share.Msg, valid coreShare.Valid) {
 	go p.service[flag].Handle(msg, valid)
 }

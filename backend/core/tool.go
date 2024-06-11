@@ -10,15 +10,15 @@ type tool struct {
 	name2flag map[share.SvrName]share.SvrFlag
 }
 
-func GetFlag(name share.SvrName) share.SvrFlag {
+func getFlag(name share.SvrName) share.SvrFlag {
 	return gTool.name2flag[name]
 }
 
-func GetName(flag share.SvrFlag) share.SvrName {
+func getName(flag share.SvrFlag) share.SvrName {
 	return gTool.flag2name[flag]
 }
 
-func GetStatusStr(status share.ServiceStatus) string {
+func getStatusStr(status share.ServiceStatus) string {
 	switch status {
 	case share.StatusStart:
 		return "start"
@@ -29,7 +29,7 @@ func GetStatusStr(status share.ServiceStatus) string {
 	}
 }
 
-func GetStr2Permission(strs ...string) share.Permission {
+func getStr2Permission(strs ...string) share.Permission {
 	var buffer strings.Builder
 	for i, s := range strs {
 		buffer.WriteString(s)

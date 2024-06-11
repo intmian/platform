@@ -4,7 +4,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func InitSvrRoot(r *gin.Engine) {
+func initSvrRoot(r *gin.Engine) {
 	// 服务的直通接口
 	r.POST("/service/:name/:cmd", serviceHandle)
 

@@ -19,7 +19,7 @@ func serviceHandle(c *gin.Context) {
 		})
 		return
 	}
-	flag := GetFlag(share.SvrName(name))
+	flag := getFlag(share.SvrName(name))
 	if flag == share.FlagNone {
 		c.JSON(200, gin.H{
 			"code": 1,
@@ -35,10 +35,10 @@ func serviceHandle(c *gin.Context) {
 		<-finish
 		delta := time.Now().Sub(t1)
 		if delta > time.Minute {
-			GLog.Warning("PLAT", "serviceHandle too long [%s] [%s] [%s]", name, cmd, delta.String())
+			gLog.Warning("PLAT", "serviceHandle too long [%s] [%s] [%s]", name, cmd, delta.String())
 		}
 	}()
-	rec, err := GPlatCore.OnRecRpc(flag, msg, valid)
+	rec, err := GPlatCore.onRecRpc(flag, msg, valid)
 	finish <- nil
 	if err != nil {
 		c.JSON(200, gin.H{
@@ -75,7 +75,7 @@ func cfgPlatSet(c *gin.Context) {
 		return
 	}
 
-	err = GCfg.Set(xstorage.Join("PLAT", opr.Key), opr.Val)
+	err = gCfg.Set(xstorage.Join("PLAT", opr.Key), opr.Val)
 	if err != nil {
 		c.JSON(200, gin.H{
 			"code": 1,
@@ -88,7 +88,7 @@ func cfgPlatSet(c *gin.Context) {
 func cfgServiceSet(c *gin.Context) {
 	// 暂时先全在core校验权限，后续可以考虑拆分
 	svr := c.Param("svr")
-	if GetFlag(share.SvrName(svr)) == share.FlagNone {
+	if getFlag(share.SvrName(svr)) == share.FlagNone {
 		c.JSON(200, gin.H{
 			"code": 1,
 			"msg":  "service not exist",
@@ -96,7 +96,7 @@ func cfgServiceSet(c *gin.Context) {
 		return
 	}
 	valid := getValid(c)
-	if !valid.HasPermission(GetStr2Permission(svr, "cfg")) && !valid.HasPermission("admin") {
+	if !valid.HasPermission(getStr2Permission(svr, "cfg")) && !valid.HasPermission("admin") {
 		c.JSON(200, gin.H{
 			"code": 1,
 			"msg":  "no permission",
@@ -116,7 +116,7 @@ func cfgServiceSet(c *gin.Context) {
 		return
 	}
 
-	err = GCfg.Set(xstorage.Join(svr, opr.Key), opr.Val)
+	err = gCfg.Set(xstorage.Join(svr, opr.Key), opr.Val)
 }
 
 func cfgServiceUserSet(c *gin.Context) {
@@ -133,7 +133,7 @@ func cfgServiceUserSet(c *gin.Context) {
 		return
 	}
 
-	err = GCfg.SetUser(user, xstorage.Join(svr, opr.Key), opr.Val)
+	err = gCfg.SetUser(user, xstorage.Join(svr, opr.Key), opr.Val)
 	if err != nil {
 		c.JSON(200, makeErrReturn("inner error"))
 		return
@@ -148,7 +148,7 @@ func cfgPlatGet(c *gin.Context) {
 		c.JSON(200, makeErrReturn("no permission"))
 		return
 	}
-	val, err := GCfg.GetAll()
+	val, err := gCfg.GetAll()
 	if err != nil {
 		c.JSON(200, makeErrReturn("inner error"))
 		return
@@ -158,16 +158,16 @@ func cfgPlatGet(c *gin.Context) {
 
 func cfgServiceGet(c *gin.Context) {
 	svr := c.Param("svr")
-	if GetFlag(share.SvrName(svr)) == share.FlagNone {
+	if getFlag(share.SvrName(svr)) == share.FlagNone {
 		c.JSON(200, makeErrReturn("service not exist"))
 		return
 	}
 	valid := getValid(c)
-	if !valid.HasPermission(GetStr2Permission(svr, "cfg")) && !valid.HasPermission("admin") {
+	if !valid.HasPermission(getStr2Permission(svr, "cfg")) && !valid.HasPermission("admin") {
 		c.JSON(200, makeErrReturn("no permission"))
 		return
 	}
-	val, err := GCfg.GetWithFilter(svr+".", "")
+	val, err := gCfg.GetWithFilter(svr+".", "")
 	if err != nil {
 		c.JSON(200, makeErrReturn("inner error"))
 		return
@@ -178,7 +178,7 @@ func cfgServiceGet(c *gin.Context) {
 func cfgServiceUserGet(c *gin.Context) {
 	svr := c.Param("svr")
 	user := c.Param("user")
-	val, err := GCfg.GetWithFilter(svr+".", user)
+	val, err := gCfg.GetWithFilter(svr+".", user)
 	if err != nil {
 		c.JSON(200, makeErrReturn("inner error"))
 		return

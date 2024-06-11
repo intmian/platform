@@ -12,15 +12,16 @@ import (
 	"github.com/pkg/errors"
 )
 
-var GCtx = context.Background()
-var GLog *xlog.XLog
-var GPush *xpush.XPush
-var GStorage *xstorage.XStorage
-var GStoWebPack *xstorage.WebPack
-var GNews *xnews.XNews // 用来保存最近的日志 方便查询
-var GBaseSetting *misc.FileUnit[share.BaseSetting]
-var GCfg *xstorage.CfgExt
-var GWebMgr WebMgr
+// 目前以单利将模块封装。因为之前拆分的太细太乱，合并后只能先这样
+var gCtx = context.Background()
+var gLog *xlog.XLog
+var gPush *xpush.XPush
+var gStorage *xstorage.XStorage
+var gStoWebPack *xstorage.WebPack
+var gNews *xnews.XNews // 用来保存最近的日志 方便查询
+var gBaseSetting *misc.FileUnit[share.BaseSetting]
+var gCfg *xstorage.CfgExt
+var gWebMgr webMgr
 var GPlatCore *PlatCore
 var gTool tool
 
@@ -28,12 +29,12 @@ func Init() error {
 	if !misc.PathExist("base_setting.toml") {
 		return errors.New("base_setting.toml not exist")
 	}
-	GBaseSetting = misc.NewFileUnit[share.BaseSetting](misc.FileUnitToml, "base_setting.toml")
-	err := GBaseSetting.Load()
+	gBaseSetting = misc.NewFileUnit[share.BaseSetting](misc.FileUnitToml, "base_setting.toml")
+	err := gBaseSetting.Load()
 	if err != nil {
 		return errors.WithMessage(err, "Init baseSetting err")
 	}
-	s := GBaseSetting.Copy()
+	s := gBaseSetting.Copy()
 	storage, err := xstorage.NewXStorage(xstorage.XStorageSetting{
 		Property: misc.CreateProperty(xstorage.UseCache, xstorage.UseDisk, xstorage.MultiSafe, xstorage.FullInitLoad),
 		SaveType: xstorage.SqlLiteDB,
@@ -51,18 +52,18 @@ func Init() error {
 		Secret:            s.DingDingSecret,
 		SendInterval:      60,
 		IntervalSendCount: 20,
-		Ctx:               context.WithoutCancel(GCtx),
+		Ctx:               context.WithoutCancel(gCtx),
 	})
 	if err != nil {
 		return err
 	}
-	GNews, err = xnews.NewXNews(context.WithoutCancel(GCtx))
+	gNews, err = xnews.NewXNews(context.WithoutCancel(gCtx))
 	if err != nil {
 		return errors.WithMessage(err, "Init xnews err")
 	}
 	var topicSetting xnews.TopicSetting
 	topicSetting.AddForeverLimit(100)
-	err = GNews.AddTopic("PLAT", topicSetting)
+	err = gNews.AddTopic("PLAT", topicSetting)
 	if err != nil {
 		return errors.WithMessage(err, "Init xnews add topic err")
 	}
@@ -71,14 +72,14 @@ func Init() error {
 	logS.IfPush = true
 	logS.PushMgr = push
 	logS.OnLog = func(content string) {
-		_ = GNews.AddMessage("PLAT", content)
+		_ = gNews.AddMessage("PLAT", content)
 	}
 	log, err := xlog.NewXLog(logS)
 	if err != nil {
 		return err
 	}
-	GStorage = storage
-	GStoWebPack, err = xstorage.NewWebPack(
+	gStorage = storage
+	gStoWebPack, err = xstorage.NewWebPack(
 		xstorage.WebPackSetting{
 			LogFrom: "plat",
 			Log:     log,
@@ -92,10 +93,10 @@ func Init() error {
 	if err != nil {
 		return errors.WithMessage(err, "Init cfg err")
 	}
-	GCfg = cfg
-	GPush = push
-	GLog = log
-	GWebMgr.Init()
+	gCfg = cfg
+	gPush = push
+	gLog = log
+	gWebMgr.Init()
 	err = GPlatCore.Init()
 	if err != nil {
 		return errors.WithMessage(err, "Init platCore err")
