@@ -1,5 +1,0 @@
-package backend
-
-func Init() {
-
-}

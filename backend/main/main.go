@@ -1,14 +1,13 @@
 package main
 
 import (
-	"github.com/intmian/platform/backend"
-	"github.com/intmian/platform/backend/global"
+	"github.com/intmian/platform/backend/core"
 )
 
 func main() {
-	if err := global.Init(); err != nil {
+	if err := core.Init(); err != nil {
 		panic(err)
 	}
-	backend.Init()
-	global.GPlatCore.Update()
+	core.Init()
+	core.GPlatCore.Update()
 }
