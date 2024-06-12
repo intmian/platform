@@ -165,10 +165,10 @@ func (u *Unit) Init() {
 	//if !setting.GSetting.Exist(u.name + ".open") {
 	//	setting.GSetting.Set(u.name+".open", true)
 	//	setting.GSetting.Save()
-	//	u.Start()
+	//	u.Run()
 	//} else {
 	//	if setting.GSetting.Get(u.name + ".open").(bool) {
-	//		u.Start()
+	//		u.Run()
 	//	} else {
 	//		u.Stop()
 	//	}
@@ -197,7 +197,7 @@ func (u *Unit) check() {
 	//	switch i.(type) {
 	//	case bool:
 	//		if i.(bool) {
-	//			u.Start()
+	//			u.Run()
 	//		} else {
 	//			u.Stop()
 	//		}
@@ -210,7 +210,7 @@ func (u *Unit) check() {
 	//	case string:
 	//		u.timeStr = i.(string)
 	//		u.c.Stop()
-	//		u.c.Start()
+	//		u.c.Run()
 	//	}
 	//}
 	getV, err := setting.GSetting.Get(u.name + ".open")

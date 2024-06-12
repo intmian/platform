@@ -1,4 +1,4 @@
-package core
+package platform
 
 import (
 	"encoding/json"
@@ -11,35 +11,8 @@ import (
 	"time"
 )
 
-type uniReturn struct {
-	Code int         `json:"code"`
-	Msg  string      `json:"msg"`
-	Data interface{} `json:"data"`
-}
-
-func makeSErrReturn(code int, msg string) uniReturn {
-	return uniReturn{
-		Code: code,
-		Msg:  msg,
-	}
-}
-
-func makeErrReturn(msg string) uniReturn {
-	return uniReturn{
-		Code: 1,
-		Msg:  msg,
-	}
-}
-
-func makeOkReturn(data interface{}) uniReturn {
-	return uniReturn{
-		Code: 0,
-		Data: data,
-	}
-}
-
 // login 进行登录。需要去账号服务验证账号密码，然后在web mgr签名才行
-func login(c *gin.Context) {
+func (m *webMgr) login(c *gin.Context) {
 	// 从body中获得密码
 	body := struct {
 		Username string `json:"username"`
@@ -54,7 +27,7 @@ func login(c *gin.Context) {
 		return
 
 	}
-	ret, err := GPlatCore.sendAndRec(share.FlagAccount, share2.MakeMsg(share3.CmdCheckToken, share3.CheckTokenReq{
+	ret, err := m.plat.core.sendAndRec(share.FlagAccount, share2.MakeMsg(share3.CmdCheckToken, share3.CheckTokenReq{
 		Account: body.Username,
 		Pwd:     body.Password,
 	}), share.MakeSysValid())
@@ -81,7 +54,7 @@ func login(c *gin.Context) {
 	// 打印登录日志，如果是admin，还需要推送
 	loginInfo := "login usr[%s] permission[%v] time[%s] ip[%s]"
 	loginInfo = fmt.Sprintf(loginInfo, body.Username, permission, time.Now().Format("2006-01-02 15:04:05"), c.ClientIP())
-	gLog.Info("PLAT", loginInfo)
+	m.plat.log.Info("PLAT", loginInfo)
 	isAdmin := false
 	for _, v := range retr.Pers {
 		if v == share.PermissionAdmin {
@@ -90,9 +63,9 @@ func login(c *gin.Context) {
 		}
 	}
 	if isAdmin {
-		err = gPush.Push("账号安全", loginInfo, false)
+		err = m.plat.push.Push("账号安全", loginInfo, false)
 		if err != nil {
-			gLog.Warning("PLAT", "push error [%s]", err.Error())
+			m.plat.log.Warning("PLAT", "push error [%s]", err.Error())
 		}
 	}
 
@@ -102,7 +75,7 @@ func login(c *gin.Context) {
 		Permission: permission,
 		ValidTime:  int64(time.Hour*24*7/time.Second) + time.Now().Unix(),
 	}
-	t := gWebMgr.jwt.GenToken(body.Username, data.Permission, data.ValidTime)
+	t := m.jwt.GenToken(body.Username, data.Permission, data.ValidTime)
 	data.Token = t
 	// 保存token
 	tokenS, _ := json.Marshal(data)
@@ -121,11 +94,11 @@ func login(c *gin.Context) {
 	})
 }
 
-func logout(c *gin.Context) {
+func (m *webMgr) logout(c *gin.Context) {
 	c.SetCookie("token", "", -1, "/", "", false, true)
 }
 
-func getValid(c *gin.Context) share.Valid {
+func (m *webMgr) getValid(c *gin.Context) share.Valid {
 	tokenS, err := c.Cookie("token")
 	if err != nil {
 		return share.Valid{}
@@ -138,7 +111,7 @@ func getValid(c *gin.Context) share.Valid {
 	var r share.Valid
 	r.User = data.User
 	for _, v := range data.Permission {
-		if gWebMgr.CheckSignature(&data, v) {
+		if m.CheckSignature(&data, v) {
 			r.Permissions = append(r.Permissions, share.Permission(v))
 		}
 	}
@@ -146,7 +119,7 @@ func getValid(c *gin.Context) share.Valid {
 	return r
 }
 
-func check(c *gin.Context) {
+func (m *webMgr) check(c *gin.Context) {
 	// 从cookie中获得token
 	tokenS, err := c.Cookie("token")
 	if err != nil {
@@ -172,7 +145,7 @@ func check(c *gin.Context) {
 	var r share.Valid
 	r.User = data.User
 	for _, v := range data.Permission {
-		if gWebMgr.CheckSignature(&data, v) {
+		if m.CheckSignature(&data, v) {
 			r.Permissions = append(r.Permissions, share.Permission(v))
 		}
 	}
@@ -192,7 +165,7 @@ func check(c *gin.Context) {
 	})
 }
 
-func checkAdmin(c *gin.Context) {
+func (m *webMgr) checkAdmin(c *gin.Context) {
 	// 从cookie中获得token
 	tokenS, err := c.Cookie("token")
 	if err != nil {
@@ -214,7 +187,7 @@ func checkAdmin(c *gin.Context) {
 		c.Abort()
 		return
 	}
-	if !gWebMgr.CheckSignature(&data, "admin") {
+	if !m.CheckSignature(&data, "admin") {
 		c.JSON(200, gin.H{
 			"code": 1,
 			"msg":  "token invalid",
@@ -224,14 +197,14 @@ func checkAdmin(c *gin.Context) {
 	}
 }
 
-func getServices(c *gin.Context) {
-	info := GPlatCore.getWebInfo()
+func (m *webMgr) getServices(c *gin.Context) {
+	info := m.plat.core.getWebInfo()
 	c.JSON(200, info)
 }
 
-func startService(c *gin.Context) {
+func (m *webMgr) startService(c *gin.Context) {
 	name := c.Param("name")
-	flag := getFlag(share.SvrName(name))
+	flag := m.plat.getFlag(share.SvrName(name))
 	if flag == share.FlagNone {
 		c.JSON(200, gin.H{
 			"code": 1,
@@ -239,7 +212,7 @@ func startService(c *gin.Context) {
 		})
 		return
 	}
-	err := GPlatCore.startService(flag)
+	err := m.plat.core.startService(flag)
 	if err != nil {
 		c.JSON(200, gin.H{
 			"code": 1,
@@ -253,9 +226,9 @@ func startService(c *gin.Context) {
 	})
 }
 
-func stopService(c *gin.Context) {
+func (m *webMgr) stopService(c *gin.Context) {
 	name := c.Param("name")
-	flag := getFlag(share.SvrName(name))
+	flag := m.plat.getFlag(share.SvrName(name))
 	if flag == share.FlagNone {
 		c.JSON(200, gin.H{
 			"code": 1,
@@ -263,7 +236,7 @@ func stopService(c *gin.Context) {
 		})
 		return
 	}
-	err := GPlatCore.stopService(flag)
+	err := m.plat.core.stopService(flag)
 	if err != nil {
 		c.JSON(200, gin.H{
 			"code": 1,
@@ -277,8 +250,8 @@ func stopService(c *gin.Context) {
 	})
 }
 
-func getLastLog(c *gin.Context) {
-	logs, err := gNews.GetTopic("PLAT")
+func (m *webMgr) getLastLog(c *gin.Context) {
+	logs, err := m.plat.news.GetTopic("PLAT")
 	// 翻转
 	for i, j := 0, len(logs)-1; i < j; i, j = i+1, j-1 {
 		logs[i], logs[j] = logs[j], logs[i]

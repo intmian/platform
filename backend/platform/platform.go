@@ -1,4 +1,4 @@
-package core
+package platform
 
 import (
 	"context"
@@ -12,29 +12,34 @@ import (
 	"github.com/pkg/errors"
 )
 
-// 目前以单利将模块封装。因为之前拆分的太细太乱，合并后只能先这样
-var gCtx = context.Background()
-var gLog *xlog.XLog
-var gPush *xpush.XPush
-var gStorage *xstorage.XStorage
-var gStoWebPack *xstorage.WebPack
-var gNews *xnews.XNews // 用来保存最近的日志 方便查询
-var gBaseSetting *misc.FileUnit[share.BaseSetting]
-var gCfg *xstorage.CfgExt
-var gWebMgr webMgr
-var GPlatCore *PlatCore
-var gTool tool
+type PlatForm struct {
+	// 工具
+	ctx         context.Context
+	log         *xlog.XLog
+	push        *xpush.XPush
+	storage     *xstorage.XStorage
+	stoWebPack  *xstorage.WebPack
+	news        *xnews.XNews // 用来保存最近的日志 方便查询
+	baseSetting *misc.FileUnit[share.BaseSetting]
+	cfg         *xstorage.CfgExt
+	tool        tool
 
-func Init() error {
+	// 子模块
+	webMgr webMgr
+	core   *core
+}
+
+func (p *PlatForm) Init(c context.Context) error {
+	p.ctx = c
 	if !misc.PathExist("base_setting.toml") {
 		return errors.New("base_setting.toml not exist")
 	}
-	gBaseSetting = misc.NewFileUnit[share.BaseSetting](misc.FileUnitToml, "base_setting.toml")
-	err := gBaseSetting.Load()
+	p.baseSetting = misc.NewFileUnit[share.BaseSetting](misc.FileUnitToml, "base_setting.toml")
+	err := p.baseSetting.Load()
 	if err != nil {
 		return errors.WithMessage(err, "Init baseSetting err")
 	}
-	s := gBaseSetting.Copy()
+	s := p.baseSetting.Copy()
 	storage, err := xstorage.NewXStorage(xstorage.XStorageSetting{
 		Property: misc.CreateProperty(xstorage.UseCache, xstorage.UseDisk, xstorage.MultiSafe, xstorage.FullInitLoad),
 		SaveType: xstorage.SqlLiteDB,
@@ -52,18 +57,18 @@ func Init() error {
 		Secret:            s.DingDingSecret,
 		SendInterval:      60,
 		IntervalSendCount: 20,
-		Ctx:               context.WithoutCancel(gCtx),
+		Ctx:               context.WithoutCancel(p.ctx),
 	})
 	if err != nil {
 		return err
 	}
-	gNews, err = xnews.NewXNews(context.WithoutCancel(gCtx))
+	p.news, err = xnews.NewXNews(context.WithoutCancel(p.ctx))
 	if err != nil {
 		return errors.WithMessage(err, "Init xnews err")
 	}
 	var topicSetting xnews.TopicSetting
 	topicSetting.AddForeverLimit(100)
-	err = gNews.AddTopic("PLAT", topicSetting)
+	err = p.news.AddTopic("PLAT", topicSetting)
 	if err != nil {
 		return errors.WithMessage(err, "Init xnews add topic err")
 	}
@@ -72,14 +77,14 @@ func Init() error {
 	logS.IfPush = true
 	logS.PushMgr = push
 	logS.OnLog = func(content string) {
-		_ = gNews.AddMessage("PLAT", content)
+		_ = p.news.AddMessage("PLAT", content)
 	}
 	log, err := xlog.NewXLog(logS)
 	if err != nil {
 		return err
 	}
-	gStorage = storage
-	gStoWebPack, err = xstorage.NewWebPack(
+	p.storage = storage
+	p.stoWebPack, err = xstorage.NewWebPack(
 		xstorage.WebPackSetting{
 			LogFrom: "plat",
 			Log:     log,
@@ -93,23 +98,42 @@ func Init() error {
 	if err != nil {
 		return errors.WithMessage(err, "Init cfg err")
 	}
-	gCfg = cfg
-	gPush = push
-	gLog = log
-	gWebMgr.Init()
-	err = GPlatCore.Init()
-	if err != nil {
-		return errors.WithMessage(err, "Init platCore err")
+	p.cfg = cfg
+	p.push = push
+	p.log = log
+
+	// 初始化工具
+	p.tool.flag2name = make(map[share.SvrFlag]share.SvrName)
+	p.tool.name2flag = make(map[share.SvrName]share.SvrFlag)
+	p.tool.flag2name[share.FlagAuto] = share.NameAuto
+	p.tool.flag2name[share.FlagNote] = share.NameNote
+	p.tool.flag2name[share.FlagAccount] = share.NameAccount
+	// 新增服务要在这里注册
+	for k, v := range p.tool.flag2name {
+		p.tool.name2flag[v] = k
 	}
 
-	gTool.flag2name = make(map[share.SvrFlag]share.SvrName)
-	gTool.name2flag = make(map[share.SvrName]share.SvrFlag)
-	gTool.flag2name[share.FlagAuto] = share.NameAuto
-	gTool.flag2name[share.FlagNote] = share.NameNote
-	gTool.flag2name[share.FlagAccount] = share.NameAccount
-	// 新增服务要在这里注册
-	for k, v := range gTool.flag2name {
-		gTool.name2flag[v] = k
+	// 初始化子模块
+	err = p.core.Init(p)
+	if err != nil {
+		return errors.WithMessage(err, "Init core err")
 	}
+	err = p.webMgr.Init(p)
+	if err != nil {
+		return errors.WithMessage(err, "init web err")
+	}
+
 	return nil
+}
+
+func (p *PlatForm) Run() {
+	p.core.Update()
+}
+
+func (p *PlatForm) getFlag(name share.SvrName) share.SvrFlag {
+	return p.tool.name2flag[name]
+}
+
+func (p *PlatForm) getName(flag share.SvrFlag) share.SvrName {
+	return p.tool.flag2name[flag]
 }

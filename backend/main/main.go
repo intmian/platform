@@ -1,13 +1,15 @@
 package main
 
 import (
-	"github.com/intmian/platform/backend/core"
+	"context"
+	"github.com/intmian/platform/backend/platform"
 )
 
 func main() {
-	if err := core.Init(); err != nil {
+	var plat platform.PlatForm
+	err := plat.Init(context.Background())
+	if err != nil {
 		panic(err)
 	}
-	core.Init()
-	core.GPlatCore.Update()
+	plat.Run()
 }
