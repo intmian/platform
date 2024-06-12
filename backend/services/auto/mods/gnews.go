@@ -99,10 +99,14 @@ func (G GNews) Do() {
 }
 
 func getNews(newsToken, base, token string, cheap bool) (string, error) {
+	// 获取昨天0点到今天0点的新闻，今天发生新闻可能还没有稳定下来，如果到当前时间可能会导致新的新闻永远上不了榜或者重复报。近期的新闻也可能浮动变动过大，等待热度固定。
+	from := time.Now().AddDate(0, 0, -1)
+	from = time.Date(from.Year(), from.Month(), from.Day(), 0, 0, 0, 0, from.Location())
+	to := time.Date(time.Now().Year(), time.Now().Month(), time.Now().Day(), 0, 0, 0, 0, time.Now().Location())
 	req := spider.GNewsTop{
 		Lang: spider.LanEnglish,
-		From: spider.GetUniTimeStr(time.Now().AddDate(0, 0, -1)),
-		To:   spider.GetUniTimeStr(time.Now()),
+		From: spider.GetUniTimeStr(from),
+		To:   spider.GetUniTimeStr(to),
 	}
 	result, err := spider.QueryGNewsTop(req, newsToken)
 	if err != nil {
@@ -133,16 +137,16 @@ func getNews(newsToken, base, token string, cheap bool) (string, error) {
 			}
 		*/
 		o := ai.NewOpenAI(base, token, cheap, ai.NewsRenshe)
-		re, err = o.Chat(`The following is the data of the hot news of the past day crawled by using crawler (including title and summary), please do the following processing according to these contents.
+		re, err = o.Chat(`You are a journalist who is proficient in writing in both English and Chinese. The following is the data of the hot news of the past day crawled by using crawler (including title and summary), please do the following processing according to these contents.
 1. if the content of the news is not in Simplified Chinese, then translate it into Simplified Chinese (there is no need to translate proper nouns and people's names into Chinese).
-2. Generate a concise, friendly and readable summary (no more than 40 words) for each news item based on the news title and abstract. Each news item is scored according to its importance to an average Chinese person, using a scale of 1-5. 3.
+2. Generate a concise, friendly and readable summary (no more than 30 words) for each news item based on the news title and abstract.
 3. categorize the processed news according to the type of news (e.g. politics, sports, technology) and output it in the following form
-4. finally generate a 100-word summary. Requires a summary and evaluation of all the news of the day along with a corresponding evaluation of the importance of the news of the day
+4. finally generate a 50-word summary. Requires a summary and evaluation of all the news of the day along with a corresponding evaluation of the importance of the news of the day
 5. All responses must be in simplified Chinese. No news can be omitted.
 
 ### Type 1
-* Use ⭐ to denote scores, e.g. a three is ⭐⭐⭐ News 1 specifics. [corresponding raw numbers]
-* Use ⭐ to denote scores, e.g. a four is ⭐⭐⭐⭐ News 2 specifics. [corresponding raw numbers]
+* News 1 specifics. [corresponding raw numbers]
+* News 2 specifics. [corresponding raw numbers]
 * ...
 ### Type 2
 ...
