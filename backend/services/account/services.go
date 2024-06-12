@@ -4,21 +4,20 @@ import (
 	"errors"
 	"github.com/intmian/mian_go_lib/tool/misc"
 	accShare "github.com/intmian/platform/backend/services/account/share"
-	"github.com/intmian/platform/backend/services/share"
 	backendshare "github.com/intmian/platform/backend/share"
 )
 
 type Service struct {
-	share share.ServiceShare
+	share backendshare.ServiceShare
 	acc   accountMgr
 }
 
-func (s *Service) GetProp() share.ServiceProp {
+func (s *Service) GetProp() backendshare.ServiceProp {
 	// 可能多个plat共享一个account，所以是可选的
-	return misc.CreateProperty(share.SvrPropCoreOptional)
+	return misc.CreateProperty(backendshare.SvrPropCoreOptional)
 }
 
-func (s *Service) Start(share share.ServiceShare) error {
+func (s *Service) Start(share backendshare.ServiceShare) error {
 	err := s.acc.Init(share.BaseSetting.AdminPwd)
 	if err != nil {
 		return errors.Join(err, ErrAccInitErr)
@@ -31,27 +30,27 @@ func (s *Service) Stop() error {
 	return nil
 }
 
-func (s *Service) Handle(msg share.Msg, valid backendshare.Valid) {
+func (s *Service) Handle(msg backendshare.Msg, valid backendshare.Valid) {
 	// NOTHING
 	return
 }
 
-func (s *Service) HandleRpc(msg share.Msg, valid backendshare.Valid) (interface{}, error) {
+func (s *Service) HandleRpc(msg backendshare.Msg, valid backendshare.Valid) (interface{}, error) {
 	switch msg.Cmd() {
 	case accShare.CmdRegister:
-		return share.HandleRpcTool("register", msg, valid, s.OnRegister)
+		return backendshare.HandleRpcTool("register", msg, valid, s.OnRegister)
 	case accShare.CmdDeregister:
-		return share.HandleRpcTool("deregister", msg, valid, s.OnDeregister)
+		return backendshare.HandleRpcTool("deregister", msg, valid, s.OnDeregister)
 	case accShare.CmdCheckToken:
-		return share.HandleRpcTool("checkToken", msg, valid, s.OnCheckToken)
+		return backendshare.HandleRpcTool("checkToken", msg, valid, s.OnCheckToken)
 	case accShare.CmdDelToken:
-		return share.HandleRpcTool("delToken", msg, valid, s.OnDelToken)
+		return backendshare.HandleRpcTool("delToken", msg, valid, s.OnDelToken)
 	case accShare.CmdChangeToken:
-		return share.HandleRpcTool("changeToken", msg, valid, s.OnChangeToken)
+		return backendshare.HandleRpcTool("changeToken", msg, valid, s.OnChangeToken)
 	case accShare.CmdGetAllAccount:
-		return share.HandleRpcTool("getAllAccount", msg, valid, s.OnGetAllAccount)
+		return backendshare.HandleRpcTool("getAllAccount", msg, valid, s.OnGetAllAccount)
 	case accShare.CmdCreateToken:
-		return share.HandleRpcTool("createToken", msg, valid, s.OnCreateToken)
+		return backendshare.HandleRpcTool("createToken", msg, valid, s.OnCreateToken)
 	default:
 		return nil, ErrUnknownCmd
 	}

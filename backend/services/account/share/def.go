@@ -1,11 +1,10 @@
 package share
 
 import (
-	"github.com/intmian/platform/backend/services/share"
 	share2 "github.com/intmian/platform/backend/share"
 )
 
-const CmdRegister share.Cmd = "register"
+const CmdRegister share2.Cmd = "register"
 
 type RegisterReq struct {
 	Account string
@@ -15,7 +14,7 @@ type RegisterRet struct {
 	Suc bool
 }
 
-const CmdDeregister share.Cmd = "deregister"
+const CmdDeregister share2.Cmd = "deregister"
 
 type DeregisterReq struct {
 	Account string
@@ -25,7 +24,7 @@ type DeregisterRet struct {
 	Suc bool
 }
 
-const CmdCheckToken share.Cmd = "checkToken"
+const CmdCheckToken share2.Cmd = "checkToken"
 
 type CheckTokenReq struct {
 	Account string
@@ -36,7 +35,7 @@ type CheckTokenRet struct {
 	Pers []share2.Permission
 }
 
-const CmdDelToken share.Cmd = "delToken"
+const CmdDelToken share2.Cmd = "delToken"
 
 type DelTokenReq struct {
 	Account string
@@ -47,7 +46,7 @@ type DelTokenRet struct {
 	Suc bool
 }
 
-const CmdChangeToken share.Cmd = "changeToken"
+const CmdChangeToken share2.Cmd = "changeToken"
 
 type ChangeTokenReq struct {
 	Account string
@@ -59,7 +58,7 @@ type ChangeTokenRet struct {
 	Suc bool
 }
 
-const CmdCreateToken share.Cmd = "createToken"
+const CmdCreateToken share2.Cmd = "createToken"
 
 type CreateTokenReq struct {
 	Account string
@@ -72,7 +71,7 @@ type CreateTokenRet struct {
 	Suc     bool
 }
 
-const CmdGetAllAccount share.Cmd = "getAllAccount"
+const CmdGetAllAccount share2.Cmd = "getAllAccount"
 
 type GetAllAccountReq struct{}
 

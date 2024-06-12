@@ -6,7 +6,6 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/intmian/mian_go_lib/tool/token"
 	share3 "github.com/intmian/platform/backend/services/account/share"
-	share2 "github.com/intmian/platform/backend/services/share"
 	"github.com/intmian/platform/backend/share"
 	"time"
 )
@@ -27,7 +26,7 @@ func (m *webMgr) login(c *gin.Context) {
 		return
 
 	}
-	ret, err := m.plat.core.sendAndRec(share.FlagAccount, share2.MakeMsg(share3.CmdCheckToken, share3.CheckTokenReq{
+	ret, err := m.plat.core.sendAndRec(share.FlagAccount, share.MakeMsg(share3.CmdCheckToken, share3.CheckTokenReq{
 		Account: body.Username,
 		Pwd:     body.Password,
 	}), share.MakeSysValid())

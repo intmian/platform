@@ -3,7 +3,6 @@ package platform
 import (
 	"github.com/gin-gonic/gin"
 	"github.com/intmian/mian_go_lib/xstorage"
-	share2 "github.com/intmian/platform/backend/services/share"
 	"github.com/intmian/platform/backend/share"
 	"time"
 )
@@ -27,7 +26,7 @@ func (m *webMgr) serviceHandle(c *gin.Context) {
 		})
 		return
 	}
-	msg := share2.MakeMsgJson(share2.Cmd(cmd), string(bodyStr))
+	msg := share.MakeMsgJson(share.Cmd(cmd), string(bodyStr))
 	valid := m.getValid(c)
 	t1 := time.Now()
 	finish := make(chan interface{})

@@ -7,7 +7,6 @@ import (
 	"github.com/intmian/mian_go_lib/xstorage"
 	"github.com/intmian/platform/backend/services/account"
 	"github.com/intmian/platform/backend/services/auto"
-	"github.com/intmian/platform/backend/services/share"
 	coreShare "github.com/intmian/platform/backend/share"
 	"github.com/pkg/errors"
 	"time"
@@ -19,7 +18,7 @@ import (
 type core struct {
 	ctx         context.Context
 	startTime   time.Time
-	service     map[coreShare.SvrFlag]share.IService
+	service     map[coreShare.SvrFlag]coreShare.IService
 	serviceMeta map[coreShare.SvrFlag]*coreShare.ServiceMeta
 	plat        *PlatForm
 }
@@ -30,7 +29,7 @@ func (c *core) Init(plat *PlatForm) error {
 	}
 	c.plat = plat
 	c.ctx = context.WithoutCancel(c.plat.ctx)
-	c.service = make(map[coreShare.SvrFlag]share.IService)
+	c.service = make(map[coreShare.SvrFlag]coreShare.IService)
 	c.serviceMeta = make(map[coreShare.SvrFlag]*coreShare.ServiceMeta)
 	c.startTime = time.Now()
 	c.registerSvr()
@@ -56,14 +55,14 @@ func (c *core) startService(flag coreShare.SvrFlag) error {
 	if _, ok := c.service[flag]; !ok {
 		return errors.New("service not exist")
 	}
-	err := c.service[flag].Start(share.ServiceShare{
+	err := c.service[flag].Start(coreShare.ServiceShare{
 		Log:     c.plat.log,
 		Push:    c.plat.push,
 		Storage: c.plat.storage,
-		CallOther: func(to coreShare.SvrFlag, msg share.Msg) {
+		CallOther: func(to coreShare.SvrFlag, msg coreShare.Msg) {
 			c.onRec(to, msg, coreShare.Valid{FromSys: true})
 		},
-		CallOtherRpc: func(to coreShare.SvrFlag, msg share.Msg) (interface{}, error) {
+		CallOtherRpc: func(to coreShare.SvrFlag, msg coreShare.Msg) (interface{}, error) {
 			return c.onRecRpc(to, msg, coreShare.Valid{FromSys: true})
 		},
 		BaseSetting: c.plat.baseSetting.Copy(),
@@ -93,7 +92,7 @@ func (c *core) stopService(flag coreShare.SvrFlag) error {
 		return errors.New("service not exist")
 	}
 	svr := c.service[flag]
-	if misc.HasProperty(svr.GetProp(), share.SvrPropCore) || misc.HasProperty(svr.GetProp(), share.SvrPropCoreOptional) {
+	if misc.HasProperty(svr.GetProp(), coreShare.SvrPropCore) || misc.HasProperty(svr.GetProp(), coreShare.SvrPropCoreOptional) {
 		return errors.New("can't stop core service")
 	}
 	err := svr.Stop()
@@ -142,7 +141,7 @@ func (c *core) getWebInfo() []coreShare.ServicesInfo {
 		Name:      "core",
 		Status:    getStatusStr(coreShare.StatusStart),
 		StartTime: c.startTime.Format("2006-01-02 15:04:05"),
-		Props:     int(misc.CreateProperty(share.SvrPropCore)),
+		Props:     int(misc.CreateProperty(coreShare.SvrPropCore)),
 	})
 	for k, v := range c.serviceMeta {
 		service := c.service[k]
@@ -162,7 +161,7 @@ func (c *core) getStartTime() time.Time {
 	return c.startTime
 }
 
-func (c *core) onRecRpc(flag coreShare.SvrFlag, msg share.Msg, valid coreShare.Valid) (interface{}, error) {
+func (c *core) onRecRpc(flag coreShare.SvrFlag, msg coreShare.Msg, valid coreShare.Valid) (interface{}, error) {
 	rpc, err := c.service[flag].HandleRpc(msg, valid)
 	if err != nil {
 		return nil, err
@@ -170,10 +169,10 @@ func (c *core) onRecRpc(flag coreShare.SvrFlag, msg share.Msg, valid coreShare.V
 	return rpc, nil
 }
 
-func (c *core) sendAndRec(flag coreShare.SvrFlag, msg share.Msg, valid coreShare.Valid) (interface{}, error) {
+func (c *core) sendAndRec(flag coreShare.SvrFlag, msg coreShare.Msg, valid coreShare.Valid) (interface{}, error) {
 	return c.onRecRpc(flag, msg, valid)
 }
 
-func (c *core) onRec(flag coreShare.SvrFlag, msg share.Msg, valid coreShare.Valid) {
+func (c *core) onRec(flag coreShare.SvrFlag, msg coreShare.Msg, valid coreShare.Valid) {
 	go c.service[flag].Handle(msg, valid)
 }

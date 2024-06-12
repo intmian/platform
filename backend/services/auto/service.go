@@ -7,19 +7,18 @@ import (
 	"github.com/intmian/platform/backend/services/auto/setting"
 	"github.com/intmian/platform/backend/services/auto/task"
 	"github.com/intmian/platform/backend/services/auto/tool"
-	"github.com/intmian/platform/backend/services/share"
 	share2 "github.com/intmian/platform/backend/share"
 )
 
 type Service struct {
-	share share.ServiceShare
+	share share2.ServiceShare
 }
 
-func (s *Service) GetProp() share.ServiceProp {
-	return misc.CreateProperty(share.SvrPropMicro)
+func (s *Service) GetProp() share2.ServiceProp {
+	return misc.CreateProperty(share2.SvrPropMicro)
 }
 
-func (s *Service) HandleRpc(msg share.Msg, valid share2.Valid) (interface{}, error) {
+func (s *Service) HandleRpc(msg share2.Msg, valid share2.Valid) (interface{}, error) {
 	if !(valid.HasPermission("admin") || valid.HasPermission("auto")) {
 		return nil, errors.New("no permission")
 	}
@@ -29,14 +28,14 @@ func (s *Service) HandleRpc(msg share.Msg, valid share2.Valid) (interface{}, err
 	return nil, nil
 }
 
-func (s *Service) Handle(msg share.Msg, valid share2.Valid) {
+func (s *Service) Handle(msg share2.Msg, valid share2.Valid) {
 	switch msg.Cmd() {
 	default:
 	}
 	return
 }
 
-func (s *Service) Start(share share.ServiceShare) error {
+func (s *Service) Start(share share2.ServiceShare) error {
 	s.share = share
 	setting.GSetting = share.Storage
 	tool.Init(share.Push, share.Log)

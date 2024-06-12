@@ -6,7 +6,7 @@ import (
 	"github.com/intmian/mian_go_lib/xpush"
 	"github.com/intmian/mian_go_lib/xpush/pushmod"
 	"github.com/intmian/mian_go_lib/xstorage"
-	"github.com/intmian/platform/backend/services/share"
+	"github.com/intmian/platform/backend/share"
 	"os"
 	"strings"
 	"testing"
