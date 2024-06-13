@@ -51,7 +51,7 @@ func (m *webMgr) login(c *gin.Context) {
 	}
 
 	// 打印登录日志，如果是admin，还需要推送
-	loginInfo := "login usr[%s] permission[%v] time[%s] ip[%s]"
+	loginInfo := "login usr[%s] permission%v time[%s] ip[%s]"
 	loginInfo = fmt.Sprintf(loginInfo, body.Username, permission, time.Now().Format("2006-01-02 15:04:05"), c.ClientIP())
 	m.plat.log.Info("PLAT", loginInfo)
 	isAdmin := false
