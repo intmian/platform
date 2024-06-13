@@ -26,7 +26,7 @@ type PlatForm struct {
 
 	// 子模块
 	webMgr webMgr
-	core   *core
+	core   core
 }
 
 func (p *PlatForm) Init(c context.Context) error {
