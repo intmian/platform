@@ -51,23 +51,8 @@ func (m *webMgr) login(c *gin.Context) {
 		permission = append(permission, string(v))
 	}
 
-	// 打印登录日志，如果是admin，还需要推送
-	loginInfo := "login usr[%s] permission%v time[%s] ip[%s](%s)"
-	loginInfo = fmt.Sprintf(loginInfo, body.Username, permission, time.Now().Format("2006-01-02 15:04:05"), c.ClientIP(), misc.GetIpAddr(c.ClientIP()))
-	m.plat.log.Info("PLAT", loginInfo)
-	isAdmin := false
-	for _, v := range retr.Pers {
-		if v == share.PermissionAdmin {
-			isAdmin = true
-			break
-		}
-	}
-	if isAdmin {
-		err = m.plat.push.Push("账号安全", loginInfo, false)
-		if err != nil {
-			m.plat.log.Warning("PLAT", "push error [%s]", err.Error())
-		}
-	}
+	// 异步执行一些登录成功后的操作
+	go m.onLogin(c, body.Username, permission, retr, err)
 
 	// 生成token
 	data := token.Data{
@@ -93,6 +78,26 @@ func (m *webMgr) login(c *gin.Context) {
 			ValidTime:  data.ValidTime,
 		},
 	})
+}
+
+func (m *webMgr) onLogin(c *gin.Context, userName string, permission []string, retr share3.CheckTokenRet, err error) {
+	// 打印登录日志，如果是admin，还需要推送
+	loginInfo := "login usr[%s] permission%v time[%s] ip[%s](%s)"
+	loginInfo = fmt.Sprintf(loginInfo, userName, permission, time.Now().Format("2006-01-02 15:04:05"), c.ClientIP(), misc.GetIpAddr(c.ClientIP()))
+	m.plat.log.Info("PLAT", loginInfo)
+	isAdmin := false
+	for _, v := range retr.Pers {
+		if v == share.PermissionAdmin {
+			isAdmin = true
+			break
+		}
+	}
+	if isAdmin {
+		err = m.plat.push.Push("账号安全", loginInfo, false)
+		if err != nil {
+			m.plat.log.Warning("PLAT", "push error [%s]", err.Error())
+		}
+	}
 }
 
 func (m *webMgr) logout(c *gin.Context) {
