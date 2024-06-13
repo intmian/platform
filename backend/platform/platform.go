@@ -10,6 +10,7 @@ import (
 	"github.com/intmian/mian_go_lib/xstorage"
 	"github.com/intmian/platform/backend/share"
 	"github.com/pkg/errors"
+	"time"
 )
 
 type PlatForm struct {
@@ -27,6 +28,9 @@ type PlatForm struct {
 	// 子模块
 	webMgr webMgr
 	core   core
+
+	// 内部状态
+	startTime int64
 }
 
 func (p *PlatForm) Init(c context.Context) error {
@@ -122,6 +126,9 @@ func (p *PlatForm) Init(c context.Context) error {
 	if err != nil {
 		return errors.WithMessage(err, "init web err")
 	}
+
+	// 初始化一些工具状态
+	p.startTime = time.Now().Unix()
 
 	return nil
 }

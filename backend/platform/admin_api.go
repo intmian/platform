@@ -74,7 +74,9 @@ func (m *webMgr) login(c *gin.Context) {
 		Permission: permission,
 		ValidTime:  int64(time.Hour*24*7/time.Second) + time.Now().Unix(),
 	}
-	t := m.jwt.GenToken(body.Username, data.Permission, data.ValidTime)
+
+	// 因为可能会修改密码，所以标识符取用户+密码。服务器重启或者修改密码要失效
+	t := m.jwt.GenToken(body.Username+body.Password, data.Permission, data.ValidTime)
 	data.Token = t
 	// 保存token
 	tokenS, _ := json.Marshal(data)

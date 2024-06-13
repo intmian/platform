@@ -62,18 +62,16 @@ func (m *webMgr) Init(plat *PlatForm) error {
 	m.initAdminRoot(engine)
 	m.initSvrRoot(engine)
 	s1v, err1 := m.plat.storage.Get("WebSalt1")
-	s2v, err2 := m.plat.storage.Get("WebSalt2")
-	var s1, s2 string
-	if err1 != nil || err2 != nil || s1v == nil || s2v == nil {
+	var s1 string
+	if err1 != nil || s1v == nil {
 		_ = misc.Input("input web salt1:", 10, &s1)
-		_ = misc.Input("input web salt2:", 10, &s2)
-		if s1 == "" || s2 == "" {
+		if s1 == "" {
 			panic("salt1 or salt2 is empty")
 		}
 		_ = m.plat.storage.Set("WebSalt1", xstorage.ToUnit[string](s1, xstorage.ValueTypeString))
-		_ = m.plat.storage.Set("WebSalt2", xstorage.ToUnit[string](s2, xstorage.ValueTypeString))
 	}
-	m.jwt.SetSalt(xstorage.ToBase[string](s1v), xstorage.ToBase[string](s2v))
+	timeStr := time.Now().Format("2006-01-02 15:04:05")
+	m.jwt.SetSalt(xstorage.ToBase[string](s1v), timeStr)
 	err := engine.Run(":" + m.plat.baseSetting.Copy().WebPort)
 	if err != nil {
 		return errors.Join(errors.New("engine run err"), err)
