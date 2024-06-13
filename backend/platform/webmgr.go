@@ -14,9 +14,10 @@ import (
 // webMgr web管理器,负责管理gin以及控制台相关，服务的鉴权与内容请从services中处理
 type webMgr struct {
 	platStoWebPack xstorage.WebPack
-	jwt            token.JwtMgr
-	webEngine      *gin.Engine
-	plat           *PlatForm
+	// 使用jwt进行签名。这里有一个缺陷，因为密码修改后jwt依然有效，所以不太安全。jwt也可能会被盗用。也不太好做续签，后面会改成使用session。目前版本先做一个第二个盐随机化的安全处理，防止爆破出秘钥。
+	jwt       token.JwtMgr
+	webEngine *gin.Engine
+	plat      *PlatForm
 }
 
 func (m *webMgr) Init(plat *PlatForm) error {
