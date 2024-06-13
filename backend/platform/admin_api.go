@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/gin-gonic/gin"
+	"github.com/intmian/mian_go_lib/tool/misc"
 	"github.com/intmian/mian_go_lib/tool/token"
 	share3 "github.com/intmian/platform/backend/services/account/share"
 	"github.com/intmian/platform/backend/share"
@@ -51,8 +52,8 @@ func (m *webMgr) login(c *gin.Context) {
 	}
 
 	// 打印登录日志，如果是admin，还需要推送
-	loginInfo := "login usr[%s] permission%v time[%s] ip[%s]"
-	loginInfo = fmt.Sprintf(loginInfo, body.Username, permission, time.Now().Format("2006-01-02 15:04:05"), c.ClientIP())
+	loginInfo := "login usr[%s] permission%v time[%s] ip[%s](%s)"
+	loginInfo = fmt.Sprintf(loginInfo, body.Username, permission, time.Now().Format("2006-01-02 15:04:05"), c.ClientIP(), misc.GetIpAddr(c.ClientIP()))
 	m.plat.log.Info("PLAT", loginInfo)
 	isAdmin := false
 	for _, v := range retr.Pers {
@@ -148,6 +149,12 @@ func (m *webMgr) check(c *gin.Context) {
 		if m.CheckSignature(&data, v) {
 			r.Permissions = append(r.Permissions, share.Permission(v))
 		}
+	}
+	if r.Permissions == nil {
+		c.JSON(200, gin.H{
+			"code": 1,
+			"msg":  "token invalid",
+		})
 	}
 	r.ValidTime = data.ValidTime
 	c.JSON(200, gin.H{

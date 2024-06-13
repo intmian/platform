@@ -67,7 +67,7 @@ func (m *webMgr) Init(plat *PlatForm) error {
 	if err1 != nil || s1v == nil {
 		_ = misc.Input("input web salt1:", 10, &s1)
 		if s1 == "" {
-			panic("salt1 or salt2 is empty")
+			panic("salt1 is empty")
 		}
 		_ = m.plat.storage.Set("WebSalt1", xstorage.ToUnit[string](s1, xstorage.ValueTypeString))
 	}

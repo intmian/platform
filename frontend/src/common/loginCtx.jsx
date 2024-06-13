@@ -12,6 +12,9 @@ export class LoginInfo {
         if (!this.isValid()) {
             return false;
         }
+        if (this.permissions === null) {
+            return false;
+        }
         return this.permissions.includes(permission);
     }
 
