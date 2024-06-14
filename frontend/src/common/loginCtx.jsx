@@ -76,7 +76,8 @@ function useAutoCheckLogin(loginCtr) {
                     loginCtr.onLogout();
                 }
             });
-        }, 3600000);
+            // 一分钟检测一次
+        }, 60000);
 
         return () => clearInterval(interval);
     }, []);
