@@ -10,27 +10,25 @@ import {accountHttp2ShowData} from "../admin/acoountdata.js";
 const debug = <AccountPanel
     name="admin"
     initShowData={accountHttp2ShowData(
-        {
-            name: 'admin',
-            permissionData: [
-                {
-                    token: 'admin',
-                    permission: ['admin', 'debug']
-                },
-                {
-                    token: 'debug',
-                    permission: ['debug']
-                },
-                {
-                    token: 'aaa-111',
-                    permission: ['aaa-111']
-                },
-                {
-                    token: 'aaa-1112323232323',
-                    permission: ['123456', '123456', '123456']
-                },
-            ]
-        }
+        [
+            {
+                token: 'admin',
+                permission: ['admin', 'debug']
+            },
+            {
+                token: 'debug',
+                permission: ['debug']
+            },
+            {
+                token: 'aaa-111',
+                permission: ['aaa-111']
+            },
+            {
+                token: 'aaa-1112323232323',
+                permission: ['123456', '123457', '123457']
+            },
+        ]
+        , 'admin'
     )}
 />
 
@@ -40,14 +38,17 @@ const debug = <AccountPanel
 export function Debug() {
     const [showWidth, setShowWidth] = useState(300)
     const [showHeight, setShowHeight] = useState(300)
-
+    const [refresh, setRefresh] = useState(false)
+    let refreshButton = <button onClick={() => setRefresh(!refresh)}>刷新</button>
     let debugMap = new Map()
     debugMap.set('默认', <>
         {debug.type.name}
+        {refreshButton}
         {debug}
     </>)
     debugMap.set('设备模拟', <>
         {debug.type.name}
+        {refreshButton}
         <DeviceSimulator>
             {debug}
         </DeviceSimulator>
@@ -55,6 +56,7 @@ export function Debug() {
     debugMap.set('自定义',
         <div>
             {debug.type.name}
+            {refreshButton}
             <Row>
                 <Col span={10}>
                     <Slider min={100} max={3000} defaultValue={showWidth} onChange={setShowWidth} value={showWidth}/>

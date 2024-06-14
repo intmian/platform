@@ -1,4 +1,4 @@
-import {Button, Card, Divider, Input, List, message, Modal, Popconfirm, Row, Space, Spin} from "antd";
+import {Button, Card, Col, Divider, Input, List, message, Modal, Popconfirm, Row, Space, Spin} from "antd";
 import {CloseOutlined, PlusOutlined, SaveOutlined} from "@ant-design/icons";
 import {useEffect, useRef, useState} from "react";
 import VirtualList from 'rc-virtual-list';
@@ -85,70 +85,88 @@ function Permission({tokenID, iniPermission, onDelete}) {
     const [needSave, setNeedSave] = useState(false);
     const [saving, setSaving] = useState(false);
     const [deleteing, setDeleteing] = useState(false);
-    return <>
+    return <Row
+        style={{
+            width: "100%",
+        }}
+    >
         {contextHolder}
         {/*最多显示10个字符，超过的用...代替，鼠标移上去显示完整内容*/}
-        <div
+        <Col
+            span={6}
             style={{
-                width: 100,
                 overflow: 'hidden',
                 textOverflow: 'ellipsis',
                 whiteSpace: 'nowrap'
             }}
         >
             {tokenID}
-        </div>
-        <Divider type="vertical"/>
-        <TagInput tagOps={AllPermission} tags={permission} onChange={
-            (value) => {
-                setPermission(value);
-                setNeedSave(true);
-            }
-        }/>
-        <Divider type="vertical"/>
-        <Space>
-            <Button shape="circle" type="primary" disabled={!needSave || saving}
-                    loading={saving}
-                    onClick={
-                        () => {
-                            setSaving(true);
-                            sendChangeToken(name, tokenID, permission, (ret) => {
-                                if (ret.ok) {
-                                    messageApi.success("保存成功");
-                                    setNeedSave(false);
-                                } else {
-                                    messageApi.error("保存失败");
-                                }
-                                setSaving(false);
-                            })
-                        }
-                    }>
-                <SaveOutlined/>
-            </Button>
-            <Popconfirm title={`确认删除权限吗？`} okText="确认" cancelText="取消"
-                        loading={deleteing}
-                        key="delete"
-                        onConfirm={
+            <Divider type="vertical"/>
+        </Col>
+        <Col
+            span={10}
+        >
+            <TagInput
+                tagOps={AllPermission}
+                tags={permission}
+                onChange={
+                    (value) => {
+                        setPermission(value);
+                        setNeedSave(true);
+                    }}
+                style={{
+                    width: "100%",
+                }}
+            />
+        </Col>
+        <Col
+            span={6}
+        >
+            <Space>
+                <Divider type="vertical"/>
+                <Button shape="circle" type="primary" disabled={!needSave || saving}
+                        loading={saving}
+                        onClick={
                             () => {
-                                setDeleteing(true);
-                                sendDelToken(name, tokenID, (ret) => {
+                                setSaving(true);
+                                sendChangeToken(name, tokenID, permission, (ret) => {
                                     if (ret.ok) {
-                                        messageApi.success("删除成功");
+                                        messageApi.success("保存成功");
+                                        setNeedSave(false);
                                     } else {
-                                        messageApi.error("删除失败");
+                                        messageApi.error("保存失败");
                                     }
-                                    setDeleteing(false);
-                                    onDelete();
+                                    setSaving(false);
                                 })
                             }
-                        }
-            >
-                <Button shape="circle" danger loading={deleteing}>
-                    <CloseOutlined/>
+                        }>
+                    <SaveOutlined/>
                 </Button>
-            </Popconfirm>
-        </Space>
-    </>
+                <Popconfirm title={`确认删除权限吗？`} okText="确认" cancelText="取消"
+                            loading={deleteing}
+                            key="delete"
+                            onConfirm={
+                                () => {
+                                    setDeleteing(true);
+                                    sendDelToken(name, tokenID, (ret) => {
+                                        if (ret.ok) {
+                                            messageApi.success("删除成功");
+                                        } else {
+                                            messageApi.error("删除失败");
+                                        }
+                                        setDeleteing(false);
+                                        onDelete();
+                                    })
+                                }
+                            }
+                >
+                    <Button shape="circle" danger loading={deleteing}>
+                        <CloseOutlined/>
+                    </Button>
+                </Popconfirm>
+            </Space>
+        </Col>
+    </Row>
 }
 
 function Permissions({permissionData}) {
@@ -169,7 +187,7 @@ function Permissions({permissionData}) {
                     <List.Item key={item.tokenID}>
                         <Permission
                             tokenID={item.tokenID}
-                            permission={item.permission}
+                            iniPermission={item.permission}
                             onDelete={
                                 () => {
                                     setNowData(nowData.filter(
