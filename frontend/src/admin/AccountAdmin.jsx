@@ -79,193 +79,212 @@ export function AddPermissionPanel({account, onAdd, onCancel}) {
     </>
 }
 
+function Permission({tokenID, iniPermission, onDelete}) {
+    const [messageApi, contextHolder] = message.useMessage();
+    const [permission, setPermission] = useState(iniPermission);
+    const [needSave, setNeedSave] = useState(false);
+    const [saving, setSaving] = useState(false);
+    const [deleteing, setDeleteing] = useState(false);
+    return <>
+        {contextHolder}
+        {/*最多显示10个字符，超过的用...代替，鼠标移上去显示完整内容*/}
+        <div
+            style={{
+                width: 100,
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap'
+            }}
+        >
+            {tokenID}
+        </div>
+        <Divider type="vertical"/>
+        <TagInput tagOps={AllPermission} tags={permission} onChange={
+            (value) => {
+                setPermission(value);
+                setNeedSave(true);
+            }
+        }/>
+        <Divider type="vertical"/>
+        <Space>
+            <Button shape="circle" type="primary" disabled={!needSave || saving}
+                    loading={saving}
+                    onClick={
+                        () => {
+                            setSaving(true);
+                            sendChangeToken(name, tokenID, permission, (ret) => {
+                                if (ret.ok) {
+                                    messageApi.success("保存成功");
+                                    setNeedSave(false);
+                                } else {
+                                    messageApi.error("保存失败");
+                                }
+                                setSaving(false);
+                            })
+                        }
+                    }>
+                <SaveOutlined/>
+            </Button>
+            <Popconfirm title={`确认删除权限吗？`} okText="确认" cancelText="取消"
+                        loading={deleteing}
+                        key="delete"
+                        onConfirm={
+                            () => {
+                                setDeleteing(true);
+                                sendDelToken(name, tokenID, (ret) => {
+                                    if (ret.ok) {
+                                        messageApi.success("删除成功");
+                                    } else {
+                                        messageApi.error("删除失败");
+                                    }
+                                    setDeleteing(false);
+                                    onDelete();
+                                })
+                            }
+                        }
+            >
+                <Button shape="circle" danger loading={deleteing}>
+                    <CloseOutlined/>
+                </Button>
+            </Popconfirm>
+        </Space>
+    </>
+}
+
+function Permissions({permissionData}) {
+    const [nowData, setNowData] = useState(permissionData);
+    return <div>
+        <List
+            // 10pxpadding 后 灰色边框
+            style={{
+                border: '1px solid #f0f0f0',
+                borderRadius: 4,
+                padding: 5,
+            }}
+        >
+            <VirtualList data={nowData} itemKey="permissions"
+                         height={200} itemHeight={30}
+            >
+                {(item) => (
+                    <List.Item key={item.tokenID}>
+                        <Permission
+                            tokenID={item.tokenID}
+                            permission={item.permission}
+                            onDelete={
+                                () => {
+                                    setNowData(nowData.filter(
+                                        (value) => {
+                                            return value.tokenID !== item.tokenID;
+                                        }
+                                    ));
+                                }
+                            }
+                        />
+                    </List.Item>
+                )}
+            </VirtualList>
+        </List>
+    </div>
+}
+
 // AccountPanel 用于展示用户的权限信息，并管理密码对应的权限列表
 export function AccountPanel({name, initShowData, onDelete}) {
     const [showData, setShowData] = useState(initShowData);
     const [messageApi, contextHolder] = message.useMessage();
-    return (
-        <>
-            {contextHolder}
-            {showData.Adding && <AddPermissionPanel
-                onAdd={
-                    (tokenID, permissions) => {
-                        showData.permissionData.push({
-                            tokenID: tokenID,
-                            permission: permissions,
-                        });
-                        showData.Adding = false;
-                        setShowData({...showData});
-                    }}
-                onCancel={
-                    () => {
-                        showData.Adding = false;
-                        setShowData({...showData});
-                    }
-                }
-            />}
-            <Card
-                // body padding 设为0
-                style={{
-                    width: 410,
-                    // padding: 0,
-                }}
-                title={name}
-                extra={<Space>
-                    <Button type="text" onClick={
+    const [adding, setAdding] = useState(false);
+    const [deleting, setDeleting] = useState(false);
+    let addPermissionPanel = <AddPermissionPanel
+        onAdd={
+            (tokenID, permissions) => {
+                showData.permissionData.push({
+                    tokenID: tokenID,
+                    permission: permissions,
+                });
+                setAdding(false);
+            }}
+        onCancel={
+            () => {
+                setAdding(false);
+            }
+        }
+    />
+    // 用户名右侧的操作空间，添加权限或者删除用户
+    let opr = <Space>
+        <Button type="text" onClick={
+            () => {
+                setAdding(true)
+            }
+        }>
+            <PlusOutlined/>
+        </Button>
+        <Popconfirm title={`确认删除用户${name}吗？`} okText="确认" cancelText="取消" key="delete"
+                    onConfirm={
                         () => {
-                            showData.Adding = true;
-                            setShowData({...showData});
+                            setDeleting(true);
+                            sendDeregister(name, (ret) => {
+                                if (ret.data.code === 0) {
+                                    messageApi.success("删除成功");
+                                    onDelete(name);
+                                } else {
+                                    messageApi.error("删除失败");
+                                }
+                                setDeleting(false)
+                            })
                         }
                     }>
-                        <PlusOutlined/>
-                    </Button>
-                    <Popconfirm title={`确认删除用户${name}吗？`} okText="确认" cancelText="取消" key="delete"
-                                onConfirm={
-                                    () => {
-                                        showData.deleting = true;
-                                        setShowData({...showData});
-                                        sendDeregister(name, (ret) => {
-                                            if (ret.data.code === 0) {
-                                                messageApi.success("删除成功");
-                                                onDelete(name);
-                                            } else {
-                                                messageApi.error("删除失败");
-                                            }
-                                            showData.deleting = false;
-                                            setShowData({...showData});
-                                        })
-                                    }
-                                }>
-                        <Button type="text" danger loading={showData.deleting}>
-                            <CloseOutlined/>
-                        </Button>
-                    </Popconfirm>
-                </Space>}
-                actions={[]}
-            >
-                <div>
-                    <List
-                        // 10pxpadding 后 灰色边框
-                        style={{
-                            border: '1px solid #f0f0f0',
-                            borderRadius: 4,
-                            padding: 5,
-                        }}
-                    >
-                        <VirtualList data={showData.permissionData} itemKey="permissions"
-                                     height={200} itemHeight={30}
-                        >
-                            {(item) => (
-                                <List.Item key={item.tokenID}>
-                                    {/*最多显示10个字符，超过的用...代替，鼠标移上去显示完整内容*/}
-                                    <div
-                                        style={{
-                                            width: 100,
-                                            overflow: 'hidden',
-                                            textOverflow: 'ellipsis',
-                                            whiteSpace: 'nowrap'
-                                        }}
-                                        title={item.tokenID}>
-                                        {item.tokenID}
-                                    </div>
-                                    <Divider type="vertical"/>
-                                    <TagInput tagOps={AllPermission} tags={item.permission} onChange={
-                                        (value) => {
-                                            item.permission = value;
-                                            item.needSave = true;
-                                            setShowData({...showData});
-                                        }
-                                    }/>
-                                    <Divider type="vertical"/>
-                                    <Space>
-                                        <Button shape="circle" type="primary" disabled={!item.needSave}
-                                                loading={item.saving} onClick={
-                                            () => {
-                                                item.saving = true;
-                                                setShowData({...showData});
-                                                sendChangeToken(name, item.tokenID, item.permission, (ret) => {
-                                                    if (ret.ok) {
-                                                        messageApi.success("保存成功");
-                                                        item.needSave = false;
-                                                    } else {
-                                                        messageApi.error("保存失败");
-                                                    }
-                                                    item.saving = false;
-                                                    setShowData({...showData});
-                                                })
-                                            }
-                                        }>
-                                            <SaveOutlined/>
-                                        </Button>
-                                        <Popconfirm title={`确认删除权限吗？`} okText="确认" cancelText="取消"
-                                                    loading={item.deleting}
-                                                    key="delete"
-                                                    onConfirm={
-                                                        () => {
-                                                            item.deleting = true;
-                                                            setShowData({...showData});
-                                                            sendDelToken(name, item.tokenID, (ret) => {
-                                                                if (ret.ok) {
-                                                                    messageApi.success("删除成功");
-                                                                    showData.permissionData = showData.permissionData.filter(
-                                                                        (value) => {
-                                                                            return value.tokenID !== item.tokenID;
-                                                                        }
-                                                                    );
-                                                                } else {
-                                                                    messageApi.error("删除失败");
-                                                                }
-                                                                item.deleting = false;
-                                                                setShowData({...showData});
-                                                            })
-                                                        }
-                                                    }
-                                        >
-                                            <Button shape="circle" danger loading={item.deleting}>
-                                                <CloseOutlined/>
-                                            </Button>
-                                        </Popconfirm>
-                                    </Space>
-                                </List.Item>
-                            )}
-                        </VirtualList>
-                    </List>
-                </div>
-            </Card>
-        </>
+            <Button type="text" danger loading={deleting}>
+                <CloseOutlined/>
+            </Button>
+        </Popconfirm>
+    </Space>
 
-    )
-        ;
-}
+    return <>
+        {contextHolder}
+        {showData.Adding && addPermissionPanel}
+        <Card
+            // body padding 设为0
+            style={{
+                width: 410,
+                // padding: 0,
+            }}
+            // 用户名
+            title={name}
+            extra={opr}
+            actions={[]}
+        >
+            <Permissions
+                permissionData={showData.permissionData}
+            />
+        </Card>
+    </>
 
-class AccountAdminData {
-    accountData = [];
-    lodding = true;
 }
 
 // AccountAdmin 用于管理所有用户的权限信息
 export function AccountAdmin() {
-    const [data, setData] = useState(new AccountAdminData());
+    const [data, setData] = useState([]);
     const [messageApi, contextHolder] = message.useMessage();
-
+    const [loading, setLoading] = useState(true);
     // 请求数据刷新
     useEffect(() => {
         let httpDatas = [];
+        setLoading(true);
         sendGetAllAccount((ret) => {
             if (ret.ok) {
-                httpDatas = ret.data.Accounts;
-                for (let account in httpDatas) {
-                    data.accountData.push(accountHttp2ShowData(httpDatas[account], account));
+                httpDatas = ret.data;
+                let temp = []
+                for (let account in httpDatas.Accounts) {
+                    temp.push(accountHttp2ShowData(httpDatas.Accounts[account], account));
                 }
+                setData(temp);
             } else {
                 messageApi.error("获取用户数据失败");
             }
-            data.lodding = false;
-            setData({...data});
+            setLoading(false);
         });
     }, []);
 
-    if (data.lodding) {
+    if (loading) {
         return <div>
             <Spin/>
         </div>;
@@ -273,20 +292,20 @@ export function AccountAdmin() {
 
     // 展示所有的用户
     let panels = null;
-    if (data.accountData.length > 0) {
-        panels = data.accountData.map((value) => {
+    if (data.length > 0) {
+        panels = data.map((value) => {
             return <AccountPanel
                 key={value.name}
                 name={value.name}
                 initShowData={value}
                 onDelete={
                     (name) => {
-                        data.accountData = data.accountData.filter(
+                        let temp = data.filter(
                             (value) => {
                                 return value.name !== name;
                             }
                         );
-                        setData({...data});
+                        setData({...temp});
                     }
                 }
             />

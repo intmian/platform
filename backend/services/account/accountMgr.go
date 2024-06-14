@@ -185,6 +185,9 @@ func (a *accountMgr) addPermission(account string, password string, permissions 
 	per.Token = token
 	per.Permissions = permissions
 	ad.LastTokenIndex++
+	if ad.ID2PerInfos == nil {
+		ad.ID2PerInfos = make(map[int]*PermissionInfo)
+	}
 	ad.ID2PerInfos[ad.LastTokenIndex] = per
 	err = a.accDb.Set(account, xstorage.JStructToUnit[accountDbData](&ad))
 	if err != nil {
@@ -268,9 +271,13 @@ func (a *accountMgr) checkPermission(account string, pwd string) ([]share2.Permi
 	if !a.initTag.IsInitialized() {
 		return nil, ErrAccountMgrNotInit
 	}
-	a.idLock.Lock(account)
-	defer a.idLock.Unlock(account)
-	sv, err := a.accDb.Get(account)
+	var sv *xstorage.ValueUnit
+	var err error
+	func() {
+		a.idLock.Lock(account)
+		a.idLock.Unlock(account)
+		sv, err = a.accDb.Get(account)
+	}()
 	if err != nil {
 		return nil, errors.Join(err, ErrAccDbGetErr)
 	}
@@ -278,6 +285,16 @@ func (a *accountMgr) checkPermission(account string, pwd string) ([]share2.Permi
 		if account == "admin" {
 			// 没有账号去读初始密码，换言之建立了第一个账户以后默认的这个admin账号密码就没用了
 			if getToken(account, pwd) == getToken(account, a.iniAdminPwd) {
+				// 注册一个admin账号
+				err = a.register(account, "admin")
+				if err != nil {
+					return nil, errors.Join(err, errors.New("register admin failed"))
+				}
+				// 增加一个admin权限
+				_, err = a.addPermission(account, pwd, []share2.Permission{share2.PermissionAdmin})
+				if err != nil {
+					return nil, errors.Join(err, errors.New("add admin permission failed"))
+				}
 				return []share2.Permission{share2.PermissionAdmin}, nil
 			} else {
 				return nil, ErrTokenNotExist

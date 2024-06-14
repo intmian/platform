@@ -115,13 +115,15 @@ func (s *Service) OnChangeToken(valid backendshare.Valid, req accShare.ChangeTok
 
 func (s *Service) OnGetAllAccount(valid backendshare.Valid, req accShare.GetAllAccountReq) (ret accShare.GetAllAccountRet, err error) {
 	if !valid.HasPermission(backendshare.PermissionAdmin) {
-		return ret, nil
+		return ret, errors.New("no permission")
 	}
 	accountsInfos, err := s.acc.getAllAccount()
 	if err != nil {
 		return
 	}
+	ret.Accounts = make(map[string]map[string][]backendshare.Permission)
 	for account, infos := range accountsInfos {
+		ret.Accounts[account] = make(map[string][]backendshare.Permission)
 		for _, info := range infos {
 			ret.Accounts[account][info.Token] = info.Permissions
 		}

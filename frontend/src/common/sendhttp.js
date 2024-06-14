@@ -208,7 +208,10 @@ async function UniPost(url, req) {
             return result
         }
         result.ok = true
-        result.data = await response.json()
+        let data = await response.json()
+        if (data.data !== undefined) {
+            result.data = data.data
+        }
         return result
     } catch (error) {
         result.ok = false

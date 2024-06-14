@@ -1,16 +1,11 @@
 export class PermissionShowData {
     tokenID = '';
     permission = [];
-    needSave = false;
-    saving = false;
-    deleting = false;
 }
 
 export class AccountPanelShowData {
     name = '';
     permissionData = [];
-    Adding = false;  // 打开一个创建权限的对话框
-    deleting = false;
 }
 
 
