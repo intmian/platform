@@ -1,4 +1,4 @@
-import {createContext, useEffect, useState} from "react";
+import {createContext, useEffect, useRef, useState} from "react";
 import {SendCheckLogin} from "./sendhttp.js";
 
 export class LoginInfo {
@@ -72,7 +72,7 @@ function useAutoCheckLogin(loginCtr) {
 
         const interval = setInterval(() => {
             SendCheckLogin((result) => {
-                if (result === null || result.usr !== loginCtr.loginInfo.usr) {
+                if (result === null || result.User !== loginCtr.loginInfo.usr) {
                     loginCtr.onLogout();
                 }
             });
@@ -80,14 +80,15 @@ function useAutoCheckLogin(loginCtr) {
         }, 60000);
 
         return () => clearInterval(interval);
-    }, []);
+    }, [loginCtr]);
 }
 
 // LoginProvider 提供全局的用户信息和用户控制，建议放到根组件上，或者将逻辑抽离到别的全局provider中
 export function LoginProvider({children}) {
     const [currentUser, setCurrentUser] = useState(new LoginInfo());
 
-    let loginCtr = new LoginCtr();
+    let loginCtrRef = useRef(new LoginCtr());
+    const loginCtr = loginCtrRef.current;
     loginCtr.loginInfo = currentUser;
     loginCtr.onUserChange = (newData) => {
         setCurrentUser(newData);

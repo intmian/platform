@@ -10,6 +10,7 @@ export function TagInput({
                              disabled,
                              style,
                              tips = '选择或新增标签',
+
                              maxTagCount,
                              maxTagTextLength,
                              maxTagPlaceholder,
@@ -26,11 +27,14 @@ export function TagInput({
 
     let tagOps2 = [];
     // 将tags传入tagOps
-    for (let i = 0; i < tags.length; i++) {
-        if (!tagOps2.includes(tags[i])) {
-            tagOps2.push(tags[i]);
+    if (tags !== null && tags !== undefined) {
+        for (let i = 0; i < tags.length; i++) {
+            if (!tagOps2.includes(tags[i])) {
+                tagOps2.push(tags[i]);
+            }
         }
     }
+
     for (let i = 0; i < tagOps.length; i++) {
         if (!tagOps2.includes(tagOps[i])) {
             tagOps2.push(tagOps[i]);
