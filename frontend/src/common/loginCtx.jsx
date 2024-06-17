@@ -96,7 +96,12 @@ export function LoginProvider({children}) {
         }
     }
 
-    // 触发一次登录检测并且自动检测。
+    // 触发一次登录检测并且自动检测。因为内部的逻辑会导致loginctr发生变化，所以这里用ref存一下
+    /*
+    * 如果传入的是一个对象，且没有effect依赖会导致反复重复触发use，只要use里面触发了一个user更改
+    * 如果传入的是一个对象，且有effect依赖会导致外部userinfo发生改变时，use的还是旧的ctr，导致无脑注销
+    * 如果loginctr不是对象，是ref，即使provider是。
+    * */
     const loginCtrRef = useRef(loginCtr);
     useAutoCheckLogin(loginCtrRef);
 
