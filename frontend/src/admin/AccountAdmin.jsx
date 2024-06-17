@@ -180,9 +180,9 @@ function Permissions({permissionData}) {
         <List
             // 10pxpadding 后 灰色边框
             style={{
-                border: '1px solid #f0f0f0',
-                borderRadius: 4,
-                padding: 5,
+                // border: '1px solid #f0f0f0',
+                // borderRadius: 4,
+                // padding: 5,
             }}
         >
             <VirtualList data={nowData} itemKey="permissions"
@@ -275,9 +275,12 @@ export function AccountPanel({name, initShowData, onDelete}) {
             extra={opr}
             actions={[]}
         >
-            <Permissions
-                permissionData={showData.permissionData}
-            />
+            <div
+            >
+                <Permissions
+                    permissionData={showData.permissionData}
+                />
+            </div>
         </Card>
     </>
 
