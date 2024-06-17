@@ -91,9 +91,8 @@ function Permission({tokenID, iniPermission, onDelete}) {
         }}
     >
         {contextHolder}
-        {/*最多显示10个字符，超过的用...代替，鼠标移上去显示完整内容*/}
         <Col
-            span={6}
+            span={4}
             style={{
                 overflow: 'hidden',
                 textOverflow: 'ellipsis',
@@ -101,11 +100,11 @@ function Permission({tokenID, iniPermission, onDelete}) {
             }}
         >
             {tokenID}
-            <Divider type="vertical"/>
         </Col>
         <Col
-            span={10}
+            span={14}
         >
+            <Divider type="vertical"/>
             <TagInput
                 tagOps={AllPermission}
                 tags={permission}
@@ -115,7 +114,12 @@ function Permission({tokenID, iniPermission, onDelete}) {
                         setNeedSave(true);
                     }}
                 style={{
-                    width: "100%",
+                    width: "90%",
+                }}
+                maxTagCount={'responsive'}
+                maxTagTextLength={5}
+                maxTagPlaceholder={(value) => {
+                    return `选中${value.length}项`
                 }}
             />
         </Col>
@@ -125,6 +129,7 @@ function Permission({tokenID, iniPermission, onDelete}) {
             <Space>
                 <Divider type="vertical"/>
                 <Button shape="circle" type="primary" disabled={!needSave || saving}
+                        size={"small"}
                         loading={saving}
                         onClick={
                             () => {
@@ -160,7 +165,7 @@ function Permission({tokenID, iniPermission, onDelete}) {
                                 }
                             }
                 >
-                    <Button shape="circle" danger loading={deleteing}>
+                    <Button shape="circle" danger loading={deleteing} size={"small"}>
                         <CloseOutlined/>
                     </Button>
                 </Popconfirm>
@@ -263,7 +268,7 @@ export function AccountPanel({name, initShowData, onDelete}) {
             // body padding 设为0
             style={{
                 width: 410,
-                // padding: 0,
+                padding: 10,
             }}
             // 用户名
             title={name}

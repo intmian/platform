@@ -3,7 +3,17 @@ import {Select} from 'antd';
 
 const {Option} = Select;
 
-export function TagInput({tagOps, tags, onChange, disabled, style, tips = '选择或新增标签'}) {
+export function TagInput({
+                             tagOps,
+                             tags,
+                             onChange,
+                             disabled,
+                             style,
+                             tips = '选择或新增标签',
+                             maxTagCount,
+                             maxTagTextLength,
+                             maxTagPlaceholder,
+                         }) {
     const [inputValue, setInputValue] = useState('');
 
     const handleSearch = (value) => {
@@ -13,7 +23,21 @@ export function TagInput({tagOps, tags, onChange, disabled, style, tips = '选�
     const handleSelect = (value, option) => {
         setInputValue('');
     };
-    const options = tagOps.map((tag) => (
+
+    let tagOps2 = [];
+    // 将tags传入tagOps
+    for (let i = 0; i < tags.length; i++) {
+        if (!tagOps2.includes(tags[i])) {
+            tagOps2.push(tags[i]);
+        }
+    }
+    for (let i = 0; i < tagOps.length; i++) {
+        if (!tagOps2.includes(tagOps[i])) {
+            tagOps2.push(tagOps[i]);
+        }
+    }
+
+    const options = tagOps2.map((tag) => (
         {
             label: tag,
             value: tag,
@@ -22,7 +46,7 @@ export function TagInput({tagOps, tags, onChange, disabled, style, tips = '选�
     ));
 
     let newTag = null;
-    if (inputValue && !tagOps.includes(inputValue)) {
+    if (inputValue && !tagOps2.includes(inputValue)) {
         newTag = {
             label: inputValue,
             value: inputValue,
@@ -48,6 +72,7 @@ export function TagInput({tagOps, tags, onChange, disabled, style, tips = '选�
                 }
             }}
             options={options}
+            // maxTagCount='responsive'
             optionRender={(option) => {
                 if (option.data.isNew) {
                     return (
@@ -64,6 +89,9 @@ export function TagInput({tagOps, tags, onChange, disabled, style, tips = '选�
                     );
                 }
             }}
+            maxTagCount={maxTagCount}
+            maxTagTextLength={maxTagTextLength}
+            maxTagPlaceholder={maxTagPlaceholder}
         />
 
     );

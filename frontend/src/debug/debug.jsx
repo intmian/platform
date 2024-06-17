@@ -1,5 +1,5 @@
 import {useState} from "react";
-import {Col, InputNumber, Row, Slider} from "antd";
+import {Col, InputNumber, Row, Slider, Space} from "antd";
 import {CustomDeviceSimulator, DeviceSimulator} from "./DeviceSim.jsx";
 import {MenuPlus} from "../common/MenuPlus.jsx";
 import {AccountPanel} from "../admin/AccountAdmin.jsx";
@@ -7,30 +7,62 @@ import {accountHttp2ShowData} from "../admin/acoountdata.js";
 
 // const debug = <AddPermissionPanel/>
 
-const debug = <AccountPanel
-    name="admin"
-    initShowData={accountHttp2ShowData(
-        [
-            {
-                token: 'admin',
-                permission: ['admin', 'debug']
-            },
-            {
-                token: 'debug',
-                permission: ['debug']
-            },
-            {
-                token: 'aaa-111',
-                permission: ['aaa-111']
-            },
-            {
-                token: 'aaa-1112323232323',
-                permission: ['123456', '123457', '123457']
-            },
-        ]
-        , 'admin'
-    )}
-/>
+const debug = <Space
+    direction={"vertical"}
+    size={"middle"}
+    style={{
+        width: "100%",
+    }}
+>
+    <AccountPanel
+        name="admin"
+        initShowData={accountHttp2ShowData(
+            [
+                {
+                    token: 'admin',
+                    permission: ['admin', 'debug']
+                },
+                {
+                    token: 'debug',
+                    permission: ['debug']
+                },
+                {
+                    token: 'aaa-111',
+                    permission: ['aaa-111']
+                },
+                {
+                    token: 'aaa-1112323232323',
+                    permission: ['123456', '123457', '123457']
+                },
+            ]
+            , 'admin'
+        )}
+    />
+    <AccountPanel
+        name="admin"
+        initShowData={accountHttp2ShowData(
+            [
+                {
+                    token: 'admin',
+                    permission: ['admin', 'debug']
+                },
+                {
+                    token: 'debug',
+                    permission: ['debug']
+                },
+                {
+                    token: 'aaa-111',
+                    permission: ['aaa-111']
+                },
+                {
+                    token: 'aaa-1112323232323',
+                    permission: ['123456', '123457', '123457']
+                },
+            ]
+            , 'admin'
+        )}
+    />
+</Space>
 
 // const debug = <Index/>
 
