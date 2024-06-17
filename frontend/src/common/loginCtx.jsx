@@ -58,44 +58,49 @@ export class LoginCtr {
     }
 }
 
-export const LoginCtx = createContext(LoginCtr);
-
-function useAutoCheckLogin(loginCtr) {
+function useAutoCheckLogin(loginCtrRef) {
     useEffect(() => {
         SendCheckLogin((result) => {
             if (result !== null) {
-                loginCtr.onAutoLogin(result);
+                loginCtrRef.current.onAutoLogin(result);
             } else {
-                loginCtr.onLogout();
+                loginCtrRef.current.onLogout();
             }
         });
 
         const interval = setInterval(() => {
             SendCheckLogin((result) => {
-                if (result === null || result.User !== loginCtr.loginInfo.usr) {
-                    loginCtr.onLogout();
+                if (result === null || result.User !== loginCtrRef.current.loginInfo.usr) {
+                    loginCtrRef.current.onLogout();
                 }
             });
             // 一分钟检测一次
         }, 60000);
 
         return () => clearInterval(interval);
-    }, [loginCtr]);
+    }, [loginCtrRef]);
 }
+
+export const LoginCtx = createContext(LoginCtr);
 
 // LoginProvider 提供全局的用户信息和用户控制，建议放到根组件上，或者将逻辑抽离到别的全局provider中
 export function LoginProvider({children}) {
     const [currentUser, setCurrentUser] = useState(new LoginInfo());
 
-    let loginCtrRef = useRef(new LoginCtr());
-    const loginCtr = loginCtrRef.current;
+    // 根据当前用户信息创建控制器
+    const loginCtr = new LoginCtr();
     loginCtr.loginInfo = currentUser;
     loginCtr.onUserChange = (newData) => {
-        setCurrentUser(newData);
+        if (newData !== currentUser) {
+            setCurrentUser(newData);
+        }
     }
 
-    useAutoCheckLogin(loginCtr);
+    // 触发一次登录检测并且自动检测。
+    const loginCtrRef = useRef(loginCtr);
+    useAutoCheckLogin(loginCtrRef);
 
+    // 将控制器提供给子组件
     return (
         <LoginCtx.Provider value={loginCtr}>
             {children}
