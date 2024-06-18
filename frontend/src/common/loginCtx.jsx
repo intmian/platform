@@ -100,7 +100,7 @@ export function LoginProvider({children}) {
     /*
     * 如果传入的是一个对象，且没有effect依赖会导致反复重复触发use，只要use里面触发了一个user更改
     * 如果传入的是一个对象，且有effect依赖会导致外部userinfo发生改变时，use的还是旧的ctr，导致无脑注销
-    * 如果loginctr不是对象，是ref，即使provider是。
+    * 如果loginctr不是对象，是ref，即使provider是.current引用的，因为引用还是同一个引用只是值有变化所以还是没法更新。
     * */
     const loginCtrRef = useRef(loginCtr);
     useAutoCheckLogin(loginCtrRef);
