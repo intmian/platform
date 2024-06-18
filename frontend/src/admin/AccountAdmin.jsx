@@ -263,7 +263,7 @@ export function AccountPanel({name, initShowData, onDelete}) {
 
     return <>
         {contextHolder}
-        {adding && addPermissionPanel}
+        {addPermissionPanel}
         <Card
             // body padding 设为0
             style={{
