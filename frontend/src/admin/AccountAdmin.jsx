@@ -185,7 +185,7 @@ function Permissions({permissionData}) {
                 // padding: 5,
             }}
         >
-            <VirtualList data={nowData} itemKey="permissions"
+            <VirtualList data={nowData} itemKey="tokenID"
                          height={200} itemHeight={30}
             >
                 {(item) => (

@@ -103,6 +103,7 @@ export function LoginProvider({children}) {
     * 如果loginctr不是对象，是ref，即使provider是.current引用的，因为引用还是同一个引用只是值有变化所以还是没法更新。
     * */
     const loginCtrRef = useRef(loginCtr);
+    loginCtrRef.current.loginInfo = currentUser;
     useAutoCheckLogin(loginCtrRef);
 
     // 将控制器提供给子组件

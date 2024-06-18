@@ -14,8 +14,8 @@ export function accountHttp2ShowData(httpData, name) {
     showData.name = name;
     for (let key in httpData) {
         let permission = new PermissionShowData();
-        permission.tokenID = httpData[key].token;
-        permission.permission = httpData[key].permission;
+        permission.tokenID = key;
+        permission.permission = httpData[key];
         showData.permissionData.push(permission);
     }
     return showData;
