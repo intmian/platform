@@ -4,7 +4,14 @@ import {useEffect, useRef, useState} from "react";
 import VirtualList from 'rc-virtual-list';
 import TagInput from "../common/TagInput.jsx";
 import {AllPermission} from "../common/def.js";
-import {sendChangeToken, sendCreateToken, sendDelToken, sendDeregister, sendGetAllAccount} from "../common/sendhttp.js";
+import {
+    sendChangeToken,
+    sendCreateToken,
+    sendDelToken,
+    sendDeregister,
+    sendGetAllAccount,
+    sendRegister
+} from "../common/sendhttp.js";
 import {accountHttp2ShowData} from "./acoountdata.js";
 
 // AddPermissionPanel 用于添加权限 onAdd为添加权限的回调 onCancel为取消添加权限的回调
@@ -286,11 +293,61 @@ export function AccountPanel({name, initShowData, onDelete}) {
 
 }
 
+function AccountAddPanel({onAdd, onCancel}) {
+    const [messageApi, messageCtx] = message.useMessage();
+    const [name, setName] = useState("");
+    const [loading, setLoading] = useState(false);
+    return <>
+        {messageCtx}
+        <Modal
+            open={true}
+            closable={false}
+            onCancel={onCancel}
+            okButtonProps={{loading: loading}}
+            onOk={
+                () => {
+                    setLoading(true);
+                    sendRegister(name, (ret) => {
+                        if (ret.ok) {
+                            onAdd(name);
+                            messageApi.success("添加成功");
+                        } else {
+                            messageApi.error("添加失败");
+                        }
+                        setLoading(false);
+                    });
+                }
+            }
+            okText={"添加"}
+            cancelText={"取消"}
+        >
+            <Space
+                direction={"vertical"}
+                size={"middle"}
+                style={{
+                    width: "100%",
+                }}
+            >
+                <Row>
+                    <Input
+                        placeholder="用户名"
+                        size={"middle"}
+
+                        onChange={(e) => {
+                            setName(e.target.value);
+                        }}/>
+                </Row>
+            </Space>
+        </Modal>
+    </>
+}
+
 // AccountAdmin 用于管理所有用户的权限信息
 export function AccountAdmin() {
     const [data, setData] = useState([]);
     const [messageApi, contextHolder] = message.useMessage();
     const [loading, setLoading] = useState(true);
+    const [accountAdd, setAccountAdd] = useState(false);
     // 请求数据刷新
     useEffect(() => {
         let httpDatas = [];
