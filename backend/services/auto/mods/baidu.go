@@ -58,11 +58,14 @@ func (b *Baidu) Do() {
 			e := fmt.Errorf("百度新闻 %s 获取失败: %s", v, err.Error())
 			errs = append(errs, e)
 		}
-		err = setting.GSetting.Set(xstorage.Join("auto", "baidu", "key", "last", v), xstorage.ToUnit(newLink, xstorage.ValueTypeString))
-		if err != nil {
-			e := fmt.Errorf("百度新闻 %s 保存最新链接失败: %s", v, err.Error())
-			errs = append(errs, e)
+		if newLink != "" {
+			err = setting.GSetting.Set(xstorage.Join("auto", "baidu", "key", "last", v), xstorage.ToUnit(newLink, xstorage.ValueTypeString))
+			if err != nil {
+				e := fmt.Errorf("百度新闻 %s 保存最新链接失败: %s", v, err.Error())
+				errs = append(errs, e)
+			}
 		}
+		tool.GLog.Info("BAIDU", fmt.Sprintf("get %s news suc,num:%d oldLink:%s newLink:%s", v, len(news), lastLink, newLink))
 	}
 	if len(errs) > 0 {
 		tool.GLog.ErrorErr("BAIDU", errors.Join(errors.New("func Do() spider.GetTodayBaiduNews error"), errors.New(fmt.Sprint(errs))))
