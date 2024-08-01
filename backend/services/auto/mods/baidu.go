@@ -45,12 +45,12 @@ func (b *Baidu) Do() {
 	errs := make([]error, 0)
 	for _, v := range keys {
 		unit, _ := setting.GSetting.Get(xstorage.Join("auto", "baidu", "key", "last", v))
-		lastLink := ""
+		var lastLink []string
 		if unit != nil {
-			lastLink = xstorage.ToBase[string](unit)
+			lastLink = xstorage.ToBase[[]string](unit)
 		}
 
-		news, newLink, err, retry := spider.GetBaiduNewsNew(v, lastLink, 1)
+		news, newLink, err, retry := spider.GetBaiduNewsWithoutOld(v, lastLink, 1)
 		allRetry += retry
 		keywords = append(keywords, v)
 		newss = append(newss, news)
@@ -58,8 +58,8 @@ func (b *Baidu) Do() {
 			e := fmt.Errorf("百度新闻 %s 获取失败: %s", v, err.Error())
 			errs = append(errs, e)
 		}
-		if newLink != "" {
-			err = setting.GSetting.Set(xstorage.Join("auto", "baidu", "key", "last", v), xstorage.ToUnit(newLink, xstorage.ValueTypeString))
+		if len(newLink) != 0 {
+			err = setting.GSetting.Set(xstorage.Join("auto", "baidu", "key", "last", v), xstorage.ToUnit(newLink, xstorage.ValueTypeSliceString))
 			if err != nil {
 				e := fmt.Errorf("百度新闻 %s 保存最新链接失败: %s", v, err.Error())
 				errs = append(errs, e)
