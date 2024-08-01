@@ -5,6 +5,7 @@ import (
 	"github.com/intmian/mian_go_lib/tool/misc"
 	"github.com/intmian/mian_go_lib/xlog"
 	"github.com/intmian/mian_go_lib/xstorage"
+	"strconv"
 )
 
 // runMgrData 用于在重启后恢复数据
@@ -13,6 +14,14 @@ type runMgrData struct {
 	EnvIDs []uint32
 }
 
+// RunMgrInit 外部依赖
+type RunMgrInit struct {
+	storage  *xstorage.XStorage
+	baseAddr string
+	log      *xlog.XLog
+}
+
+// RunMgr 运行环境管理器
 type RunMgr struct {
 	RunMgrInit
 	data runMgrData
@@ -21,12 +30,6 @@ type RunMgr struct {
 	init   misc.InitTag
 
 	envId2Env map[uint32]*Env
-}
-
-type RunMgrInit struct {
-	storage  *xstorage.XStorage
-	baseAddr string
-	log      *xlog.XLog
 }
 
 func (m *RunMgr) Init(init RunMgrInit) error {
@@ -45,7 +48,20 @@ func (m *RunMgr) Init(init RunMgrInit) error {
 	if err != nil {
 		return errors.Join(errors.New("load runmgr data failed"), err)
 	}
-
+	// 初始化后调用各个env的初始化
+	for _, envID := range m.data.EnvIDs {
+		env := &Env{}
+		err := env.Init(EnvInit{
+			storage: m.storage,
+			log:     m.log,
+			addr:    xstorage.Join(m.baseAddr, strconv.Itoa(int(envID))),
+			id:      envID,
+		})
+		if err != nil {
+			return errors.Join(errors.New("init env failed"), err)
+		}
+		m.envId2Env[envID] = env
+	}
 	m.init.SetInitialized()
 	return nil
 }
@@ -76,7 +92,7 @@ func (m *RunMgr) GetNewEnvID() uint32 {
 func (m *RunMgr) CreateEnv() *Env {
 	id := m.GetNewEnvID()
 	env := &Env{}
-	env.ID = id
+	env.id = id
 	m.envId2Env[id] = env
 	go func() {
 		err := env.Save()
