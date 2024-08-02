@@ -50,7 +50,7 @@ func (b *Baidu) Do() {
 			lastLink = xstorage.ToBase[[]string](unit)
 		}
 
-		news, newLink, err, retry := spider.GetBaiduNewsWithoutOld(v, lastLink, 1)
+		news, newLink, err, retry := spider.GetBaiduNewsWithoutOld(v, lastLink, 0.3)
 		allRetry += retry
 		keywords = append(keywords, v)
 		newss = append(newss, news)
