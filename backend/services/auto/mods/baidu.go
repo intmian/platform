@@ -49,8 +49,7 @@ func (b *Baidu) Do() {
 		if unit != nil {
 			lastLink = xstorage.ToBase[[]string](unit)
 		}
-
-		news, newLink, err, retry := spider.GetBaiduNewsWithoutOld(v, lastLink, 0.3)
+		news, newLink, err, retry, folded := spider.GetBaiduNewsWithoutOld(v, lastLink, 0.3)
 		allRetry += retry
 		keywords = append(keywords, v)
 		newss = append(newss, news)
@@ -65,7 +64,7 @@ func (b *Baidu) Do() {
 				errs = append(errs, e)
 			}
 		}
-		tool.GLog.Info("BAIDU", fmt.Sprintf("get %s news suc,num:%d oldLink:%s newLink:%s", v, len(news), lastLink, newLink))
+		tool.GLog.Info("BAIDU", fmt.Sprintf("get %s news suc,num:%d oldLinkLen %d newLinkLen %d foldedLen %d", v, len(news), len(lastLink), len(newLink), folded))
 	}
 	if len(errs) > 0 {
 		tool.GLog.ErrorErr("BAIDU", errors.Join(errors.New("func Do() spider.GetTodayBaiduNews error"), errors.New(fmt.Sprint(errs))))
