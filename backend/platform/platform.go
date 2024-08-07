@@ -10,6 +10,8 @@ import (
 	"github.com/intmian/mian_go_lib/xstorage"
 	"github.com/intmian/platform/backend/share"
 	"github.com/pkg/errors"
+	"os"
+	"os/signal"
 	"time"
 )
 
@@ -129,6 +131,15 @@ func (p *PlatForm) Init(c context.Context) error {
 
 	// 初始化一些工具状态
 	p.startTime = time.Now().Unix()
+
+	// 做下退出的警报
+	sigC := make(chan os.Signal)
+	signal.Notify(sigC, os.Interrupt)
+	go func() {
+		sig := <-sigC
+		p.log.Error("PLAT", "receive signal %v, exit", sig)
+		os.Exit(0)
+	}()
 
 	return nil
 }
