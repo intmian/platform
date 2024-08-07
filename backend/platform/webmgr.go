@@ -73,10 +73,13 @@ func (m *webMgr) Init(plat *PlatForm) error {
 	}
 	timeStr := time.Now().Format("2006-01-02 15:04:05")
 	m.jwt.SetSalt(xstorage.ToBase[string](s1v), timeStr)
-	err := engine.Run(":" + m.plat.baseSetting.Copy().WebPort)
-	if err != nil {
-		return errors.Join(errors.New("engine run err"), err)
-	}
+	var err error
+	go func() {
+		err = engine.Run(":" + m.plat.baseSetting.Copy().WebPort)
+		if err != nil {
+			panic(err)
+		}
+	}()
 	return nil
 }
 
