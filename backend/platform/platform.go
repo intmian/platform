@@ -137,6 +137,7 @@ func (p *PlatForm) Init(c context.Context) error {
 	sigC := make(chan os.Signal)
 	signal.Notify(sigC, os.Interrupt, syscall.SIGINT)
 	go func() {
+		p.log.Info("PLAT", "start exit monitor")
 		sig := <-sigC
 		p.log.Error("PLAT", "receive signal %v, exit", sig)
 		time.Sleep(time.Second)
