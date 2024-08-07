@@ -12,6 +12,7 @@ import (
 	"github.com/pkg/errors"
 	"os"
 	"os/signal"
+	"syscall"
 	"time"
 )
 
@@ -134,10 +135,11 @@ func (p *PlatForm) Init(c context.Context) error {
 
 	// 做下退出的警报
 	sigC := make(chan os.Signal)
-	signal.Notify(sigC, os.Interrupt)
+	signal.Notify(sigC, os.Interrupt, syscall.SIGINT)
 	go func() {
 		sig := <-sigC
 		p.log.Error("PLAT", "receive signal %v, exit", sig)
+		time.Sleep(time.Second)
 		os.Exit(0)
 	}()
 
