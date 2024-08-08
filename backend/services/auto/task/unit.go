@@ -92,6 +92,7 @@ func (u *Unit) do() {
 		defer func() {
 			if err := recover(); err != nil {
 				tool.GLog.Error(u.name, "协程崩溃:"+u.name+" "+fmt.Sprint(err))
+				ok <- true
 			}
 		}()
 		u.f()
