@@ -16,11 +16,10 @@ export function MenuPlus({disable, label2node, baseUrl}) {
     for (let [label, node] of label2node) {
         items.push(getItem(label, label));
     }
-    const [nowSelected, setNowSelected] = useState(mode2);
-    const nowNode = label2node.get(nowSelected);
+    const nowNode = label2node.get(mode2);
     useEffect(() => {
-        navigate(baseUrl + nowSelected, {replace: true});
-    }, [baseUrl, nowSelected]);
+        navigate(baseUrl + mode2, {replace: true});
+    }, []);
     const [collapsed, setCollapsed] = useState(false);
 
     return (
@@ -48,7 +47,6 @@ export function MenuPlus({disable, label2node, baseUrl}) {
                     items={items}
                     onSelect={({key}) => {
                         navigate(baseUrl + key, {replace: true});
-                        setNowSelected(key);
                     }}
                     theme="dark"
                 />
