@@ -113,5 +113,5 @@ export function Debug() {
             </Row>
         </div>
     )
-    return <MenuPlus label2node={debugMap}/>
+    return <MenuPlus label2node={debugMap} baseUrl={"/debug/"}/>
 }

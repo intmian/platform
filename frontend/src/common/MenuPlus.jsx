@@ -1,17 +1,26 @@
 import {Layout, Menu} from "antd";
 import {getItem} from "../tool.js";
-import {useState} from "react";
+import {useEffect, useState} from "react";
+import {useNavigate, useParams} from "react-router-dom";
 
 const {Sider, Content} = Layout;
 
-export function MenuPlus({disable, label2node}) {
+export function MenuPlus({disable, label2node, baseUrl}) {
+    const {mode} = useParams();
+    let mode2 = mode;
     let items = [];
-    const defaultSelectedKeys = label2node.keys().next().value;
+    const navigate = useNavigate();
+    if (mode2 === undefined) {
+        mode2 = label2node.keys().next().value;
+    }
     for (let [label, node] of label2node) {
         items.push(getItem(label, label));
     }
-    const [nowSelected, setNowSelected] = useState(defaultSelectedKeys);
+    const [nowSelected, setNowSelected] = useState(mode2);
     const nowNode = label2node.get(nowSelected);
+    useEffect(() => {
+        navigate(baseUrl + nowSelected, {replace: true});
+    }, [baseUrl, nowSelected]);
     const [collapsed, setCollapsed] = useState(false);
 
     return (
@@ -31,13 +40,14 @@ export function MenuPlus({disable, label2node}) {
                 <Menu
                     disabled={disable}
                     mode="inline"
-                    defaultSelectedKeys={['monitor']}
+                    defaultSelectedKeys={[mode2]}
                     style={{
                         // 根据页面的总大小来设置高度
                         height: '100%',
                     }}
                     items={items}
                     onSelect={({key}) => {
+                        navigate(baseUrl + key, {replace: true});
                         setNowSelected(key);
                     }}
                     theme="dark"

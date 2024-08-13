@@ -16,6 +16,10 @@ const router = createBrowserRouter([
     {
         path: '/debug',
         element: <Debug/>,
+    },
+    {
+        path: '/debug/:mode',
+        element: <Debug/>,
     }
 ])
 
