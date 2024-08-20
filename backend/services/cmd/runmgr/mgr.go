@@ -3,15 +3,17 @@ package runmgr
 import (
 	"errors"
 	"github.com/intmian/mian_go_lib/tool/misc"
+	"github.com/intmian/mian_go_lib/tool/multi"
 	"github.com/intmian/mian_go_lib/xlog"
 	"github.com/intmian/mian_go_lib/xstorage"
 	"strconv"
 )
 
-// runMgrData 用于在重启后恢复数据
+// runMgrData 用于在重启后恢复数据 程不安全
 type runMgrData struct {
 	LastID uint32
 	EnvIDs []uint32
+	multi.SafeMap[]
 }
 
 // RunMgrInit 外部依赖

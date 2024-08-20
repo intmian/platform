@@ -13,7 +13,7 @@ export function MenuPlus({disable, label2node, baseUrl}) {
     if (mode2 === undefined) {
         mode2 = label2node.keys().next().value;
     }
-    for (let [label, node] of label2node) {
+    for (let [label] of label2node) {
         items.push(getItem(label, label));
     }
     const nowNode = label2node.get(mode2);

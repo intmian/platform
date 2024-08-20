@@ -1,10 +1,5 @@
 package toolmgr
 
-import (
-	"net/url"
-	"time"
-)
-
 type ToolType int
 
 const (
@@ -21,13 +16,4 @@ func IsToolTypeFile(t ToolType) bool {
 
 func IsToolTypeScript(t ToolType) bool {
 	return t > ToolTypeNull && t < ToolTypeFileBegin
-}
-
-type Tool struct {
-	name      string
-	typ       ToolType
-	created   time.Time
-	updated   time.Time
-	githubUrl url.URL
-	ID        string
 }
