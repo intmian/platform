@@ -78,6 +78,7 @@ func (t *Tool) Load() error {
 }
 
 // TODO: 实现外部传入的文件与github相关的处理
+// TODO: 实现多文件体系，如何多文件的执行python脚本并确定入口并在外部可以引用
 
 func (t *Tool) GetName() string {
 	return t.Name
