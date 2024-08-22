@@ -1,4 +1,4 @@
-package toolmgr
+package tool
 
 import (
 	"errors"
@@ -71,7 +71,7 @@ func (t *Tool) Save() error {
 
 func (t *Tool) Load() error {
 	err := t.storage.GetFromJson(xstorage.Join("CMD", "toolMgr", "tool", t.ID), &t.ToolData)
-	if err != nil {
+	if err != nil && !errors.Is(err, xstorage.ErrNoData) {
 		return errors.Join(errors.New("get tool data failed"), err)
 	}
 	return nil

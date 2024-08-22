@@ -1,4 +1,4 @@
-package toolmgr
+package tool
 
 type ToolType int
 

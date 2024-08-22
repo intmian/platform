@@ -1,4 +1,4 @@
-package toolmgr
+package tool
 
 import (
 	"errors"
@@ -15,7 +15,6 @@ import (
 
 // toolMgrData 用于在重启后恢复数据。线程不安全
 type toolMgrData struct {
-	LastID  uint32
 	ToolIDs multi.SafeArr[string]
 }
 
@@ -71,19 +70,21 @@ func (m *ToolMgr) Init(init ToolMgrInit) error {
 	return nil
 }
 
-func (m *ToolMgr) Save() error {
-	err := m.storage.SetToJson(xstorage.Join("CMD", "toolMgr"), m.toolMgrData)
+func (m *ToolMgr) SaveToolIDs() error {
+	err := m.storage.SetToJson(xstorage.Join("CMD", "toolMgr", "toolIDs"), m.ToolIDs.Copy())
 	if err != nil {
-		return errors.Join(errors.New("set toolMgr data failed"), err)
+		return errors.Join(errors.New("save toolIDs failed"), err)
 	}
 	return nil
 }
 
 func (m *ToolMgr) Load() error {
-	err := m.storage.GetFromJson(xstorage.Join("CMD", "toolMgr"), &m.toolMgrData)
-	if err != nil {
-		return errors.Join(errors.New("get toolMgr data failed"), err)
+	var data []string
+	err := m.storage.GetFromJson(xstorage.Join("CMD", "toolMgr", "toolIDs"), &data)
+	if err != nil && !errors.Is(err, xstorage.ErrNoData) {
+		return errors.Join(errors.New("get toolIDs failed"), err)
 	}
+	m.ToolIDs = *multi.NewSafeArr(data)
 	return nil
 }
 
@@ -99,8 +100,14 @@ func (m *ToolMgr) UploadText(text string, name string, typ ToolType) error {
 	}
 
 	id := m.node.Generate().String()
+	m.ToolIDs.Append(id)
+	err := m.SaveToolIDs()
+	if err != nil {
+		return errors.Join(errors.New("save toolIDs failed"), err)
+	}
+
 	// 创建ID对应的文件夹
-	err := m.scriptDirNode.File.MakeChildEmptyFile(id, true)
+	err = m.scriptDirNode.File.MakeChildEmptyFile(id, true)
 	if err != nil {
 		return errors.Join(errors.New("create script dir failed"), err)
 	}
