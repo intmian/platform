@@ -36,6 +36,7 @@ type Task struct {
 	cmd     *exec.Cmd
 	stdin   io.WriteCloser
 	stdout  io.ReadCloser
+	end     context.CancelFunc
 }
 
 func (t *Task) Init(init TaskInit) {
@@ -87,7 +88,7 @@ func (t *Task) Run() error {
 	go func() {
 		err = t.cmd.Run()
 	}()
-
+	t.ctx, t.end = context.WithCancel(t.env.ctx)
 	go func() {
 		<-t.ctx.Done()
 		err := t.cmd.Process.Kill()

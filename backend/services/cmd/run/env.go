@@ -1,10 +1,13 @@
 package run
 
 import (
+	"context"
 	"errors"
 	"github.com/intmian/mian_go_lib/tool/misc"
+	"github.com/intmian/mian_go_lib/tool/multi"
 	"github.com/intmian/mian_go_lib/xlog"
 	"github.com/intmian/mian_go_lib/xstorage"
+	"github.com/intmian/platform/backend/services/cmd/tool"
 	"os"
 	"path"
 	"strconv"
@@ -13,6 +16,7 @@ import (
 type EnvInit struct {
 	storage *xstorage.XStorage
 	log     *xlog.XLog
+	ctx     context.Context
 	addr    string
 	id      uint32
 
@@ -38,7 +42,7 @@ type Env struct {
 	EnvInit
 	EnvData
 
-	tasks []Task
+	tasks multi.SafeArr[*Task]
 	f     *misc.FileNode
 }
 
@@ -137,4 +141,37 @@ func (e *Env) GetTxtFile(name string) (string, error) {
 		}
 	}
 	return "", errors.New("file not exist")
+}
+
+func (e *Env) RunTask(t *tool.Tool, param []string) error {
+	task := NewTask(TaskInit{
+		tool:  t,
+		param: param,
+		env:   e,
+		ctx:   context.WithoutCancel(e.ctx),
+	})
+	e.tasks.Append(task)
+	err := task.Run()
+	if err != nil {
+		return errors.Join(errors.New("task run failed"), err)
+	}
+	return nil
+}
+
+func (e *Env) GetTaskLen() int {
+	return e.tasks.Len()
+}
+
+func (e *Env) GetTask(index int) *Task {
+	task, _ := e.tasks.Get(index)
+	return task
+}
+
+func (e *Env) DelTask(index int) error {
+	task, ok := e.tasks.Get(index)
+	if !ok {
+		return errors.New("task not exist")
+	}
+	task.end()
+	return nil
 }
