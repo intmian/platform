@@ -28,6 +28,7 @@ const (
 	NameAuto    SvrName = "auto"
 	NameNote    SvrName = "note"
 	NameAccount SvrName = "account"
+	NameCmd     SvrName = "cmd"
 )
 
 const (
@@ -35,6 +36,7 @@ const (
 	FlagAuto
 	FlagNote
 	FlagAccount
+	FlagCmd
 )
 
 type ServiceStatus int

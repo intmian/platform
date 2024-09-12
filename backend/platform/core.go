@@ -7,6 +7,7 @@ import (
 	"github.com/intmian/mian_go_lib/xstorage"
 	"github.com/intmian/platform/backend/services/account"
 	"github.com/intmian/platform/backend/services/auto"
+	"github.com/intmian/platform/backend/services/cmd"
 	coreShare "github.com/intmian/platform/backend/share"
 	"github.com/pkg/errors"
 	"time"
@@ -112,6 +113,7 @@ func (c *core) stopService(flag coreShare.SvrFlag) error {
 func (c *core) registerSvr() {
 	c.service[coreShare.FlagAuto] = &auto.Service{}
 	c.service[coreShare.FlagAccount] = &account.Service{}
+	c.service[coreShare.FlagCmd] = &cmd.Service{}
 	// 新增于此处
 	for k, _ := range c.service {
 		c.serviceMeta[k] = &coreShare.ServiceMeta{}
