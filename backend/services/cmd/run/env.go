@@ -25,8 +25,9 @@ type EnvInit struct {
 
 type EnvData struct {
 	// 先简单加一组sting作为命令行参数。
-	param []string
-	note  string
+	param         []string
+	defaultToolID string
+	note          string
 }
 
 /*

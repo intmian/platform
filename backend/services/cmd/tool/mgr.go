@@ -20,9 +20,9 @@ type toolMgrData struct {
 
 // ToolMgrInit 外部依赖
 type ToolMgrInit struct {
-	storage       *xstorage.XStorage
-	scriptDirNode misc.FileNode // 脚本的实际存储地址
-	log           *xlog.XLog
+	Storage   *xstorage.XStorage
+	ScriptDir string // 脚本的实际存储地址
+	Log       *xlog.XLog
 }
 
 type ToolMgr struct {
@@ -34,12 +34,19 @@ type ToolMgr struct {
 	node    *snowflake.Node
 }
 
+func NewToolMgr(init ToolMgrInit) (*ToolMgr, error) {
+	mgr := &ToolMgr{
+		ToolMgrInit: init,
+	}
+	return mgr, nil
+}
+
 func (m *ToolMgr) Init(init ToolMgrInit) error {
 	if m.init.IsInitialized() {
 		return errors.New("already initialized")
 	}
 	m.ToolMgrInit = init
-	m.storage = init.storage
+	m.storage = init.Storage
 	node, err := snowflake.NewNode(1)
 	if err != nil {
 		return errors.Join(errors.New("create snowflake node failed"), err)
@@ -55,12 +62,12 @@ func (m *ToolMgr) Init(init ToolMgrInit) error {
 				ID: id,
 			})
 			if err != nil {
-				m.log.WarningErr("ToolMgr", errors.Join(errors.New("init tool failed"), err))
+				m.Log.WarningErr("ToolMgr", errors.Join(errors.New("init tool failed"), err))
 				continue
 			}
 			err = m.register(id, tool)
 			if err != nil {
-				m.log.WarningErr("ToolMgr", errors.Join(errors.New("register tool failed"), err))
+				m.Log.WarningErr("ToolMgr", errors.Join(errors.New("register tool failed"), err))
 				continue
 			}
 		}
@@ -88,15 +95,15 @@ func (m *ToolMgr) Load() error {
 	return nil
 }
 
-func (m *ToolMgr) UploadText(text string, name string, typ ToolType) error {
+func (m *ToolMgr) CreateTool(name string, typ ToolType, script string) error {
 	if !m.init.IsInitialized() {
 		return misc.ErrNotInit
 	}
 	if !IsToolTypeScript(typ) {
 		return errors.New("invalid tool type")
 	}
-	if text == "" || name == "" {
-		return errors.New("invalid text or Name")
+	if script == "" || name == "" {
+		return errors.New("invalid script or Name")
 	}
 
 	id := m.node.Generate().String()
@@ -107,29 +114,29 @@ func (m *ToolMgr) UploadText(text string, name string, typ ToolType) error {
 	}
 
 	// 创建ID对应的文件夹
-	err = m.scriptDirNode.File.MakeChildEmptyFile(id, true)
+	err = misc.CreateDirWhenNotExist(path.Join(m.ScriptDir, id))
 	if err != nil {
 		return errors.Join(errors.New("create script dir failed"), err)
 	}
 	// 创建脚本文件
-	filePath := path.Join(m.scriptDirNode.File.Addr, id, "main")
+	filePath := path.Join(m.ScriptDir, id, "main")
 	file, err := os.Create(filePath)
 	if err != nil {
 		return errors.Join(errors.New("create script file failed"), err)
 	}
 	defer file.Close()
-	_, err = file.WriteString(text)
+	_, err = file.WriteString(script)
 	if err != nil {
 		return errors.Join(errors.New("write script file failed"), err)
 	}
-	err2 := m.CreateTool(name, typ, id)
+	err2 := m.createTool(name, typ, id)
 	if err2 != nil {
 		return errors.Join(errors.New("create tool failed"), err2)
 	}
 	return nil
 }
 
-func (m *ToolMgr) CreateTool(name string, typ ToolType, id string) error {
+func (m *ToolMgr) createTool(name string, typ ToolType, id string) error {
 	// 注册
 	tool, err := NewTool(ToolInit{
 		ID:      id,
@@ -140,7 +147,7 @@ func (m *ToolMgr) CreateTool(name string, typ ToolType, id string) error {
 			Created:   time.Now(),
 			Updated:   time.Now(),
 			githubUrl: url.URL{},
-			Addr:      path.Join(m.scriptDirNode.File.Addr, id, "main"),
+			Addr:      path.Join(m.ScriptDir, id, "main"),
 		},
 	})
 	if err != nil {
@@ -153,13 +160,13 @@ func (m *ToolMgr) CreateTool(name string, typ ToolType, id string) error {
 	return nil
 }
 
-func (m *ToolMgr) GetAllToolID() []string {
-	var ids []string
+func (m *ToolMgr) GetAllTool() map[string]ToolData {
+	ret := make(map[string]ToolData)
 	m.id2tool.Range(func(key string, value *Tool) bool {
-		ids = append(ids, key)
+		ret[key] = value.ToolData
 		return true
 	})
-	return ids
+	return ret
 }
 
 func (m *ToolMgr) GetTool(id string) (*Tool, error) {

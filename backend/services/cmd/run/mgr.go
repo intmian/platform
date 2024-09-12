@@ -18,9 +18,9 @@ type runMgrData struct {
 
 // RunMgrInit 外部依赖
 type RunMgrInit struct {
-	storage  *xstorage.XStorage
-	baseAddr string
-	log      *xlog.XLog
+	Storage  *xstorage.XStorage
+	BaseAddr string
+	Log      *xlog.XLog
 }
 
 // RunMgr 运行环境管理器
@@ -39,7 +39,7 @@ func (m *RunMgr) Init(init RunMgrInit) error {
 		return errors.New("already initialized")
 	}
 	m.RunMgrInit = init
-	fileNode, err := misc.GetFileTree(init.baseAddr)
+	fileNode, err := misc.GetFileTree(init.BaseAddr)
 	if err != nil {
 		return errors.Join(errors.New("get file tree failed"), err)
 	}
@@ -54,9 +54,9 @@ func (m *RunMgr) Init(init RunMgrInit) error {
 	var errR error
 	m.data.EnvIDs.Range(func(i int, envID uint32) bool {
 		env, err := NewEnv(EnvInit{
-			storage: m.storage,
-			log:     m.log,
-			addr:    xstorage.Join(m.baseAddr, strconv.Itoa(int(envID))),
+			storage: m.Storage,
+			log:     m.Log,
+			addr:    xstorage.Join(m.BaseAddr, strconv.Itoa(int(envID))),
 			id:      envID,
 		})
 		if err != nil {
@@ -83,12 +83,12 @@ func NewRunMgr(init RunMgrInit) *RunMgr {
 }
 
 func (m *RunMgr) Load() error {
-	err := m.storage.GetFromJson(xstorage.Join("cmd", "runmgr", "data", "lastID"), &m.data.LastID)
+	err := m.Storage.GetFromJson(xstorage.Join("cmd", "runmgr", "data", "lastID"), &m.data.LastID)
 	if err != nil && !errors.Is(err, xstorage.ErrNoData) {
 		return errors.Join(errors.New("get lastID failed"), err)
 	}
 	var data []uint32
-	err = m.storage.GetFromJson(xstorage.Join("cmd", "runmgr", "data", "envIDs"), &data)
+	err = m.Storage.GetFromJson(xstorage.Join("cmd", "runmgr", "data", "envIDs"), &data)
 	if err != nil && !errors.Is(err, xstorage.ErrNoData) {
 		return errors.Join(errors.New("get envIDs failed"), err)
 	}
@@ -97,11 +97,11 @@ func (m *RunMgr) Load() error {
 }
 
 func (m *RunMgr) SaveEnvIDs() error {
-	return m.storage.SetToJson(xstorage.Join("cmd", "runmgr", "data", "envIDs"), m.data.EnvIDs.Copy())
+	return m.Storage.SetToJson(xstorage.Join("cmd", "runmgr", "data", "envIDs"), m.data.EnvIDs.Copy())
 }
 
 func (m *RunMgr) SaveLastID() error {
-	return m.storage.SetToJson(xstorage.Join("cmd", "runmgr", "data", "lastID"), m.data.LastID)
+	return m.Storage.SetToJson(xstorage.Join("cmd", "runmgr", "data", "lastID"), m.data.LastID)
 }
 
 func (m *RunMgr) GetNewEnvID() uint32 {
@@ -113,23 +113,23 @@ func (m *RunMgr) GetNewEnvID() uint32 {
 func (m *RunMgr) CreateEnv() *Env {
 	id := m.GetNewEnvID()
 	env, err := NewEnv(EnvInit{
-		storage:  m.storage,
-		log:      m.log,
-		addr:     path.Join(m.baseAddr, strconv.Itoa(int(id))),
+		storage:  m.Storage,
+		log:      m.Log,
+		addr:     path.Join(m.BaseAddr, strconv.Itoa(int(id))),
 		id:       id,
 		initData: &EnvData{},
 	})
 	if err != nil {
-		m.log.WarningErr("RUNMGR", errors.Join(errors.New("create env failed"), err))
+		m.Log.WarningErr("RUNMGR", errors.Join(errors.New("create env failed"), err))
 		return nil
 	}
 	m.envId2Env.Store(id, env)
 	m.data.EnvIDs.Append(id)
 	err = m.SaveEnvIDs()
 	if err != nil {
-		m.log.WarningErr("RUNMGR", errors.Join(errors.New("save envIDs failed"), err))
+		m.Log.WarningErr("RUNMGR", errors.Join(errors.New("save envIDs failed"), err))
 	}
-	m.log.Info("RUNMGR", "create env %d", id)
+	m.Log.Info("RUNMGR", "create env %d", id)
 	return env
 }
 

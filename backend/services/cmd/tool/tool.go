@@ -100,3 +100,24 @@ func (t *Tool) GetContent() string {
 	}
 	return string(all)
 }
+
+func (t *Tool) SetContent(content string) error {
+	if IsToolTypeScript(t.Typ) {
+		return errors.New("tool type is not script")
+	}
+	file, err := os.Create(t.Addr)
+	if err != nil {
+		return errors.Join(errors.New("create file failed"), err)
+	}
+	defer file.Close()
+	_, err = file.WriteString(content)
+	if err != nil {
+		return errors.Join(errors.New("write file failed"), err)
+	}
+	return nil
+}
+
+func (t *Tool) Rename(name string) error {
+	t.Name = name
+	return t.Save()
+}
