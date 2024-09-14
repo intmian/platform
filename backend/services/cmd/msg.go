@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"github.com/intmian/platform/backend/services/cmd/run"
 	"github.com/intmian/platform/backend/services/cmd/tool"
 	"github.com/intmian/platform/backend/share"
 )
@@ -46,4 +47,133 @@ type GetToolScriptReq struct {
 
 type GetToolScriptRet struct {
 	Script string
+}
+
+// 创建空环境
+const CmdCreateEnv share.Cmd = "createEnv"
+
+type CreateEnvReq struct {
+}
+
+type CreateEnvRet struct {
+	Suc   bool
+	EnvID uint32
+}
+
+// 查看所有环境
+const CmdGetEnvs share.Cmd = "getEnvs"
+
+type GetEnvsReq struct {
+}
+
+type GetEnvsRet struct {
+	EnvData []run.EnvData
+}
+
+// 查看环境
+const CmdGetEnv share.Cmd = "getEnv"
+
+type GetEnvReq struct {
+	EnvID uint32
+}
+
+type GetEnvRet struct {
+	EnvData  run.EnvData
+	AllFiles []string
+}
+
+// 查看文件内容
+const CmdGetFile share.Cmd = "getFile"
+
+type GetFileReq struct {
+	EnvID    uint32
+	FileName string
+}
+
+type GetFileRet struct {
+	Content string
+}
+
+// 修改文件内容
+const CmdSetFile share.Cmd = "setFile"
+
+type SetFileReq struct {
+	EnvID    uint32
+	FileName string
+	Content  string
+}
+
+type SetFileRet struct {
+}
+
+// 修改环境参数
+const CmdSetEnv share.Cmd = "setEnv"
+
+type SetEnvReq struct {
+	EnvID      uint32
+	params     []string
+	note       string
+	bindToolID string
+}
+
+type SetEnvRet struct {
+}
+
+// 运行环境
+const CmdRunEnv share.Cmd = "runEnv"
+
+type RunEnvReq struct {
+	EnvID  uint32
+	params []string
+}
+
+type RunEnvRet struct {
+	TaskID string
+}
+
+// 查看所有任务ID
+const CmdGetTasks share.Cmd = "getTasks"
+
+type GetTasksReq struct {
+}
+
+type GetTasksRet struct {
+	TaskData []struct {
+		TaskID string
+		Status run.TaskStatus
+	}
+}
+
+// 查看任务详情
+const CmdGetTask share.Cmd = "getTask"
+
+type GetTaskReq struct {
+	TaskID    string
+	LastIndex int
+}
+
+type GetTaskRet struct {
+	IOs    []run.TaskIO
+	Status run.TaskStatus
+}
+
+// 停止任务
+const CmdStopTask share.Cmd = "stopTask"
+
+type StopTaskReq struct {
+	TaskID string
+}
+
+type StopTaskRet struct {
+}
+
+// 对任务进行输入
+const CmdTaskInput share.Cmd = "taskInput"
+
+type TaskInputReq struct {
+	TaskID  string
+	Content string
+}
+
+type TaskInputRet struct {
 }

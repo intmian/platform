@@ -27,12 +27,21 @@ const (
 	TaskIOFromUser    = "user"
 )
 
+type TaskStatus int
+
+const (
+	TaskStatusRunning TaskStatus = iota
+	TaskStatusEnd
+	TaskStatusForceEnd
+)
+
 /*
 Task 运行任务。
 */
 type Task struct {
 	TaskInit
 	taskIOs multi.SafeArr[TaskIO]
+	status  TaskStatus
 	cmd     *exec.Cmd
 	stdin   io.WriteCloser
 	stdout  io.ReadCloser
@@ -86,7 +95,12 @@ func (t *Task) Run() error {
 	}()
 
 	go func() {
+		t.status = TaskStatusRunning
 		err = t.cmd.Run()
+		if err != nil {
+			t.env.log.WarningErr("TASK", errors.Join(errors.New("run task failed"), err))
+		}
+		t.status = TaskStatusEnd
 	}()
 	t.ctx, t.end = context.WithCancel(t.env.ctx)
 	go func() {
@@ -116,6 +130,11 @@ func (t *Task) Input(content string) error {
 	return nil
 }
 
+func (t *Task) Stop() {
+	t.end()
+	t.status = TaskStatusForceEnd
+}
+
 func (t *Task) GetNewIO(lastIndex int) []TaskIO {
 	res := make([]TaskIO, 0)
 	t.taskIOs.SafeUse(func(arr []TaskIO) {
@@ -125,4 +144,8 @@ func (t *Task) GetNewIO(lastIndex int) []TaskIO {
 		res = arr[lastIndex:]
 	})
 	return res
+}
+
+func (t *Task) GetStatus() TaskStatus {
+	return t.status
 }

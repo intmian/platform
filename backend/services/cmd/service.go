@@ -75,7 +75,30 @@ func (s *Service) HandleRpc(msg backendshare.Msg, valid backendshare.Valid) (int
 		return backendshare.HandleRpcTool("getToolIds", msg, valid, s.OnGetTools)
 	case CmdGetToolScript:
 		return backendshare.HandleRpcTool("getToolScript", msg, valid, s.OnGetToolScript)
+	case CmdCreateEnv:
+		return backendshare.HandleRpcTool("createEnv", msg, valid, s.OnCreateEnv)
+	case CmdGetEnvs:
+		return backendshare.HandleRpcTool("getEnvs", msg, valid, s.OnGetEnvs)
+	case CmdGetEnv:
+		return backendshare.HandleRpcTool("getEnv", msg, valid, s.OnGetEnv)
+	case CmdGetFile:
+		return backendshare.HandleRpcTool("getFile", msg, valid, s.OnGetFile)
+	case CmdSetFile:
+		return backendshare.HandleRpcTool("setFile", msg, valid, s.OnSetFile)
+	case CmdSetEnv:
+		return backendshare.HandleRpcTool("setEnv", msg, valid, s.OnSetEnv)
+	case CmdRunEnv:
+		return backendshare.HandleRpcTool("runEnv", msg, valid, s.OnRunEnv)
+	case CmdGetTasks:
+		return backendshare.HandleRpcTool("getTasks", msg, valid, s.OnGetTasks)
+	case CmdGetTask:
+		return backendshare.HandleRpcTool("getTask", msg, valid, s.OnGetTask)
+	case CmdStopTask:
+		return backendshare.HandleRpcTool("stopTask", msg, valid, s.OnStopTask)
+	case CmdTaskInput:
+		return backendshare.HandleRpcTool("taskInput", msg, valid, s.OnTaskInput)
 	}
+
 	return nil, errors.New("unknown cmd")
 }
 
@@ -130,4 +153,48 @@ func (s *Service) OnGetToolScript(valid backendshare.Valid, req GetToolScriptReq
 	}
 	ret.Script = Tool.GetContent()
 	return
+}
+
+func (s *Service) OnCreateEnv(valid backendshare.Valid, req CreateEnvReq) (ret CreateEnvRet, err error) {
+	// TODO
+}
+
+func (s *Service) OnGetEnvs(valid backendshare.Valid, req GetEnvsReq) (ret GetEnvsRet, err error) {
+	// TODO
+}
+
+func (s *Service) OnGetEnv(valid backendshare.Valid, req GetEnvReq) (ret GetEnvRet, err error) {
+	// TODO
+}
+
+func (s *Service) OnGetFile(valid backendshare.Valid, req GetFileReq) (ret GetFileRet, err error) {
+	// TODO
+}
+
+func (s *Service) OnSetFile(valid backendshare.Valid, req SetFileReq) (ret SetFileRet, err error) {
+	// TODO
+}
+
+func (s *Service) OnSetEnv(valid backendshare.Valid, req SetEnvReq) (ret SetEnvRet, err error) {
+	// TODO
+}
+
+func (s *Service) OnRunEnv(valid backendshare.Valid, req RunEnvReq) (ret RunEnvRet, err error) {
+	// TODO
+}
+
+func (s *Service) OnGetTasks(valid backendshare.Valid, req GetTasksReq) (ret GetTasksRet, err error) {
+	// TODO
+}
+
+func (s *Service) OnGetTask(valid backendshare.Valid, req GetTaskReq) (ret GetTaskRet, err error) {
+	// TODO
+}
+
+func (s *Service) OnStopTask(valid backendshare.Valid, req StopTaskReq) (ret StopTaskRet, err error) {
+	// TODO
+}
+
+func (s *Service) OnTaskInput(valid backendshare.Valid, req TaskInputReq) (ret TaskInputRet, err error) {
+	// TODO
 }

@@ -114,7 +114,7 @@ func (c *core) registerSvr() {
 	c.service[coreShare.FlagAuto] = &auto.Service{}
 	c.service[coreShare.FlagAccount] = &account.Service{}
 	c.service[coreShare.FlagCmd] = &cmd.Service{}
-	// 新增于此处
+	// 新增服务要在这里注册
 	for k, _ := range c.service {
 		c.serviceMeta[k] = &coreShare.ServiceMeta{}
 		u := xstorage.ToUnit[bool](true, xstorage.ValueTypeBool)
