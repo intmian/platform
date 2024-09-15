@@ -156,35 +156,127 @@ func (s *Service) OnGetToolScript(valid backendshare.Valid, req GetToolScriptReq
 }
 
 func (s *Service) OnCreateEnv(valid backendshare.Valid, req CreateEnvReq) (ret CreateEnvRet, err error) {
-	// TODO
+	env := s.runMgr.CreateEnv()
+	if env == nil {
+		err = errors.New("create env failed")
+		return
+	}
+	ret.EnvID = env.ID
+	ret.Suc = true
+	return
 }
 
 func (s *Service) OnGetEnvs(valid backendshare.Valid, req GetEnvsReq) (ret GetEnvsRet, err error) {
-	// TODO
+	ids := s.runMgr.GetEnvIDs()
+	ret.EnvData = make([]run.EnvData, 0)
+	for _, id := range ids {
+		env := s.runMgr.GetEnv(id)
+		if env == nil {
+			continue
+		}
+		ret.EnvData = append(ret.EnvData, env.EnvData)
+	}
+	return
 }
 
 func (s *Service) OnGetEnv(valid backendshare.Valid, req GetEnvReq) (ret GetEnvRet, err error) {
-	// TODO
+	env := s.runMgr.GetEnv(req.EnvID)
+	if env == nil {
+		err = errors.New("get env failed")
+		return
+	}
+	ret.EnvData = env.EnvData
+	ret.AllFiles = env.GetDirFile()
+	return
 }
 
 func (s *Service) OnGetFile(valid backendshare.Valid, req GetFileReq) (ret GetFileRet, err error) {
-	// TODO
+	env := s.runMgr.GetEnv(req.EnvID)
+	if env == nil {
+		err = errors.New("get env failed")
+		return
+	}
+	ret.Content, err = env.GetTxtFile(req.FileName)
+	if err != nil {
+		err = errors.Join(errors.New("get file failed"), err)
+		return
+	}
+	return
 }
 
 func (s *Service) OnSetFile(valid backendshare.Valid, req SetFileReq) (ret SetFileRet, err error) {
-	// TODO
+	env := s.runMgr.GetEnv(req.EnvID)
+	if env == nil {
+		err = errors.New("get env failed")
+		return
+	}
+	err = env.UpdateTxtFile(req.FileName, req.Content)
+	if err != nil {
+		err = errors.Join(errors.New("update file failed"), err)
+		return
+	}
+	return
 }
 
 func (s *Service) OnSetEnv(valid backendshare.Valid, req SetEnvReq) (ret SetEnvRet, err error) {
-	// TODO
+	env := s.runMgr.GetEnv(req.EnvID)
+	if env == nil {
+		err = errors.New("get env failed")
+		return
+	}
+	if req.note != "" {
+		env.SetNote(req.note)
+	}
+	if req.bindToolID != "" {
+		env.SetDefaultTool(req.bindToolID)
+	}
+	if req.params != nil {
+		env.SetParam(req.params)
+	}
+	err = env.Save()
+	if err != nil {
+		err = errors.Join(errors.New("save env failed"), err)
+		return
+	}
+	return
 }
 
 func (s *Service) OnRunEnv(valid backendshare.Valid, req RunEnvReq) (ret RunEnvRet, err error) {
-	// TODO
+	env := s.runMgr.GetEnv(req.EnvID)
+	if env == nil {
+		err = errors.New("get env failed")
+		return
+	}
+	useTool, err := s.toolMgr.GetTool(req.ToolID)
+	if err != nil {
+		err = errors.Join(errors.New("get tool failed"), err)
+		return
+	}
+	err = env.RunTask(useTool, req.Params)
+	if err != nil {
+		err = errors.Join(errors.New("run task failed"), err)
+		return
+	}
+	return
 }
 
 func (s *Service) OnGetTasks(valid backendshare.Valid, req GetTasksReq) (ret GetTasksRet, err error) {
-	// TODO
+	env := s.runMgr.GetEnv(req.EvnID)
+	if env == nil {
+		err = errors.New("get env failed")
+		return
+	}
+
+	ret.TaskData = make([]struct {
+		TaskID string
+		Status run.TaskStatus
+	}, 0)
+	for _, task := range env.GetTasks() {
+		ret.TaskData = append(ret.TaskData, struct {
+			TaskID string
+			Status run.TaskStatus
+		}{TaskID: task.ID, Status: task.GetStatus()})
+	}
 }
 
 func (s *Service) OnGetTask(valid backendshare.Valid, req GetTaskReq) (ret GetTaskRet, err error) {

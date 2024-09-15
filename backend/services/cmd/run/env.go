@@ -18,7 +18,7 @@ type EnvInit struct {
 	log     *xlog.XLog
 	ctx     context.Context
 	addr    string
-	id      uint32
+	ID      uint32
 
 	initData *EnvData
 }
@@ -86,7 +86,7 @@ func NewEnv(init EnvInit) (*Env, error) {
 }
 
 func (e *Env) Save() error {
-	err := e.storage.SetToJson(xstorage.Join("runmgr", "env", strconv.Itoa(int(e.id))), e.EnvData)
+	err := e.storage.SetToJson(xstorage.Join("runmgr", "env", strconv.Itoa(int(e.ID))), e.EnvData)
 	if err != nil {
 		return errors.New("set to json failed")
 	}
@@ -94,7 +94,7 @@ func (e *Env) Save() error {
 }
 
 func (e *Env) Load() error {
-	err := e.storage.GetFromJson(xstorage.Join("runmgr", "env", strconv.Itoa(int(e.id))), &e.EnvData)
+	err := e.storage.GetFromJson(xstorage.Join("runmgr", "env", strconv.Itoa(int(e.ID))), &e.EnvData)
 	if err != nil {
 		return errors.New("get from json failed")
 	}
@@ -175,4 +175,28 @@ func (e *Env) DelTask(index int) error {
 	}
 	task.end()
 	return nil
+}
+
+func (e *Env) SetDefaultTool(id string) {
+	e.defaultToolID = id
+	err := e.Save()
+	if err != nil {
+		e.log.WarningErr("ENV", errors.Join(errors.New("set default tool failed"), err))
+	}
+}
+
+func (e *Env) SetNote(note string) {
+	e.note = note
+	err := e.Save()
+	if err != nil {
+		e.log.WarningErr("ENV", errors.Join(errors.New("set note failed"), err))
+	}
+}
+
+func (e *Env) SetParam(param []string) {
+	e.param = param
+	err := e.Save()
+	if err != nil {
+		e.log.WarningErr("ENV", errors.Join(errors.New("set param failed"), err))
+	}
 }

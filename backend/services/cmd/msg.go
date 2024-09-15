@@ -124,17 +124,18 @@ const CmdRunEnv share.Cmd = "runEnv"
 
 type RunEnvReq struct {
 	EnvID  uint32
-	params []string
+	ToolID string
+	Params []string
 }
 
 type RunEnvRet struct {
-	TaskID string
 }
 
 // 查看所有任务ID
 const CmdGetTasks share.Cmd = "getTasks"
 
 type GetTasksReq struct {
+	EvnID uint32
 }
 
 type GetTasksRet struct {
