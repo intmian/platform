@@ -268,25 +268,72 @@ func (s *Service) OnGetTasks(valid backendshare.Valid, req GetTasksReq) (ret Get
 	}
 
 	ret.TaskData = make([]struct {
-		TaskID string
-		Status run.TaskStatus
+		TaskIndex int
+		Status    run.TaskStatus
 	}, 0)
-	for _, task := range env.GetTasks() {
+	for i := 0; i < env.GetTaskLen(); i++ {
+		task := env.GetTask(i)
+		if task == nil {
+			continue
+		}
 		ret.TaskData = append(ret.TaskData, struct {
-			TaskID string
-			Status run.TaskStatus
-		}{TaskID: task.ID, Status: task.GetStatus()})
+			TaskIndex int
+			Status    run.TaskStatus
+		}{
+			TaskIndex: i,
+			Status:    env.GetTask(i).GetStatus(),
+		})
 	}
+	return
 }
 
 func (s *Service) OnGetTask(valid backendshare.Valid, req GetTaskReq) (ret GetTaskRet, err error) {
-	// TODO
+	env := s.runMgr.GetEnv(req.EnvID)
+	if env == nil {
+		err = errors.New("get env failed")
+		return
+	}
+	task := env.GetTask(req.TaskIndex)
+	if task == nil {
+		err = errors.New("get task failed")
+		return
+	}
+	ret.IOs = task.GetNewIO(req.LastIndex)
+	ret.Status = task.GetStatus()
+	ret.IOs = task.GetNewIO(req.LastIndex)
+	return
 }
 
 func (s *Service) OnStopTask(valid backendshare.Valid, req StopTaskReq) (ret StopTaskRet, err error) {
-	// TODO
+	env := s.runMgr.GetEnv(req.EvnID)
+	if env == nil {
+		err = errors.New("get env failed")
+		return
+	}
+	task := env.GetTask(req.TaskIndex)
+	if task == nil {
+		err = errors.New("get task failed")
+		return
+	}
+	task.Stop()
+	return
 }
 
 func (s *Service) OnTaskInput(valid backendshare.Valid, req TaskInputReq) (ret TaskInputRet, err error) {
-	// TODO
+	env := s.runMgr.GetEnv(req.EvnID)
+	if env == nil {
+		err = errors.New("get env failed")
+		return
+	}
+	task := env.GetTask(req.TaskIndex)
+	if task == nil {
+		err = errors.New("get task failed")
+		return
+	}
+	err = task.Input(req.Content)
+	if err != nil {
+		err = errors.Join(errors.New("task input failed"), err)
+		return
+	}
+	return
 }

@@ -140,8 +140,8 @@ type GetTasksReq struct {
 
 type GetTasksRet struct {
 	TaskData []struct {
-		TaskID string
-		Status run.TaskStatus
+		TaskIndex int
+		Status    run.TaskStatus
 	}
 }
 
@@ -149,7 +149,8 @@ type GetTasksRet struct {
 const CmdGetTask share.Cmd = "getTask"
 
 type GetTaskReq struct {
-	TaskID    string
+	EnvID     uint32
+	TaskIndex int
 	LastIndex int
 }
 
@@ -162,7 +163,8 @@ type GetTaskRet struct {
 const CmdStopTask share.Cmd = "stopTask"
 
 type StopTaskReq struct {
-	TaskID string
+	EvnID     uint32
+	TaskIndex int
 }
 
 type StopTaskRet struct {
@@ -172,8 +174,9 @@ type StopTaskRet struct {
 const CmdTaskInput share.Cmd = "taskInput"
 
 type TaskInputReq struct {
-	TaskID  string
-	Content string
+	EvnID     uint32
+	TaskIndex int
+	Content   string
 }
 
 type TaskInputRet struct {
