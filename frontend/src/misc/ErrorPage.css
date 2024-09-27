@@ -1,0 +1,40 @@
+.error-page {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh; /* 高度占满整个视口 */
+    text-align: center; /* 文本居中 */
+}
+
+.text-box {
+    width: auto; /* 根据需要设置宽度 */
+    height: 100px; /* 根据需要设置高度 */
+    overflow: hidden; /* 超出部分隐藏 */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.text-box .ant-typography {
+    position: absolute;
+    animation: fadeInOut 3s ease-in-out infinite; /* 动画效果 */
+}
+
+@keyframes fadeInOut {
+    0% {
+        opacity: 0;
+        transform: translateY(50px);
+    }
+    10% {
+        opacity: 1;
+        transform: translateY(0);
+    }
+    90% {
+        opacity: 1;
+        transform: translateY(0);
+    }
+    100% {
+        opacity: 0;
+        transform: translateY(-50px);
+    }
+}
