@@ -57,7 +57,7 @@ func (m *RunMgr) Init(init RunMgrInit) error {
 			storage: m.Storage,
 			log:     m.Log,
 			addr:    xstorage.Join(m.BaseAddr, strconv.Itoa(int(envID))),
-			id:      envID,
+			ID:      envID,
 		})
 		if err != nil {
 			errR = errors.Join(errors.New("init env failed"), err)
@@ -116,7 +116,7 @@ func (m *RunMgr) CreateEnv() *Env {
 		storage:  m.Storage,
 		log:      m.Log,
 		addr:     path.Join(m.BaseAddr, strconv.Itoa(int(id))),
-		id:       id,
+		ID:       id,
 		initData: &EnvData{},
 	})
 	if err != nil {
