@@ -1,10 +1,12 @@
 import {useState} from "react";
-import {Col, InputNumber, Row, Slider} from "antd";
+import {Button, Card, Col, InputNumber, Row, Slider, Space, Typography} from "antd";
 import {CustomDeviceSimulator, DeviceSimulator} from "./DeviceSim.jsx";
 import {MenuPlus} from "../common/MenuPlus.jsx";
 import {Tool} from "../tool/Cmd.tsx";
 import {ToolType} from "../tool/def.ts";
+import {EditableProps} from "./EditableProps.jsx";
 
+const {Text} = Typography;
 // const debug = <AddPermissionPanel/>
 
 // const debug = <Space
@@ -66,31 +68,119 @@ import {ToolType} from "../tool/def.ts";
 
 // const debug = <Index/>
 
-const debug = <Tool id={"123"} name={"标题五个字"} typ={ToolType.Python}/>
+const debug = <Tool
+    id={"123"}
+    name={"标题五个字"}
+    typ={ToolType.Python}
+    createdAt={"1998-56-45 00:01:02"}
+    updatedAt={"1998-56-45 00:01:02"}
+/>
 
+function DebugTool({debug, onChange, onRefresh}) {
+    const [isMinimized, setIsMinimized] = useState(true);
+    const [position, setPosition] = useState({x: 200, y: 0});
+
+    const handleMouseDown = (e) => {
+        const offsetX = e.clientX - position.x;
+        const offsetY = e.clientY - position.y;
+
+        const handleMouseMove = (moveEvent) => {
+            setPosition({
+                x: moveEvent.clientX - offsetX,
+                y: moveEvent.clientY - offsetY,
+            });
+        };
+
+        const handleMouseUp = () => {
+            window.removeEventListener('mousemove', handleMouseMove);
+            window.removeEventListener('mouseup', handleMouseUp);
+        };
+
+        window.addEventListener('mousemove', handleMouseMove);
+        window.addEventListener('mouseup', handleMouseUp);
+    };
+
+    let refreshButton = (
+        <Button onClick={onRefresh} danger>
+            强制刷新
+        </Button>
+    );
+
+    let edit = <EditableProps reactNode={debug} onChange={onChange}/>;
+
+    return (
+        <div
+            className={`floating-window ${isMinimized ? 'minimized' : ''}`}
+            style={{left: position.x, top: position.y, position: 'absolute', zIndex: 9999}} // 添加 position: 'absolute'
+            onMouseDown={handleMouseDown}
+        >
+            <div
+                hidden={!isMinimized}
+                style={{
+                    backgroundColor: 'white',
+                    padding: '5px',
+                    boxShadow: '2px 2px 4px rgba(0, 0, 0, 0.5)',
+                    borderRadius: '10px',
+                }}
+            >
+                <Text style={{userSelect: 'none'}}>debug工具</Text>
+                <Button onClick={() => setIsMinimized(false)}>展开</Button>
+            </div>
+            <Card
+                hidden={isMinimized}
+                title={"组件名:" + debug.type.name}
+                extra={
+                    <Space>
+                        {refreshButton}
+                        <Button onClick={() => setIsMinimized(true)}>最小化</Button>
+                    </Space>
+
+                }
+            >
+                {edit}
+            </Card>
+        </div>
+    );
+}
 
 export function Debug() {
     const [showWidth, setShowWidth] = useState(300)
     const [showHeight, setShowHeight] = useState(300)
     const [refresh, setRefresh] = useState(false)
-    let refreshButton = <button onClick={() => setRefresh(!refresh)}>刷新</button>
+    const [nowDebug, setNowDebug] = useState(debug)
+    if (refresh) {
+        // 0.05秒后刷新
+        setTimeout(() => setRefresh(false), 50)
+        return <></>
+    }
+
+    const debugTool = <DebugTool
+        debug={debug}
+        onChange={
+            (props) => {
+                setNowDebug({...nowDebug, props: props})
+            }}
+        onRefresh={
+            () => {
+                setRefresh(true)
+            }
+        }
+    />
+
     let debugMap = new Map()
     debugMap.set('默认', <>
-        {debug.type.name}
-        {refreshButton}
-        {debug}
+        {debugTool}
+        {nowDebug}
     </>)
     debugMap.set('设备模拟', <>
-        {debug.type.name}
-        {refreshButton}
+        {debugTool}
         <DeviceSimulator>
-            {debug}
+            {nowDebug}
         </DeviceSimulator>
     </>)
     debugMap.set('自定义',
         <div>
-            {debug.type.name}
-            {refreshButton}
+            {debugTool}
             <Row>
                 <Col span={10}>
                     <Slider min={100} max={3000} defaultValue={showWidth} onChange={setShowWidth} value={showWidth}/>
@@ -110,7 +200,7 @@ export function Debug() {
             </Row>
             <Row>
                 <CustomDeviceSimulator width={showWidth} height={showHeight}>
-                    {debug}
+                    {nowDebug}
                 </CustomDeviceSimulator>
             </Row>
         </div>

@@ -31,7 +31,7 @@ export function ErrorPage() {
     useEffect(() => {
         const interval = setInterval(() => {
             setCurrentIndex((prevIndex) => (prevIndex + 1) % texts.length);
-        }, 3000);
+        }, 2000);
         return () => clearInterval(interval);
     }, []);
 
@@ -42,7 +42,7 @@ export function ErrorPage() {
             <Space direction="vertical" align="center">
                 <Space direction="vertical">
                     <Title>Not Found,这个页面被猫吃了</Title>
-                    <Image width={'40%'} src={catPic}/>
+                    <Image width={'40%'} src={catPic} preview={false}/>
                     <div className="text-box">
                         {currentText}
                     </div>

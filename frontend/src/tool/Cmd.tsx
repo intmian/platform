@@ -1,11 +1,12 @@
 import {useParams} from "react-router-dom";
 import {MenuPlus} from "../common/MenuPlus";
-import {Card, Flex, Space, Typography} from "antd";
+import {Avatar, Button, Card, Typography} from "antd";
 import {ReactNode} from "react";
 import {ToolType} from "./def";
-import {DeleteOutlined, EditOutlined, PythonOutlined} from "@ant-design/icons";
+import {DeleteOutlined, EditOutlined, FileOutlined, PythonOutlined} from "@ant-design/icons";
 
-const {Title} = Typography;
+const {Title, Text} = Typography;
+const {Meta} = Card;
 
 export function Cmd() {
     const {open} = useParams();
@@ -15,47 +16,59 @@ export function Cmd() {
     return <MenuPlus baseUrl={"/cmd/"} disable={false} label2node={MenuMap}/>
 }
 
-const ToolFirstLineStyle = {
-    display: "flex",
-    justifyContent: "flex-start",
-    alignItems: "center",
-    height: "80%"
-
-}
-
-// 全面靠右，依次排列
-const ToolSecondLineStyle = {
-    display: "flex",
-    justifyContent: "flex-end",
-    alignItems: "center",
-    height: "20%"
-}
-
-const ToolStyle = {
-    width: "200px",
-    height: "100px"
-}
-
-export function Tool({name, id, typ}: { name: string, id: string, typ: ToolType }) {
+export function ToolAvatar({typ}: { typ: ToolType }) {
     let typIcon: ReactNode;
     if (typ === ToolType.Python) {
         typIcon = <PythonOutlined/>
     } else if (typ == ToolType.FileExec) {
-        typIcon = <span>FileExec</span>
+        typIcon = <FileOutlined/>
     }
+    let color;
+    let bgColor;
+    if (typ === ToolType.Python) {
+        color = '#f56a00';
+        bgColor = '#fde3cf';
+    } else if (typ === ToolType.FileExec) {
+        color = '#1890ff';
+        bgColor = '#e6f7ff';
+    }
+    return <Avatar
+        size={45}
+        icon={typIcon}
+        style={{marginBottom: '10px', backgroundColor: bgColor, color: color}}
+    />
+}
+
+
+export function Tool({name, id, typ, createdAt, updatedAt}: {
+    name: string,
+    id: string,
+    typ: ToolType,
+    createdAt: string | undefined,
+    updatedAt: string | undefined
+}) {
     const updateIcon: ReactNode = <EditOutlined/>
     const deleteIcon: ReactNode = <DeleteOutlined/>
-
-
-    return <Card style={ToolStyle}>
-        <Space style={ToolFirstLineStyle}>
+    const createdStr = createdAt ? createdAt.substring(0, 10) : ""
+    const updatedStr = updatedAt ? updatedAt.substring(0, 10) : ""
+    return <Card
+        style={{width: 150, textAlign: 'center', borderRadius: '10px', margin: '10px'}}
+        hoverable
+    >
+        <ToolAvatar typ={typ}/>
+        <div style={{fontWeight: 'bold', fontSize: '16px', marginBottom: '5px'}}>
             {name}
-            {typIcon}
-        </Space>
-        <Flex style={ToolSecondLineStyle}>
+        </div>
+        <div style={{color: 'grey', marginBottom: '10px'}}>
+            {createdStr + "\n~" + updatedStr}
+        </div>
+
+        <Button type="text" shape="round">
             {updateIcon}
+        </Button>
+        <Button type="text" danger shape="round">
             {deleteIcon}
-        </Flex>
+        </Button>
     </Card>
 }
 

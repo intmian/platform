@@ -4,6 +4,7 @@
     align-items: center;
     height: 100vh; /* 高度占满整个视口 */
     text-align: center; /* 文本居中 */
+    padding: 0 24px;
 }
 
 .text-box {
@@ -17,7 +18,7 @@
 
 .text-box .ant-typography {
     position: absolute;
-    animation: fadeInOut 3s ease-in-out infinite; /* 动画效果 */
+    animation: fadeInOut 2s ease-in-out infinite; /* 动画效果 */
 }
 
 @keyframes fadeInOut {
