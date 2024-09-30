@@ -22,25 +22,33 @@ export const EditableProps = ({reactNode, onChange}) => {
         return Object.keys(props).map((key) => {
             const value = props[key];
             let editable = false;
-            if (typeof value === 'string' || typeof value === 'number') {
+            if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
                 editable = true;
             }
             return (
                 <Form.Item label={`${key} (${typeof value})`} key={key}>
-                    {typeof value === 'string' || typeof value === 'number' ? (
-                        <Input
-                            type={typeof value === 'number' ? 'number' : 'text'}
-                            value={value}
-                            disabled={!editable}
-                            onChange={
-                                (e) => {
-                                    if (typeof value === 'number') {
-                                        handleChange(key, parseInt(e.target.value));
+                    {typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean' ? (
+                        typeof value === 'boolean' ? (
+                                <Input
+                                    type='checkbox'
+                                    checked={value}
+                                    disabled={!editable}
+                                    onChange={(e) => handleChange(key, e.target.checked)}
+                                />
+                            ) :
+                            <Input
+                                type={typeof value === 'number' ? 'number' : 'text'}
+                                value={value}
+                                disabled={!editable}
+                                onChange={
+                                    (e) => {
+                                        if (typeof value === 'number') {
+                                            handleChange(key, parseInt(e.target.value));
+                                        }
+                                        handleChange(key, e.target.value)
                                     }
-                                    handleChange(key, e.target.value)
                                 }
-                            }
-                        />
+                            />
                     ) : (
                         <Text>{String(value)}</Text>
                     )}

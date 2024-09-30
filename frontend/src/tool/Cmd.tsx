@@ -1,10 +1,11 @@
 import {useParams} from "react-router-dom";
 import {MenuPlus} from "../common/MenuPlus";
-import {Avatar, Button, Card, Row, Typography} from "antd";
+import {Avatar, Button, Card, Flex, Row, Typography} from "antd";
 import {ReactNode, useState} from "react";
 import {ToolType} from "./def";
 import {DeleteOutlined, EditOutlined, FileOutlined, PlusOutlined, PythonOutlined} from "@ant-design/icons";
-import {GetEnvReq, sendGetEnvs} from "../common/newSendHttp";
+import {sendGetTools} from "../common/newSendHttp";
+import {ToolData} from "../common/backHttpDefine";
 
 const {Title, Text} = Typography;
 const {Meta} = Card;
@@ -40,21 +41,22 @@ export function ToolAvatar({typ}: { typ: ToolType }) {
     />
 }
 
-
-export function Tool({name, id, typ, createdAt, updatedAt, onDel}: {
-    name: string,
-    id: string,
-    typ: ToolType,
-    createdAt: string | undefined,
-    updatedAt: string | undefined
-    onDel: () => void
+export function ToolShow({name, id, typ, createdAt, updatedAt, onDel, loading}: {
+    name?: string,
+    id?: string,
+    typ?: ToolType,
+    createdAt?: string,
+    updatedAt?: string,
+    onDel?: () => void,
+    loading: boolean
 }) {
     const updateIcon: ReactNode = <EditOutlined/>
     const deleteIcon: ReactNode = <DeleteOutlined/>
     const createdStr = createdAt ? createdAt.substring(0, 10) : ""
     const updatedStr = updatedAt ? updatedAt.substring(0, 10) : ""
     return <Card
-        style={{width: 150, textAlign: 'center', borderRadius: '10px', margin: '10px'}}
+        loading={loading}
+        style={{width: 150, height: 215, textAlign: 'center', borderRadius: '10px', margin: '10px'}}
         hoverable
     >
         <ToolAvatar typ={typ}/>
@@ -85,18 +87,33 @@ export function Tool({name, id, typ, createdAt, updatedAt, onDel}: {
     </Card>
 }
 
+export function ToolPanelShow({loading, tools}: { loading: boolean, tools: Map<string, ToolData> }) {
+    const cards = []
+    if (loading) {
+        for (let i = 0; i < 8; i++) {
+            cards.push(<ToolShow
+                key={i}
+                loading={true}
+            />)
+        }
+    }
+    return <Flex wrap={"wrap"} gap="small">
+        {cards}
+    </Flex>
+}
+
 function ToolPanel() {
     // 请求数据
-    const [envDatas, setEnvDatas] = useState([]);
-    const req: GetEnvReq = {}
-    sendGetEnvs(req, (data) => {
+    const [toolData, setToolData] = useState<Map<string, ToolData>>(new Map())
+    const [Loading, setLoading] = useState(true)
+    const req = {}
+    sendGetTools(req, (data) => {
         if (data.ok) {
-            setEnvDatas(data.data)
+            setToolData(data.data.ID2ToolData)
+            setLoading(false)
         }
     })
-    return <>
-        test ToolPanel
-    </>
+    return <ToolPanelShow loading={Loading} tools={toolData}/>
 }
 
 function EnvPanel() {

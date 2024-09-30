@@ -2,19 +2,21 @@ import {useState} from "react";
 import {Button, Card, Col, InputNumber, Row, Slider, Space, Typography} from "antd";
 import {CustomDeviceSimulator, DeviceSimulator} from "./DeviceSim.jsx";
 import {MenuPlus} from "../common/MenuPlus.jsx";
-import {Tool} from "../tool/Cmd.tsx";
-import {ToolType} from "../tool/def.ts";
 import {EditableProps} from "./EditableProps.jsx";
+import {ToolPanelShow} from "../tool/Cmd";
 
 const {Text} = Typography;
 
-const debug = <Tool
-    id={"123"}
-    name={"标题五个字"}
-    typ={ToolType.Python}
-    createdAt={"1998-56-45 00:01:02"}
-    updatedAt={"1998-56-45 00:01:02"}
-/>
+const debug = <ToolPanelShow loading={true} tools={new Map}/>
+
+// const debug = <ToolShow
+//     id={"123"}
+//     name={"标题五个字"}
+//     typ={ToolType.Python}
+//     createdAt={"1998-56-45 00:01:02"}
+//     updatedAt={"1998-56-45 00:01:02"}
+//     loading={false}
+// />
 
 // const debug = <AddPermissionPanel/>
 
