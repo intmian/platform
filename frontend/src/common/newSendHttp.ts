@@ -1,4 +1,5 @@
 import config from "../config.json"
+import {EnvData, TaskIO, TaskStatus, ToolData} from "./backHttpDefine";
 
 export interface UniReturn {
     code: number
@@ -68,7 +69,10 @@ export interface UpdateToolRet {
 
 
 export type GetToolsReq = object
-export type GetToolsRet = object
+
+export interface GetToolsRet {
+    ID2ToolData: Map<string, ToolData>
+}
 
 
 export interface GetToolScriptReq {
@@ -89,14 +93,20 @@ export interface CreateEnvRet {
 
 
 export type GetEnvsReq = object
-export type GetEnvsRet = object
+
+export interface GetEnvsRet {
+    EnvData: EnvData[]
+}
 
 
 export interface GetEnvReq {
     EnvID: number
 }
 
-export type GetEnvRet = object
+export interface GetEnvRet {
+    EnvData: EnvData
+    AllFiles: string[]
+}
 
 
 export interface GetFileReq {
@@ -120,6 +130,7 @@ export type SetFileRet = object
 
 export interface SetEnvReq {
     EnvID: number
+    params: string[]
     note: string
     bindToolID: string
 }
@@ -130,6 +141,7 @@ export type SetEnvRet = object
 export interface RunEnvReq {
     EnvID: number
     ToolID: string
+    Params: string[]
 }
 
 export type RunEnvRet = object
@@ -140,7 +152,12 @@ export interface GetTasksReq {
 }
 
 export interface GetTasksRet {
+    TaskData: {
+        TaskIndex: number
+        Status: TaskStatus
+    }
     TaskIndex: number
+    Status: number
 }
 
 
@@ -150,7 +167,10 @@ export interface GetTaskReq {
     LastIndex: number
 }
 
-export type GetTaskRet = object
+export interface GetTaskRet {
+    IOs: TaskIO[]
+    Status: TaskStatus
+}
 
 
 export interface StopTaskReq {
@@ -322,4 +342,3 @@ export function sendTaskInput(req: TaskInputReq, callback: (ret: { data: TaskInp
         callback(result);
     });
 }
-

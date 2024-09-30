@@ -25,9 +25,9 @@ type EnvInit struct {
 
 type EnvData struct {
 	// 先简单加一组sting作为命令行参数。
-	param         []string
-	defaultToolID string
-	note          string
+	Param         []string
+	DefaultToolID string
+	Note          string
 }
 
 /*
@@ -96,7 +96,7 @@ func (e *Env) Save() error {
 func (e *Env) Load() error {
 	err := e.storage.GetFromJson(xstorage.Join("runmgr", "env", strconv.Itoa(int(e.ID))), &e.EnvData)
 	if err != nil {
-		return errors.New("get from json failed")
+		return errors.New("get From json failed")
 	}
 	return nil
 }
@@ -178,7 +178,7 @@ func (e *Env) DelTask(index int) error {
 }
 
 func (e *Env) SetDefaultTool(id string) {
-	e.defaultToolID = id
+	e.DefaultToolID = id
 	err := e.Save()
 	if err != nil {
 		e.log.WarningErr("ENV", errors.Join(errors.New("set default tool failed"), err))
@@ -186,17 +186,17 @@ func (e *Env) SetDefaultTool(id string) {
 }
 
 func (e *Env) SetNote(note string) {
-	e.note = note
+	e.Note = note
 	err := e.Save()
 	if err != nil {
-		e.log.WarningErr("ENV", errors.Join(errors.New("set note failed"), err))
+		e.log.WarningErr("ENV", errors.Join(errors.New("set Note failed"), err))
 	}
 }
 
 func (e *Env) SetParam(param []string) {
-	e.param = param
+	e.Param = param
 	err := e.Save()
 	if err != nil {
-		e.log.WarningErr("ENV", errors.Join(errors.New("set param failed"), err))
+		e.log.WarningErr("ENV", errors.Join(errors.New("set Param failed"), err))
 	}
 }

@@ -1,10 +1,10 @@
 import {useParams} from "react-router-dom";
 import {MenuPlus} from "../common/MenuPlus";
 import {Avatar, Button, Card, Row, Typography} from "antd";
-import {ReactNode} from "react";
+import {ReactNode, useState} from "react";
 import {ToolType} from "./def";
 import {DeleteOutlined, EditOutlined, FileOutlined, PlusOutlined, PythonOutlined} from "@ant-design/icons";
-import {sendGetEnvs} from "../common/newSendHttp";
+import {GetEnvReq, sendGetEnvs} from "../common/newSendHttp";
 
 const {Title, Text} = Typography;
 const {Meta} = Card;
@@ -87,7 +87,13 @@ export function Tool({name, id, typ, createdAt, updatedAt, onDel}: {
 
 function ToolPanel() {
     // 请求数据
-    sendGetEnvs()
+    const [envDatas, setEnvDatas] = useState([]);
+    const req: GetEnvReq = {}
+    sendGetEnvs(req, (data) => {
+        if (data.ok) {
+            setEnvDatas(data.data)
+        }
+    })
     return <>
         test ToolPanel
     </>

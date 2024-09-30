@@ -18,8 +18,8 @@ type TaskInit struct {
 }
 
 type TaskIO struct {
-	from    string
-	content string
+	From    string
+	Content string
 }
 
 const (
@@ -88,8 +88,8 @@ func (t *Task) Run() error {
 		scanner := bufio.NewScanner(t.stdout)
 		for scanner.Scan() {
 			t.taskIOs.Append(TaskIO{
-				from:    TaskIOFromProgram,
-				content: scanner.Text(),
+				From:    TaskIOFromProgram,
+				Content: scanner.Text(),
 			})
 		}
 	}()
@@ -120,8 +120,8 @@ func (t *Task) Run() error {
 
 func (t *Task) Input(content string) error {
 	t.taskIOs.Append(TaskIO{
-		from:    TaskIOFromUser,
-		content: content,
+		From:    TaskIOFromUser,
+		Content: content,
 	})
 	_, err := t.stdin.Write([]byte(content))
 	if err != nil {
