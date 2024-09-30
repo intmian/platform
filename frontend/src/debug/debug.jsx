@@ -7,6 +7,15 @@ import {ToolType} from "../tool/def.ts";
 import {EditableProps} from "./EditableProps.jsx";
 
 const {Text} = Typography;
+
+const debug = <Tool
+    id={"123"}
+    name={"标题五个字"}
+    typ={ToolType.Python}
+    createdAt={"1998-56-45 00:01:02"}
+    updatedAt={"1998-56-45 00:01:02"}
+/>
+
 // const debug = <AddPermissionPanel/>
 
 // const debug = <Space
@@ -67,14 +76,6 @@ const {Text} = Typography;
 // </Space>
 
 // const debug = <Index/>
-
-const debug = <Tool
-    id={"123"}
-    name={"标题五个字"}
-    typ={ToolType.Python}
-    createdAt={"1998-56-45 00:01:02"}
-    updatedAt={"1998-56-45 00:01:02"}
-/>
 
 function DebugTool({debug, onChange, onRefresh}) {
     const [isMinimized, setIsMinimized] = useState(true);

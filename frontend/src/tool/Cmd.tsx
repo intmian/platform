@@ -1,9 +1,9 @@
 import {useParams} from "react-router-dom";
 import {MenuPlus} from "../common/MenuPlus";
-import {Avatar, Button, Card, Typography} from "antd";
+import {Avatar, Button, Card, Row, Typography} from "antd";
 import {ReactNode} from "react";
 import {ToolType} from "./def";
-import {DeleteOutlined, EditOutlined, FileOutlined, PythonOutlined} from "@ant-design/icons";
+import {DeleteOutlined, EditOutlined, FileOutlined, PlusOutlined, PythonOutlined} from "@ant-design/icons";
 
 const {Title, Text} = Typography;
 const {Meta} = Card;
@@ -40,12 +40,13 @@ export function ToolAvatar({typ}: { typ: ToolType }) {
 }
 
 
-export function Tool({name, id, typ, createdAt, updatedAt}: {
+export function Tool({name, id, typ, createdAt, updatedAt, onDel}: {
     name: string,
     id: string,
     typ: ToolType,
     createdAt: string | undefined,
     updatedAt: string | undefined
+    onDel: () => void
 }) {
     const updateIcon: ReactNode = <EditOutlined/>
     const deleteIcon: ReactNode = <DeleteOutlined/>
@@ -59,8 +60,19 @@ export function Tool({name, id, typ, createdAt, updatedAt}: {
         <div style={{fontWeight: 'bold', fontSize: '16px', marginBottom: '5px'}}>
             {name}
         </div>
-        <div style={{color: 'grey', marginBottom: '10px'}}>
-            {createdStr + "\n~" + updatedStr}
+        <div style={{color: 'grey', marginBottom: '5px'}}>
+            <Row
+                style={{justifyContent: 'center'}}
+            >
+                <PlusOutlined/>
+                {createdStr}
+            </Row>
+            <Row
+                style={{justifyContent: 'center'}}
+            >
+                <EditOutlined/>
+                {updatedStr}
+            </Row>
         </div>
 
         <Button type="text" shape="round">
@@ -72,13 +84,15 @@ export function Tool({name, id, typ, createdAt, updatedAt}: {
     </Card>
 }
 
-function ToolPanel({open}: { open: string | undefined }) {
+function ToolPanel() {
+    // 请求数据
+
     return <>
         test ToolPanel
     </>
 }
 
-function EnvPanel({open}: { open: string | undefined }) {
+function EnvPanel() {
     return <>
         test EnvPanel
     </>

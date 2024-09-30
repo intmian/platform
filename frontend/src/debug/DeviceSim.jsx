@@ -6,6 +6,13 @@ const {Option} = Select;
 
 const deviceSizes = {
     iPhone: {
+        name: 'iPhone16 pro',
+        width: 1206,
+        height: 2622,
+        deviceRate: 3,
+        screenSize: 6.3 // 假定的iPhone 16屏幕大小（英寸）
+    },
+    iPhone2: {
         name: 'iPhone12 mini',
         width: 1080,
         height: 2340,
