@@ -4,6 +4,7 @@ import {Avatar, Button, Card, Row, Typography} from "antd";
 import {ReactNode} from "react";
 import {ToolType} from "./def";
 import {DeleteOutlined, EditOutlined, FileOutlined, PlusOutlined, PythonOutlined} from "@ant-design/icons";
+import {sendGetEnvs} from "../common/newSendHttp";
 
 const {Title, Text} = Typography;
 const {Meta} = Card;
@@ -86,7 +87,7 @@ export function Tool({name, id, typ, createdAt, updatedAt, onDel}: {
 
 function ToolPanel() {
     // 请求数据
-
+    sendGetEnvs()
     return <>
         test ToolPanel
     </>
