@@ -30,7 +30,7 @@ type UpdateToolRet struct {
 	Suc bool
 }
 
-const CmdGetTools share.Cmd = "getToolIds"
+const CmdGetTools share.Cmd = "getTools"
 
 type GetToolReq struct {
 }

@@ -3,11 +3,13 @@ import {Button, Card, Col, InputNumber, Row, Slider, Space, Typography} from "an
 import {CustomDeviceSimulator, DeviceSimulator} from "./DeviceSim.jsx";
 import {MenuPlus} from "../common/MenuPlus.jsx";
 import {EditableProps} from "./EditableProps.jsx";
-import {ToolPanelShow} from "../tool/Cmd";
+import {ToolPanel} from "../tool/Cmd";
 
 const {Text} = Typography;
 
-const debug = <ToolPanelShow loading={true} tools={new Map}/>
+const debug = <ToolPanel>
+
+</ToolPanel>
 
 // const debug = <ToolShow
 //     id={"123"}

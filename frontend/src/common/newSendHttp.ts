@@ -1,5 +1,5 @@
-import config from "../config.json"
 import {EnvData, TaskIO, TaskStatus, ToolData} from "./backHttpDefine";
+import config from "../config.json";
 
 export interface UniReturn {
     code: number
@@ -27,15 +27,23 @@ async function UniPost(url: string, req: object) {
             body: JSON.stringify(req),
         });
 
-        if (!response.ok || (response.status !== undefined && response.status !== 0)) {
+        if (!response.ok || (response.status !== undefined && response.status !== 200)) {
             console.debug('UniPost failed:', response)
             result.ok = false
             return result
         }
-        result.ok = true
         const data: UniReturn = await response.json()
+        if (data.code !== 0) {
+            console.debug('UniPost failed:', data.msg)
+            return result
+        } else {
+            result.ok = true
+        }
         if (data.data !== undefined) {
             result.data = data.data
+        } else {
+            result.data = {}
+            result.ok = false
         }
         return result
     } catch (error) {
@@ -189,9 +197,10 @@ export interface TaskInputReq {
 
 export type TaskInputRet = object
 
+const cmd_api_base_url = config.api_base_url + '/service/cmd/';
 
 export function sendCreateTool(req: CreateToolReq, callback: (ret: { data: CreateToolRet, ok: boolean }) => void) {
-    UniPost(config.api_base_url + 'createTool', req).then((res: UniResult) => {
+    UniPost(cmd_api_base_url + 'createTool', req).then((res: UniResult) => {
         const result: { data: CreateToolRet, ok: boolean } = {
             data: res.data as CreateToolRet,
             ok: res.ok
@@ -201,7 +210,7 @@ export function sendCreateTool(req: CreateToolReq, callback: (ret: { data: Creat
 }
 
 export function sendUpdateTool(req: UpdateToolReq, callback: (ret: { data: UpdateToolRet, ok: boolean }) => void) {
-    UniPost(config.api_base_url + 'updateTool', req).then((res: UniResult) => {
+    UniPost(cmd_api_base_url + 'updateTool', req).then((res: UniResult) => {
         const result: { data: UpdateToolRet, ok: boolean } = {
             data: res.data as UpdateToolRet,
             ok: res.ok
@@ -211,11 +220,12 @@ export function sendUpdateTool(req: UpdateToolReq, callback: (ret: { data: Updat
 }
 
 export function sendGetTools(req: GetToolsReq, callback: (ret: { data: GetToolsRet, ok: boolean }) => void) {
-    UniPost(config.api_base_url + 'getTools', req).then((res: UniResult) => {
+    UniPost(cmd_api_base_url + 'getTools', req).then((res: UniResult) => {
         const result: { data: GetToolsRet, ok: boolean } = {
             data: res.data as GetToolsRet,
             ok: res.ok
         };
+        result.data.ID2ToolData = new Map(Object.entries(result.data.ID2ToolData));
         callback(result);
     });
 }
@@ -224,7 +234,7 @@ export function sendGetToolScript(req: GetToolScriptReq, callback: (ret: {
     data: GetToolScriptRet,
     ok: boolean
 }) => void) {
-    UniPost(config.api_base_url + 'getToolScript', req).then((res: UniResult) => {
+    UniPost(cmd_api_base_url + 'getToolScript', req).then((res: UniResult) => {
         const result: { data: GetToolScriptRet, ok: boolean } = {
             data: res.data as GetToolScriptRet,
             ok: res.ok
@@ -234,7 +244,7 @@ export function sendGetToolScript(req: GetToolScriptReq, callback: (ret: {
 }
 
 export function sendCreateEnv(req: CreateEnvReq, callback: (ret: { data: CreateEnvRet, ok: boolean }) => void) {
-    UniPost(config.api_base_url + 'createEnv', req).then((res: UniResult) => {
+    UniPost(cmd_api_base_url + 'createEnv', req).then((res: UniResult) => {
         const result: { data: CreateEnvRet, ok: boolean } = {
             data: res.data as CreateEnvRet,
             ok: res.ok
@@ -244,7 +254,7 @@ export function sendCreateEnv(req: CreateEnvReq, callback: (ret: { data: CreateE
 }
 
 export function sendGetEnvs(req: GetEnvsReq, callback: (ret: { data: GetEnvsRet, ok: boolean }) => void) {
-    UniPost(config.api_base_url + 'getEnvs', req).then((res: UniResult) => {
+    UniPost(cmd_api_base_url + 'getEnvs', req).then((res: UniResult) => {
         const result: { data: GetEnvsRet, ok: boolean } = {
             data: res.data as GetEnvsRet,
             ok: res.ok
@@ -254,7 +264,7 @@ export function sendGetEnvs(req: GetEnvsReq, callback: (ret: { data: GetEnvsRet,
 }
 
 export function sendGetEnv(req: GetEnvReq, callback: (ret: { data: GetEnvRet, ok: boolean }) => void) {
-    UniPost(config.api_base_url + 'getEnv', req).then((res: UniResult) => {
+    UniPost(cmd_api_base_url + 'getEnv', req).then((res: UniResult) => {
         const result: { data: GetEnvRet, ok: boolean } = {
             data: res.data as GetEnvRet,
             ok: res.ok
@@ -264,7 +274,7 @@ export function sendGetEnv(req: GetEnvReq, callback: (ret: { data: GetEnvRet, ok
 }
 
 export function sendGetFile(req: GetFileReq, callback: (ret: { data: GetFileRet, ok: boolean }) => void) {
-    UniPost(config.api_base_url + 'getFile', req).then((res: UniResult) => {
+    UniPost(cmd_api_base_url + 'getFile', req).then((res: UniResult) => {
         const result: { data: GetFileRet, ok: boolean } = {
             data: res.data as GetFileRet,
             ok: res.ok
@@ -274,7 +284,7 @@ export function sendGetFile(req: GetFileReq, callback: (ret: { data: GetFileRet,
 }
 
 export function sendSetFile(req: SetFileReq, callback: (ret: { data: SetFileRet, ok: boolean }) => void) {
-    UniPost(config.api_base_url + 'setFile', req).then((res: UniResult) => {
+    UniPost(cmd_api_base_url + 'setFile', req).then((res: UniResult) => {
         const result: { data: SetFileRet, ok: boolean } = {
             data: res.data as SetFileRet,
             ok: res.ok
@@ -284,7 +294,7 @@ export function sendSetFile(req: SetFileReq, callback: (ret: { data: SetFileRet,
 }
 
 export function sendSetEnv(req: SetEnvReq, callback: (ret: { data: SetEnvRet, ok: boolean }) => void) {
-    UniPost(config.api_base_url + 'setEnv', req).then((res: UniResult) => {
+    UniPost(cmd_api_base_url + 'setEnv', req).then((res: UniResult) => {
         const result: { data: SetEnvRet, ok: boolean } = {
             data: res.data as SetEnvRet,
             ok: res.ok
@@ -294,7 +304,7 @@ export function sendSetEnv(req: SetEnvReq, callback: (ret: { data: SetEnvRet, ok
 }
 
 export function sendRunEnv(req: RunEnvReq, callback: (ret: { data: RunEnvRet, ok: boolean }) => void) {
-    UniPost(config.api_base_url + 'runEnv', req).then((res: UniResult) => {
+    UniPost(cmd_api_base_url + 'runEnv', req).then((res: UniResult) => {
         const result: { data: RunEnvRet, ok: boolean } = {
             data: res.data as RunEnvRet,
             ok: res.ok
@@ -304,7 +314,7 @@ export function sendRunEnv(req: RunEnvReq, callback: (ret: { data: RunEnvRet, ok
 }
 
 export function sendGetTasks(req: GetTasksReq, callback: (ret: { data: GetTasksRet, ok: boolean }) => void) {
-    UniPost(config.api_base_url + 'getTasks', req).then((res: UniResult) => {
+    UniPost(cmd_api_base_url + 'getTasks', req).then((res: UniResult) => {
         const result: { data: GetTasksRet, ok: boolean } = {
             data: res.data as GetTasksRet,
             ok: res.ok
@@ -314,7 +324,7 @@ export function sendGetTasks(req: GetTasksReq, callback: (ret: { data: GetTasksR
 }
 
 export function sendGetTask(req: GetTaskReq, callback: (ret: { data: GetTaskRet, ok: boolean }) => void) {
-    UniPost(config.api_base_url + 'getTask', req).then((res: UniResult) => {
+    UniPost(cmd_api_base_url + 'getTask', req).then((res: UniResult) => {
         const result: { data: GetTaskRet, ok: boolean } = {
             data: res.data as GetTaskRet,
             ok: res.ok
@@ -324,7 +334,7 @@ export function sendGetTask(req: GetTaskReq, callback: (ret: { data: GetTaskRet,
 }
 
 export function sendStopTask(req: StopTaskReq, callback: (ret: { data: StopTaskRet, ok: boolean }) => void) {
-    UniPost(config.api_base_url + 'stopTask', req).then((res: UniResult) => {
+    UniPost(cmd_api_base_url + 'stopTask', req).then((res: UniResult) => {
         const result: { data: StopTaskRet, ok: boolean } = {
             data: res.data as StopTaskRet,
             ok: res.ok
@@ -334,7 +344,7 @@ export function sendStopTask(req: StopTaskReq, callback: (ret: { data: StopTaskR
 }
 
 export function sendTaskInput(req: TaskInputReq, callback: (ret: { data: TaskInputRet, ok: boolean }) => void) {
-    UniPost(config.api_base_url + 'taskInput', req).then((res: UniResult) => {
+    UniPost(cmd_api_base_url + 'taskInput', req).then((res: UniResult) => {
         const result: { data: TaskInputRet, ok: boolean } = {
             data: res.data as TaskInputRet,
             ok: res.ok
