@@ -225,7 +225,9 @@ export function sendGetTools(req: GetToolsReq, callback: (ret: { data: GetToolsR
             data: res.data as GetToolsRet,
             ok: res.ok
         };
-        result.data.ID2ToolData = new Map(Object.entries(result.data.ID2ToolData));
+        if (result.ok) {
+            result.data.ID2ToolData = new Map(Object.entries(result.data.ID2ToolData));
+        }
         callback(result);
     });
 }

@@ -1,6 +1,6 @@
 import {useParams} from "react-router-dom";
 import {MenuPlus} from "../common/MenuPlus";
-import {Avatar, Button, Card, Flex, Form, Input, Modal, Row, Select, Typography} from "antd";
+import {Avatar, Button, Card, Flex, Form, Input, message, Modal, Row, Select, Typography} from "antd";
 import {ReactElement, ReactNode, useEffect, useState} from "react";
 import {ToolType} from "./def";
 import {DeleteOutlined, EditOutlined, FileOutlined, PlusOutlined, PythonOutlined} from "@ant-design/icons";
@@ -220,13 +220,15 @@ export function ToolPanel() {
     const [toolData, setToolData] = useState<Map<string, ToolData>>(new Map())
     const [Loading, setLoading] = useState(true)
     const [AddOpen, setAddOpen] = useState(false)
-    const req = {}
-
+    const [messageApi, messageCtx] = message.useMessage()
     useEffect(() => {
+        const req = {}
         sendGetTools(req, (ret) => {
             if (ret.ok) {
                 setToolData(ret.data.ID2ToolData)
                 setLoading(false)
+            } else {
+                messageApi.error('获取工具列表失败')
             }
         })
     }, [])
@@ -234,6 +236,7 @@ export function ToolPanel() {
         setAddOpen(true)
     }
     return <>
+        {messageCtx}
         <ToolPanelShow loading={Loading} tools={toolData} onClickAdd={onClickAdd}/>
         {AddOpen ? <AddModel onFinish={() => {
             setAddOpen(false)
