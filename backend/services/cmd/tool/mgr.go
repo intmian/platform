@@ -35,8 +35,10 @@ type ToolMgr struct {
 }
 
 func NewToolMgr(init ToolMgrInit) (*ToolMgr, error) {
-	mgr := &ToolMgr{
-		ToolMgrInit: init,
+	mgr := &ToolMgr{}
+	err := mgr.Init(init)
+	if err != nil {
+		return nil, errors.Join(errors.New("init toolMgr failed"), err)
 	}
 	return mgr, nil
 }
@@ -102,8 +104,8 @@ func (m *ToolMgr) CreateTool(name string, typ ToolType, script string) error {
 	if !IsToolTypeScript(typ) {
 		return errors.New("invalid tool type")
 	}
-	if script == "" || name == "" {
-		return errors.New("invalid script or Name")
+	if name == "" {
+		return errors.New("invalid Name")
 	}
 
 	id := m.node.Generate().String()
