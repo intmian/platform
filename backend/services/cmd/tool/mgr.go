@@ -61,7 +61,8 @@ func (m *ToolMgr) Init(init ToolMgrInit) error {
 	m.ToolIDs.SafeUse(func(arr []string) {
 		for _, id := range arr {
 			tool, err := NewTool(ToolInit{
-				ID: id,
+				ID:      id,
+				storage: m.storage,
 			})
 			if err != nil {
 				m.Log.WarningErr("ToolMgr", errors.Join(errors.New("init tool failed"), err))
@@ -182,9 +183,9 @@ func (m *ToolMgr) GetTool(id string) (*Tool, error) {
 func (m *ToolMgr) register(id string, tool *Tool) error {
 	// 写入内存并存入硬盘
 	m.id2tool.Store(id, tool)
-	err := m.storage.SetToJson(xstorage.Join("CMD", "toolMgr", id), tool)
+	err := tool.Save()
 	if err != nil {
-		return errors.Join(errors.New("set tool failed"), err)
+		return errors.Join(errors.New("save tool failed"), err)
 	}
 	return nil
 }

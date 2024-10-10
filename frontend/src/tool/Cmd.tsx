@@ -141,7 +141,7 @@ export function ToolPanelShow({loading, tools, onClickAdd}: {
     </Flex>
 }
 
-function AddModel({onFinish}: { onFinish: () => void }) {
+function AddModel({onFinish}: { onFinish: (name: string | undefined, typ: ToolType | undefined) => void }) {
     const [loading, setLoading] = useState(false)
     const [form] = useForm()
     const [open, setOpen] = useState(true)
@@ -151,7 +151,7 @@ function AddModel({onFinish}: { onFinish: () => void }) {
         footer={null}
         onCancel={() => {
             setOpen(false)
-            onFinish()
+            onFinish(undefined, undefined)
         }}
         width={400}
         style={{
@@ -163,7 +163,6 @@ function AddModel({onFinish}: { onFinish: () => void }) {
         <Form
             form={form}
             layout="horizontal"  // 设置为 horizontal 模式
-            onFinish={onFinish}
             labelCol={{span: 6}}  // 标签宽度占 6 列
             wrapperCol={{span: 18}}  // 输入框宽度占 18 列
             style={{margin: '2px', marginBottom: '20px'}}
@@ -203,7 +202,7 @@ function AddModel({onFinish}: { onFinish: () => void }) {
                         setLoading(true)
                         sendCreateTool(req, (data) => {
                             if (data.ok) {
-                                onFinish()
+                                onFinish(values.name, values.typ)
                                 setOpen(false)
                             }
                             setLoading(false)
@@ -231,15 +230,29 @@ export function ToolPanel() {
                 messageApi.error('获取工具列表失败')
             }
         })
-    }, [])
+    }, [messageApi])
     const onClickAdd = () => {
         setAddOpen(true)
     }
     return <>
         {messageCtx}
         <ToolPanelShow loading={Loading} tools={toolData} onClickAdd={onClickAdd}/>
-        {AddOpen ? <AddModel onFinish={() => {
+        {AddOpen ? <AddModel onFinish={(name, typ) => {
             setAddOpen(false)
+            if (name && typ) {
+                const newToolData = new Map(toolData)
+                // 获得当前时间
+                const now = new Date()
+                newToolData.set('new', {
+                    Name: name,
+                    Typ: typ,
+                    Content: '',
+                    CreatedAt: now.toISOString(),
+                    UpdatedAt: now.toISOString(),
+                    Addr: ''
+                })
+                setToolData(newToolData)
+            }
         }}/> : null}
     </>
 }
