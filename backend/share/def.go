@@ -1,6 +1,8 @@
 package share
 
-import "time"
+import (
+	"time"
+)
 
 type (
 	// BaseSetting 一些最基础的配置，基本上都是启动时候就需要的
@@ -15,6 +17,7 @@ type (
 		GinDebug       bool   `toml:"gin_debug"`       // 是否使用gin的debug模式
 		AdminPwd       string `toml:"admin_pwd"`       // 管理员密码
 		WebPort        string `toml:"web_port"`        // web端口
+		Debug          bool   `toml:"debug"`           // 是否开启debug模式
 	}
 )
 
@@ -66,6 +69,7 @@ type Permission string
 
 const (
 	PermissionAdmin Permission = "admin"
+	PermissionCmd   Permission = "cmd"
 )
 
 type Valid struct {

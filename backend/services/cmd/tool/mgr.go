@@ -160,6 +160,31 @@ func (m *ToolMgr) createTool(name string, typ ToolType, id string) error {
 	if err != nil {
 		return errors.Join(errors.New("register tool failed"), err)
 	}
+	err = tool.Save()
+	if err != nil {
+		return errors.Join(errors.New("save tool failed"), err)
+	}
+	return nil
+}
+
+func (m *ToolMgr) DeleteTool(id string) error {
+	if !m.init.IsInitialized() {
+		return misc.ErrNotInit
+	}
+	tool, err := m.GetTool(id)
+	if err != nil {
+		return errors.Join(errors.New("get tool failed"), err)
+	}
+	err = tool.OnDelete()
+	if err != nil {
+		return errors.Join(errors.New("delete tool failed"), err)
+	}
+	m.id2tool.Delete(id)
+	m.ToolIDs.DeleteByValue(id, func(a, b string) bool { return a == b })
+	err = m.SaveToolIDs()
+	if err != nil {
+		return errors.Join(errors.New("save toolIDs failed"), err)
+	}
 	return nil
 }
 
@@ -181,11 +206,7 @@ func (m *ToolMgr) GetTool(id string) (*Tool, error) {
 }
 
 func (m *ToolMgr) register(id string, tool *Tool) error {
-	// 写入内存并存入硬盘
+	// 写入内存
 	m.id2tool.Store(id, tool)
-	err := tool.Save()
-	if err != nil {
-		return errors.Join(errors.New("save tool failed"), err)
-	}
 	return nil
 }

@@ -1,10 +1,10 @@
 import {useParams} from "react-router-dom";
 import {MenuPlus} from "../common/MenuPlus";
-import {Avatar, Button, Card, Flex, Form, Input, message, Modal, Row, Select, Typography} from "antd";
+import {Avatar, Button, Card, Flex, Form, Input, message, Modal, Popconfirm, Row, Select, Typography} from "antd";
 import {ReactElement, ReactNode, useEffect, useState} from "react";
 import {ToolType} from "./def";
 import {DeleteOutlined, EditOutlined, FileOutlined, PlusOutlined, PythonOutlined} from "@ant-design/icons";
-import {CreateToolReq, sendCreateTool, sendGetTools} from "../common/newSendHttp";
+import {CreateToolReq, sendCreateTool, sendDeleteTool, sendGetTools} from "../common/newSendHttp";
 import {ToolData} from "../common/backHttpDefine";
 import {useForm} from "antd/es/form/Form";
 
@@ -87,27 +87,32 @@ export function ToolShow({name, id, typ, createdAt, updatedAt, onDel, loading}: 
                 style={{justifyContent: 'center'}}
             >
                 {createdStr}
+                <PlusOutlined/>
             </Row>
             <Row
                 style={{justifyContent: 'center'}}
             >
                 {updatedStr}
+                <EditOutlined/>
             </Row>
         </div>
 
         <Button type="text" shape="round">
             {updateIcon}
         </Button>
-        <Button type="text" danger shape="round">
-            {deleteIcon}
-        </Button>
+        <Popconfirm title={"确认删除?"} onConfirm={onDel}>
+            <Button type="text" danger shape="round">
+                {deleteIcon}
+            </Button>
+        </Popconfirm>
     </Card>
 }
 
-export function ToolPanelShow({loading, tools, onClickAdd}: {
+export function ToolPanelShow({loading, tools, onClickAdd, onClickDel}: {
     loading: boolean,
     tools: Map<string, ToolData>,
     onClickAdd?: () => void
+    onClickDel?: (id: string) => void
 }) {
     const cards: ReactElement[] = []
     if (loading) {
@@ -121,13 +126,19 @@ export function ToolPanelShow({loading, tools, onClickAdd}: {
 
     // 生成卡片
     tools.forEach((value, key) => {
+        console.debug('key:', key, 'value:', value)
         cards.push(<ToolShow
             key={key}
             name={value.Name}
             typ={value.Typ}
-            createdAt={value.CreatedAt}
-            updatedAt={value.UpdatedAt}
+            createdAt={value.Created}
+            updatedAt={value.Updated}
             loading={false}
+            onDel={() => {
+                if (onClickDel) {
+                    onClickDel(key)
+                }
+            }}
         />)
     })
 
@@ -234,9 +245,23 @@ export function ToolPanel() {
     const onClickAdd = () => {
         setAddOpen(true)
     }
+    const onClickDel = (id: string) => {
+        const req = {
+            ToolID: id
+        }
+        sendDeleteTool(req, (ret) => {
+            if (ret.ok) {
+                const newToolData = new Map(toolData)
+                newToolData.delete(id)
+                setToolData(newToolData)
+            } else {
+                messageApi.error('删除工具失败')
+            }
+        })
+    }
     return <>
         {messageCtx}
-        <ToolPanelShow loading={Loading} tools={toolData} onClickAdd={onClickAdd}/>
+        <ToolPanelShow loading={Loading} tools={toolData} onClickAdd={onClickAdd} onClickDel={onClickDel}/>
         {AddOpen ? <AddModel onFinish={(name, typ) => {
             setAddOpen(false)
             if (name && typ) {
@@ -247,8 +272,8 @@ export function ToolPanel() {
                     Name: name,
                     Typ: typ,
                     Content: '',
-                    CreatedAt: now.toISOString(),
-                    UpdatedAt: now.toISOString(),
+                    Created: now.toISOString(),
+                    Updated: now.toISOString(),
                     Addr: ''
                 })
                 setToolData(newToolData)

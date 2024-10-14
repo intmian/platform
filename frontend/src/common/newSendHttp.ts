@@ -354,3 +354,21 @@ export function sendTaskInput(req: TaskInputReq, callback: (ret: { data: TaskInp
         callback(result);
     });
 }
+
+export interface DeleteToolReq {
+    ToolID: string
+}
+
+export interface DeleteToolRet {
+    Suc: boolean
+}
+
+export function sendDeleteTool(req: DeleteToolReq, callback: (ret: { data: DeleteToolRet, ok: boolean }) => void) {
+    UniPost(cmd_api_base_url + 'deleteTool', req).then((res: UniResult) => {
+        const result: { data: DeleteToolRet, ok: boolean } = {
+            data: res.data as DeleteToolRet,
+            ok: res.ok
+        };
+        callback(result);
+    });
+}

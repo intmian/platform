@@ -181,3 +181,14 @@ type TaskInputReq struct {
 
 type TaskInputRet struct {
 }
+
+// 删除工具
+const CmdDeleteTool share.Cmd = "deleteTool"
+
+type DeleteToolReq struct {
+	ToolID string
+}
+
+type DeleteToolRet struct {
+	Suc bool
+}

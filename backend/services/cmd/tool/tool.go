@@ -71,7 +71,7 @@ func (t *Tool) Save() error {
 
 func (t *Tool) Load() error {
 	err := t.storage.GetFromJson(xstorage.Join("CMD", "toolMgr", "tool", t.ID), &t.ToolData)
-	if err != nil && !errors.Is(err, xstorage.ErrNoData) {
+	if err != nil {
 		return errors.Join(errors.New("get tool data failed"), err)
 	}
 	return nil
@@ -120,4 +120,16 @@ func (t *Tool) SetContent(content string) error {
 func (t *Tool) Rename(name string) error {
 	t.Name = name
 	return t.Save()
+}
+
+func (t *Tool) OnDelete() error {
+	err := os.RemoveAll(t.Addr)
+	if err != nil {
+		return errors.Join(errors.New("remove tool file failed"), err)
+	}
+	err = t.storage.Delete(xstorage.Join("CMD", "toolMgr", "tool", t.ID))
+	if err != nil {
+		return errors.Join(errors.New("remove tool data failed"), err)
+	}
+	return nil
 }

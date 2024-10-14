@@ -63,7 +63,7 @@ func (s *Service) Stop() error {
 func (s *Service) Handle(msg backendshare.Msg, valid backendshare.Valid) {}
 
 func (s *Service) HandleRpc(msg backendshare.Msg, valid backendshare.Valid) (interface{}, error) {
-	if !valid.HasPermission(backendshare.PermissionAdmin) {
+	if !s.share.BaseSetting.Debug && !valid.HasPermission(backendshare.PermissionAdmin) && !valid.HasPermission(backendshare.PermissionCmd) {
 		return nil, errors.New("no permission")
 	}
 	switch msg.Cmd() {
@@ -97,6 +97,8 @@ func (s *Service) HandleRpc(msg backendshare.Msg, valid backendshare.Valid) (int
 		return backendshare.HandleRpcTool("stopTask", msg, valid, s.OnStopTask)
 	case CmdTaskInput:
 		return backendshare.HandleRpcTool("taskInput", msg, valid, s.OnTaskInput)
+	case CmdDeleteTool:
+		return backendshare.HandleRpcTool("deleteTool", msg, valid, s.OnDeleteTool)
 	}
 
 	return nil, errors.New("unknown cmd")
@@ -339,5 +341,15 @@ func (s *Service) OnTaskInput(valid backendshare.Valid, req TaskInputReq) (ret T
 		err = errors.Join(errors.New("task input failed"), err)
 		return
 	}
+	return
+}
+
+func (s *Service) OnDeleteTool(valid backendshare.Valid, req DeleteToolReq) (ret DeleteToolRet, err error) {
+	err = s.toolMgr.DeleteTool(req.ToolID)
+	if err != nil {
+		err = errors.Join(errors.New("delete tool failed"), err)
+		return
+	}
+	ret.Suc = true
 	return
 }

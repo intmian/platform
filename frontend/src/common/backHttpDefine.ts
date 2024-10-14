@@ -2,8 +2,8 @@ export interface ToolData {
     Name: string
     Typ: number
     Content: string
-    CreatedAt: string
-    UpdatedAt: string
+    Created: string
+    Updated: string
     Addr: string
 }
 
