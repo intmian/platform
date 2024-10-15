@@ -12,7 +12,7 @@ type Service struct {
 	acc   accountMgr
 }
 
-func (s *Service) DebugCommand(req backendshare.DebugReq) backendshare.DebugRet {
+func (s *Service) DebugCommand(req backendshare.DebugReq) interface{} {
 	//TODO implement me
 	panic("implement me")
 }

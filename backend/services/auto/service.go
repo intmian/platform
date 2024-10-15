@@ -14,7 +14,7 @@ type Service struct {
 	share share2.ServiceShare
 }
 
-func (s *Service) DebugCommand(req share2.DebugReq) share2.DebugRet {
+func (s *Service) DebugCommand(req share2.DebugReq) interface{} {
 	//TODO implement me
 	panic("implement me")
 }

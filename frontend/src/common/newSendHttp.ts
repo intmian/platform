@@ -59,14 +59,17 @@ export interface DebugParam {
     strs: string[]
 }
 
-export function sendDebug(req: DebugParam, callback: (ret: { data: DebugParam, ok: boolean }) => void) {
-    UniPost(config.api_base_url + '/service/debug', req).then((res: UniResult) => {
-        const result: { data: DebugParam, ok: boolean } = {
-            data: res.data,
+export function sendDebug(svr: string, cmd: string, req: DebugParam, callback: (ret: {
+    data: never,
+    ok: boolean
+}) => void) {
+    UniPost(config.api_base_url + '/debug/' + svr + '/' + cmd, req).then((res: UniResult) => {
+        const result: { data: never, ok: boolean } = {
+            data: res.data as never,
             ok: res.ok
         };
         callback(result);
-    });
+    })
 }
 
 //=====以下为自动生成的代码=====

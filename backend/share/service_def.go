@@ -129,7 +129,7 @@ type IService interface {
 	Handle(msg Msg, valid Valid)
 	HandleRpc(msg Msg, valid Valid) (interface{}, error)
 	GetProp() ServiceProp
-	DebugCommand(req DebugReq) DebugRet
+	DebugCommand(req DebugReq) interface{}
 }
 
 type Cmd string

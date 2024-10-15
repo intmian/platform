@@ -94,12 +94,7 @@ func (m *webMgr) serviceDebugHandle(c *gin.Context) {
 		Cmd:    cmd,
 		Params: params,
 	})
-	httpRet := WebDebugParam{
-		IntValues: ret.Params.IntParams.GetAll(),
-		F64Values: ret.Params.F64Params.GetAll(),
-		StrValues: ret.Params.StrParams.GetAll(),
-	}
-	c.JSON(200, makeOkReturn(httpRet))
+	c.JSON(200, makeOkReturn(ret))
 }
 
 func (m *webMgr) cfgPlatSet(c *gin.Context) {
