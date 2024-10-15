@@ -1,6 +1,7 @@
 package platform
 
 import (
+	"encoding/json"
 	"github.com/gin-gonic/gin"
 	"github.com/intmian/mian_go_lib/xstorage"
 	"github.com/intmian/platform/backend/share"
@@ -50,6 +51,55 @@ func (m *webMgr) serviceHandle(c *gin.Context) {
 		"code": 0,
 		"data": rec,
 	})
+}
+
+type WebDebugParam struct {
+	IntValues []int     `json:"ints"`
+	F64Values []float64 `json:"f64s"`
+	StrValues []string  `json:"strs"`
+}
+
+func (m *webMgr) serviceDebugHandle(c *gin.Context) {
+	m.plat.baseSetting.SafeUseData(func(data share.BaseSetting) {
+		if data.Debug == false {
+			c.JSON(200, makeErrReturn("debug not open"))
+		}
+	}, false)
+	name := c.Param("name")
+	cmd := c.Param("cmd")
+	bodyStr, err := c.GetRawData()
+	if err != nil {
+		c.JSON(200, gin.H{
+			"code": 1,
+			"msg":  "Get body error",
+		})
+		return
+	}
+	flag := m.plat.getFlag(share.SvrName(name))
+	if flag == share.FlagNone {
+		c.JSON(200, makeErrReturn("service not exist"))
+		return
+	}
+	webDebugParam := WebDebugParam{}
+	err = json.Unmarshal(bodyStr, &webDebugParam)
+	if err != nil {
+		c.JSON(200, makeErrReturn("illegal param"))
+	}
+	svr := m.plat.core.service[flag]
+	params := share.DebugParams{}
+	params.IntParams.Append(webDebugParam.IntValues...)
+	params.F64Params.Append(webDebugParam.F64Values...)
+	params.StrParams.Append(webDebugParam.StrValues...)
+	ret := svr.DebugCommand(share.DebugReq{
+		Cmd:    cmd,
+		Params: params,
+	})
+	httpRet := WebDebugParam{
+		IntValues: ret.Params.IntParams.GetAll(),
+		F64Values: ret.Params.F64Params.GetAll(),
+		StrValues: ret.Params.StrParams.GetAll(),
+	}
+	c.JSON(200, makeOkReturn(httpRet))
 }
 
 func (m *webMgr) cfgPlatSet(c *gin.Context) {

@@ -11,11 +11,27 @@ import (
 
 // TODO: 等文件传输上传能用了就加一个文件模块.
 
+// 为了避免风险不增加可能错误调用的全局变量。
+//var svr *Service
+//var svrOnce = sync.Once{}
+//
+//func GetGlobalService() *Service {
+//	svrOnce.Do(func() {
+//		svr = &Service{}
+//	})
+//	return svr
+//}
+
 type Service struct {
 	share   backendshare.ServiceShare
 	toolMgr *tool.ToolMgr
 	runMgr  *run.RunMgr
 	baseDir string
+}
+
+func (s *Service) DebugCommand(req backendshare.DebugReq) backendshare.DebugRet {
+	//TODO implement me
+	panic("implement me")
 }
 
 func (s *Service) Start(share backendshare.ServiceShare) error {

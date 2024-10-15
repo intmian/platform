@@ -2,6 +2,7 @@ package tool
 
 import (
 	"errors"
+	"fmt"
 	"github.com/bwmarrin/snowflake"
 	"github.com/intmian/mian_go_lib/tool/misc"
 	"github.com/intmian/mian_go_lib/tool/multi"
@@ -65,7 +66,7 @@ func (m *ToolMgr) Init(init ToolMgrInit) error {
 				storage: m.storage,
 			})
 			if err != nil {
-				m.Log.WarningErr("ToolMgr", errors.Join(errors.New("init tool failed"), err))
+				m.Log.WarningErr("ToolMgr", errors.Join(errors.New(fmt.Sprintf("new tool failed, id: %s", id)), err))
 				continue
 			}
 			err = m.register(id, tool)

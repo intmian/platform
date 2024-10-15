@@ -53,6 +53,22 @@ async function UniPost(url: string, req: object) {
     }
 }
 
+export interface DebugParam {
+    ints: number[]
+    f64s: number[]
+    strs: string[]
+}
+
+export function sendDebug(req: DebugParam, callback: (ret: { data: DebugParam, ok: boolean }) => void) {
+    UniPost(config.api_base_url + '/service/debug', req).then((res: UniResult) => {
+        const result: { data: DebugParam, ok: boolean } = {
+            data: res.data,
+            ok: res.ok
+        };
+        callback(result);
+    });
+}
+
 //=====以下为自动生成的代码=====
 export interface CreateToolReq {
     Name: string

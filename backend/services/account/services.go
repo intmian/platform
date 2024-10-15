@@ -12,6 +12,11 @@ type Service struct {
 	acc   accountMgr
 }
 
+func (s *Service) DebugCommand(req backendshare.DebugReq) backendshare.DebugRet {
+	//TODO implement me
+	panic("implement me")
+}
+
 func (s *Service) GetProp() backendshare.ServiceProp {
 	// 可能多个plat共享一个account，所以是可选的
 	return misc.CreateProperty(backendshare.SvrPropCoreOptional)

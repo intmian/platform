@@ -14,6 +14,11 @@ type Service struct {
 	share share2.ServiceShare
 }
 
+func (s *Service) DebugCommand(req share2.DebugReq) share2.DebugRet {
+	//TODO implement me
+	panic("implement me")
+}
+
 func (s *Service) GetProp() share2.ServiceProp {
 	return misc.CreateProperty(share2.SvrPropMicro)
 }

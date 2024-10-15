@@ -73,12 +73,63 @@ func (m *Msg) Data(bind interface{}) error {
 	}
 }
 
+type DebugParams struct {
+	IntParams DebugParam[int]
+	StrParams DebugParam[string]
+	F64Params DebugParam[float64]
+}
+
+type DebugParam[T comparable] struct {
+	params []T
+}
+
+func (d *DebugParam[T]) Get(index int) T {
+	var zero T
+	if index < 0 || index >= len(d.params) {
+		return zero
+	}
+	return d.params[index]
+}
+
+func (d *DebugParam[T]) Set(index int, value T) {
+	var zero T
+	if index < 0 {
+		return
+	}
+	for index >= len(d.params) {
+		d.params = append(d.params, zero)
+	}
+	d.params[index] = value
+}
+
+func (d *DebugParam[T]) Len() int {
+	return len(d.params)
+}
+
+func (d *DebugParam[T]) Append(value ...T) {
+	d.params = append(d.params, value...)
+}
+
+func (d *DebugParam[T]) GetAll() []T {
+	return d.params
+}
+
+type DebugReq struct {
+	Cmd    string
+	Params DebugParams
+}
+
+type DebugRet struct {
+	Params DebugParams
+}
+
 type IService interface {
 	Start(share ServiceShare) error
 	Stop() error
 	Handle(msg Msg, valid Valid)
 	HandleRpc(msg Msg, valid Valid) (interface{}, error)
 	GetProp() ServiceProp
+	DebugCommand(req DebugReq) DebugRet
 }
 
 type Cmd string
