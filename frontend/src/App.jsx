@@ -33,7 +33,7 @@ const router = createBrowserRouter([
         element: <Cmd/>,
     },
     {
-        path: '/cmd/:mode/:open',
+        path: '/cmd/:mode/:id',
         element: <Cmd/>,
     },
 ])

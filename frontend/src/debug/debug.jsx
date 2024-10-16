@@ -3,7 +3,8 @@ import {Button, Card, Col, InputNumber, Row, Slider, Space, Typography} from "an
 import {CustomDeviceSimulator, DeviceSimulator} from "./DeviceSim.jsx";
 import {MenuPlus} from "../common/MenuPlus.jsx";
 import {EditableProps} from "./EditableProps.jsx";
-import {ToolPanel} from "../tool/Cmd";
+
+import {ToolPanel} from "../tool/tool";
 
 const {Text} = Typography;
 

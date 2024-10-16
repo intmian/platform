@@ -160,10 +160,6 @@ func (s *Service) OnUpdateTool(valid backendshare.Valid, req UpdateToolReq) (ret
 
 func (s *Service) OnGetTools(valid backendshare.Valid, req GetToolReq) (ret GetToolRet, err error) {
 	ret.ID2ToolData = s.toolMgr.GetAllTool()
-	ret.ID2ToolData["123"] = tool.ToolData{
-		Name: "test",
-		Typ:  tool.ToolTypePython,
-	}
 	return
 }
 

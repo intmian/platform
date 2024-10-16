@@ -41,9 +41,17 @@ func (m *webMgr) serviceHandle(c *gin.Context) {
 	rec, err := m.plat.core.onRecRpc(flag, msg, valid)
 	finish <- nil
 	if err != nil {
+		debug := false
+		m.plat.baseSetting.SafeUseData(func(data share.BaseSetting) {
+			debug = data.Debug
+		}, false)
+		if debug {
+			c.JSON(200, makeErrReturn(err.Error()))
+			return
+		}
 		c.JSON(200, gin.H{
 			"code": 1,
-			"msg":  "Rpc error",
+			"msg":  "svr error",
 		})
 		return
 	}
