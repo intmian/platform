@@ -1,6 +1,6 @@
 import {Layout, Menu} from "antd";
 import {getItem} from "../tool.js";
-import {useEffect, useState} from "react";
+import {useState} from "react";
 import {useNavigate, useParams} from "react-router-dom";
 
 const {Sider, Content} = Layout;
@@ -17,9 +17,6 @@ export function MenuPlus({disable, label2node, baseUrl}) {
         items.push(getItem(label, label));
     }
     const nowNode = label2node.get(mode2);
-    useEffect(() => {
-        navigate(baseUrl + mode2, {replace: true});
-    }, []);
     const [collapsed, setCollapsed] = useState(false);
 
     return (

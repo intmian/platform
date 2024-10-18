@@ -227,6 +227,7 @@ export function ToolDetail({id, toolData, onClose}: { id: string, toolData: Tool
     let needContent = false
     const [loaddingContent, setLoadingContent] = useState(false)
     const [content, setContent] = useState('')
+    const navigate = useNavigate();
     if (toolData.Typ === ToolType.Python) {
         needContent = true
     }
@@ -247,23 +248,20 @@ export function ToolDetail({id, toolData, onClose}: { id: string, toolData: Tool
     }, [id, needContent, toolData])
     let contentElement: ReactNode
     if (needContent) {
-        contentElement = <Form.Item
-            label="内容"
-        >
-            <Input.TextArea value={content} disabled style={{height: '300px'}}/>
-        </Form.Item>
+        contentElement = <Input.TextArea value={content} disabled style={{height: '300px'}}/>
     } else {
-        contentElement = <Form.Item
-            label="内容"
-        >
+        contentElement =
             <Input value={toolData.Addr} disabled/>
-        </Form.Item>
     }
     return <Modal
         title="工具详情"
         open={true}
         footer={null}
-        onCancel={onClose}
+        onCancel={() => {
+            // 把后面的/打开的ID吃掉。
+            navigate('/cmd/tool', {replace: true})
+            onClose()
+        }}
         width={600}
         style={{
             display: 'flex',
@@ -313,14 +311,28 @@ export function ToolPanel({wantOpenID}: { wantOpenID?: string }) {
     const [AddOpen, setAddOpen] = useState(false)
     const [messageApi, messageCtx] = message.useMessage()
     const [UpdateOpen, setUpdateOpen] = useState(false)
-    const [UpdateID, setUpdateID] = useState(wantOpenID ? wantOpenID : '')
+    const [UpdateID, setUpdateID] = useState('')
     const navigate = useNavigate();
+    const onOpenToolDetail = (id: string) => {
+        setUpdateOpen(true)
+        setUpdateID(id)
+        navigate('/cmd/tool/' + id, {replace: true})
+    }
+    useEffect(() => {
+        if (wantOpenID) {
+            navigate('/cmd/tool/' + wantOpenID, {replace: true})
+        }
+    }, [navigate, wantOpenID]);
     useEffect(() => {
         const req = {}
         sendGetTools(req, (ret) => {
             if (ret.ok) {
                 setToolData(ret.data.ID2ToolData)
                 setLoading(false)
+                if (wantOpenID) {
+                    setUpdateOpen(true)
+                    setUpdateID(wantOpenID)
+                }
             } else {
                 messageApi.error('获取工具列表失败')
             }
@@ -343,10 +355,6 @@ export function ToolPanel({wantOpenID}: { wantOpenID?: string }) {
             }
         })
     }
-    const onOpenToolDetail = (id: string) => {
-        setUpdateOpen(true)
-        setUpdateID(id)
-    }
     return <>
         {messageCtx}
         <ToolPanelShow loading={Loading} tools={toolData} onClickAdd={onClickAdd} onClickDel={onClickDel}
@@ -354,8 +362,6 @@ export function ToolPanel({wantOpenID}: { wantOpenID?: string }) {
         {UpdateOpen ? <ToolDetail id={UpdateID} toolData={toolData.get(UpdateID) as ToolData} onClose={() => {
             setUpdateOpen(false)
             setUpdateID('')
-            // 把后面的/打开的ID吃掉。
-            navigate('..')
         }}/> : null
         }
         {AddOpen ? <AddModel onFinish={(name, typ) => {
