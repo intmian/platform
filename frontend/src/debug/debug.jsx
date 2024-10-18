@@ -1,16 +1,25 @@
 import {useState} from "react";
-import {Button, Card, Col, InputNumber, Row, Slider, Space, Typography} from "antd";
+import {Button, Card, Col, InputNumber, Row, Slider, Space, Timeline, Typography} from "antd";
 import {CustomDeviceSimulator, DeviceSimulator} from "./DeviceSim.jsx";
 import {MenuPlus} from "../common/MenuPlus.jsx";
 import {EditableProps} from "./EditableProps.jsx";
 
-import {ToolPanel} from "../tool/tool";
-
 const {Text} = Typography;
 
-const debug = <ToolPanel>
+const debug = <Timeline style={{margin: 0, padding: 0, minHeight: 0}}
+                        items={[
+                            {
+                                children: <Typography.Text>{'创建于  ' + 1}</Typography.Text>
+                            },
+                            {
+                                children: <Typography.Text>{'修改于  ' + 1}</Typography.Text>
+                            }
+                        ]}
+/>
 
-</ToolPanel>
+// const debug = <ToolPanel>
+//
+// </ToolPanel>
 
 // const debug = <ToolShow
 //     id={"123"}

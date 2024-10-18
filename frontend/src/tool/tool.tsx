@@ -1,9 +1,30 @@
 import {ToolType} from "./def";
 import {ReactElement, ReactNode, useEffect, useState} from "react";
 import {DeleteOutlined, EditOutlined, FileOutlined, PlusOutlined, PythonOutlined} from "@ant-design/icons";
-import {Avatar, Button, Card, Flex, Form, Input, message, Modal, Popconfirm, Row, Select, Typography} from "antd";
+import {
+    Avatar,
+    Button,
+    Card,
+    Flex,
+    Form,
+    Input,
+    message,
+    Modal,
+    Popconfirm,
+    Row,
+    Select,
+    Timeline,
+    Typography
+} from "antd";
 import {useForm} from "antd/es/form/Form";
-import {CreateToolReq, sendCreateTool, sendDeleteTool, sendGetTools, sendGetToolScript} from "../common/newSendHttp";
+import {
+    CreateToolReq,
+    sendCreateTool,
+    sendDeleteTool,
+    sendGetTools,
+    sendGetToolScript,
+    sendUpdateTool
+} from "../common/newSendHttp";
 import {ToolData} from "../common/backHttpDefine";
 import {useNavigate} from "react-router-dom";
 
@@ -119,7 +140,6 @@ export function ToolPanelShow({loading, tools, onClickAdd, onClickDel, onOpenToo
 
     // 生成卡片
     tools.forEach((value, key) => {
-        console.debug('key:', key, 'value:', value)
         cards.push(<ToolShow
             key={key}
             name={value.Name}
@@ -226,8 +246,13 @@ function AddModel({onFinish}: { onFinish: (name: string | undefined, typ: ToolTy
 export function ToolDetail({id, toolData, onClose}: { id: string, toolData: ToolData, onClose: () => void }) {
     let needContent = false
     const [loaddingContent, setLoadingContent] = useState(false)
-    const [content, setContent] = useState('')
     const navigate = useNavigate();
+    const [form] = useForm();
+    const [updating, setUpdating] = useState(false)
+    form.setFieldsValue({
+        name: toolData.Name,
+        typ: toolData.Typ
+    })
     if (toolData.Typ === ToolType.Python) {
         needContent = true
     }
@@ -240,7 +265,9 @@ export function ToolDetail({id, toolData, onClose}: { id: string, toolData: Tool
             setLoadingContent(true)
             sendGetToolScript(req, (ret) => {
                 if (ret.ok) {
-                    setContent(ret.data.Script)
+                    form.setFieldsValue({
+                        content: ret.data.Script
+                    })
                 }
                 setLoadingContent(false)
             })
@@ -248,11 +275,16 @@ export function ToolDetail({id, toolData, onClose}: { id: string, toolData: Tool
     }, [id, needContent, toolData])
     let contentElement: ReactNode
     if (needContent) {
-        contentElement = <Input.TextArea value={content} disabled style={{height: '300px'}}/>
+        contentElement = <Input.TextArea style={{height: '100px'}}/>
     } else {
         contentElement =
             <Input value={toolData.Addr} disabled/>
     }
+
+    // 将golang生成的json时间转换为能看懂的时间 2024-10-15T16:01:46.5010056+08:00 - 》 2024年10月15日 16:01:46
+    const createdStr = new Date(toolData.Created).toLocaleString('zh-CN', {hour12: false});
+    const updatedStr = new Date(toolData.Updated).toLocaleString('zh-CN', {hour12: false});
+
     return <Modal
         title="工具详情"
         open={true}
@@ -262,7 +294,6 @@ export function ToolDetail({id, toolData, onClose}: { id: string, toolData: Tool
             navigate('/cmd/tool', {replace: true})
             onClose()
         }}
-        width={600}
         style={{
             display: 'flex',
             justifyContent: 'center',
@@ -271,34 +302,72 @@ export function ToolDetail({id, toolData, onClose}: { id: string, toolData: Tool
     >
         <Form
             layout="horizontal"  // 设置为 horizontal 模式
-            labelCol={{span: 6}}  // 标签宽度占 6 列
-            wrapperCol={{span: 18}}  // 输入框宽度占 18 列
-            style={{margin: '2px', marginBottom: '20px'}}
+            labelCol={{span: 3}}  // 标签宽度占 6 列
+            wrapperCol={{span: 21}}  // 输入框宽度占 18 列
+            style={{margin: '2px', width: '400px'}}
+            form={form}
         >
             <Form.Item
                 label="工具名"
+                name="name"
             >
-                <Input value={toolData.Name} disabled/>
+                <Input value={toolData.Name}/>
             </Form.Item>
             <Form.Item
                 label="类型"
             >
-                <Input value={toolData.Typ} disabled/>
+                <Select value={toolData.Typ} disabled={true}>
+                    <Select.Option value={ToolType.Python}>Python</Select.Option>
+                    <Select.Option value={ToolType.FileExec}>可执行文件</Select.Option>
+                </Select>
             </Form.Item>
             <Form.Item
-                label="创建时间"
+                label="时间"
             >
-                <Input value={toolData.Created} disabled/>
-            </Form.Item>
-            <Form.Item
-                label="更新时间"
-            >
-                <Input value={toolData.Updated} disabled/>
+                <Timeline style={{margin: 0, padding: 0, height: '50px'}}
+                          items={[
+                              {
+                                  children: <Typography.Text>{'创建于  ' + createdStr}</Typography.Text>
+                              },
+                              {
+                                  children: <Typography.Text>{'修改于  ' + updatedStr}</Typography.Text>
+                              }
+                          ]}
+                />
             </Form.Item>
             <Form.Item
                 label="内容"
+                name="content"
             >
-                {loaddingContent ? <Input value={'加载中'} disabled/> : contentElement}
+                {loaddingContent ? <Input.TextArea style={{height: '100px'}} disabled/> : contentElement}
+            </Form.Item>
+            <Form.Item style={
+                // 居中
+                {
+                    display: 'flex',
+                    justifyContent: 'center',
+                    marginBottom: 0,
+                }
+            }>
+                <Button type="primary" onClick={() => {
+                    // 提交
+                    const values = form.getFieldsValue()
+                    setUpdating(true)
+                    sendUpdateTool({
+                        ToolID: id,
+                        Name: values.name,
+                        Content: values.content
+                    }, (ret) => {
+                        setUpdating(false)
+                        if (ret.ok) {
+                            message.success('更新成功')
+                        } else {
+                            message.error('更新失败')
+                        }
+                    })
+                }}
+                        loading={updating}
+                >提交</Button>
             </Form.Item>
         </Form>
     </Modal>
