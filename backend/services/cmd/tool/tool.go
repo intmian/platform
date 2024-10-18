@@ -114,11 +114,20 @@ func (t *Tool) SetContent(content string) error {
 	if err != nil {
 		return errors.Join(errors.New("write file failed"), err)
 	}
+	err = t.AfterChange()
+	if err != nil {
+		return errors.Join(errors.New("after change failed"), err)
+	}
 	return nil
 }
 
 func (t *Tool) Rename(name string) error {
 	t.Name = name
+	return t.AfterChange()
+}
+
+func (t *Tool) AfterChange() error {
+	t.Updated = time.Now()
 	return t.Save()
 }
 

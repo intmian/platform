@@ -243,7 +243,12 @@ function AddModel({onFinish}: { onFinish: (name: string | undefined, typ: ToolTy
     </Modal>
 }
 
-export function ToolDetail({id, toolData, onClose}: { id: string, toolData: ToolData, onClose: () => void }) {
+export function ToolDetail({id, toolData, onClose, onChange}: {
+    id: string,
+    toolData: ToolData,
+    onClose: () => void,
+    onChange: (name: string) => void
+}) {
     let needContent = false
     const [loaddingContent, setLoadingContent] = useState(false)
     const navigate = useNavigate();
@@ -361,6 +366,7 @@ export function ToolDetail({id, toolData, onClose}: { id: string, toolData: Tool
                         setUpdating(false)
                         if (ret.ok) {
                             message.success('更新成功')
+                            onChange(values.name)
                         } else {
                             message.error('更新失败')
                         }
@@ -431,7 +437,16 @@ export function ToolPanel({wantOpenID}: { wantOpenID?: string }) {
         {UpdateOpen ? <ToolDetail id={UpdateID} toolData={toolData.get(UpdateID) as ToolData} onClose={() => {
             setUpdateOpen(false)
             setUpdateID('')
-        }}/> : null
+        }} onChange={
+            (name) => {
+                const newToolData = new Map(toolData)
+                const tool = newToolData.get(UpdateID) as ToolData
+                tool.Name = name
+                tool.Updated = new Date().toISOString()
+                newToolData.set(UpdateID, tool)
+                setToolData(newToolData)
+            }
+        }/> : null
         }
         {AddOpen ? <AddModel onFinish={(name, typ) => {
             setAddOpen(false)
