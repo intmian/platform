@@ -22,9 +22,8 @@ export function MenuPlus({disable, label2node, baseUrl}) {
     const nowNode = label2node.get(mode2);
     const [collapsed, setCollapsed] = useState(false);
     useEffect(() => {
-        console.log('MenuPlus', baseUrl + mode2);
         navigate(baseUrl + mode2, {replace: true});
-    }, [baseUrl, mode2, navigate]);
+    }, [baseUrl, mode2]);
     return (
         <Layout>
             <Sider
