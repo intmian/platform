@@ -102,7 +102,7 @@ func (t *Tool) GetContent() string {
 }
 
 func (t *Tool) SetContent(content string) error {
-	if IsToolTypeScript(t.Typ) {
+	if !IsToolTypeScript(t.Typ) {
 		return errors.New("tool type is not script")
 	}
 	file, err := os.Create(t.Addr)
