@@ -6,8 +6,8 @@ import {ReactElement} from "react";
 export function Cmd() {
     const {id} = useParams();
     const MenuMap = new Map<string, ReactElement>();
-    MenuMap.set("tool", <ToolPanel wantOpenID={id}/>);
-    MenuMap.set("env", <EnvPanel/>);
+    MenuMap.set("工具", <ToolPanel wantOpenID={id}/>);
+    MenuMap.set("运行环境", <EnvPanel/>);
     return <MenuPlus baseUrl={"/cmd/"} disable={false} label2node={MenuMap}/>
 }
 

@@ -36,6 +36,10 @@ const router = createBrowserRouter([
         path: '/cmd/:mode/:id',
         element: <Cmd/>,
     },
+    {
+        path: '/404',
+        element: <ErrorPage/>,
+    }
 ])
 
 const App = () => {

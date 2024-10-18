@@ -1,15 +1,18 @@
 import {Layout, Menu} from "antd";
 import {getItem} from "../tool.js";
-import {useState} from "react";
+import {useEffect, useState} from "react";
 import {useNavigate, useParams} from "react-router-dom";
 
 const {Sider, Content} = Layout;
 
 export function MenuPlus({disable, label2node, baseUrl}) {
     const {mode} = useParams();
+    const navigate = useNavigate();
+    if (mode !== undefined && mode !== '' && !label2node.has(mode)) {
+        navigate('/404')
+    }
     let mode2 = mode;
     let items = [];
-    const navigate = useNavigate();
     if (mode2 === undefined) {
         mode2 = label2node.keys().next().value;
     }
@@ -18,7 +21,10 @@ export function MenuPlus({disable, label2node, baseUrl}) {
     }
     const nowNode = label2node.get(mode2);
     const [collapsed, setCollapsed] = useState(false);
-
+    useEffect(() => {
+        console.log('MenuPlus', baseUrl + mode2);
+        navigate(baseUrl + mode2, {replace: true});
+    }, [baseUrl, mode2, navigate]);
     return (
         <Layout>
             <Sider

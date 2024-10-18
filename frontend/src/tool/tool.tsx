@@ -291,7 +291,7 @@ export function ToolDetail({id, toolData, onClose}: { id: string, toolData: Tool
         footer={null}
         onCancel={() => {
             // 把后面的/打开的ID吃掉。
-            navigate('/cmd/tool', {replace: true})
+            navigate('/cmd/工具', {replace: true})
             onClose()
         }}
         style={{
@@ -385,11 +385,11 @@ export function ToolPanel({wantOpenID}: { wantOpenID?: string }) {
     const onOpenToolDetail = (id: string) => {
         setUpdateOpen(true)
         setUpdateID(id)
-        navigate('/cmd/tool/' + id, {replace: true})
+        navigate('/cmd/工具/' + id, {replace: true})
     }
     useEffect(() => {
         if (wantOpenID) {
-            navigate('/cmd/tool/' + wantOpenID, {replace: true})
+            navigate('/cmd/工具/' + wantOpenID, {replace: true})
         }
     }, [navigate, wantOpenID]);
     useEffect(() => {
