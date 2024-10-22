@@ -14,6 +14,7 @@ import {
     Row,
     Select,
     Timeline,
+    Tooltip,
     Typography
 } from "antd";
 import {useForm} from "antd/es/form/Form";
@@ -56,11 +57,11 @@ export function ToolAdd({onClick}: { onClick?: () => void }) {
     // 但是居中显示一个虚线圆框和一个+号移上去会变亮.
     // 点击后触发onClick
     return <Card
-        style={{width: 150, height: 215, textAlign: 'center', borderRadius: '10px', margin: '10px'}}
+        style={{width: 150, height: 200, textAlign: 'center', borderRadius: '10px', margin: '10px'}}
         hoverable
         onClick={onClick}
     >
-        <div style={{marginTop: '50px', marginBottom: '50px'}}>
+        <div style={{marginTop: '40px', marginBottom: '50px'}}>
             <PlusOutlined style={{fontSize: '40px'}}/>
         </div>
         <div style={{color: 'grey', marginBottom: '5px'}}>
@@ -69,7 +70,8 @@ export function ToolAdd({onClick}: { onClick?: () => void }) {
     </Card>
 }
 
-export function ToolShow({name, typ, createdAt, updatedAt, onDel, loading, onClickUpdate}: {
+export function ToolShow({name, ID, typ, createdAt, updatedAt, onDel, loading, onClickUpdate}: {
+    ID?: string,
     name?: string,
     typ?: ToolType,
     createdAt?: string,
@@ -84,7 +86,7 @@ export function ToolShow({name, typ, createdAt, updatedAt, onDel, loading, onCli
     const updatedStr = updatedAt ? updatedAt.substring(0, 10) : "更新时间未知"
     return <Card
         loading={loading}
-        style={{width: 150, height: 215, textAlign: 'center', borderRadius: '10px', margin: '10px'}}
+        style={{width: 150, height: 200, textAlign: 'center', borderRadius: '10px', margin: '10px'}}
         hoverable
     >
         <ToolAvatar typ={typ}/>
@@ -105,19 +107,29 @@ export function ToolShow({name, typ, createdAt, updatedAt, onDel, loading, onCli
                 <EditOutlined/>
             </Row>
         </div>
-
-        <Button type="text" shape="round" onClick={() => {
-            if (onClickUpdate) {
-                onClickUpdate()
-            }
-        }}>
-            {updateIcon}
-        </Button>
-        <Popconfirm title={"确认删除?"} onConfirm={onDel}>
-            <Button type="text" danger shape="round">
-                {deleteIcon}
+        <Tooltip title="修改具体数据">
+            <Button type="text" size={"small"} onClick={() => {
+                if (onClickUpdate) {
+                    onClickUpdate()
+                }
+            }}>
+                {updateIcon}
             </Button>
-        </Popconfirm>
+        </Tooltip>
+        <Tooltip title="复制ID">
+            <Button type="text" size={"small"} onClick={() => {
+                navigator.clipboard.writeText(ID as string)
+            }}>
+                <FileOutlined/>
+            </Button>
+        </Tooltip>
+        <Tooltip title="删除">
+            <Popconfirm title={"确认删除?"} onConfirm={onDel}>
+                <Button type="text" danger size={"small"}>
+                    {deleteIcon}
+                </Button>
+            </Popconfirm>
+        </Tooltip>
     </Card>
 }
 
@@ -142,6 +154,7 @@ export function ToolPanelShow({loading, tools, onClickAdd, onClickDel, onOpenToo
     tools.forEach((value, key) => {
         cards.push(<ToolShow
             key={key}
+            ID={key}
             name={value.Name}
             typ={value.Typ}
             createdAt={value.Created}
