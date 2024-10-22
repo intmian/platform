@@ -48,7 +48,7 @@ export function MenuPlus({disable, label2node, baseUrl}) {
                     }}
                     items={items}
                     onSelect={({key}) => {
-                        navigate(baseUrl + key, {replace: true});
+                        navigate.current(baseUrl + key, {replace: true});
                     }}
                     theme="dark"
                 />
