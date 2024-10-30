@@ -66,8 +66,15 @@ const CmdGetEnvs share.Cmd = "getEnvs"
 type GetEnvsReq struct {
 }
 
+type WebEnvData struct {
+	EnvID         uint32
+	Param         []string
+	DefaultToolID string
+	Note          string
+}
+
 type GetEnvsRet struct {
-	EnvData []run.EnvData
+	EnvData []WebEnvData
 }
 
 // 查看环境

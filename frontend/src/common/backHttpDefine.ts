@@ -8,6 +8,7 @@ export interface ToolData {
 }
 
 export interface EnvData {
+    ID: number
     Param: string[]
     DefaultToolID: string
     Note: string
