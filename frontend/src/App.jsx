@@ -2,8 +2,9 @@ import Index from "./admin/Index.jsx";
 import {createBrowserRouter, RouterProvider} from "react-router-dom";
 import {GlobalCtx} from "./common/globalCtx.jsx";
 import {Debug} from "./debug/debug.jsx";
-import {Cmd} from "./tool/Cmd.tsx";
+import {Cmd} from "./tool/cmd.tsx";
 import {ErrorPage} from "./misc/ErrorPage.tsx";
+import Anniversary from "./common/love";
 
 
 const router = createBrowserRouter([
@@ -39,6 +40,10 @@ const router = createBrowserRouter([
     {
         path: '/404',
         element: <ErrorPage/>,
+    },
+    {
+        path: '/love47',
+        element: <Anniversary/>,
     }
 ])
 

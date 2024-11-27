@@ -1,21 +1,24 @@
 import {useState} from "react";
-import {Button, Card, Col, InputNumber, Row, Slider, Space, Timeline, Typography} from "antd";
+import {Button, Card, Col, InputNumber, Row, Slider, Space, Typography} from "antd";
 import {CustomDeviceSimulator, DeviceSimulator} from "./DeviceSim.jsx";
 import {MenuPlus} from "../common/MenuPlus.jsx";
 import {EditableProps} from "./EditableProps.jsx";
+import Anniversary from "../common/love";
 
 const {Text} = Typography;
 
-const debug = <Timeline style={{margin: 0, padding: 0, minHeight: 0}}
-                        items={[
-                            {
-                                children: <Typography.Text>{'创建于  ' + 1}</Typography.Text>
-                            },
-                            {
-                                children: <Typography.Text>{'修改于  ' + 1}</Typography.Text>
-                            }
-                        ]}
-/>
+const debug = <Anniversary/>
+
+// const debug = <Timeline style={{margin: 0, padding: 0, minHeight: 0}}
+//                         items={[
+//                             {
+//                                 children: <Typography.Text>{'创建于  ' + 1}</Typography.Text>
+//                             },
+//                             {
+//                                 children: <Typography.Text>{'修改于  ' + 1}</Typography.Text>
+//                             }
+//                         ]}
+// />
 
 // const debug = <ToolPanel>
 //
