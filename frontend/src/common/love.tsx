@@ -65,7 +65,7 @@ const Anniversary: React.FC = () => {
             display: 'flex',
             justifyContent: 'center',
             alignItems: 'center',
-            height: '100%',  // 父容器占满整个屏幕高度
+            height: '100vh',  // 父容器占满整个屏幕高度
         }}
     >
         {floatingHearts}
