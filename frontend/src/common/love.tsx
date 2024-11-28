@@ -2,6 +2,7 @@ import React, {useEffect, useState} from 'react';
 import {Calendar} from 'antd';
 import styled, {keyframes} from 'styled-components';
 import dayjs, {Dayjs} from 'dayjs';
+import zhLocale from 'antd/lib/calendar/locale/zh_CN.js'
 
 // 爱心飘动动画
 const floatAnimation = keyframes`
@@ -77,7 +78,7 @@ const LovePanel = () => {
     const [daysTogether, setDaysTogether] = useState<number>(0);
     const [daysToNextAnniversary, setDaysToNextAnniversary] = useState<number>(0);
 
-    const anniversaryDate: Dayjs = dayjs('2022-11-05');
+    const anniversaryDate: Dayjs = dayjs('2022-12-18');
 
     useEffect(() => {
         const today: Dayjs = dayjs();
@@ -113,7 +114,8 @@ const LovePanel = () => {
         <div style={parentStyle}>
             <div style={childStyle}><CenterHeart>❤️</CenterHeart></div>
             <div style={childStyle}><LargeText>爱你宝宝</LargeText></div>
-            <div style={childStyle}><Calendar fullscreen={false} defaultValue={anniversaryDate}/></div>
+            <div style={childStyle}><Calendar fullscreen={false} defaultValue={anniversaryDate} locale={zhLocale}/>
+            </div>
             <div style={childStyle}><LargeText>我们已经在一起 {daysTogether} 天了！</LargeText></div>
             <div style={childStyle}><LargeText>距离下一周年还有 {daysToNextAnniversary} 天！</LargeText></div>
         </div>
