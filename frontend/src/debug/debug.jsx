@@ -3,11 +3,11 @@ import {Button, Card, Col, InputNumber, Row, Slider, Space, Typography} from "an
 import {CustomDeviceSimulator, DeviceSimulator} from "./DeviceSim.jsx";
 import {MenuPlus} from "../common/MenuPlus.jsx";
 import {EditableProps} from "./EditableProps.jsx";
-import Anniversary from "../common/love";
+import Memos from "../misc/memso";
 
 const {Text} = Typography;
 
-const debug = <Anniversary/>
+const debug = <Memos/>
 
 // const debug = <Timeline style={{margin: 0, padding: 0, minHeight: 0}}
 //                         items={[

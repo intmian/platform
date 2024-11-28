@@ -4,7 +4,8 @@ import {GlobalCtx} from "./common/globalCtx.jsx";
 import {Debug} from "./debug/debug.jsx";
 import {Cmd} from "./tool/cmd.tsx";
 import {ErrorPage} from "./misc/ErrorPage.tsx";
-import Anniversary from "./common/love";
+import Anniversary from "./misc/love";
+import Memos from "./misc/memso";
 
 
 const router = createBrowserRouter([
@@ -44,6 +45,10 @@ const router = createBrowserRouter([
     {
         path: '/love47',
         element: <Anniversary/>,
+    },
+    {
+        path: '/note_mini',
+        element: <Memos/>,
     }
 ])
 

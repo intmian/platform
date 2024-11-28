@@ -11,6 +11,7 @@ export default defineConfig({
                 // 重写路径,替换/api
                 rewrite: (path) => path.replace(/^\/api/, ""),
             }
-        }
+        },
+        cors: true
     }
 })
