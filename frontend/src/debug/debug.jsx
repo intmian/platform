@@ -1,13 +1,16 @@
 import {useState} from "react";
-import {Button, Card, Col, InputNumber, Row, Slider, Space, Typography} from "antd";
+import {Button, Card, Col, InputNumber, Row, Slider, Space, Tooltip, Typography} from "antd";
 import {CustomDeviceSimulator, DeviceSimulator} from "./DeviceSim.jsx";
 import {MenuPlus} from "../common/MenuPlus.jsx";
 import {EditableProps} from "./EditableProps.jsx";
-import Memos from "../misc/memso";
+import {SyncOutlined} from "@ant-design/icons";
 
 const {Text} = Typography;
 
-const debug = <Memos/>
+const debug = <Tooltip><SyncOutlined
+    spin
+    style={{color: 'orange'}}
+/></Tooltip>
 
 // const debug = <Timeline style={{margin: 0, padding: 0, minHeight: 0}}
 //                         items={[

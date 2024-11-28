@@ -77,11 +77,11 @@ function MemosQueue({His}: { His: MemosReqHis[] }) {
                     twoToneColor={'#52c41a'}/></Tooltip>);
             } else {
                 queue.push(<Tooltip key={his.content} title={his.content}><CloseCircleTwoTone
-                    twoToneColor={'#eb2f96'}/></Tooltip>);
+                    twoToneColor={'#ff8b8b'}/></Tooltip>);
             }
         } else {
             queue.push(<Tooltip key={his.content} title={his.content}>
-                <SyncOutlined spin/>
+                <SyncOutlined style={{color: 'orange'}} spin/>
             </Tooltip>);
         }
     }
@@ -138,10 +138,12 @@ function Memos() {
     const [inputHidden, setInputHidden] = useState('');
     const [hidden, setHidden] = useState<boolean>(false);
     const input = <TextArea
+        autoFocus
         style={{
             marginBottom: '10px',
             // 自动填充剩余空间
             flexGrow: 1,
+            fontSize: '16px',
         }}
         value={inputText} onChange={(e) => setInputText(e.target.value)}
         // ctrl+enter发送
@@ -189,6 +191,8 @@ function Memos() {
     };
     return <div
         style={{
+            // 绝对定位
+            position: "absolute",
             width: "100%",
             height: "100%",
             // 居中
@@ -201,9 +205,9 @@ function Memos() {
     >
         <div
             style={{
-                width: "500px",
-                height: "500px",
-                margin: "5px",
+                width: "400px",
+                height: "400px",
+                margin: "20px",
                 // 卡片边框阴影
                 backgroundColor: 'white',
                 boxShadow: '0 0 10px rgba(0, 0, 0, 0.1)',
@@ -272,7 +276,7 @@ function Memos() {
                 <Tooltip title="Enter换行 Ctrl+Enter发送">
                     <Button
                         type="primary"
-                        disabled={NowSetting.current.url === '' || NowSetting.current.key === '' || hidden}
+                        disabled={NowSetting.current.url === '' || NowSetting.current.key === '' || hidden || inputText === ''}
                         onClick={submit}
                     >
                         发送
