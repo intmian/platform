@@ -324,6 +324,7 @@ function Memos() {
             <div
                 style={{
                     display: 'flex',
+                    marginBottom: '10px',
                 }}
             >
                 <div
@@ -339,8 +340,10 @@ function Memos() {
                         // 子组件靠右
                         display: 'flex',
                         justifyContent: 'flex-end',
-                        marginBottom: '10px',
+                        // 垂直居中
+                        alignItems: 'center',
                         width: '15%',
+                        height: '100%',
                     }}
                 >
                     {setUrlButton}
