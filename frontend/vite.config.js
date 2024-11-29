@@ -2,7 +2,15 @@ import {defineConfig} from 'vite'
 import react from '@vitejs/plugin-react'
 
 export default defineConfig({
-    plugins: [react()],
+    plugins: [react(),
+        // visualizer({
+        //     gzipSize: true,
+        //     brotliSize: true,
+        //     emitFile: false,
+        //     filename: "test.html", //分析图生成的文件名
+        //     open: true //如果存在本地服务端口，将在打包后自动展示
+        // })
+    ],
     server: {
         proxy: {
             '/api': {
@@ -13,5 +21,5 @@ export default defineConfig({
             }
         },
         cors: true
-    }
+    },
 })
