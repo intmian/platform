@@ -206,7 +206,9 @@ function Memos() {
     const [inputText, setInputText] = useState('');
     const [inputHidden, setInputHidden] = useState('');
     const [hidden, setHidden] = useState<boolean>(false);
+    const inputRef = useRef(null);
     const input = <TextArea
+        ref={inputRef}
         autoFocus
         style={{
             marginBottom: '10px',
@@ -271,6 +273,7 @@ function Memos() {
         setLastReqId(lastReqId + 1);
         setHidden(false);
         setTagsSelected([]);
+        inputRef.current.focus();
     }, [AddHis]);
 
     // ctrl+enter发送
