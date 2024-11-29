@@ -110,7 +110,6 @@ function GetMemosReq(url: string, key: string, sucCallback: (data: any) => void,
 
 function MemosQueue({His}: { His: MemosReqHis[] }) {
     // 横过来排列，每个元素是一个请求的状态，移上去显示请求的内容，finish = false 时显示loading，finish = true 时显示绿色或红色的对号或叉号 icon
-    console.log(His);
     const queue = [];
     for (const his of His) {
         if (his.finish) {

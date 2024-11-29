@@ -1,7 +1,6 @@
-import {lazy, useState} from 'react';
+import {useEffect, useRef, useState} from 'react';
 import {Select} from 'antd';
 
-const {pinyin} = lazy(() => import('pinyin'));
 
 const {Option} = Select;
 
@@ -17,6 +16,17 @@ export function TagInput({
                              maxTagTextLength,
                              maxTagPlaceholder,
                          }) {
+    const [loadding, setLoadding] = useState(true);
+    const pinyinLib = useRef(null);
+    useEffect(() => {
+        import('pinyin').then((pinyin) => {
+            pinyinLib.current = pinyin;
+            setLoadding(false);
+            console.log(pinyinLib.current);
+        });
+        console.log(pinyinLib.current);
+    }, []);
+
     const [inputValue, setInputValue] = useState('');
 
     const handleSearch = (value) => {
@@ -65,7 +75,7 @@ export function TagInput({
     return (
         <Select
             mode="multiple"
-            disabled={disabled}
+            disabled={disabled || loadding}
             style={style}
             defaultValue={tags}
             value={tags}
@@ -76,8 +86,8 @@ export function TagInput({
             filterOption={
                 (input, option) => {
                     // 支持拼音搜索 使用pinyin库
-                    const inputPinyin = pinyin(input, {style: pinyin.STYLE_NORMAL}).join('');
-                    const optionPinyin = pinyin(option.label, {style: pinyin.STYLE_NORMAL}).join('');
+                    const inputPinyin = pinyinLib.current.pinyin(input, {style: pinyinLib.current.STYLE_NORMAL}).join('');
+                    const optionPinyin = pinyinLib.current.pinyin(option.label, {style: pinyinLib.current.STYLE_NORMAL}).join('');
                     return optionPinyin.includes(inputPinyin);
                 }
             }
@@ -108,7 +118,6 @@ export function TagInput({
             maxTagTextLength={maxTagTextLength}
             maxTagPlaceholder={maxTagPlaceholder}
         />
-
     );
 }
 
