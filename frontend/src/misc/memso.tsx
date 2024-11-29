@@ -152,6 +152,8 @@ function Memos() {
                 submit();
             }
         }}
+        // 提示 enter换行 ctrl+enter发送
+        placeholder={'Enter换行，Ctrl+Enter发送'}
     />;
 
     const [reqHis, setReqHis] = useState<MemosReqHis[]>([]);
@@ -272,16 +274,16 @@ function Memos() {
                         setInputText(inputHidden.slice(0, starCount) + inputText.slice(starCount));
                     }
                     setHidden(!hidden)
-                }}>显示/隐藏</Button>
-                <Tooltip title="Enter换行 Ctrl+Enter发送">
-                    <Button
-                        type="primary"
-                        disabled={NowSetting.current.url === '' || NowSetting.current.key === '' || hidden || inputText === ''}
-                        onClick={submit}
-                    >
-                        发送
-                    </Button>
-                </Tooltip>
+                }}>{
+                    hidden ? '显示' : '隐藏'
+                }</Button>
+                <Button
+                    type="primary"
+                    disabled={NowSetting.current.url === '' || NowSetting.current.key === '' || hidden || inputText === ''}
+                    onClick={submit}
+                >
+                    发送
+                </Button>
             </Space>
         </div>
     </div>

@@ -1,16 +1,18 @@
 import {useState} from "react";
-import {Button, Card, Col, InputNumber, Row, Slider, Space, Tooltip, Typography} from "antd";
+import {Button, Card, Col, InputNumber, Row, Slider, Space, Typography} from "antd";
 import {CustomDeviceSimulator, DeviceSimulator} from "./DeviceSim.jsx";
 import {MenuPlus} from "../common/MenuPlus.jsx";
 import {EditableProps} from "./EditableProps.jsx";
-import {SyncOutlined} from "@ant-design/icons";
+import TagInput from "../common/TagInput.jsx";
 
 const {Text} = Typography;
 
-const debug = <Tooltip><SyncOutlined
-    spin
-    style={{color: 'orange'}}
-/></Tooltip>
+const debug = <TagInput
+    tagOps={['中文', 'tag2', 'tag3', '厕所']}
+    tags={['tag1', 'tag2']}
+    onChange={(tags) => console.log(tags)}
+    style={{width: '100%'}}
+/>;
 
 // const debug = <Timeline style={{margin: 0, padding: 0, minHeight: 0}}
 //                         items={[
