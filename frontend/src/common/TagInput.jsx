@@ -67,6 +67,7 @@ export function TagInput({
             disabled={disabled}
             style={style}
             defaultValue={tags}
+            value={tags}
             placeholder={tips}
             searchValue={inputValue}
             onSearch={handleSearch}

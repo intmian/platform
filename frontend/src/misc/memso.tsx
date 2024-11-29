@@ -1,6 +1,7 @@
-import {useRef, useState} from "react";
+import React, {useCallback, useEffect, useRef, useState} from "react";
 import {Button, Input, Space, Tooltip} from "antd";
 import {CheckCircleTwoTone, CloseCircleTwoTone, HomeOutlined, SettingFilled, SyncOutlined} from "@ant-design/icons";
+import TagInput from "../common/TagInput";
 
 const {TextArea} = Input;
 
@@ -16,9 +17,14 @@ interface MemosReqHis {
     id: number
 }
 
-function SendMemosReq(url: string, key: string, content: string, sucCallback: () => void, failCallback: () => void) {
+function SendMemosReq(url: string, key: string, content: string, tags: string[], sucCallback: () => void, failCallback: () => void) {
+    let tagsStr = '';
+    if (tags.length > 0) {
+        // 前面加上#，然后用空格分隔
+        tagsStr = '#' + tags.join(' #');
+    }
     const payload = {
-        content: content,
+        content: content + '\n' + tagsStr,
         visibility: "PRIVATE",
     };
 
@@ -33,7 +39,7 @@ function SendMemosReq(url: string, key: string, content: string, sucCallback: ()
         .then(response => response.json())
         .then(data => {
             // 如果data里面有content，说明成功了
-            if (data.content && data.content === content) {
+            if (data.content) {
                 sucCallback();
             } else {
                 failCallback();
@@ -43,6 +49,41 @@ function SendMemosReq(url: string, key: string, content: string, sucCallback: ()
             console.error('Error:', error);
             failCallback();
         });
+}
+
+interface MemosTagAmount {
+    tagAmounts: Map<string, number>
+}
+
+interface TagData {
+    tag: string
+    amount: number
+}
+
+function GetMemosTags(url: string, key: string, sucCallback: (data: any) => void, failCallback: () => void) {
+    fetch(url + '/api/v1/memos/-/tags', {
+        method: 'GET',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${key}`
+        },
+    })
+        .then(response => response.json())
+        .then(data => {
+            if (data.tagAmounts) {
+                const tagsMap: MemosTagAmount = data.tagAmounts;
+                const tagData: TagData[] = [];
+                for (const [tag, amount] of Object.entries(tagsMap)) {
+                    tagData.push({tag: tag, amount: amount});
+                }
+                // 在请求时根据amount排序，因为短期不会发生变化，所以不用实时更新排序，避免在底层造成性能问题。
+                tagData.sort((a, b) => b.amount - a.amount);
+                const tags = tagData.map((tag) => tag.tag);
+                sucCallback({tags: tags});
+            } else {
+                failCallback();
+            }
+        })
 }
 
 function GetMemosReq(url: string, key: string, sucCallback: (data: any) => void, failCallback: () => void) {
@@ -69,18 +110,19 @@ function GetMemosReq(url: string, key: string, sucCallback: (data: any) => void,
 
 function MemosQueue({His}: { His: MemosReqHis[] }) {
     // 横过来排列，每个元素是一个请求的状态，移上去显示请求的内容，finish = false 时显示loading，finish = true 时显示绿色或红色的对号或叉号 icon
+    console.log(His);
     const queue = [];
     for (const his of His) {
         if (his.finish) {
             if (his.success) {
-                queue.push(<Tooltip key={his.content} title={his.content}><CheckCircleTwoTone
+                queue.push(<Tooltip key={his.id} title={his.content}><CheckCircleTwoTone
                     twoToneColor={'#52c41a'}/></Tooltip>);
             } else {
-                queue.push(<Tooltip key={his.content} title={his.content}><CloseCircleTwoTone
+                queue.push(<Tooltip key={his.id} title={his.content}><CloseCircleTwoTone
                     twoToneColor={'#ff8b8b'}/></Tooltip>);
             }
         } else {
-            queue.push(<Tooltip key={his.content} title={his.content}>
+            queue.push(<Tooltip key={his.id} title={his.content}>
                 <SyncOutlined style={{color: 'orange'}} spin/>
             </Tooltip>);
         }
@@ -99,6 +141,33 @@ function MemosQueue({His}: { His: MemosReqHis[] }) {
     >
         {queue}
     </Space>;
+}
+
+function Tags({TagsChange, setting, style, tags}: {
+    TagsChange: (tags: string[]) => void,
+    setting: MemosSetting,
+    style: React.CSSProperties | undefined,
+    tags: string[]
+}) {
+    // 从localStorage中获取之前缓存的tags
+    const tagsOprDisk = JSON.parse(localStorage.getItem('memosTags') || '[]');
+    const tagsOpr: { current: string[] } = useRef(tagsOprDisk);
+    useEffect(() => {
+        GetMemosTags(setting.url, setting.key, (data) => {
+            tagsOpr.current = data.tags;
+            localStorage.setItem('memosTags', JSON.stringify(tagsOpr.current));
+        }, () => {
+        });
+    }, [setting.url, setting.key, TagsChange]);
+    return <TagInput
+        onChange={(tags: string[]) => {
+            TagsChange(tags);
+        }}
+        tags={tags}
+        style={style} tagOps={tagsOpr.current}
+        disabled={false} maxTagCount={undefined} maxTagTextLength={undefined}
+        maxTagPlaceholder={undefined}
+    />
 }
 
 function Memos() {
@@ -134,6 +203,7 @@ function Memos() {
             localStorage.setItem('memosSetting', JSON.stringify(NowSetting.current));
         }}/>;
 
+    // TODO: 重构此处，优化下这个组件频繁重绘的问题。
     const [inputText, setInputText] = useState('');
     const [inputHidden, setInputHidden] = useState('');
     const [hidden, setHidden] = useState<boolean>(false);
@@ -146,14 +216,8 @@ function Memos() {
             fontSize: '16px',
         }}
         value={inputText} onChange={(e) => setInputText(e.target.value)}
-        // ctrl+enter发送
-        onPressEnter={(e) => {
-            if (e.ctrlKey) {
-                submit();
-            }
-        }}
         // 提示 enter换行 ctrl+enter发送
-        placeholder={'Enter换行，Ctrl+Enter发送'}
+        placeholder={'Enter换行\nCtrl+Enter发送\ntab切换标签输入'}
     />;
 
     const [reqHis, setReqHis] = useState<MemosReqHis[]>([]);
@@ -176,13 +240,29 @@ function Memos() {
         setReqHis(reqHisNow.current);
     }
 
-    const [lastReqId, setLastReqId] = useState<number>(0);
+    // 生成一个随机数，从0开始也行，主要是内网调试的时候，避免出现重复的id
+    const tempId = Math.floor(Math.random() * 1000000);
+    const [lastReqId, setLastReqId] = useState<number>(tempId);
+    const [tagsSelected, setTagsSelected] = useState<string[]>([]);
 
-
-    const submit = () => {
-        AddHis(inputText);
+    const submit = useCallback(() => {
+        let realText = '';
+        if (hidden) {
+            let starCount = 0;
+            for (let i = 0; i < inputText.length; i++) {
+                if (inputText[i] === '*') {
+                    starCount++;
+                } else {
+                    break;
+                }
+            }
+            realText = inputHidden.slice(0, starCount) + inputText.slice(starCount)
+        } else {
+            realText = inputText;
+        }
+        AddHis(realText);
         const id = lastReqId;
-        SendMemosReq(NowSetting.current.url, NowSetting.current.key, inputText, () => {
+        SendMemosReq(NowSetting.current.url, NowSetting.current.key, realText, tagsSelected, () => {
             SetHis(id, true, true);
         }, () => {
             SetHis(id, true, false);
@@ -190,7 +270,27 @@ function Memos() {
         setInputText('');
         setInputHidden('');
         setLastReqId(lastReqId + 1);
-    };
+        setHidden(false);
+        setTagsSelected([]);
+    }, [AddHis]);
+
+    // ctrl+enter发送
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.ctrlKey && e.key === 'Enter') {
+                e.stopPropagation();
+                submit();
+            }
+        };
+        document.addEventListener('keydown', handleKeyDown);
+        return () => {
+            document.removeEventListener('keydown', handleKeyDown);
+        };
+    }, [submit]);
+
+    const tagsChange = useCallback((tags: string[]) => {
+        setTagsSelected(tags);
+    }, []);
     return <div
         style={{
             // 绝对定位
@@ -247,44 +347,58 @@ function Memos() {
                     {setKeyButton}
                 </Space>
             </div>
-
             {input}
-            <Space
+            <div
                 style={{
-                    // 子组件靠右
                     display: 'flex',
-                    justifyContent: 'flex-end',
                 }}
             >
-                <Button onClick={() => {
-                    if (!hidden) {
-                        // 将当前内容保存到隐藏的input中，并将inputText全部变成*
-                        setInputHidden(inputText);
-                        setInputText('*'.repeat(inputText.length));
-                    } else {
-                        // 将inputhidden提取input中剩余的前缀*数放在前面，input中*后的内容放在后面.
-                        let starCount = 0;
-                        for (let i = 0; i < inputText.length; i++) {
-                            if (inputText[i] === '*') {
-                                starCount++;
-                            } else {
-                                break;
-                            }
-                        }
-                        setInputText(inputHidden.slice(0, starCount) + inputText.slice(starCount));
-                    }
-                    setHidden(!hidden)
-                }}>{
-                    hidden ? '显示' : '隐藏'
-                }</Button>
-                <Button
-                    type="primary"
-                    disabled={NowSetting.current.url === '' || NowSetting.current.key === '' || hidden || inputText === ''}
-                    onClick={submit}
+                <Tags
+                    TagsChange={tagsChange}
+                    tags={tagsSelected}
+                    setting={NowSetting.current}
+                    style={{
+                        // 宽度自动填充
+                        flexGrow: 1,
+                        marginRight: '10px',
+                    }}/>
+                <Space
+                    style={{
+                        // 子组件靠右
+                        display: 'flex',
+                        justifyContent: 'flex-end',
+                    }}
                 >
-                    发送
-                </Button>
-            </Space>
+                    <Button onClick={() => {
+                        if (!hidden) {
+                            // 将当前内容保存到隐藏的input中，并将inputText全部变成*
+                            setInputHidden(inputText);
+                            setInputText('*'.repeat(inputText.length));
+                        } else {
+                            // 将inputhidden提取input中剩余的前缀*数放在前面，input中*后的内容放在后面.
+                            let starCount = 0;
+                            for (let i = 0; i < inputText.length; i++) {
+                                if (inputText[i] === '*') {
+                                    starCount++;
+                                } else {
+                                    break;
+                                }
+                            }
+                            setInputText(inputHidden.slice(0, starCount) + inputText.slice(starCount));
+                        }
+                        setHidden(!hidden)
+                    }}>{
+                        hidden ? '显示' : '隐藏'
+                    }</Button>
+                    <Button
+                        type="primary"
+                        disabled={NowSetting.current.url === '' || NowSetting.current.key === '' || (inputText === '' && inputHidden === '')}
+                        onClick={submit}
+                    >
+                        发送
+                    </Button>
+                </Space>
+            </div>
         </div>
     </div>
 }
