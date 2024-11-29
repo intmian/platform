@@ -22,9 +22,7 @@ export function TagInput({
         import('pinyin').then((pinyin) => {
             pinyinLib.current = pinyin;
             setLoadding(false);
-            console.log(pinyinLib.current);
         });
-        console.log(pinyinLib.current);
     }, []);
 
     const [inputValue, setInputValue] = useState('');
