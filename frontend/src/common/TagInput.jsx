@@ -1,7 +1,7 @@
 import {lazy, useState} from 'react';
 import {Select} from 'antd';
 
-const pinyin = lazy(() => import('pinyin'));
+const {pinyin} = lazy(() => import('pinyin'));
 
 const {Option} = Select;
 
