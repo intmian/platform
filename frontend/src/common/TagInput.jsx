@@ -1,5 +1,6 @@
 import React, {useState} from 'react';
 import {Select} from 'antd';
+import pinyin from 'pinyin';
 
 const {Option} = Select;
 
@@ -70,6 +71,14 @@ export function TagInput({
             searchValue={inputValue}
             onSearch={handleSearch}
             onSelect={handleSelect}
+            filterOption={
+                (input, option) => {
+                    // 支持拼音搜索 使用pinyin库
+                    const inputPinyin = pinyin(input, {style: pinyin.STYLE_NORMAL}).join('');
+                    const optionPinyin = pinyin(option.label, {style: pinyin.STYLE_NORMAL}).join('');
+                    return optionPinyin.includes(inputPinyin);
+                }
+            }
             onChange={(value) => {
                 if (onChange) {
                     onChange(value);
