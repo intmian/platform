@@ -5,8 +5,10 @@ import {Debug} from "./debug/debug.jsx";
 import {Cmd} from "./tool/cmd.tsx";
 import {ErrorPage} from "./misc/ErrorPage.tsx";
 import Anniversary from "./misc/love";
-import Memos from "./misc/memso";
 
+import {lazy} from 'react';
+
+const Memos = lazy(() => import('./misc/memos'));
 
 const router = createBrowserRouter([
     {
