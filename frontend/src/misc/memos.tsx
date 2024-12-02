@@ -244,7 +244,8 @@ function Memos() {
     const [focus, resetFocus] = useAlwaysFocus()
     useEffect(() => {
         console.log(focus);
-        if (!focus) {
+        // 手机端似乎无效
+        if (!focus && inputText !== '' && !hidden) {
             // 将当前内容保存到隐藏的input中，并将inputText全部变成*
             setInputHidden(inputText);
             setInputText('*'.repeat(inputText.length));
