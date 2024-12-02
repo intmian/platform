@@ -70,6 +70,7 @@ export function TagInput({
     if (newTag) {
         options.push(newTag);
     }
+
     return (
         <Select
             mode="multiple"
@@ -83,10 +84,28 @@ export function TagInput({
             onSelect={handleSelect}
             filterOption={
                 (input, option) => {
-                    // 支持拼音搜索 使用pinyin库
-                    const inputPinyin = pinyinLib.current.pinyin(input, {style: pinyinLib.current.STYLE_NORMAL}).join('');
-                    const optionPinyin = pinyinLib.current.pinyin(option.label, {style: pinyinLib.current.STYLE_NORMAL}).join('');
-                    return optionPinyin.includes(inputPinyin);
+                    // 支持拼音搜索 使用pinyin库，如果不是纯字母不会开启拼音搜索，为了避免太多候选项，仅搜索开头。
+                    let allLatin = true;
+                    for (let i = 0; i < input.length; i++) {
+                        if (input[i] < 'a' || input[i] > 'z') {
+                            allLatin = false;
+                            break;
+                        }
+                    }
+                    if (!allLatin || pinyinLib.current === null) {
+                        // 不是纯字母，不开启拼音搜索
+                        return option.label.includes(input);
+                    } else {
+                        const inputPinyin = pinyinLib.current.pinyin(input, {style: "normal"}).join('');
+                        const optionPinyin = pinyinLib.current.pinyin(option.label, {style: "normal"}).join('');
+                        // 如果optionPinyin不是以inputPinyin开头，返回false
+                        if (optionPinyin.length < inputPinyin.length) {
+                            return false;
+                        }
+                        return optionPinyin.substring(0, inputPinyin.length) === inputPinyin;
+                    }
+
+
                 }
             }
             onChange={(value) => {

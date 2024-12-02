@@ -86,27 +86,27 @@ function GetMemosTags(url: string, key: string, sucCallback: (data: any) => void
         })
 }
 
-function GetMemosReq(url: string, key: string, sucCallback: (data: any) => void, failCallback: () => void) {
-    fetch(url, {
-        method: 'GET',
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${key}`
-        },
-    })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                sucCallback(data);
-            } else {
-                failCallback();
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            failCallback();
-        });
-}
+// function GetMemosReq(url: string, key: string, sucCallback: (data: any) => void, failCallback: () => void) {
+//     fetch(url, {
+//         method: 'GET',
+//         headers: {
+//             'Content-Type': 'application/json',
+//             'Authorization': `Bearer ${key}`
+//         },
+//     })
+//         .then(response => response.json())
+//         .then(data => {
+//             if (data.success) {
+//                 sucCallback(data);
+//             } else {
+//                 failCallback();
+//             }
+//         })
+//         .catch(error => {
+//             console.error('Error:', error);
+//             failCallback();
+//         });
+// }
 
 function MemosQueue({His}: { His: MemosReqHis[] }) {
     // 横过来排列，每个元素是一个请求的状态，移上去显示请求的内容，finish = false 时显示loading，finish = true 时显示绿色或红色的对号或叉号 icon
@@ -273,7 +273,9 @@ function Memos() {
         setLastReqId(lastReqId + 1);
         setHidden(false);
         setTagsSelected([]);
-        inputRef.current.focus();
+        if (inputRef.current) {
+            inputRef.current.focus();
+        }
     }, [AddHis]);
 
     // ctrl+enter发送
