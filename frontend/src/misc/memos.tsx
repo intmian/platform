@@ -177,9 +177,22 @@ function Memos() {
     const NowSetting = useRef(memosSetting);
     // 如果没有配置，需要用户输入，并设置到localStorage
     if (!memosSetting.url || !memosSetting.key) {
-        const url = prompt('请输入备忘录的URL');
+        let url = prompt('请输入备忘录的URL');
+        // 如果url不为空，且未包含http，默认在前面补全https://。
+        if (url && !url.includes('http')) {
+            url = 'https://' + url;
+        }
         const key = prompt('请输入备忘录的KEY');
-        NowSetting.current = {url: url || '', key: key || ''};
+        if (NowSetting.current) {
+            if (url) {
+                NowSetting.current.url = url;
+            }
+            if (key) {
+                NowSetting.current.key = key;
+            }
+        } else {
+            NowSetting.current = {url: url || '', key: key || ''};
+        }
         localStorage.setItem('memosSetting', JSON.stringify(NowSetting.current));
     }
 
@@ -189,7 +202,9 @@ function Memos() {
         icon={<HomeOutlined/>}
         onClick={() => {
             const url = prompt('请输入备忘录的URL');
-            NowSetting.current.url = url || '';
+            if (url) {
+                NowSetting.current.url = url;
+            }
             localStorage.setItem('memosSetting', JSON.stringify(NowSetting.current));
         }}/>;
 
@@ -200,7 +215,9 @@ function Memos() {
 
         onClick={() => {
             const key = prompt('请输入备忘录的KEY');
-            NowSetting.current.key = key || '';
+            if (key) {
+                NowSetting.current.key = key;
+            }
             localStorage.setItem('memosSetting', JSON.stringify(NowSetting.current));
         }}/>;
 
