@@ -3,7 +3,7 @@ import {useCallback, useEffect, useState} from 'react';
 /**
  * 自定义Hook，检测页面是否失去过焦点
  */
-export function useHasLostFocus() {
+export function useAlwaysFocus() {
     // 初始化状态为true
     const [hasFocus, setHasFocus] = useState(true);
 

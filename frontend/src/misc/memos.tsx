@@ -2,6 +2,7 @@ import React, {useCallback, useEffect, useRef, useState} from "react";
 import {Button, Input, Space, Tooltip} from "antd";
 import {CheckCircleTwoTone, CloseCircleTwoTone, HomeOutlined, SettingFilled, SyncOutlined} from "@ant-design/icons";
 import TagInput from "../common/TagInput";
+import {useAlwaysFocus} from "../common/hook";
 
 // TODO: 使用ios打开网页时，当浏览器切换到后台，立刻重新切回前台，网页并未被回收，但是浏览器会自动刷新一次，此时如果停止刷新，使用是完全正常的，似乎是底层问题后面看看
 
@@ -240,6 +241,17 @@ function Memos() {
         placeholder={'Enter换行\nCtrl+Enter发送\ntab切换标签输入'}
     />;
 
+    const [focus, resetFocus] = useAlwaysFocus()
+    useEffect(() => {
+        console.log(focus);
+        if (!focus) {
+            // 将当前内容保存到隐藏的input中，并将inputText全部变成*
+            setInputHidden(inputText);
+            setInputText('*'.repeat(inputText.length));
+            setHidden(true);
+        }
+    }, [focus]);
+
     const [reqHis, setReqHis] = useState<MemosReqHis[]>([]);
     const reqHisNow = useRef(reqHis);
     const AddHis = (content: string) => {
@@ -411,6 +423,7 @@ function Memos() {
                                 }
                             }
                             setInputText(inputHidden.slice(0, starCount) + inputText.slice(starCount));
+                            resetFocus();
                         }
                         setHidden(!hidden)
                     }}>{
