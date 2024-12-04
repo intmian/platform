@@ -186,13 +186,18 @@ func (s *Service) OnCreateEnv(valid backendshare.Valid, req CreateEnvReq) (ret C
 
 func (s *Service) OnGetEnvs(valid backendshare.Valid, req GetEnvsReq) (ret GetEnvsRet, err error) {
 	ids := s.runMgr.GetEnvIDs()
-	ret.EnvData = make([]run.EnvData, 0)
+	ret.EnvData = make([]WebEnvData, 0)
 	for _, id := range ids {
 		env := s.runMgr.GetEnv(id)
 		if env == nil {
 			continue
 		}
-		ret.EnvData = append(ret.EnvData, env.EnvData)
+		ret.EnvData = append(ret.EnvData, WebEnvData{
+			EnvID:         id,
+			Param:         env.Param,
+			DefaultToolID: env.DefaultToolID,
+			Note:          env.Note,
+		})
 	}
 	return
 }
