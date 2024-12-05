@@ -13,14 +13,29 @@ interface MemosSetting {
     key: string
 }
 
-interface MemosReqHis {
-    content: string
+interface MemosReqStatus {
     finish: boolean
     success: boolean
+}
+
+interface MemosReq {
+    content: string
+    tags: string[]
     id: number
 }
 
+let lastSendTime: Date | null = null;
+
 function SendMemosReq(url: string, key: string, content: string, tags: string[], sucCallback: () => void, failCallback: () => void) {
+    // 一秒内不允许连续发送
+    if (lastSendTime && new Date().getTime() - lastSendTime.getTime() < 1000) {
+        confirm('发送过于频繁，请稍后再试');
+        failCallback();
+        return;
+    } else {
+        lastSendTime = new Date();
+    }
+
     let tagsStr = '';
     if (tags.length > 0) {
         // 前面加上#，然后用空格分隔
@@ -111,20 +126,65 @@ function GetMemosTags(url: string, key: string, sucCallback: (data: any) => void
 //         });
 // }
 
-function MemosQueue({His}: { His: MemosReqHis[] }) {
+function MemosQueue({reqs, url, apiKey}: { reqs: MemosReq[], url: string, apiKey: string }) {
+    const [reqHisMap, setReqHisMap] = useState(new Map<number, MemosReqStatus>());
+    const saveReqHisMap = (id: number, status: MemosReqStatus) => {
+        const newMap = new Map(reqHisMap);
+        newMap.set(id, status);
+        setReqHisMap(newMap);
+    };
     // 横过来排列，每个元素是一个请求的状态，移上去显示请求的内容，finish = false 时显示loading，finish = true 时显示绿色或红色的对号或叉号 icon
+    // 当发生变化时重新刷新显示。
     const queue = [];
-    for (const his of His) {
-        if (his.finish) {
-            if (his.success) {
-                queue.push(<Tooltip key={his.id} title={his.content}><CheckCircleTwoTone
+    for (const req of reqs) {
+        // 读取状态，如果没有就新建一个
+        const id = req.id;
+        let noFind = false;
+        if (!reqHisMap.has(id)) {
+            noFind = true;
+            reqHisMap.set(id, {finish: false, success: false});
+        }
+        const reqStatus = reqHisMap.get(id);
+        if (!reqStatus) {
+            continue;
+        }
+
+        // 没有就新建
+        if (noFind) {
+            saveReqHisMap(id, {finish: false, success: false});
+            SendMemosReq(url, apiKey, req.content, req.tags, () => {
+                saveReqHisMap(id, {finish: true, success: true});
+            }, () => {
+                saveReqHisMap(id, {finish: true, success: false});
+            });
+        }
+
+        const realText = req.content + (req.tags.length > 0 ? '\n #' + req.tags.join(' #') : '');
+
+        if (reqStatus.finish) {
+            if (reqStatus.success) {
+                queue.push(<Tooltip key={req.id} title={realText}><CheckCircleTwoTone
                     twoToneColor={'#52c41a'}/></Tooltip>);
             } else {
-                queue.push(<Tooltip key={his.id} title={his.content}><CloseCircleTwoTone
-                    twoToneColor={'#ff8b8b'}/></Tooltip>);
+                // 点击叉号重新发送，更改状态
+                queue.push(
+                    <CloseCircleTwoTone
+                        twoToneColor={'#ff8b8b'}
+                        key={req.id} title={realText}
+                        onClick={() => {
+                            SendMemosReq(url, apiKey, req.content, req.tags, () => {
+                                    saveReqHisMap(id, {finish: true, success: true,});
+                                }, () => {
+                                    saveReqHisMap(id, {finish: true, success: false});
+                                }
+                            );
+                            saveReqHisMap(id, {finish: false, success: false});
+                        }}
+                    />
+                );
             }
         } else {
-            queue.push(<Tooltip key={his.id} title={his.content}>
+            queue.push(<Tooltip key={req.id} title={realText}>
                 <SyncOutlined style={{color: 'orange'}} spin/>
             </Tooltip>);
         }
@@ -176,6 +236,7 @@ function Memos() {
     // 从localStorage中获取配置
     const memosSetting: MemosSetting = JSON.parse(localStorage.getItem('memosSetting') || '{}');
     const NowSetting = useRef(memosSetting);
+
     // 如果没有配置，需要用户输入，并设置到localStorage
     if (!memosSetting.url || !memosSetting.key) {
         let url = prompt('请输入备忘录的URL');
@@ -253,25 +314,19 @@ function Memos() {
         }
     }, [focus]);
 
-    const [reqHis, setReqHis] = useState<MemosReqHis[]>([]);
+    const [reqHis, setReqHis] = useState<MemosReq[]>([]);
     const reqHisNow = useRef(reqHis);
-    const AddHis = (content: string) => {
-        reqHisNow.current = [{content: content, finish: false, success: true, id: lastReqId}, ...reqHis];
+    const AddHis = (content: string, tags: string[]) => {
+        reqHisNow.current = [{
+            content: content,
+            tags: tags,
+            id: lastReqId
+        }, ...reqHis];
         if (reqHisNow.current.length > 10) {
             reqHisNow.current.pop();
         }
         setReqHis(reqHisNow.current);
     };
-    const SetHis = (id: number, finish: boolean, success: boolean) => {
-        reqHisNow.current = reqHisNow.current.map((his) => {
-            if (his.id === id) {
-                return {content: his.content, finish: finish, success: success, id: his.id};
-            } else {
-                return his;
-            }
-        });
-        setReqHis(reqHisNow.current);
-    }
 
     // 生成一个随机数，从0开始也行，主要是内网调试的时候，避免出现重复的id
     const tempId = Math.floor(Math.random() * 1000000);
@@ -293,13 +348,7 @@ function Memos() {
         } else {
             realText = inputText;
         }
-        AddHis(realText);
-        const id = lastReqId;
-        SendMemosReq(NowSetting.current.url, NowSetting.current.key, realText, tagsSelected, () => {
-            SetHis(id, true, true);
-        }, () => {
-            SetHis(id, true, false);
-        });
+        AddHis(realText, tagsSelected);
         setInputText('');
         setInputHidden('');
         setLastReqId(lastReqId + 1);
@@ -327,6 +376,7 @@ function Memos() {
     const tagsChange = useCallback((tags: string[]) => {
         setTagsSelected(tags);
     }, []);
+
     return <div
         style={{
             // 绝对定位
@@ -369,7 +419,11 @@ function Memos() {
                         marginRight: '10px',
                     }}
                 >
-                    <MemosQueue His={reqHis}/>
+                    <MemosQueue
+                        reqs={reqHis}
+                        url={NowSetting.current.url}
+                        apiKey={NowSetting.current.key}
+                    />
                 </div>
                 <Space
                     style={{
