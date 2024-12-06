@@ -32,3 +32,20 @@ export function useAlwaysFocus() {
     // 返回当前的焦点状态以及一个reset函数用于手动重置状态
     return [hasFocus, () => setHasFocus(true)];
 }
+
+export function useLostFocus(callback) {
+    const handleBlur = useCallback(() => {
+        // 窗口失去焦点时调用，设置状态为false
+        callback();
+    }, [callback]);
+
+    useEffect(() => {
+        // 组件挂载时添加事件监听
+        window.addEventListener('blur', handleBlur);
+
+        // 组件卸载时移除事件监听
+        return () => {
+            window.removeEventListener('blur', handleBlur);
+        };
+    }, [handleBlur]);
+}

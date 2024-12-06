@@ -1,8 +1,9 @@
-import React, {useCallback, useEffect, useRef, useState} from "react";
+import React, {useCallback, useEffect, useImperativeHandle, useRef, useState} from "react";
 import {Button, Input, Space, Tooltip} from "antd";
 import {CheckCircleTwoTone, CloseCircleTwoTone, HomeOutlined, SettingFilled, SyncOutlined} from "@ant-design/icons";
 import TagInput from "../common/TagInput";
-import {useAlwaysFocus} from "../common/hook";
+import {useLostFocus} from "../common/hook";
+import {TextAreaRef} from "antd/es/input/TextArea";
 
 // TODO: 使用ios打开网页时，当浏览器切换到后台，立刻重新切回前台，网页并未被回收，但是浏览器会自动刷新一次，此时如果停止刷新，使用是完全正常的，似乎是底层问题后面看看
 
@@ -78,7 +79,9 @@ interface TagData {
     amount: number
 }
 
-function GetMemosTags(url: string, key: string, sucCallback: (data: any) => void, failCallback: () => void) {
+function GetMemosTags(url: string, key: string, sucCallback: (data: {
+    tags: string[]
+}) => void, failCallback: () => void) {
     fetch(url + '/api/v1/memos/-/tags', {
         method: 'GET',
         headers: {
@@ -232,6 +235,84 @@ function Tags({TagsChange, setting, style, tags}: {
     />
 }
 
+
+// HideInput 用于输入并展示当前输入的内容，如果隐藏的模式下会对展示数据进行隐藏，ref用于清空，获得内容，触发隐藏逻辑等。
+function HideInput({functionsRef, style, onChange}: {
+    functionsRef: React.MutableRefObject<{
+        clear: () => void,
+        get: () => string,
+        hide: () => void,
+        show: () => void,
+        focus: () => void,
+    }>,
+    style: React.CSSProperties,
+    onChange: (text: string) => void
+}) {
+    // 目前显示的内容，输入的内容也同步在这里
+    const [showText, setShowText] = useState('');
+    // 隐藏的内容
+    const hideTextRef: React.MutableRefObject<string> = useRef('');
+    const inputRef: React.RefObject<TextAreaRef> = useRef(null);
+
+    // 给父组件提供的方法
+    const clear = useCallback(() => {
+        setShowText('');
+        hideTextRef.current = '';
+    }, []);
+    const get = useCallback(() => {
+        let starCount = 0;
+        for (let i = 0; i < showText.length; i++) {
+            if (showText[i] === '*') {
+                starCount++;
+            } else {
+                break;
+            }
+        }
+        return hideTextRef.current.slice(0, starCount) + showText.slice(starCount);
+    }, [showText]);
+    const hide = useCallback(() => {
+        hideTextRef.current = showText;
+        setShowText('*'.repeat(showText.length));
+    }, [showText]);
+    const show = useCallback(() => {
+        // 将inputHidden提取input中剩余的前缀*数放在前面，input中*后的内容放在后面.
+        let starCount = 0;
+        for (let i = 0; i < showText.length; i++) {
+            if (showText[i] === '*') {
+                starCount++;
+            } else {
+                break;
+            }
+        }
+        setShowText(hideTextRef.current.slice(0, starCount) + showText.slice(starCount));
+    }, [showText]);
+    const focus = useCallback(() => {
+        if (inputRef.current) {
+            inputRef.current.focus();
+        }
+    }, []);
+    useImperativeHandle(functionsRef, () => ({
+        clear,
+        get,
+        hide,
+        show,
+        focus,
+    }), [clear, focus, get, hide, show]);
+
+    useEffect(() => {
+        onChange(get());
+    }, [get, onChange, showText]);
+
+    return <TextArea
+        ref={inputRef}
+        autoFocus
+        style={style}
+        value={showText} onChange={(e) => setShowText(e.target.value)}
+        // 提示 enter换行 ctrl+enter发送
+        placeholder={'Enter换行\nCtrl+Enter发送\ntab切换标签输入'}
+    />;
+}
+
 function Memos() {
     // 从localStorage中获取配置
     const memosSetting: MemosSetting = JSON.parse(localStorage.getItem('memosSetting') || '{}');
@@ -283,40 +364,55 @@ function Memos() {
             localStorage.setItem('memosSetting', JSON.stringify(NowSetting.current));
         }}/>;
 
-    // TODO: 重构此处，优化下这个组件频繁重绘的问题。
-    const [inputText, setInputText] = useState('');
-    const [inputHidden, setInputHidden] = useState('');
-    const [hidden, setHidden] = useState<boolean>(false);
-    const inputRef = useRef(null);
-    const input = <TextArea
-        ref={inputRef}
-        autoFocus
-        style={{
-            marginBottom: '10px',
-            // 自动填充剩余空间
-            flexGrow: 1,
-            fontSize: '16px',
-        }}
-        value={inputText} onChange={(e) => setInputText(e.target.value)}
-        // 提示 enter换行 ctrl+enter发送
-        placeholder={'Enter换行\nCtrl+Enter发送\ntab切换标签输入'}
-    />;
+    const [hidden, setHidden] = useState(false);
+    const inputRef: React.MutableRefObject<{
+        clear: () => void;
+        get: () => string;
+        hide: () => void;
+        show: () => void;
+        focus: () => void
+    }> = useRef({
+        clear: () => {
+        },
+        get: () => '',
+        hide: () => {
+        },
+        show: () => {
+        },
+        focus: () => {
+        },
+    });
+    const [canSubmit, setCanSubmit] = useState(false);
+    const input = <HideInput functionsRef={inputRef}
+                             style={{
+                                 marginBottom: '10px',
+                                 // 自动填充剩余空间
+                                 flexGrow: 1,
+                                 fontSize: '16px',
+                             }}
+                             onChange={(text) => {
+                                 // 当输入框内容发生变化时，检查是否可以发送，这样可以减少刷新次数
+                                 setCanSubmit(NowSetting.current.url !== '' && NowSetting.current.key !== '' && text !== '');
+                             }}
+    />
 
-    const [focus, resetFocus] = useAlwaysFocus()
-    useEffect(() => {
-        console.log(focus);
-        // 手机端似乎无效
-        if (!focus && inputText !== '' && !hidden) {
-            // 将当前内容保存到隐藏的input中，并将inputText全部变成*
-            setInputHidden(inputText);
-            setInputText('*'.repeat(inputText.length));
+
+    useLostFocus(() => {
+        // 手机端似乎有点问题，后面研究下
+        if (!focus && inputRef.current.get() !== '' && !hidden) {
+            inputRef.current.focus();
             setHidden(true);
+            inputRef.current.hide();
         }
-    }, [focus]);
+    });
+
+    // 生成一个随机数，从0开始也行，主要是内网调试的时候，避免出现重复的id
+    const tempId = Math.floor(Math.random() * 1000000);
+    const [lastReqId, setLastReqId] = useState<number>(tempId);
 
     const [reqHis, setReqHis] = useState<MemosReq[]>([]);
     const reqHisNow = useRef(reqHis);
-    const AddHis = (content: string, tags: string[]) => {
+    const AddHis = useCallback((content: string, tags: string[]) => {
         reqHisNow.current = [{
             content: content,
             tags: tags,
@@ -326,38 +422,20 @@ function Memos() {
             reqHisNow.current.pop();
         }
         setReqHis(reqHisNow.current);
-    };
-
-    // 生成一个随机数，从0开始也行，主要是内网调试的时候，避免出现重复的id
-    const tempId = Math.floor(Math.random() * 1000000);
-    const [lastReqId, setLastReqId] = useState<number>(tempId);
+    }, [lastReqId, reqHis]);
     const [tagsSelected, setTagsSelected] = useState<string[]>([]);
 
     const submit = useCallback(() => {
-        let realText = '';
-        if (hidden) {
-            let starCount = 0;
-            for (let i = 0; i < inputText.length; i++) {
-                if (inputText[i] === '*') {
-                    starCount++;
-                } else {
-                    break;
-                }
-            }
-            realText = inputHidden.slice(0, starCount) + inputText.slice(starCount)
-        } else {
-            realText = inputText;
-        }
+        const realText = inputRef.current.get();
         AddHis(realText, tagsSelected);
-        setInputText('');
-        setInputHidden('');
+        inputRef.current.clear();
         setLastReqId(lastReqId + 1);
         setHidden(false);
         setTagsSelected([]);
         if (inputRef.current) {
             inputRef.current.focus();
         }
-    }, [AddHis]);
+    }, [AddHis, lastReqId, tagsSelected]);
 
     // ctrl+enter发送
     useEffect(() => {
@@ -464,21 +542,9 @@ function Memos() {
                 >
                     <Button onClick={() => {
                         if (!hidden) {
-                            // 将当前内容保存到隐藏的input中，并将inputText全部变成*
-                            setInputHidden(inputText);
-                            setInputText('*'.repeat(inputText.length));
+                            inputRef.current.hide();
                         } else {
-                            // 将inputhidden提取input中剩余的前缀*数放在前面，input中*后的内容放在后面.
-                            let starCount = 0;
-                            for (let i = 0; i < inputText.length; i++) {
-                                if (inputText[i] === '*') {
-                                    starCount++;
-                                } else {
-                                    break;
-                                }
-                            }
-                            setInputText(inputHidden.slice(0, starCount) + inputText.slice(starCount));
-                            resetFocus();
+                            inputRef.current.show();
                         }
                         setHidden(!hidden)
                     }}>{
@@ -486,7 +552,7 @@ function Memos() {
                     }</Button>
                     <Button
                         type="primary"
-                        disabled={NowSetting.current.url === '' || NowSetting.current.key === '' || (inputText === '' && inputHidden === '')}
+                        disabled={!canSubmit}
                         onClick={submit}
                     >
                         发送
