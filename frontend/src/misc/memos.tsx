@@ -398,8 +398,6 @@ function Memos() {
 
 
     useLostFocus(() => {
-        console.log('lost focus');
-        // 手机端似乎有点问题，后面研究下
         if (inputRef.current.get() !== '' && !hidden) {
             inputRef.current.focus();
             setHidden(true);
