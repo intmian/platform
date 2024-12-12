@@ -44,6 +44,10 @@ func (b *Baidu) Do() {
 	allRetry := 0
 	errs := make([]error, 0)
 	for _, v := range keys {
+		// 如果以#废弃结尾就跳过
+		if len(v) > 3 && v[len(v)-3:] == "#废弃" {
+			continue
+		}
 		unit, _ := setting.GSetting.Get(xstorage.Join("auto", "baidu", "key", "last", v))
 		var lastLink []string
 		if unit != nil {
