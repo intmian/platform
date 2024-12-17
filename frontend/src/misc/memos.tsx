@@ -47,15 +47,30 @@ function SendMemosReq(url: string, key: string, content: string, tags: string[],
         visibility: "PRIVATE",
     };
 
+    // 设置超时时间
+    const timeout = 5000;
+    // 使用AbortController来控制请求超时
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeout);
+
     fetch(url + '/api/v1/memos', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${key}`
         },
-        body: JSON.stringify(payload)
+        body: JSON.stringify(payload),
+        signal: controller.signal
     })
-        .then(response => response.json())
+        .then(response => {
+            // 清除超时定时器
+            clearTimeout(timeoutId);
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! Status: ${response.status}`);
+            }
+            return response.json();
+        })
         .then(data => {
             // 如果data里面有content，说明成功了
             if (data.content) {
