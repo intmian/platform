@@ -391,3 +391,175 @@ export function sendDeleteTool(req: DeleteToolReq, callback: (ret: { data: Delet
         callback(result);
     });
 }
+
+type WeatherPtl = {
+    code: string;
+    updateTime: string;
+    fxLink: string;
+    daily: {
+        fxDate: string;
+        sunrise: string;
+        sunset: string;
+        moonrise: string;
+        moonset: string;
+        moonPhase: string;
+        moonPhaseIcon: string;
+        tempMax: string;
+        tempMin: string;
+        iconDay: string;
+        textDay: string;
+        iconNight: string;
+        textNight: string;
+        wind360Day: string;
+        windDirDay: string;
+        windScaleDay: string;
+        windSpeedDay: string;
+        wind360Night: string;
+        windDirNight: string;
+        windScaleNight: string;
+        windSpeedNight: string;
+        humidity: string;
+        precip: string;
+        pressure: string;
+        vis: string;
+        cloud: string;
+        uvIndex: string;
+    }[];
+    refer: {
+        sources: string[];
+        license: string[];
+    };
+};
+
+type WeatherIndexPtl = {
+    Code: string;
+    UpdateTime: string;
+    FxLink: string;
+    Daily: {
+        Date: string;
+        Type: string;
+        Name: string;
+        Level: string;
+        Category: string;
+        Text: string;
+    }[];
+    Refer: {
+        Sources: string[];
+        License: string[];
+    };
+};
+
+type RssItem = {
+    Title: string;
+    Link: string;
+    PubDate: string;
+};
+
+export interface DayReport {
+    Weather: WeatherPtl
+    WeatherIndex: WeatherIndexPtl;
+    BbcNews: RssItem[]
+    NytNews: RssItem[]
+    GoogleNews: {
+        KeyWord: string;
+        News: RssItem[];
+    }[];
+}
+
+export interface WholeReport {
+    BbcNews: RssItem[]
+    NytNews: RssItem[]
+    GoogleNews: {
+        KeyWord: string;
+        News: RssItem[];
+    }[];
+}
+
+export interface GetReportReq {
+    DayString: string
+}
+
+export interface GetReportRet {
+    Suc: boolean
+    Report: DayReport
+}
+
+
+export type GetWholeReportReq = object
+
+export interface GetWholeReportRet {
+    Suc: boolean
+    Report: WholeReport
+}
+
+
+export type GetReportListReq = object
+
+export interface GetReportListRet {
+    Suc: boolean
+    List: string[]
+}
+
+
+export type GenerateReportReq = object
+
+export interface GenerateReportRet {
+    Suc: boolean
+}
+
+
+const auto_api_base_url = config.api_base_url + '/service/auto/'
+
+export function sendGetReport(req: GetReportReq, callback: (ret: { data: GetReportRet, ok: boolean }) => void) {
+    UniPost(auto_api_base_url + 'getReport', req).then((res: UniResult) => {
+        const result: { data: GetReportRet, ok: boolean } = {
+            data: res.data as GetReportRet,
+            ok: res.ok
+        };
+
+        callback(result);
+    });
+}
+
+export function sendGetWholeReport(req: GetWholeReportReq, callback: (ret: {
+    data: GetWholeReportRet,
+    ok: boolean
+}) => void) {
+    UniPost(auto_api_base_url + 'getWholeReport', req).then((res: UniResult) => {
+        const result: { data: GetWholeReportRet, ok: boolean } = {
+            data: res.data as GetWholeReportRet,
+            ok: res.ok
+        };
+
+        callback(result);
+    });
+}
+
+export function sendGetReportList(req: GetReportListReq, callback: (ret: {
+    data: GetReportListRet,
+    ok: boolean
+}) => void) {
+    UniPost(auto_api_base_url + 'getReportList', req).then((res: UniResult) => {
+        const result: { data: GetReportListRet, ok: boolean } = {
+            data: res.data as GetReportListRet,
+            ok: res.ok
+        };
+
+        callback(result);
+    });
+}
+
+export function sendGenerateReport(req: GenerateReportReq, callback: (ret: {
+    data: GenerateReportRet,
+    ok: boolean
+}) => void) {
+    UniPost(auto_api_base_url + 'generateReport', req).then((res: UniResult) => {
+        const result: { data: GenerateReportRet, ok: boolean } = {
+            data: res.data as GenerateReportRet,
+            ok: res.ok
+        };
+
+        callback(result);
+    });
+}
+

@@ -13,6 +13,8 @@ import (
 	"time"
 )
 
+// TODO: 细化权限，并发控制
+
 // Day 将每日的没有时间要求的都接入此处，比如天气新闻等
 type Day struct {
 	// 用于存储往期日报。
@@ -29,8 +31,8 @@ type DayReport struct {
 	BbcNews      []spider.BBCRssItem
 	NytNews      []spider.NYTimesRssItem
 	GoogleNews   []struct {
-		keyWord string
-		news    []spider.GoogleRssItem
+		KeyWord string
+		News    []spider.GoogleRssItem
 	}
 }
 
