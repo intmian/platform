@@ -44,6 +44,32 @@ type WholeReport struct {
 	}
 }
 
+func GetWholeReport(c *http.Client, keywords []string) (*WholeReport, error) {
+	report := &WholeReport{}
+	bbcNews, err1 := spider.GetBBCRss(c)
+	report.BbcNews = bbcNews
+	nytNews, err2 := spider.GetNYTimesRss(c)
+	report.NytNews = nytNews
+	var err3 error
+	report.GoogleNews = make([]struct {
+		keyWord string
+		news    []spider.GoogleRssItem
+	}, len(keywords))
+	for i, key := range keywords {
+		report.GoogleNews[i].keyWord = key
+		var err error
+		report.GoogleNews[i].news, err = spider.GetGoogleRss(key, c)
+		if err != nil {
+			err3 = errors.Join(err3, err)
+		}
+	}
+	err := errors.Join(err1, err2, err3)
+	if err != nil {
+		tool.GLog.WarningErr("Day", errors.Join(errors.New("func GetWholeReport() GetWholeReport error"), err))
+	}
+	return report, err
+}
+
 func GetDayReport(c *http.Client, keywords []string, city, weatherKey string) (*DayReport, error) {
 	report := &DayReport{}
 	lastDay := time.Now().AddDate(0, 0, -1)
@@ -164,6 +190,23 @@ func (d *Day) GenerateDayReport() (*DayReport, error) {
 	if err != nil {
 		return nil, errors.Join(errors.New("func GenerateDayReport() SetToJson error"), err)
 	}
+
+	// 从数据库添加进report列表
+	var reportList []string
+	err = d.dayReportStorage.GetFromJson("report_list", &reportList)
+	if err != nil {
+		if errors.Is(err, xstorage.ErrNoData) {
+			reportList = []string{}
+		} else {
+			return nil, errors.Join(errors.New("func GenerateDayReport() GetFromJson report_list error"), err)
+		}
+	}
+	reportList = append(reportList, timeStr)
+	err = d.dayReportStorage.SetToJson("report_list", reportList)
+	if err != nil {
+		return nil, errors.Join(errors.New("func GenerateDayReport() SetToJson report_list error"), err)
+	}
+
 	return report, nil
 }
 
@@ -273,4 +316,41 @@ func (d *Day) GetName() string {
 
 func (d *Day) GetInitTimeStr() string {
 	return "0 0 6 * * ?"
+}
+
+func (d *Day) GetDayReport(day time.Time) (*DayReport, error) {
+	timeStr := day.Format("2006-01-02")
+	report := &DayReport{}
+	err := d.dayReportStorage.GetFromJson(timeStr, report)
+	if err != nil {
+		return nil, errors.Join(errors.New("func GetDayReport() GetFromJson error"), err)
+	}
+	return report, nil
+}
+
+func (d *Day) GetWholeReport() (*WholeReport, error) {
+	keysV, err := setting.GSetting.Get("auto.news.keys")
+	if keysV == nil {
+		tool.GLog.Warning("auto.Day", "auto.news.keys not exist")
+		return nil, errors.New("auto.news.keys not exist")
+	}
+	if err != nil {
+		tool.GLog.WarningErr("auto.Day", errors.Join(errors.New("func GetWholeReport() Get auto.news.keys error"), err))
+		return nil, errors.Join(errors.New("func GetWholeReport() Get auto.news.keys error"), err)
+	}
+	keys := xstorage.ToBase[[]string](keysV)
+	return GetWholeReport(nil, keys)
+}
+
+func (d *Day) GetReportList() ([]string, error) {
+	var reportList []string
+	err := d.dayReportStorage.GetFromJson("report_list", &reportList)
+	if err != nil {
+		if errors.Is(err, xstorage.ErrNoData) {
+			reportList = []string{}
+		} else {
+			return nil, errors.Join(errors.New("func GetReportList() GetFromJson report_list error"), err)
+		}
+	}
+	return reportList, nil
 }
