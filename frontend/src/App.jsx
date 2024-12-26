@@ -7,6 +7,7 @@ import {ErrorPage} from "./misc/ErrorPage.tsx";
 import Anniversary from "./misc/love";
 
 import {lazy} from 'react';
+import ReportPanel from "./report/report";
 
 const Memos = lazy(() => import('./misc/memos'));
 
@@ -51,6 +52,10 @@ const router = createBrowserRouter([
     {
         path: '/note_mini',
         element: <Memos/>,
+    },
+    {
+        path: '/day-report/:date',
+        element: <ReportPanel/>,
     }
 ])
 

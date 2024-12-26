@@ -81,13 +81,13 @@ func GetDayReport(c *http.Client, keywords []string, city, weatherKey string) (*
 	report.NytNews = nytNews
 	var err3 error
 	report.GoogleNews = make([]struct {
-		keyWord string
-		news    []spider.GoogleRssItem
+		KeyWord string
+		News    []spider.GoogleRssItem
 	}, len(keywords))
 	for i, key := range keywords {
-		report.GoogleNews[i].keyWord = key
+		report.GoogleNews[i].KeyWord = key
 		var err error
-		report.GoogleNews[i].news, err = spider.GetGoogleRssWithDay(key, lastDay, c)
+		report.GoogleNews[i].News, err = spider.GetGoogleRssWithDay(key, lastDay, c)
 		if err != nil {
 			err3 = errors.Join(err3, err)
 		}
