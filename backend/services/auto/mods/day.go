@@ -3,27 +3,91 @@ package mods
 import (
 	"errors"
 	"fmt"
+	"github.com/intmian/mian_go_lib/tool/ai"
 	"github.com/intmian/mian_go_lib/tool/misc"
 	"github.com/intmian/mian_go_lib/tool/spider"
 	"github.com/intmian/mian_go_lib/xstorage"
 	"github.com/intmian/platform/backend/services/auto/setting"
 	"github.com/intmian/platform/backend/services/auto/tool"
-	"sync"
+	"net/http"
 	"time"
 )
 
 // Day 将每日的没有时间要求的都接入此处，比如天气新闻等
 type Day struct {
+	// 用于存储往期日报。
+	dayReportStorage *xstorage.XStorage
 }
 
-func (d Day) Init() {
-	err1 := setting.GSetting.SetDefault(xstorage.Join("auto", "baidu", "keys"), xstorage.ToUnit([]string{
-		"nuc",
-		"群晖",
-		"macbook air",
-		"扫地机器人 发布",
-		"kindle",
-	}, xstorage.ValueTypeSliceString))
+// 用于svr的调用。
+var GDay *Day
+
+// DayReport 用于存储一天的日报.
+type DayReport struct {
+	Weather      spider.WeatherReturn
+	WeatherIndex spider.IndexReturn
+	BbcNews      []spider.BBCRssItem
+	NytNews      []spider.NYTimesRssItem
+	GoogleNews   []struct {
+		keyWord string
+		news    []spider.GoogleRssItem
+	}
+}
+
+// WholeReport 用于存储读取的全量日报.
+type WholeReport struct {
+	BbcNews    []spider.BBCRssItem
+	NytNews    []spider.NYTimesRssItem
+	GoogleNews []struct {
+		keyWord string
+		news    []spider.GoogleRssItem
+	}
+}
+
+func GetDayReport(c *http.Client, keywords []string, city, weatherKey string) (*DayReport, error) {
+	report := &DayReport{}
+	lastDay := time.Now().AddDate(0, 0, -1)
+	bbcNews, err1 := spider.GetBBCRssWithDay(lastDay, c)
+	report.BbcNews = bbcNews
+	nytNews, err2 := spider.GetNYTimesRssWithDay(lastDay, c)
+	report.NytNews = nytNews
+	var err3 error
+	report.GoogleNews = make([]struct {
+		keyWord string
+		news    []spider.GoogleRssItem
+	}, len(keywords))
+	for i, key := range keywords {
+		report.GoogleNews[i].keyWord = key
+		var err error
+		report.GoogleNews[i].news, err = spider.GetGoogleRssWithDay(key, lastDay, c)
+		if err != nil {
+			err3 = errors.Join(err3, err)
+		}
+	}
+
+	// 读取天气
+	weather, err4 := spider.QueryTodayWeather(weatherKey, city)
+	report.Weather = weather
+	weatherIndex, err5 := spider.QueryTodayIndex(weatherKey, city)
+	report.WeatherIndex = weatherIndex
+
+	err := errors.Join(err1, err2, err3, err4, err5)
+	if err != nil {
+		tool.GLog.WarningErr("Day", errors.Join(errors.New("func GetDayReport() GetDayReport error"), err))
+	}
+	return report, err
+}
+
+func (d *Day) Init() {
+	//百度新闻组件已经移除
+	//err1 := setting.GSetting.SetDefault(xstorage.Join("auto", "baidu", "keys"), xstorage.ToUnit([]string{
+	//	"nuc",
+	//	"群晖",
+	//	"macbook air",
+	//	"扫地机器人 发布",
+	//	"kindle",
+	//}, xstorage.ValueTypeSliceString))
+	err1 := setting.GSetting.SetDefault(xstorage.Join("auto", "news", "keys"), xstorage.ToUnit([]string{"need input"}, xstorage.ValueTypeSliceString))
 	err2 := setting.GSetting.SetDefault(xstorage.Join("openai", "base"), xstorage.ToUnit[string]("need input", xstorage.ValueTypeString))
 	err3 := setting.GSetting.SetDefault(xstorage.Join("openai", "token"), xstorage.ToUnit[string]("need input", xstorage.ValueTypeString))
 	err4 := setting.GSetting.SetDefault(xstorage.Join("openai", "cheap"), xstorage.ToUnit[bool](true, xstorage.ValueTypeBool))
@@ -33,151 +97,180 @@ func (d Day) Init() {
 	if err != nil {
 		tool.GLog.WarningErr("auto.Day", errors.Join(errors.New("func Init() GetAndSetDefault error"), err))
 	}
+	// 初始化存储
+	d.dayReportStorage, err = xstorage.NewXStorage(xstorage.XStorageSetting{
+		Property: misc.CreateProperty(xstorage.MultiSafe, xstorage.UseDisk),
+		SaveType: xstorage.SqlLiteDB,
+		DBAddr:   "auto_report.db",
+	})
+	if err != nil {
+		tool.GLog.ErrorErr("auto.Day", errors.Join(errors.New("func Init() NewXStorage error"), err))
+		// 这玩意不起就炸了，必须要崩溃
+		panic(err)
+	}
+	GDay = d
 }
 
-func (d Day) Do() {
-	wg := sync.WaitGroup{}
-	wg.Add(2)
-	// 分别获取天气、GNews
-	hot := ""
-	weather := ""
-	weatherDone := false
-	go func() {
-		defer wg.Done()
-		// 获得token和base
-		baseV, err := setting.GSetting.Get("openai.base")
-		if baseV == nil {
-			tool.GLog.Warning("GNews", "openai.base not exist")
-			return
-		}
-		if err != nil {
-			tool.GLog.WarningErr("GNews", errors.Join(errors.New("func Do() Get openai.base error"), err))
-			return
-		}
-		base := xstorage.ToBase[string](baseV)
-		if base == "" || base == "need input" {
-			tool.GLog.Warning("GNews", "openai.base is empty")
-			return
-		}
-		tokenV, err := setting.GSetting.Get("openai.token")
-		if tokenV == nil {
-			tool.GLog.Warning("GNews", "openai.token not exist")
-			return
-		}
-		if err != nil {
-			tool.GLog.WarningErr("GNews", errors.Join(errors.New("func Do() Get openai.token error"), err))
-			return
-		}
-		token := xstorage.ToBase[string](tokenV)
-		if token == "" || token == "need input" {
-			tool.GLog.Warning("GNews", "openai.token is empty")
-			return
-		}
-		cheapV, err := setting.GSetting.Get("openai.cheap")
-		if cheapV == nil {
-			tool.GLog.Warning("GNews", "openai.cheap not exist")
-			return
-		}
-		if err != nil {
-			tool.GLog.WarningErr("GNews", errors.Join(errors.New("func Do() Get openai.cheap error"), err))
-			return
-		}
-		cheap := xstorage.ToBase[bool](cheapV)
-		newsTokenV, err := setting.GSetting.Get("auto.GNews.newsToken")
-		if newsTokenV == nil {
-			tool.GLog.Warning("GNews", "auto.GNews.newsToken not exist")
-			return
-		}
-		if err != nil {
-			tool.GLog.WarningErr("GNews", errors.Join(errors.New("func Do() Get auto.GNews.newsToken error"), err))
-			return
-		}
-		newsToken := xstorage.ToBase[string](newsTokenV)
-		if newsToken == "" || newsToken == "need input" {
-			tool.GLog.Warning("GNews", "auto.GNews.newsToken is empty")
-			return
-		}
-		md, err := getNews(newsToken, base, token, cheap)
-		if err != nil {
-			tool.GLog.WarningErr("GNews", errors.Join(errors.New("func Do() getNews error"), err))
-			return
-		}
-		hot = md
-	}()
-	var city string
-	go func() {
-		defer wg.Done()
-		cityV, err := setting.GSetting.Get("auto.weather.city")
-		if err != nil {
-			tool.GLog.WarningErr("WEATHER", errors.Join(errors.New("func Do() Get auto.weather.city error"), err))
-			return
-		}
-		city = xstorage.ToBase[string](cityV)
-		keyV, err := setting.GSetting.Get("qweather.key")
-		if keyV == nil {
-			tool.GLog.Warning("WEATHER", "qweather.key not exist")
-			return
-		}
-		if err != nil {
-			tool.GLog.WarningErr("WEATHER", errors.Join(errors.New("func Do() Get qweather.key error"), err))
-			return
-		}
-		key := xstorage.ToBase[string](keyV)
-		weather, err = spider.GetTodayWeatherMD(city, key)
-		weatherDone = true
-	}()
-	wg.Wait()
-
-	// 留档方便别的地方使用
-	todayStr := time.Now().Format("01月02日")
-	if weatherDone {
-		err := setting.GSetting.Set(xstorage.Join("auto", "weather", "today"), xstorage.ToUnit[string](weather, xstorage.ValueTypeString))
-		if err != nil {
-			tool.GLog.WarningErr("auto.Day", errors.Join(errors.New("func Do() Set auto.weather.today error"), err))
-		}
+func (d *Day) GenerateDayReport() (*DayReport, error) {
+	// 读取配置
+	keysV, err := setting.GSetting.Get("auto.news.keys")
+	if keysV == nil {
+		tool.GLog.Warning("auto.Day", "auto.news.keys not exist")
+		return nil, errors.New("auto.news.keys not exist")
 	}
-	if hot != "" {
-		err := setting.GSetting.Set(xstorage.Join("auto", "GNews", "today"), xstorage.ToUnit[string](hot, xstorage.ValueTypeString))
+	if err != nil {
+		tool.GLog.WarningErr("auto.Day", errors.Join(errors.New("func GenerateDayReport() Get auto.news.keys error"), err))
+		return nil, errors.Join(errors.New("func GenerateDayReport() Get auto.news.keys error"), err)
+	}
+	keys := xstorage.ToBase[[]string](keysV)
+	if keys == nil || len(keys) == 0 {
+		return nil, errors.New("auto.news.keys is empty")
+	}
+	cityV, err := setting.GSetting.Get("auto.weather.city")
+	if err != nil {
+		tool.GLog.WarningErr("WEATHER", errors.Join(errors.New("func GenerateDayReport() Get auto.weather.city error"), err))
+		return nil, errors.Join(errors.New("func GenerateDayReport() Get auto.weather.city error"), err)
+	}
+	city := xstorage.ToBase[string](cityV)
+	keyV, err := setting.GSetting.Get("qweather.key")
+	if keyV == nil {
+		tool.GLog.Warning("WEATHER", "qweather.key not exist")
+		return nil, errors.New("qweather.key not exist")
+	}
+	if err != nil {
+		tool.GLog.WarningErr("WEATHER", errors.Join(errors.New("func GenerateDayReport() Get qweather.key error"), err))
+		return nil, errors.Join(errors.New("func GenerateDayReport() Get qweather.key error"), err)
+	}
+	weatherKey := xstorage.ToBase[string](keyV)
+
+	report, err := GetDayReport(&http.Client{}, keys, city, weatherKey)
+	if err != nil {
+		return nil, errors.Join(errors.New("func GenerateDayReport() GetDayReport error"), err)
+	}
+
+	// 进行进一步处理
+	// 1. nytime需要破解
+	for i, news := range report.NytNews {
+		report.NytNews[i].Link = "https://www.removepaywall.com/search?url=" + news.Link
+	}
+	// 2. 调用ai进行翻译
+	err = translate(report)
+	if err != nil {
+		return nil, errors.Join(errors.New("func GenerateDayReport() translate error"), err)
+	}
+	// 3. 存储
+	timeStr := time.Now().Format("2006-01-02")
+	err = d.dayReportStorage.SetToJson(timeStr, report)
+	if err != nil {
+		return nil, errors.Join(errors.New("func GenerateDayReport() SetToJson error"), err)
+	}
+	return report, nil
+}
+
+func translate(report *DayReport) error {
+	// 获得token和base
+	baseV, err := setting.GSetting.Get("openai.base")
+	if baseV == nil {
+		tool.GLog.Warning("GNews", "openai.base not exist")
+		return errors.New("openai.base not exist")
+	}
+	if err != nil {
+		tool.GLog.WarningErr("GNews", errors.Join(errors.New("func Do() Get openai.base error"), err))
+		return errors.Join(errors.New("func Do() Get openai.base error"), err)
+	}
+	base := xstorage.ToBase[string](baseV)
+	if base == "" || base == "need input" {
+		return errors.New("openai.base is empty")
+	}
+	tokenV, err := setting.GSetting.Get("openai.token")
+	if tokenV == nil {
+		tool.GLog.Warning("GNews", "openai.token not exist")
+		return errors.New("openai.token not exist")
+	}
+	if err != nil {
+		tool.GLog.WarningErr("GNews", errors.Join(errors.New("func Do() Get openai.token error"), err))
+		return errors.Join(errors.New("func Do() Get openai.token error"), err)
+	}
+	token := xstorage.ToBase[string](tokenV)
+	if token == "" || token == "need input" {
+		tool.GLog.Warning("GNews", "openai.token is empty")
+		return errors.New("openai.token is empty")
+	}
+
+	// 翻译就用便宜的
+	chat := ai.NewOpenAI(base, token, true, ai.DefaultRenshe)
+	if chat == nil {
+		return errors.New("NewOpenAI error")
+	}
+	const transPromt = "仅返回以下文字的简体中文翻译，无需翻译则原样返回：\n"
+	for i, news := range report.NytNews {
+		translatedTitle, err := chat.Chat(transPromt + news.Title)
 		if err != nil {
-			tool.GLog.WarningErr("auto.Day", errors.Join(errors.New("func Do() Set auto.GNews.today error"), err))
+			return errors.Join(errors.New("func translate() translate title error"), err)
 		}
+		report.NytNews[i].Title = translatedTitle
+
+		translatedDescription, err := chat.Chat(transPromt + news.Description)
+		if err != nil {
+			return errors.Join(errors.New("func translate() translate description error"), err)
+		}
+		report.NytNews[i].Description = translatedDescription
+	}
+	for i, news := range report.BbcNews {
+		translatedTitle, err := chat.Chat(transPromt + news.Title)
+		if err != nil {
+			return errors.Join(errors.New("func translate() translate title error"), err)
+		}
+		report.BbcNews[i].Title = translatedTitle
+
+		translatedDescription, err := chat.Chat(transPromt + news.Description)
+		if err != nil {
+			return errors.Join(errors.New("func translate() translate description error"), err)
+		}
+		report.BbcNews[i].Description = translatedDescription
+	}
+
+	return nil
+}
+
+func (d *Day) Do() {
+	report, err := d.GenerateDayReport()
+	if err != nil {
+		tool.GLog.WarningErr("auto.Day", errors.Join(errors.New("func Do() GenerateDayReport error"), err))
+		return
 	}
 
 	// 推送
+	todayStr := time.Now().Format("01月02日")
 	md := misc.MarkdownTool{}
 	md.AddTitle(fmt.Sprintf("日安，%s的播报", todayStr), 2)
+	weatherDone := false
+	weather := ""
+	if len(report.Weather.Daily) > 0 {
+		weatherDone = true
+		weather, err = spider.MakeMiniWeatherMD("杭州", report.Weather)
+		if err != nil {
+			tool.GLog.WarningErr("auto.Day", errors.Join(errors.New("func Do() MakeTodayWeatherMD error"), err))
+		}
+	}
 	if !weatherDone || weather == "" {
 		md.AddContent("今日天气获取失败")
 	} else {
 		md.AddMd(weather)
 	}
-	//md.AddTitle("关注新闻", 3)
-	//if baidu == "" {
-	//	md.AddContent("今日关注新闻获取失败")
-	//} else {
-	//	md.AddMd(baidu)
-	//}
-	md.AddTitle("热点新闻", 3)
-	if hot == "" {
-		md.AddContent("今日热点新闻获取失败")
-	} else {
-		md.AddMd(hot)
-	}
-	timeStr := time.Now().Format("2006-01-02 15:04:05")
-	//md2 := "> 原始数据由GNews、百度新闻、百度天气提供, 热点新闻基础行文由OpenAI生成。\n"
-	//md2 += "> \n"
-	md2 := fmt.Sprintf("> 生成时间: %s。\n", timeStr)
-	md.AddMd(md2)
-	err := tool.GPush.Push("日报", md.ToStr(), true)
+	// TODO: 日后可以做成配置的基础url方便别人用
+	reportLink := fmt.Sprintf("[点击查看日报](https://plat.intmian.com/day-report/%s)", time.Now().Format("2006-01-02"))
+	md.AddTitle(reportLink, 3)
+	err = tool.GPush.Push("日报", md.ToStr(), true)
 	if err != nil {
 		tool.GLog.WarningErr("auto.Day", errors.Join(errors.New("func Do() Push error"), err))
 	}
 }
 
-func (d Day) GetName() string {
+func (d *Day) GetName() string {
 	return "auto.Day"
 }
 
-func (d Day) GetInitTimeStr() string {
+func (d *Day) GetInitTimeStr() string {
 	return "0 0 6 * * ?"
 }

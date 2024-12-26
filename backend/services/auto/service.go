@@ -36,6 +36,7 @@ func (s *Service) HandleRpc(msg share2.Msg, valid share2.Valid) (interface{}, er
 func (s *Service) Handle(msg share2.Msg, valid share2.Valid) {
 	switch msg.Cmd() {
 	default:
+
 	}
 	return
 }
@@ -47,7 +48,6 @@ func (s *Service) Start(share share2.ServiceShare) error {
 	tool.GLog.Info("AUTO", "初始化开始")
 	task.Init()
 	tool.GLog.Info("AUTO", "task初始化完成")
-
 	// 网页被做到了外部，因此这里不需要了
 	//ok, isDebug, err := xstorage.Get[bool](setting.GSetting, "web.debug")
 	//if ok && isDebug {
