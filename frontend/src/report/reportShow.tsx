@@ -177,7 +177,18 @@ function NewsCard({title, articles}: { title: string, articles: NewsArticle[] })
 }
 
 
-function GoogleNewsCard({title, articles}: { title: string, articles: NewsArticle[] }) {
+function GoogleNewsCard({title, articles}: { title: string, articles?: NewsArticle[] }) {
+    if (!articles) {
+        return <Card title={title} style={{
+            marginBottom: '16px',
+            borderRadius: '10px',               /* 圆角 */
+            boxShadow: '0 4px 10px rgba(0, 0, 0, 0.15)', /* 阴影效果 */
+            backgroundColor: '#fff',           /* 背景色 */
+            padding: '16px',                     /* 内边距 */
+        }}>
+            <Text type="secondary">暂无新闻</Text>
+        </Card>;
+    }
     return (
         <Card title={title} style={{
             marginBottom: '16px',
@@ -230,9 +241,11 @@ function Dashboard({data}: DashboardProps) {
     const {Weather, WeatherIndex, BbcNews, NytNews, GoogleNews} = data;
 
     // 生成谷歌新闻组件
-    const GoogleNewsCards = GoogleNews.map((newsItem, index) => (
-        <GoogleNewsCard key={index} title={newsItem.KeyWord} articles={newsItem.News}/>
-    ));
+    const GoogleNewsCards = GoogleNews
+        .sort((a, b) => (a.News?.length === 0 ? 1 : b.News?.length === 0 ? -1 : 0))
+        .map((newsItem, index) => (
+            <GoogleNewsCard key={index} title={newsItem.KeyWord} articles={newsItem.News}/>
+        ));
 
     const toggleNav = () => {
         setShowNav(!showNav);
