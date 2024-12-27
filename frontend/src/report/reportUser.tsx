@@ -32,8 +32,7 @@ function UserButton({user, onLogOut}: {
                 <Avatar size={22} icon={<UserOutlined/>}/>
                 {user}
             </Space>
-
-        </Button>;
+        </Button>
     </Popconfirm>;
 }
 

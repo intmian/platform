@@ -200,6 +200,7 @@ func (d *Day) GenerateDayReport() (*DayReport, error) {
 	} else {
 		client = &http.Client{}
 	}
+
 	report, err := GetDayReport(client, keys, city, weatherKey)
 	if err != nil {
 		return nil, errors.Join(errors.New("func GenerateDayReport() GetDayReport error"), err)
