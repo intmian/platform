@@ -3,6 +3,7 @@ import React, {useEffect, useRef, useState} from "react";
 import {Button, Card, Col, Divider, List, Menu, Row, Tag, Typography} from 'antd';
 import {CloudOutlined, MenuOutlined, WindowsOutlined} from '@ant-design/icons';
 import {useMediaQuery} from "react-responsive";
+import {Link} from "react-router-dom";
 
 const {Title, Text} = Typography;
 
@@ -202,9 +203,7 @@ function GoogleNewsCard({title, articles}: { title: string, articles?: NewsArtic
                 dataSource={articles}
                 renderItem={item => (
                     <List.Item key={item.title}>
-                        <List.Item.Meta
-                            title={<a href={item.link} target="_blank" rel="noopener noreferrer">{item.title}</a>}
-                        />
+                        <Link to={item.link} target="_blank" rel="noopener noreferrer">{item.title}</Link>
                     </List.Item>
                 )}
             />
@@ -240,18 +239,19 @@ function Dashboard({data}: DashboardProps) {
     }
     const {Weather, WeatherIndex, BbcNews, NytNews, GoogleNews} = data;
 
-    // 生成谷歌新闻组件
-    const GoogleNewsCards = GoogleNews
-        .sort((a, b) => {
-            const aIsEmpty = a.News?.length === 0 ? 1 : 0;
-            const bIsEmpty = b.News?.length === 0 ? 1 : 0;
+    // 生成谷歌新闻组件，有数据的放在前面，没有数据的放在后面
+    const GoogleNewsCards: React.ReactNode[] = [];
+    for (const group of GoogleNews) {
+        if (group.News && group.News.length > 0) {
+            GoogleNewsCards.push(<GoogleNewsCard title={group.KeyWord} articles={group.News}/>);
+        }
+    }
+    for (const group of GoogleNews) {
+        if (!group.News || group.News.length === 0) {
+            GoogleNewsCards.push(<GoogleNewsCard title={group.KeyWord}/>);
+        }
+    }
 
-            // 比较 a 和 b 的排序
-            return aIsEmpty - bIsEmpty;
-        })
-        .map((newsItem, index) => (
-            <GoogleNewsCard key={index} title={newsItem.KeyWord} articles={newsItem.News}/>
-        ));
 
     const toggleNav = () => {
         setShowNav(!showNav);
