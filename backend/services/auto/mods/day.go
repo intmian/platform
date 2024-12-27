@@ -49,7 +49,7 @@ type WholeReport struct {
 	}
 }
 
-func GetWholeReport(c *http.Client, keywords []string) (*WholeReport, error) {
+func getWholeReport(c *http.Client, keywords []string) (*WholeReport, error) {
 	report := &WholeReport{}
 	bbcNews, err1 := spider.GetBBCRss(c)
 	report.BbcNews = bbcNews
@@ -495,7 +495,32 @@ func (d *Day) GetWholeReport() (*WholeReport, error) {
 		client = &http.Client{}
 	}
 
-	return GetWholeReport(client, keys)
+	// 优先调用缓存
+	timeStr := time.Now().Format("2006-01-02")
+	cachedReport := &WholeReport{}
+	err = d.dayReportStorage.GetFromJson(timeStr+"_whole", cachedReport)
+	if err == nil {
+		return cachedReport, nil
+	}
+	if !errors.Is(err, xstorage.ErrNoData) {
+		tool.GLog.WarningErr("auto.Day", errors.Join(errors.New("func GetWholeReport() GetFromJson error"), err))
+		return nil, errors.Join(errors.New("func GetWholeReport() GetFromJson error"), err)
+	}
+
+	// 获取全量日报
+	report, err := getWholeReport(client, keys)
+	if err != nil {
+		return nil, errors.Join(errors.New("func GetWholeReport() getWholeReport error"), err)
+	}
+
+	// 存储全量日报和日期
+	err = d.dayReportStorage.SetToJson(timeStr+"_whole", report)
+	if err != nil {
+		tool.GLog.WarningErr("auto.Day", errors.Join(errors.New("func GetWholeReport() SetToJson error"), err))
+		return nil, errors.Join(errors.New("func GetWholeReport() SetToJson error"), err)
+	}
+
+	return report, nil
 }
 
 func (d *Day) GetReportList() ([]string, error) {

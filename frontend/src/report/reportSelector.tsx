@@ -1,11 +1,15 @@
 import {sendGenerateReport, sendGetReportList} from "../common/newSendHttp";
 import {useEffect, useState} from "react";
-import {Button} from "antd";
+import {Button, Col, List} from "antd";
+import ReportUser from "./reportUser";
+import {useMediaQuery} from "react-responsive";
 
 function ReportSelector({onSelect}: {
     onSelect: (report: string) => void,
 }) {
     const [reportList, setReportList] = useState<string[]>([]);
+    // 响应式
+    const isMobile = useMediaQuery({maxWidth: 767});
 
     useEffect(() => {
         sendGetReportList({}, (ret) => {
@@ -34,20 +38,28 @@ function ReportSelector({onSelect}: {
     };
 
     return <div>
-        <Button onClick={() => onSelect("whole")}>Select Whole</Button>
-        <Button onClick={() => {
-            const today = new Date();
-            onSelect(`${today.getFullYear()}-${today.getMonth() + 1}-${today.getDate()}`);
-        }}>Select Today</Button>
-        <Button onClick={() => generateReport()}>Generate Report</Button>
-        <Button onClick={handleRefresh}>Refresh</Button>
-        <ul style={{maxHeight: "200px", overflowY: "scroll"}}>
-            {reportList.map((report, index) => (
-                <li key={index} onClick={() => onSelect(report)}>
-                    {report}
-                </li>
-            ))}
-        </ul>
+        <Col>
+            <ReportUser/>
+        </Col>
+        <Col>
+            <Button onClick={() => onSelect("whole")}>生成全量报告</Button>
+            <Button onClick={() => generateReport()}>生成今日报告</Button>
+        </Col>
+        <Col>
+            <Button onClick={() => {
+                const today = new Date();
+                onSelect(`${today.getFullYear()}-${today.getMonth() + 1}-${today.getDate()}`);
+            }}>今日</Button>
+            <Button onClick={handleRefresh}>刷新</Button>
+        </Col>
+
+        <List
+            dataSource={reportList}
+            renderItem={(report) => (
+                <List.Item onClick={() => onSelect(report)}>  {isMobile ? report : <Button>{report}</Button>}
+                </List.Item>
+            )}
+        />
     </div>
 }
 
