@@ -98,31 +98,22 @@ func GetDayReport(c *http.Client, keywords []string, city, weatherKey string) (*
 	report.GoogleNews = make([]struct {
 		KeyWord string
 		News    []spider.GoogleRssItem
-	}, len(keywords))
-	for i, key := range keywords {
+	}, 0, len(keywords))
+	for _, key := range keywords {
 		// 如果以#废弃结尾就跳过
 		runes := []rune(key)
 		if len(runes) > 3 && string(runes[len(runes)-3:]) == "#废弃" {
 			continue
 		}
-		report.GoogleNews[i].KeyWord = key
-		var err error
-		report.GoogleNews[i].News, err = spider.GetGoogleRssWithDay(key, lastDay, c)
+		newses, err := spider.GetGoogleRssWithDay(key, lastDay, c)
 		if err != nil {
 			err3 = errors.Join(err3, err)
 		}
+		report.GoogleNews = append(report.GoogleNews, struct {
+			KeyWord string
+			News    []spider.GoogleRssItem
+		}{KeyWord: key, News: newses})
 	}
-	// 排除掉空的
-	var newGoogleNews []struct {
-		KeyWord string
-		News    []spider.GoogleRssItem
-	}
-	for _, v := range report.GoogleNews {
-		if v.KeyWord != "" {
-			newGoogleNews = append(newGoogleNews, v)
-		}
-	}
-	report.GoogleNews = newGoogleNews
 
 	// 读取天气
 	weather, err4 := spider.QueryTodayWeather(weatherKey, city)
