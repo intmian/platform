@@ -3,11 +3,13 @@ import {useNavigate, useParams} from "react-router-dom";
 import ReportSelector from "./reportSelector";
 import ReportShow from "./reportShow";
 import {Col, Row} from "antd";
+import {useMediaQuery} from "react-responsive";
 
 function ReportPanel() {
     // 读取路由
     const {date} = useParams();
     const [selected, setSelected] = useState<string>(date || "");
+    const isMobile = useMediaQuery({maxWidth: 767});
     useEffect(() => {
         document.title = "日报：" + selected;
     }, [selected]);
@@ -27,11 +29,17 @@ function ReportPanel() {
     }, [selected]);
 
     return <Row>
-        <Col>
+        <Col
+            span={isMobile ? 0 : 4}
+        >
             <ReportSelector onSelect={setSelected}/>
         </Col>
-        <Col>
-            <ReportShow selected={selected}/>
+        <Col
+            span={isMobile ? 24 : 16}
+        >
+            <div>
+                <ReportShow selected={selected}/>
+            </div>
         </Col>
     </Row>
 
