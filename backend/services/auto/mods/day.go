@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -71,6 +72,18 @@ func GetWholeReport(c *http.Client, keywords []string) (*WholeReport, error) {
 	if err != nil {
 		tool.GLog.WarningErr("Day", errors.Join(errors.New("func GetWholeReport() GetWholeReport error"), err))
 	}
+
+	// 进行进一步处理
+	// 1. nytime需要破解
+	for i, news := range report.NytNews {
+		report.NytNews[i].Link = "https://www.removepaywall.com/search?url=" + news.Link
+	}
+	// 2. 调用ai进行翻译
+	err = translateW(report)
+	if err != nil {
+		tool.GLog.WarningErr("auto.Day", errors.Join(errors.New("func GenerateDayReport() translate error"), err))
+	}
+
 	return report, err
 }
 
@@ -200,7 +213,7 @@ func (d *Day) GenerateDayReport() (*DayReport, error) {
 	// 2. 调用ai进行翻译
 	err = translate(report)
 	if err != nil {
-		return nil, errors.Join(errors.New("func GenerateDayReport() translate error"), err)
+		tool.GLog.WarningErr("auto.Day", errors.Join(errors.New("func GenerateDayReport() translate error"), err))
 	}
 	// 3. 存储
 	timeStr := time.Now().Format("2006-01-02")
@@ -238,67 +251,141 @@ func (d *Day) GenerateDayReport() (*DayReport, error) {
 	return report, nil
 }
 
-func translate(report *DayReport) error {
-	// 获得token和base
+func getOpenAIConfig() (base, token string, err error) {
+	// 获取 base 配置
 	baseV, err := setting.GSetting.Get("openai.base")
-	if baseV == nil {
+	if err != nil || baseV == nil {
 		tool.GLog.Warning("GNews", "openai.base not exist")
-		return errors.New("openai.base not exist")
+		return "", "", errors.New("openai.base not exist")
 	}
-	if err != nil {
-		tool.GLog.WarningErr("GNews", errors.Join(errors.New("func Do() Get openai.base error"), err))
-		return errors.Join(errors.New("func Do() Get openai.base error"), err)
-	}
-	base := xstorage.ToBase[string](baseV)
+	base = xstorage.ToBase[string](baseV)
 	if base == "" || base == "need input" {
-		return errors.New("openai.base is empty")
-	}
-	tokenV, err := setting.GSetting.Get("openai.token")
-	if tokenV == nil {
-		tool.GLog.Warning("GNews", "openai.token not exist")
-		return errors.New("openai.token not exist")
-	}
-	if err != nil {
-		tool.GLog.WarningErr("GNews", errors.Join(errors.New("func Do() Get openai.token error"), err))
-		return errors.Join(errors.New("func Do() Get openai.token error"), err)
-	}
-	token := xstorage.ToBase[string](tokenV)
-	if token == "" || token == "need input" {
-		tool.GLog.Warning("GNews", "openai.token is empty")
-		return errors.New("openai.token is empty")
+		return "", "", errors.New("openai.base is empty")
 	}
 
-	// 翻译就用便宜的
+	// 获取 token 配置
+	tokenV, err := setting.GSetting.Get("openai.token")
+	if err != nil || tokenV == nil {
+		tool.GLog.Warning("GNews", "openai.token not exist")
+		return "", "", errors.New("openai.token not exist")
+	}
+	token = xstorage.ToBase[string](tokenV)
+	if token == "" || token == "need input" {
+		tool.GLog.Warning("GNews", "openai.token is empty")
+		return "", "", errors.New("openai.token is empty")
+	}
+
+	return base, token, nil
+}
+
+func translateContent(chat *ai.OpenAI, content string) (string, error) {
+	const transPromt = "仅返回以下文字的简体中文翻译，无需翻译则原样返回：\n"
+	translated, err := chat.Chat(transPromt + content)
+	if err != nil {
+		return "", err
+	}
+	return translated, nil
+}
+
+func translateNews(newsBBC []spider.BBCRssItem, newsNYT []spider.NYTimesRssItem, chat *ai.OpenAI) error {
+	var wg sync.WaitGroup
+	errChan := make(chan error, len(newsBBC)+len(newsNYT)*2) // 用于接收翻译错误
+
+	// 翻译 BBC 新闻
+	for i := range newsBBC {
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+			// 翻译标题
+			translatedTitle, err := translateContent(chat, newsBBC[i].Title)
+			if err != nil {
+				errChan <- errors.Join(errors.New("func translate() translate title error"), err)
+				return
+			}
+			newsBBC[i].Title = translatedTitle
+
+			// 翻译描述
+			translatedDescription, err := translateContent(chat, newsBBC[i].Description)
+			if err != nil {
+				errChan <- errors.Join(errors.New("func translate() translate description error"), err)
+				return
+			}
+			newsBBC[i].Description = translatedDescription
+		}(i)
+	}
+
+	// 翻译 NYT 新闻
+	for i := range newsNYT {
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+			// 翻译标题
+			translatedTitle, err := translateContent(chat, newsNYT[i].Title)
+			if err != nil {
+				errChan <- errors.Join(errors.New("func translate() translate title error"), err)
+				return
+			}
+			newsNYT[i].Title = translatedTitle
+
+			// 翻译描述
+			translatedDescription, err := translateContent(chat, newsNYT[i].Description)
+			if err != nil {
+				errChan <- errors.Join(errors.New("func translate() translate description error"), err)
+				return
+			}
+			newsNYT[i].Description = translatedDescription
+		}(i)
+	}
+
+	// 等待所有 goroutines 完成
+	wg.Wait()
+	close(errChan)
+
+	// 检查是否有错误
+	if len(errChan) > 0 {
+		return <-errChan // 返回第一个错误
+	}
+
+	return nil
+}
+
+func translate(report *DayReport) error {
+	// 获取配置
+	base, token, err := getOpenAIConfig()
+	if err != nil {
+		return err
+	}
+
+	// 创建 OpenAI 实例
 	chat := ai.NewOpenAI(base, token, true, ai.DefaultRenshe)
 	if chat == nil {
 		return errors.New("NewOpenAI error")
 	}
-	const transPromt = "仅返回以下文字的简体中文翻译，无需翻译则原样返回：\n"
-	for i, news := range report.NytNews {
-		translatedTitle, err := chat.Chat(transPromt + news.Title)
-		if err != nil {
-			return errors.Join(errors.New("func translate() translate title error"), err)
-		}
-		report.NytNews[i].Title = translatedTitle
 
-		translatedDescription, err := chat.Chat(transPromt + news.Description)
-		if err != nil {
-			return errors.Join(errors.New("func translate() translate description error"), err)
-		}
-		report.NytNews[i].Description = translatedDescription
+	// 翻译 DayReport 的新闻
+	if err := translateNews(report.BbcNews, report.NytNews, chat); err != nil {
+		return err
 	}
-	for i, news := range report.BbcNews {
-		translatedTitle, err := chat.Chat(transPromt + news.Title)
-		if err != nil {
-			return errors.Join(errors.New("func translate() translate title error"), err)
-		}
-		report.BbcNews[i].Title = translatedTitle
 
-		translatedDescription, err := chat.Chat(transPromt + news.Description)
-		if err != nil {
-			return errors.Join(errors.New("func translate() translate description error"), err)
-		}
-		report.BbcNews[i].Description = translatedDescription
+	return nil
+}
+
+func translateW(report *WholeReport) error {
+	// 获取配置
+	base, token, err := getOpenAIConfig()
+	if err != nil {
+		return err
+	}
+
+	// 创建 OpenAI 实例
+	chat := ai.NewOpenAI(base, token, true, ai.DefaultRenshe)
+	if chat == nil {
+		return errors.New("NewOpenAI error")
+	}
+
+	// 翻译 WholeReport 的新闻
+	if err := translateNews(report.BbcNews, report.NytNews, chat); err != nil {
+		return err
 	}
 
 	return nil
@@ -349,6 +436,9 @@ func (d *Day) Do() {
 	str = fmt.Sprintf(str, len(report.BbcNews), len(report.NytNews))
 	md.AddContent(str)
 
+	// 后续加入大盘和美元的简单摘要。
+	// TODO: 后续加入大盘和美元的简单摘要。
+
 	// 生成分享链接
 	// TODO: 日后可以做成配置的基础url方便别人用
 	reportLink := fmt.Sprintf("[点击查看日报](https://plat.intmian.com/day-report/%s)", time.Now().Format("2006-01-02"))
@@ -388,7 +478,23 @@ func (d *Day) GetWholeReport() (*WholeReport, error) {
 		return nil, errors.Join(errors.New("func GetWholeReport() Get auto.news.keys error"), err)
 	}
 	keys := xstorage.ToBase[[]string](keysV)
-	return GetWholeReport(nil, keys)
+
+	// 代理
+	var client *http.Client
+	if setting.GBaseSetting.Debug {
+		client = &http.Client{
+			Transport: &http.Transport{
+				Proxy: http.ProxyURL(&url.URL{
+					Scheme: "http",
+					Host:   "localhost:7890",
+				}),
+			},
+		}
+	} else {
+		client = &http.Client{}
+	}
+
+	return GetWholeReport(client, keys)
 }
 
 func (d *Day) GetReportList() ([]string, error) {
