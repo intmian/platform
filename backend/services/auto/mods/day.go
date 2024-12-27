@@ -100,6 +100,11 @@ func GetDayReport(c *http.Client, keywords []string, city, weatherKey string) (*
 		News    []spider.GoogleRssItem
 	}, len(keywords))
 	for i, key := range keywords {
+		// 如果以#废弃结尾就跳过
+		runes := []rune(key)
+		if len(runes) > 3 && string(runes[len(runes)-3:]) == "#废弃" {
+			continue
+		}
 		report.GoogleNews[i].KeyWord = key
 		var err error
 		report.GoogleNews[i].News, err = spider.GetGoogleRssWithDay(key, lastDay, c)
