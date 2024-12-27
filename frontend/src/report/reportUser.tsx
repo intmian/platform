@@ -80,7 +80,11 @@ function ReportUser() {
     // 增加自动登录和登入登出的显示
     return <UsrArea
         user={loginCtr.loginInfo.usr}
-        onLoginSuc={loginCtr.onLogin}
+        onLoginSuc={(user) => {
+            loginCtr.onLogin(user);
+            // 刷新页面
+            window.location.reload();
+        }}
         onLogOut={loginCtr.onLogout}
     />
 }
