@@ -242,7 +242,13 @@ function Dashboard({data}: DashboardProps) {
 
     // 生成谷歌新闻组件
     const GoogleNewsCards = GoogleNews
-        .sort((a, b) => (a.News?.length === 0 ? 1 : b.News?.length === 0 ? -1 : 0))
+        .sort((a, b) => {
+            const aIsEmpty = a.News?.length === 0 ? 1 : 0;
+            const bIsEmpty = b.News?.length === 0 ? 1 : 0;
+
+            // 比较 a 和 b 的排序
+            return aIsEmpty - bIsEmpty;
+        })
         .map((newsItem, index) => (
             <GoogleNewsCard key={index} title={newsItem.KeyWord} articles={newsItem.News}/>
         ));
