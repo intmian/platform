@@ -1,6 +1,9 @@
 package setting
 
-import "github.com/intmian/mian_go_lib/xstorage"
+import (
+	"github.com/intmian/mian_go_lib/xstorage"
+	"github.com/intmian/platform/backend/share"
+)
 
 // 微服务话后，被迁移到传入的storage
 //
@@ -62,3 +65,4 @@ import "github.com/intmian/mian_go_lib/xstorage"
 //		m.rwLock.RUnlock()
 //	}
 var GSetting *xstorage.XStorage
+var GBaseSetting share.BaseSetting

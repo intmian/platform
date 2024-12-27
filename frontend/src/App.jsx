@@ -54,6 +54,10 @@ const router = createBrowserRouter([
         element: <Memos/>,
     },
     {
+        path: '/day-report',
+        element: <ReportPanel/>,
+    },
+    {
         path: '/day-report/:date',
         element: <ReportPanel/>,
     }

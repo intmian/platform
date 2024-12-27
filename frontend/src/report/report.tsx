@@ -19,7 +19,7 @@ function ReportPanel() {
     const navigate = useRef(useNavigate());
     useEffect(() => {
         if (selected) {
-            navigate.current(`/report/${selected}`, {replace: true});
+            navigate.current(`/day-report/${selected}`, {replace: true});
         }
     }, [selected]);
     return <>

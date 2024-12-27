@@ -53,6 +53,7 @@ func (s *Service) Handle(msg backendshare.Msg, valid backendshare.Valid) {
 func (s *Service) Start(share backendshare.ServiceShare) error {
 	s.share = share
 	setting.GSetting = share.Storage
+	setting.GBaseSetting = share.BaseSetting
 	tool.Init(share.Push, share.Log)
 	tool.GLog.Info("AUTO", "初始化开始")
 	task.Init()

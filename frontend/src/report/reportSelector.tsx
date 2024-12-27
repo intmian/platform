@@ -1,4 +1,4 @@
-import {sendGetReportList} from "../common/newSendHttp";
+import {sendGenerateReport, sendGetReportList} from "../common/newSendHttp";
 import {useEffect, useState} from "react";
 import {Button} from "antd";
 
@@ -25,8 +25,21 @@ function ReportSelector({onSelect}: {
         });
     };
 
+    const generateReport = () => {
+        sendGenerateReport({}, (ret) => {
+            if (ret.ok) {
+                handleRefresh();
+            }
+        });
+    };
+
     return <div>
         <Button onClick={() => onSelect("whole")}>Select Whole</Button>
+        <Button onClick={() => {
+            const today = new Date();
+            onSelect(`${today.getFullYear()}-${today.getMonth() + 1}-${today.getDate()}`);
+        }}>Select Today</Button>
+        <Button onClick={() => generateReport()}>Generate Report</Button>
         <Button onClick={handleRefresh}>Refresh</Button>
         <ul style={{maxHeight: "200px", overflowY: "scroll"}}>
             {reportList.map((report, index) => (

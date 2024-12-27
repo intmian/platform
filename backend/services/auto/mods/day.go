@@ -10,6 +10,8 @@ import (
 	"github.com/intmian/platform/backend/services/auto/setting"
 	"github.com/intmian/platform/backend/services/auto/tool"
 	"net/http"
+	"net/url"
+	"strings"
 	"time"
 )
 
@@ -171,7 +173,21 @@ func (d *Day) GenerateDayReport() (*DayReport, error) {
 	}
 	weatherKey := xstorage.ToBase[string](keyV)
 
-	report, err := GetDayReport(&http.Client{}, keys, city, weatherKey)
+	// 如果是debug就使用代理
+	var client *http.Client
+	if setting.GBaseSetting.Debug {
+		client = &http.Client{
+			Transport: &http.Transport{
+				Proxy: http.ProxyURL(&url.URL{
+					Scheme: "http",
+					Host:   "localhost:7890",
+				}),
+			},
+		}
+	} else {
+		client = &http.Client{}
+	}
+	report, err := GetDayReport(client, keys, city, weatherKey)
 	if err != nil {
 		return nil, errors.Join(errors.New("func GenerateDayReport() GetDayReport error"), err)
 	}
@@ -203,10 +219,20 @@ func (d *Day) GenerateDayReport() (*DayReport, error) {
 			return nil, errors.Join(errors.New("func GenerateDayReport() GetFromJson report_list error"), err)
 		}
 	}
-	reportList = append(reportList, timeStr)
-	err = d.dayReportStorage.SetToJson("report_list", reportList)
-	if err != nil {
-		return nil, errors.Join(errors.New("func GenerateDayReport() SetToJson report_list error"), err)
+
+	find := false
+	for _, v := range reportList {
+		if v == timeStr {
+			find = true
+			break
+		}
+	}
+	if !find {
+		reportList = append(reportList, timeStr)
+		err = d.dayReportStorage.SetToJson("report_list", reportList)
+		if err != nil {
+			return nil, errors.Join(errors.New("func GenerateDayReport() SetToJson report_list error"), err)
+		}
 	}
 
 	return report, nil
@@ -303,6 +329,27 @@ func (d *Day) Do() {
 	} else {
 		md.AddMd(weather)
 	}
+
+	// 生成今日谷歌新闻的摘要，有哪些关键词的新闻更新了。
+	keyWordsUpdate := []string{}
+	for _, news := range report.GoogleNews {
+		if len(news.News) > 0 {
+			keyWordsUpdate = append(keyWordsUpdate, news.KeyWord)
+		}
+	}
+	if len(keyWordsUpdate) > 0 {
+		str := strings.Join(keyWordsUpdate, "、")
+		md.AddContent(fmt.Sprintf("今日关键新闻更新：%s", str))
+	} else {
+		md.AddContent("今日关注新闻无更新")
+	}
+
+	// 生成今日BBC、NYT新闻的摘要
+	str := `今日有%d条BBC新闻，%d条NYT新闻`
+	str = fmt.Sprintf(str, len(report.BbcNews), len(report.NytNews))
+	md.AddContent(str)
+
+	// 生成分享链接
 	// TODO: 日后可以做成配置的基础url方便别人用
 	reportLink := fmt.Sprintf("[点击查看日报](https://plat.intmian.com/day-report/%s)", time.Now().Format("2006-01-02"))
 	md.AddTitle(reportLink, 3)
