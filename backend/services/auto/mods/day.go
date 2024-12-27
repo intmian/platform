@@ -45,8 +45,8 @@ type WholeReport struct {
 	BbcNews    []spider.BBCRssItem
 	NytNews    []spider.NYTimesRssItem
 	GoogleNews []struct {
-		keyWord string
-		news    []spider.GoogleRssItem
+		KeyWord string
+		News    []spider.GoogleRssItem
 	}
 }
 
@@ -58,16 +58,23 @@ func getWholeReport(c *http.Client, keywords []string) (*WholeReport, error) {
 	report.NytNews = nytNews
 	var err3 error
 	report.GoogleNews = make([]struct {
-		keyWord string
-		news    []spider.GoogleRssItem
-	}, len(keywords))
-	for i, key := range keywords {
-		report.GoogleNews[i].keyWord = key
-		var err error
-		report.GoogleNews[i].news, err = spider.GetGoogleRss(key, c)
+		KeyWord string
+		News    []spider.GoogleRssItem
+	}, 0, len(keywords))
+	for _, key := range keywords {
+		// 如果以#废弃结尾就跳过
+		runes := []rune(key)
+		if len(runes) > 3 && string(runes[len(runes)-3:]) == "#废弃" {
+			continue
+		}
+		newses, err := spider.GetGoogleRss(key, c)
 		if err != nil {
 			err3 = errors.Join(err3, err)
 		}
+		report.GoogleNews = append(report.GoogleNews, struct {
+			KeyWord string
+			News    []spider.GoogleRssItem
+		}{KeyWord: key, News: newses})
 	}
 	err := errors.Join(err1, err2, err3)
 	if err != nil {
