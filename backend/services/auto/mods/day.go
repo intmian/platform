@@ -112,6 +112,17 @@ func GetDayReport(c *http.Client, keywords []string, city, weatherKey string) (*
 			err3 = errors.Join(err3, err)
 		}
 	}
+	// 排除掉空的
+	var newGoogleNews []struct {
+		KeyWord string
+		News    []spider.GoogleRssItem
+	}
+	for _, v := range report.GoogleNews {
+		if v.KeyWord != "" {
+			newGoogleNews = append(newGoogleNews, v)
+		}
+	}
+	report.GoogleNews = newGoogleNews
 
 	// 读取天气
 	weather, err4 := spider.QueryTodayWeather(weatherKey, city)
