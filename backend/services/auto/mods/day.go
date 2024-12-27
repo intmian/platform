@@ -9,6 +9,7 @@ import (
 	"github.com/intmian/mian_go_lib/xstorage"
 	"github.com/intmian/platform/backend/services/auto/setting"
 	"github.com/intmian/platform/backend/services/auto/tool"
+	"math/rand"
 	"net/http"
 	"net/url"
 	"strings"
@@ -81,7 +82,7 @@ func getWholeReport(c *http.Client, keywords []string) (*WholeReport, error) {
 	// 2. 调用ai进行翻译
 	err = translateW(report)
 	if err != nil {
-		tool.GLog.WarningErr("auto.Day", errors.Join(errors.New("func GenerateDayReport() translate error"), err))
+		tool.GLog.WarningErr("auto.Day", errors.Join(errors.New("func GenerateWholeReport() translate error"), err))
 	}
 
 	return report, err
@@ -302,6 +303,9 @@ func translateNews(newsBBC []spider.BBCRssItem, newsNYT []spider.NYTimesRssItem,
 	// 翻译 BBC 新闻
 	for i := range newsBBC {
 		wg.Add(1)
+
+		time.Sleep(time.Duration(rand.Float64() * 0.1 * float64(time.Second)))
+
 		go func(i int) {
 			defer wg.Done()
 			// 翻译标题
@@ -325,6 +329,9 @@ func translateNews(newsBBC []spider.BBCRssItem, newsNYT []spider.NYTimesRssItem,
 	// 翻译 NYT 新闻
 	for i := range newsNYT {
 		wg.Add(1)
+
+		time.Sleep(time.Duration(rand.Float64() * 0.1 * float64(time.Second)))
+
 		go func(i int) {
 			defer wg.Done()
 			// 翻译标题
@@ -517,7 +524,7 @@ func (d *Day) GetWholeReport() (*WholeReport, error) {
 	// 获取全量日报
 	report, err := getWholeReport(client, keys)
 	if err != nil {
-		return nil, errors.Join(errors.New("func GetWholeReport() getWholeReport error"), err)
+		tool.GLog.WarningErr("auto.Day", errors.Join(errors.New("func GetWholeReport() getWholeReport error"), err))
 	}
 
 	// 存储全量日报和日期
