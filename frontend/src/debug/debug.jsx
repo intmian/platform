@@ -1,18 +1,26 @@
 import {useState} from "react";
-import {Button, Card, Col, InputNumber, Row, Slider, Space, Typography} from "antd";
+import {Button, Card, Col, InputNumber, Row, Slider, Space, Spin, Typography} from "antd";
 import {CustomDeviceSimulator, DeviceSimulator} from "./DeviceSim.jsx";
 import {MenuPlus} from "../common/MenuPlus.jsx";
 import {EditableProps} from "./EditableProps.jsx";
-import TagInput from "../common/TagInput.jsx";
 
 const {Text} = Typography;
 
-const debug = <TagInput
-    tagOps={['中文', 'tag2', 'tag3', '厕所']}
-    tags={['tag1', 'tag2']}
-    onChange={(tags) => console.log(tags)}
-    style={{width: '100%'}}
-/>;
+const debug = <div
+    style={{
+        position: 'fixed',
+        zIndex: 1000,
+        top: 0,
+        left: 0,
+        width: '100%',
+        height: '100%',
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+    }}
+>
+    <Spin size="large"/>
+</div>;
 
 // const debug = <Timeline style={{margin: 0, padding: 0, minHeight: 0}}
 //                         items={[

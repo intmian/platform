@@ -6,6 +6,15 @@ import {Col, Row} from "antd";
 import {useMediaQuery} from "react-responsive";
 
 function ReportPanel() {
+    // 更换Favicon为/newslogo.webp
+    useEffect(() => {
+        const link = document.createElement('link');
+        link.type = 'image/x-icon';
+        link.rel = 'shortcut icon';
+        link.href = '/newslogo.webp';
+        document.getElementsByTagName('head')[0].appendChild(link);
+    }, []);
+
     // 读取路由
     const {date} = useParams();
     const [selected, setSelected] = useState<string>(date || "");
