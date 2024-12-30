@@ -2,8 +2,8 @@ import {DayReport, sendGetReport, sendGetWholeReport, WholeReport} from "../comm
 import React, {useEffect, useRef, useState} from "react";
 import {Button, Card, Col, Divider, List, Menu, Row, Tag, Typography} from 'antd';
 import {CloudOutlined, MenuOutlined, WindowsOutlined} from '@ant-design/icons';
-import {useMediaQuery} from "react-responsive";
 import {Link} from "react-router-dom";
+import {useIsMobile} from "../common/hooksv2";
 
 const {Title, Text} = Typography;
 
@@ -232,7 +232,7 @@ function Dashboard({data}: DashboardProps) {
     const [showNav, setShowNav] = useState<boolean>(true);
 
     // 判断是否为手机端
-    const isMobile = useMediaQuery({query: '(max-width: 768px)'});
+    const isMobile = useIsMobile();
 
     if (!data) {
         return <Card title="Loading..." bordered={false} loading={true}/>;
