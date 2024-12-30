@@ -40,7 +40,7 @@ function ReportShow({selected}: {
             justifyContent: 'center',
             marginBottom: '2px',
         }}>
-            <Title level={2}>{selected === "whole" ? "整体" : selected} 日报</Title>
+            <Title level={2}>{selected === "whole" ? "新闻汇总" : selected + "日报"} </Title>
         </Row>
         <Dashboard data={data}/>
     </div>;
@@ -77,6 +77,7 @@ interface NewsArticle {
     title: string;
     link: string;
     description: string;
+    pubDate: string;
 }
 
 // 谷歌新闻组
@@ -171,6 +172,9 @@ function NewsCard({title, articles}: { title: string, articles: NewsArticle[] })
                         title={<a href={item.link} target="_blank" rel="noopener noreferrer">{item.title}</a>}
                         description={item.description}
                     />
+                    <Text type="secondary">
+                        {new Date(item.pubDate).toLocaleString('zh-CN', {timeZone: 'Asia/Shanghai'})}
+                    </Text>
                 </List.Item>
             )}
         />
@@ -204,6 +208,9 @@ function GoogleNewsCard({title, articles}: { title: string, articles?: NewsArtic
                 renderItem={item => (
                     <List.Item key={item.title}>
                         <Link to={item.link} target="_blank" rel="noopener noreferrer">{item.title}</Link>
+                        <Text type="secondary">
+                            {new Date(item.pubDate).toLocaleString('zh-CN', {timeZone: 'Asia/Shanghai'})}
+                        </Text>
                     </List.Item>
                 )}
             />
@@ -213,8 +220,8 @@ function GoogleNewsCard({title, articles}: { title: string, articles?: NewsArtic
 
 interface DashboardProps {
     data: {
-        Weather: WeatherData;
-        WeatherIndex: WeatherIndexData;
+        Weather?: WeatherData;
+        WeatherIndex?: WeatherIndexData;
         BbcNews: NewsArticle[];
         NytNews: NewsArticle[];
         GoogleNews: GoogleNewsGroup[];
@@ -267,7 +274,7 @@ function Dashboard({data}: DashboardProps) {
     // 通用导航菜单组件
     const renderNavMenu = () => (
         <Menu mode="vertical" style={{width: isMobile ? '100%' : '200px'}}>
-            <Menu.Item onClick={() => scrollToRef(weatherRef)}>天气</Menu.Item>
+            {Weather && <Menu.Item onClick={() => scrollToRef(weatherRef)}>天气</Menu.Item>}
             <Menu.Item onClick={() => scrollToRef(bbcNewsRef)}>BBC新闻</Menu.Item>
             <Menu.Item onClick={() => scrollToRef(nytNewsRef)}>纽约时报</Menu.Item>
             <Menu.Item onClick={() => scrollToRef(googleNewsRef)}>关注新闻</Menu.Item>
@@ -344,9 +351,9 @@ function Dashboard({data}: DashboardProps) {
         }}>
             {/* 左侧内容 */}
             <div style={{flex: 1}}>
-                <div ref={weatherRef}>
+                {Weather && <div ref={weatherRef}>
                     <WeatherCard weather={Weather} weatherIndex={WeatherIndex}/>
-                </div>
+                </div>}
                 <div ref={bbcNewsRef} style={{
                     marginBottom: '16px',
                 }}>

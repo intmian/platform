@@ -82,7 +82,14 @@ func getWholeReport(c *http.Client, keywords []string) (*WholeReport, error) {
 	}
 
 	// 进行进一步处理
-	// 1. nytime需要破解
+	// 1. 去除简报 nytime需要破解
+	newNytNews := []spider.NYTimesRssItem{}
+	for _, news := range report.NytNews {
+		if !strings.Contains(news.Title, "Briefing") {
+			newNytNews = append(newNytNews, news)
+		}
+	}
+	report.NytNews = newNytNews
 	for i, news := range report.NytNews {
 		report.NytNews[i].Link = "https://www.removepaywall.com/search?url=" + news.Link
 	}

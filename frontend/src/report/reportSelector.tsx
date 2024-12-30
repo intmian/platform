@@ -2,14 +2,14 @@ import {sendGenerateReport, sendGetReportList} from "../common/newSendHttp";
 import {useEffect, useState} from "react";
 import {Button, Col, List} from "antd";
 import ReportUser from "./reportUser";
-import {useMediaQuery} from "react-responsive";
+import {useIsMobile} from "../common/hooksv2";
 
 function ReportSelector({onSelect}: {
     onSelect: (report: string) => void,
 }) {
     const [reportList, setReportList] = useState<string[]>([]);
     // 响应式
-    const isMobile = useMediaQuery({maxWidth: 767});
+    const isMobile = useIsMobile();
 
     useEffect(() => {
         sendGetReportList({}, (ret) => {
@@ -56,7 +56,10 @@ function ReportSelector({onSelect}: {
         <List
             dataSource={reportList}
             renderItem={(report) => (
-                <List.Item onClick={() => onSelect(report)}>  {isMobile ? report : <Button>{report}</Button>}
+                <List.Item onClick={() => onSelect(report)}>
+                    <Button
+                        variant="filled"
+                    >{report}</Button>
                 </List.Item>
             )}
         />

@@ -20,6 +20,10 @@ function ReportPanel() {
     const [selected, setSelected] = useState<string>(date || "");
     const isMobile = useIsMobile();
     useEffect(() => {
+        if (selected === "whole") {
+            document.title = "新闻汇总";
+            return;
+        }
         document.title = "日报：" + selected;
     }, [selected]);
 
