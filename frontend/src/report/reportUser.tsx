@@ -1,4 +1,4 @@
-import {Avatar, Button, Modal, Popconfirm, Space} from "antd";
+import {Avatar, Button, Popconfirm, Space, Spin} from "antd";
 import {UserOutlined} from "@ant-design/icons";
 import {useContext, useState} from "react";
 import LoginPanel from "../common/loginPanel";
@@ -78,8 +78,23 @@ function UsrArea({user, onLoginSuc, onLogOut}: {
 function ReportUser() {
     const loginCtr = useContext(LoginCtx);
     // 增加自动登录和登入登出的显示
-    if (loginCtr.loginInfo.init) {
-        return <Modal footer={null} closable={false}>正在登录...</Modal>;
+    console.log(loginCtr.loginInfo);
+    if (loginCtr.loginInfo.false) {
+        // 返回一个全屏的正在加载中
+        return <div
+            style={{
+                position: 'fixed',
+                top: 0,
+                left: 0,
+                width: '100%',
+                height: '100%',
+                display: 'flex',
+                justifyContent: 'center',
+                alignItems: 'center',
+            }}
+        >
+            <Spin size="large"/>
+        </div>
     }
 
     return <UsrArea

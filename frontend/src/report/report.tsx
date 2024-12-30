@@ -21,7 +21,7 @@ function ReportPanel() {
         setSelected(`${today.getFullYear()}-${today.getMonth() + 1}-${today.getDate()}`);
     }
     // 如果是空的，也自动导入今天的日期
-    if (!date || date === "") {
+    if (selected === "") {
         // 获取今日日期
         const today = new Date();
         setSelected(`${today.getFullYear()}-${today.getMonth() + 1}-${today.getDate()}`);
