@@ -120,8 +120,8 @@ function WeatherCard({weather, weatherIndex}: WeatherCardProps) {
                     <Text><WindowsOutlined/> {today.windSpeedDay} km/h</Text>
                 </Col>
                 <Col span={6}>
-                    <Title level={4}>湿度</Title>
-                    <Text>{today.humidity}%</Text><br/>
+                    <Title level={4}>阴湿</Title>
+                    <Text>湿度{today.humidity}%</Text><br/>
                     <Text><CloudOutlined/> {today.cloud}%</Text>
                 </Col>
             </Row>

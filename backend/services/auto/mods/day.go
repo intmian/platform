@@ -216,13 +216,30 @@ func (d *Day) GenerateDayReport() (*DayReport, error) {
 		client = &http.Client{}
 	}
 
-	report, err := GetDayReport(client, keys, city, weatherKey)
+	var report *DayReport
+	for i := 0; i < 3; i++ {
+		report, err = GetDayReport(client, keys, city, weatherKey)
+		if err == nil {
+			break
+		}
+		tool.GLog.WarningErr("auto.Day", errors.Join(errors.New("func GenerateDayReport() GetDayReport error, retrying..."), err))
+	}
 	if err != nil {
 		return nil, errors.Join(errors.New("func GenerateDayReport() GetDayReport error"), err)
 	}
+	if report == nil {
+		return nil, errors.New("func GenerateDayReport() GetDayReport return nil")
+	}
 
 	// 进行进一步处理
-	// 1. nytime需要破解
+	// 1. nytime需要移除所有标题中还有Briefing的，并加入破解
+	newNytNews := []spider.NYTimesRssItem{}
+	for _, news := range report.NytNews {
+		if !strings.Contains(news.Title, "Briefing") {
+			newNytNews = append(newNytNews, news)
+		}
+	}
+	report.NytNews = newNytNews
 	for i, news := range report.NytNews {
 		report.NytNews[i].Link = "https://www.removepaywall.com/search?url=" + news.Link
 	}
@@ -298,7 +315,13 @@ func translateContent(chat *ai.OpenAI, content string) (string, error) {
 	const transPromt = "仅返回以下文字的简体中文翻译，无需翻译则原样返回：\n"
 	translated, err := chat.Chat(transPromt + content)
 	if err != nil {
-		return "", err
+		// 二次尝试
+		time.Sleep(time.Duration(rand.Float64() * 0.1 * float64(time.Second)))
+		var retryErr error
+		translated, retryErr = chat.Chat(transPromt + content)
+		if retryErr != nil {
+			return "", retryErr
+		}
 	}
 	return translated, nil
 }
@@ -448,13 +471,13 @@ func (d *Day) Do() {
 	}
 	if len(keyWordsUpdate) > 0 {
 		str := strings.Join(keyWordsUpdate, "、")
-		md.AddContent(fmt.Sprintf("今日关键新闻更新：%s", str))
+		md.AddContent(fmt.Sprintf("今日关注新闻更新：%s", str))
 	} else {
 		md.AddContent("今日关注新闻无更新")
 	}
 
 	// 生成今日BBC、NYT新闻的摘要
-	str := `今日有%d条BBC新闻，%d条NYT新闻`
+	str := `今日有%d条BBC新闻，%d条纽约时报新闻`
 	str = fmt.Sprintf(str, len(report.BbcNews), len(report.NytNews))
 	md.AddContent(str)
 
