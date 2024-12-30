@@ -4,6 +4,7 @@ import ReportSelector from "./reportSelector";
 import ReportShow from "./reportShow";
 import {Col, Row} from "antd";
 import {useIsMobile} from "../common/hooksv2";
+import MobileAdapter from "../common/MobileAdapter";
 
 function ReportPanel() {
     // 更换Favicon为/newslogo.webp
@@ -50,9 +51,11 @@ function ReportPanel() {
 
     return <Row>
         <Col
-            span={isMobile ? 0 : 4}
+            span={isMobile ? 4 : 4}
         >
-            <ReportSelector onSelect={setSelected}/>
+            <MobileAdapter position={"left"} width={"15%"}>
+                <ReportSelector onSelect={setSelected}/>
+            </MobileAdapter>
         </Col>
         <Col
             span={isMobile ? 24 : 16}
@@ -62,7 +65,6 @@ function ReportPanel() {
             </div>
         </Col>
     </Row>
-
 }
 
 export default ReportPanel;

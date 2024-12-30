@@ -156,6 +156,7 @@ function WeatherCard({weather, weatherIndex}: WeatherCardProps) {
 }
 
 function NewsCard({title, articles}: { title: string, articles: NewsArticle[] }) {
+    const isMobile = useIsMobile();
     return <Card title={title} style={{
         marginBottom: '16px',
         borderRadius: '10px',               /* 圆角 */
@@ -169,12 +170,22 @@ function NewsCard({title, articles}: { title: string, articles: NewsArticle[] })
             renderItem={item => (
                 <List.Item key={item.title}>
                     <List.Item.Meta
-                        title={<a href={item.link} target="_blank" rel="noopener noreferrer">{item.title}</a>}
+                        title={<div
+                            style={{
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                alignItems: 'center',
+                            }}
+                        >
+                            <Link to={item.link} target="_blank" rel="noopener noreferrer"
+                                  style={{color: "black", fontWeight: 'normal'}}>{item.title}
+                            </Link>
+                            <Text type="secondary" style={{fontSize: '12px', fontWeight: 'normal'}}>
+                                {isMobile ? new Date(item.pubDate).toLocaleDateString('zh-CN', {timeZone: 'Asia/Shanghai'}) : new Date(item.pubDate).toLocaleString('zh-CN', {timeZone: 'Asia/Shanghai'})}
+                            </Text>
+                        </div>}
                         description={item.description}
                     />
-                    <Text type="secondary">
-                        {new Date(item.pubDate).toLocaleString('zh-CN', {timeZone: 'Asia/Shanghai'})}
-                    </Text>
                 </List.Item>
             )}
         />
@@ -183,6 +194,7 @@ function NewsCard({title, articles}: { title: string, articles: NewsArticle[] })
 
 
 function GoogleNewsCard({title, articles}: { title: string, articles?: NewsArticle[] }) {
+    const isMobile = useIsMobile();
     if (!articles) {
         return <Card title={title} style={{
             marginBottom: '16px',
@@ -206,10 +218,18 @@ function GoogleNewsCard({title, articles}: { title: string, articles?: NewsArtic
                 itemLayout="horizontal"
                 dataSource={articles}
                 renderItem={item => (
-                    <List.Item key={item.title}>
+                    <List.Item key={item.title} style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                    }}>
                         <Link to={item.link} target="_blank" rel="noopener noreferrer">{item.title}</Link>
-                        <Text type="secondary">
-                            {new Date(item.pubDate).toLocaleString('zh-CN', {timeZone: 'Asia/Shanghai'})}
+                        <Text type="secondary" style={{
+                            width: "20ch",
+                            // 靠右
+                            textAlign: 'right',
+                        }}>
+                            {isMobile ? new Date(item.pubDate).toLocaleDateString('zh-CN', {timeZone: 'Asia/Shanghai'}) : new Date(item.pubDate).toLocaleString('zh-CN', {timeZone: 'Asia/Shanghai'})}
                         </Text>
                     </List.Item>
                 )}
