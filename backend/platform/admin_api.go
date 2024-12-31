@@ -83,7 +83,15 @@ func (m *webMgr) login(c *gin.Context) {
 func (m *webMgr) onLogin(c *gin.Context, userName string, permission []string, retr share3.CheckTokenRet, err error) {
 	// 打印登录日志，如果是admin，还需要推送
 	loginInfo := "login usr[%s] permission%v time[%s] ip[%s](%s)"
-	loginInfo = fmt.Sprintf(loginInfo, userName, permission, time.Now().Format("2006-01-02 15:04:05"), c.ClientIP(), misc.GetIpAddr(c.ClientIP()))
+	// 获取真实ip，因为可能是通过cf cdn转发过来的
+	realIP := c.GetHeader("CF-Connecting-IP")
+	if realIP == "" {
+		realIP = c.GetHeader("X-Forwarded-For")
+		if realIP == "" {
+			realIP = c.ClientIP()
+		}
+	}
+	loginInfo = fmt.Sprintf(loginInfo, userName, permission, time.Now().Format("2006-01-02 15:04:05"), realIP, misc.GetIpAddr(realIP))
 	m.plat.log.Info("PLAT", loginInfo)
 	isAdmin := false
 	for _, v := range retr.Pers {
