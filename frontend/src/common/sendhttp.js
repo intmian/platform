@@ -201,9 +201,7 @@ async function UniPost(url, req) {
             },
             body: JSON.stringify(req),
         });
-
-        if (!response.ok || (response.code !== undefined && response.code !== 0)) {
-            console.debug('UniPost failed:', response)
+        if (!response.ok) {
             result.ok = false
             return result
         }
@@ -211,6 +209,9 @@ async function UniPost(url, req) {
         let data = await response.json()
         if (data.data !== undefined) {
             result.data = data.data
+        }
+        if (data.code !== undefined && data.code !== 0) {
+            result.ok = false
         }
         return result
     } catch (error) {

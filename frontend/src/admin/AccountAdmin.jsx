@@ -70,7 +70,6 @@ export function AddPermissionPanel({account, onAdd, onCancel}) {
                 >
                     <TagInput
                         tagOps={AllPermission}
-                        tags={[]}
                         style={{
                             width: "100%",
                         }}
@@ -86,7 +85,7 @@ export function AddPermissionPanel({account, onAdd, onCancel}) {
     </>
 }
 
-function Permission({tokenID, iniPermission, onDelete}) {
+function Permission({account, tokenID, iniPermission, onDelete}) {
     const [messageApi, contextHolder] = message.useMessage();
     const [permission, setPermission] = useState(iniPermission);
     const [needSave, setNeedSave] = useState(false);
@@ -141,7 +140,7 @@ function Permission({tokenID, iniPermission, onDelete}) {
                         onClick={
                             () => {
                                 setSaving(true);
-                                sendChangeToken(name, tokenID, permission, (ret) => {
+                                sendChangeToken(account, tokenID, permission, (ret) => {
                                     if (ret.ok) {
                                         messageApi.success("保存成功");
                                         setNeedSave(false);
@@ -181,7 +180,7 @@ function Permission({tokenID, iniPermission, onDelete}) {
     </Row>
 }
 
-function Permissions({permissionData}) {
+function Permissions({account, permissionData}) {
     const [nowData, setNowData] = useState(permissionData);
     return <div>
         <List
@@ -198,6 +197,7 @@ function Permissions({permissionData}) {
                 {(item) => (
                     <List.Item key={item.tokenID}>
                         <Permission
+                            account={account}
                             tokenID={item.tokenID}
                             iniPermission={item.permission}
                             onDelete={
@@ -224,6 +224,7 @@ export function AccountPanel({name, initShowData, onDelete}) {
     const [adding, setAdding] = useState(false);
     const [deleting, setDeleting] = useState(false);
     let addPermissionPanel = <AddPermissionPanel
+        account={name}
         onAdd={
             (tokenID, permissions) => {
                 showData.permissionData.push({
@@ -285,6 +286,7 @@ export function AccountPanel({name, initShowData, onDelete}) {
             <div
             >
                 <Permissions
+                    account={name}
                     permissionData={showData.permissionData}
                 />
             </div>
@@ -406,5 +408,25 @@ export function AccountAdmin() {
         >
             {panels}
         </Space>
+        {accountAdd && <AccountAddPanel
+            onAdd={
+                (name) => {
+                    setAccountAdd(false);
+                    setData([...data, accountHttp2ShowData([], name)]);
+                }}
+            onCancel={
+                () => {
+                    setAccountAdd(false);
+                }
+            }
+        />}
+        <Button type="primary" onClick={
+            () => {
+                setAccountAdd(true);
+            }
+        }>
+            <PlusOutlined/>
+        </Button>
+
     </>
 }

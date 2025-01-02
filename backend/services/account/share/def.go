@@ -49,9 +49,9 @@ type DelTokenRet struct {
 const CmdChangeToken share2.Cmd = "changeToken"
 
 type ChangeTokenReq struct {
-	Account string
-	TokenID int
-	Pers    []share2.Permission
+	Account string   `json:"account,omitempty"`
+	TokenID string   `json:"tokenID,omitempty"`
+	Pers    []string `json:"pers,omitempty"`
 }
 
 type ChangeTokenRet struct {

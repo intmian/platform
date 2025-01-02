@@ -68,8 +68,10 @@ type Setting struct {
 type Permission string
 
 const (
-	PermissionAdmin Permission = "admin"
-	PermissionCmd   Permission = "cmd"
+	PermissionAdmin      Permission = "admin"
+	PermissionCmd        Permission = "cmd"
+	PermissionAuto       Permission = "auto"
+	PermissionAutoReport Permission = "auto_report"
 )
 
 type Valid struct {
@@ -100,6 +102,38 @@ func (v *Valid) HasPermission(name Permission) bool {
 
 	}
 	return false
+}
+
+func (v *Valid) HasOnePermission(names ...Permission) bool {
+	if v.FromSys {
+		return true
+	}
+	if v.ValidTime < time.Now().Unix() {
+		return false
+	}
+	for _, p := range v.Permissions {
+		for _, name := range names {
+			if p == name {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func (v *Valid) HasAllPermission(names ...Permission) bool {
+	if v.FromSys {
+		return true
+	}
+	if v.ValidTime < time.Now().Unix() {
+		return false
+	}
+	for _, name := range names {
+		if !v.HasPermission(name) {
+			return false
+		}
+	}
+	return true
 }
 
 func MakeSysValid() Valid {

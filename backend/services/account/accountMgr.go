@@ -122,7 +122,7 @@ func (a *accountMgr) register(account string, creator string) error {
 	return nil
 }
 
-func (a *accountMgr) changePermission(account string, tokenID int, permissions []share2.Permission) error {
+func (a *accountMgr) changePermission(account string, tokenID string, permissions []share2.Permission) error {
 	a.idLock.Lock(account)
 	defer a.idLock.Unlock(account)
 	if !a.initTag.IsInitialized() {
@@ -138,10 +138,18 @@ func (a *accountMgr) changePermission(account string, tokenID int, permissions [
 	var ad *accountDbData
 	ad = xstorage.UnitToJStruct[accountDbData](sv)
 	// 判断是否存在,如果存在就更改
-	if tokenID >= len(ad.ID2PerInfos) {
+	find := false
+	for _, v := range ad.ID2PerInfos {
+		if v.Token == tokenID {
+			find = true
+			v.Permissions = permissions
+			break
+		}
+	}
+
+	if !find {
 		return ErrTokenNotExist
 	}
-	ad.ID2PerInfos[tokenID].Permissions = permissions
 
 	err = a.accDb.Set(account, xstorage.JStructToUnit(ad))
 	if err != nil {
