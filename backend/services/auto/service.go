@@ -26,14 +26,14 @@ func (s *Service) GetProp() backendshare.ServiceProp {
 }
 
 func (s *Service) HandleRpc(msg backendshare.Msg, valid backendshare.Valid) (interface{}, error) {
-	if !(valid.HasOnePermission("admin", "auto", "auto.report")) {
+	if !(valid.HasOnePermission(backendshare.PermissionAdmin, backendshare.PermissionAuto, backendshare.PermissionAutoReport)) {
 		return nil, errors.New("no permission")
 	}
 
-	if !valid.HasPermission("admin") {
+	if !valid.HasPermission(backendshare.PermissionAdmin) {
 		switch msg.Cmd() {
 		case CmdGetReportList, CmdGenerateReport, CmdGetReport, CmdGetWholeReport:
-			if !valid.HasPermission("report") {
+			if !valid.HasPermission("backendshare.PermissionAutoReport") {
 				return nil, errors.New("no permission")
 			}
 		default:
