@@ -71,7 +71,7 @@ const (
 	PermissionAdmin      Permission = "admin"
 	PermissionCmd        Permission = "cmd"
 	PermissionAuto       Permission = "auto"
-	PermissionAutoReport Permission = "auto_report"
+	PermissionAutoReport Permission = "auto.report"
 )
 
 type Valid struct {
