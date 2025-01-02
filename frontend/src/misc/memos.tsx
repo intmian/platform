@@ -329,6 +329,21 @@ function HideInput({functionsRef, style, onChange}: {
 }
 
 function Memos() {
+    // 更换Favicon为/newslogo.webp
+    useEffect(() => {
+        const existingFavicon = document.querySelector('link[rel="icon"], link[rel="shortcut icon"]');
+        if (existingFavicon) {
+            existingFavicon.remove();
+        }
+
+        const link = document.createElement('link');
+        link.type = 'image/x-icon';
+        link.rel = 'shortcut icon';
+        link.href = '/note-logo.png';
+        document.getElementsByTagName('head')[0].appendChild(link);
+        document.title = "mini笔记";
+    }, []);
+
     // 从localStorage中获取配置
     const memosSetting: MemosSetting = JSON.parse(localStorage.getItem('memosSetting') || '{}');
     const NowSetting = useRef(memosSetting);

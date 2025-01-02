@@ -9,6 +9,11 @@ import MobileAdapter from "../common/MobileAdapter";
 function ReportPanel() {
     // 更换Favicon为/newslogo.webp
     useEffect(() => {
+        const existingFavicon = document.querySelector('link[rel="icon"], link[rel="shortcut icon"]');
+        if (existingFavicon) {
+            existingFavicon.remove();
+        }
+        
         const link = document.createElement('link');
         link.type = 'image/x-icon';
         link.rel = 'shortcut icon';
