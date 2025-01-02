@@ -16,7 +16,7 @@ function ReportSelector({onSelect}: {
             if (!ret.ok) {
                 return;
             }
-            setReportList(ret.data.List);
+            setReportList(ret.data.List.reverse());
         });
     }, []);
 
@@ -25,7 +25,7 @@ function ReportSelector({onSelect}: {
             if (!ret.ok) {
                 return;
             }
-            setReportList(ret.data.List);
+            setReportList(ret.data.List.reverse());
         });
     };
 
@@ -96,6 +96,9 @@ function ReportSelector({onSelect}: {
                     overflow: "auto"
                 }}
                 dataSource={reportList}
+                pagination={{
+                    pageSize: 5,
+                }}
                 renderItem={(report) => (
                     <List.Item onClick={() => onSelect(report)}>
                         <Button
