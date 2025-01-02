@@ -29,7 +29,7 @@ function ReportPanel() {
     }, [selected]);
 
     // 不合法的日期，自动导入今日日期
-    if (date && date !== "" && date !== "whole" && !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    if (date && date !== "" && date !== "whole" && !/^\d{4}-\d{1,2}-\d{1,2}$/.test(date)) {
         // 获取今日日期
         const today = new Date();
         setSelected(`${today.getFullYear()}-${today.getMonth() + 1}-${today.getDate()}`);
