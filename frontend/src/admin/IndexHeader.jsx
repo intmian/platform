@@ -122,7 +122,7 @@ function IndexHeader({onLoginSuc, onLogOut}) {
                 onLogOut={onLogOut}
             />
         </Space>
-    </Header>;
+    </Header>
 }
 
 export default IndexHeader;
