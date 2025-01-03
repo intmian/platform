@@ -72,7 +72,7 @@ func (c *core) startService(flag coreShare.SvrFlag) error {
 	if err != nil {
 		c.plat.log.ErrorErr("PLAT", errors.WithMessagef(err, "startService %d err", flag))
 	}
-	err = c.plat.push.Push("PLAT", fmt.Sprintf("服务 %s 成功启动", name), false)
+	//err = c.plat.push.Push("PLAT", fmt.Sprintf("服务 %s 成功启动", name), false)
 	c.serviceMeta[flag].Status = coreShare.StatusStart
 	c.serviceMeta[flag].StartTime = time.Now()
 	if err != nil {
