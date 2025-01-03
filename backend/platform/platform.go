@@ -138,9 +138,12 @@ func (p *PlatForm) Init(c context.Context) error {
 	sigC := make(chan os.Signal)
 	signal.Notify(sigC, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
 	go func() {
-		p.log.Info("PLAT", "start exit monitor")
 		sig := <-sigC
-		p.log.Error("PLAT", "receive signal %v, exit", sig)
+		p.log.Info("PLAT", "receive signal %v, exit", sig)
+		err := p.push.Push("PLAT", "外部强制结束，后端已退出", false)
+		if err != nil {
+			p.log.WarningErr("PLAT", errors.WithMessage(err, "push exit err"))
+		}
 		time.Sleep(time.Second)
 		os.Exit(0)
 	}()
