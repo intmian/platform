@@ -136,7 +136,7 @@ func (p *PlatForm) Init(c context.Context) error {
 
 	// 做下退出的警报
 	sigC := make(chan os.Signal)
-	signal.Notify(sigC, os.Interrupt, syscall.SIGINT)
+	signal.Notify(sigC, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
 	go func() {
 		p.log.Info("PLAT", "start exit monitor")
 		sig := <-sigC
