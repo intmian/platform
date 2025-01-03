@@ -1,3 +1,6 @@
+![image](https://github.com/user-attachments/assets/d0841cac-dd6b-4d59-8544-d9bd861d6e07)
+![note](https://github.com/user-attachments/assets/bfca02f4-f490-4e47-acd1-2f0a768ac100)
+
 ## 项目用处
 支持界面化管理platform的各种功能
 
