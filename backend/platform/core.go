@@ -34,7 +34,7 @@ func (c *core) Init(plat *PlatForm) error {
 	c.serviceMeta = make(map[coreShare.SvrFlag]*coreShare.ServiceMeta)
 	c.startTime = time.Now()
 	c.registerSvr()
-	err := c.plat.push.Push("PLAT", "初始化完成", false)
+	err := c.plat.push.Push("PLAT", "服务器已启动", false)
 	if err != nil {
 		c.plat.log.WarningErr("PLAT", errors.WithMessage(err, "push Init err"))
 	}
