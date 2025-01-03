@@ -77,8 +77,7 @@ function UsrArea({user, onLoginSuc, onLogOut}: {
 
 function ReportUser() {
     const loginCtr = useContext(LoginCtx);
-    // 增加自动登录和登入登出的显示
-    console.log(loginCtr.loginInfo);
+    // TODO 增加自动登录和登入登出的显示
     if (!loginCtr.loginInfo.init) {
         // 返回一个全屏的正在加载中
         return <div

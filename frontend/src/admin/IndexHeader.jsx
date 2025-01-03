@@ -2,7 +2,7 @@ import {Avatar, Button, Image, Layout, Menu, Popconfirm, Space} from "antd";
 import {getItem} from "../tool.js";
 import LoginPanel from "../common/loginPanel.jsx";
 import {useContext, useState} from "react";
-import biglogo from "../assets/biglogo.png";
+import biglogo from "/plat-logo.png";
 import {UserOutlined} from "@ant-design/icons";
 import {LoginCtx} from "../common/loginCtx.jsx";
 
@@ -74,7 +74,7 @@ function IndexHeader({onLoginSuc, onLogOut}) {
         style={{
             display: 'flex',
             alignItems: 'center',
-            // background: '#fff',
+            background: '#ede8e4',
         }}
     >
         <Space size="0"
@@ -82,28 +82,26 @@ function IndexHeader({onLoginSuc, onLogOut}) {
                    margin: 10,
                    height: "100%",
                    // 白色背景
-                   background: 'rgba(0, 0, 0, 0.2)',
                }}
         >
             <Image
-                width={100}
+                width={50}
                 preview={false}
                 src={biglogo}
             />
             <h1
                 style={{
-                    color: 'white',
                     fontSize: 20,
                     // fontWeight: 500,
                     minWidth: 0,
                 }}
             >
-                后台
+                platform管理后台
             </h1>
         </Space>
         <Menu
             mode="horizontal"
-            theme={'dark'}
+            theme={'white'}
             defaultSelectedKeys={['home']}
             items={[
                 getItem('管理', 'home'),
