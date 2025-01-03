@@ -33,7 +33,7 @@ function UserButton({user, onLogOut}) {
                 {user}
             </Space>
 
-        </Button>;
+        </Button>
     </Popconfirm>;
 }
 
