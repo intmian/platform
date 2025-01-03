@@ -339,7 +339,7 @@ function Memos() {
         const link = document.createElement('link');
         link.type = 'image/x-icon';
         link.rel = 'shortcut icon';
-        link.href = '/note-logo.png';
+        link.href = '/note-logo-mini.png';
         document.getElementsByTagName('head')[0].appendChild(link);
         document.title = "mini笔记";
     }, []);
