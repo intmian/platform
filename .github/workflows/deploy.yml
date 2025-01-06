@@ -17,4 +17,4 @@ jobs:
 
       - name: 执行更新脚本
         run: |
-          ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} 'zsh /root/data/plat/update.sh'
+          ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} 'bash /root/data/plat/update.sh'
