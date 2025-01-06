@@ -1,0 +1,20 @@
+name: Deploy on Push
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest  # 使用 Ubuntu 最新版的虚拟环境
+
+    steps:
+      - name: SSH登录
+        uses: webfactory/ssh-agent@v0.5.3
+        with:
+          ssh-private-key: ${{ secrets.SVR_KEY }}  # 你可以将私钥存储在 GitHub Secrets 中
+
+      - name: 执行更新脚本
+        run: |
+          /root/data/plat/update.sh

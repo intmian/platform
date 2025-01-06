@@ -71,8 +71,9 @@ func (m *webMgr) Init(plat *PlatForm) error {
 		}
 		_ = m.plat.storage.Set("WebSalt1", xstorage.ToUnit[string](s1, xstorage.ValueTypeString))
 	}
-	timeStr := time.Now().Format("2006-01-02 15:04:05")
-	m.jwt.SetSalt(xstorage.ToBase[string](s1v), timeStr)
+	// 为了权衡安全和方便性，重启时如果跨月就重置一下token，如果每次都重置那会导致每次都需要重新登录，不重置会导致可能的破解？
+	token2 := time.Now().Format("2006-01")
+	m.jwt.SetSalt(xstorage.ToBase[string](s1v), token2)
 	var err error
 	go func() {
 		err = engine.Run(":" + m.plat.baseSetting.Copy().WebPort)
