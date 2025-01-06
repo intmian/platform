@@ -155,8 +155,21 @@ function WeatherCard({weather, weatherIndex}: WeatherCardProps) {
     );
 }
 
-function NewsCard({title, articles}: { title: string, articles: NewsArticle[] }) {
+function NewsCard({title, articles}: { title: string, articles?: NewsArticle[] }) {
     const isMobile = useIsMobile();
+
+    if (!articles) {
+        return <Card title={title} style={{
+            marginBottom: '16px',
+            borderRadius: '10px',               /* 圆角 */
+            boxShadow: '0 4px 10px rgba(0, 0, 0, 0.15)', /* 阴影效果 */
+            backgroundColor: '#fff',           /* 背景色 */
+            padding: '16px',                     /* 内边距 */
+        }}>
+            <Text type="secondary">暂无新闻</Text>
+        </Card>;
+    }
+
     return <Card title={title} style={{
         marginBottom: '16px',
         borderRadius: '10px',               /* 圆角 */
