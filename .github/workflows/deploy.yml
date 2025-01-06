@@ -7,13 +7,13 @@ on:
 
 jobs:
   deploy:
-    runs-on: ubuntu-latest  # 使用 Ubuntu 最新版的虚拟环境
+    runs-on: ubuntu-latest
 
     steps:
       - name: SSH登录
         uses: webfactory/ssh-agent@v0.5.3
         with:
-          ssh-private-key: ${{ secrets.SSH_KEY }}  # 你可以将私钥存储在 GitHub Secrets 中
+          ssh-private-key: ${{ secrets.SSH_KEY }}
 
       - name: 执行更新脚本
         run: |
