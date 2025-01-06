@@ -1,5 +1,5 @@
 import React, {useCallback, useEffect, useImperativeHandle, useRef, useState} from "react";
-import {Button, Input, Space, Tooltip} from "antd";
+import {Button, Input, notification, Space, Tooltip} from "antd";
 import {CheckCircleTwoTone, CloseCircleTwoTone, HomeOutlined, SettingFilled, SyncOutlined} from "@ant-design/icons";
 import TagInput from "../common/TagInput";
 import {useLostFocus} from "../common/hook";
@@ -97,7 +97,8 @@ interface TagData {
 function GetMemosTags(url: string, key: string, sucCallback: (data: {
     tags: string[]
 }) => void, failCallback: () => void) {
-    fetch(url + '/api/v1/memos/-/tags', {
+    // 这个项目相当的神奇，tags没有单独存储，而是加载所有的笔记，从笔记中读取关联的tags…tags只计算在这里，两万条大概800k
+    fetch(url + '/api/v1/memos?pageSize=10000000&filter=creator == \'users/1\'&view=MEMO_VIEW_METADATA_ONLY', {
         method: 'GET',
         headers: {
             'Content-Type': 'application/json',
@@ -106,19 +107,33 @@ function GetMemosTags(url: string, key: string, sucCallback: (data: {
     })
         .then(response => response.json())
         .then(data => {
-            if (data.tagAmounts) {
-                const tagsMap: MemosTagAmount = data.tagAmounts;
-                const tagData: TagData[] = [];
-                for (const [tag, amount] of Object.entries(tagsMap)) {
-                    tagData.push({tag: tag, amount: amount});
-                }
-                // 在请求时根据amount排序，因为短期不会发生变化，所以不用实时更新排序，避免在底层造成性能问题。
-                tagData.sort((a, b) => b.amount - a.amount);
-                const tags = tagData.map((tag) => tag.tag);
-                sucCallback({tags: tags});
-            } else {
+            const tag2num = new Map<string, number>();
+            if (!data.memos || data.memos.length === 0) {
                 failCallback();
+                return;
             }
+            for (const memo of data.memos) {
+                for (const tag of memo.property.tags) {
+                    if (tag2num.has(tag)) {
+                        const oldNum = tag2num.get(tag);
+                        if (oldNum) {
+                            tag2num.set(tag, oldNum + 1);
+                        } else {
+                            tag2num.set(tag, 1);
+                        }
+                    } else {
+                        tag2num.set(tag, 1);
+                    }
+                }
+            }
+            const tagData: TagData[] = [];
+            tag2num.forEach((value, key) => {
+                tagData.push({tag: key, amount: value});
+            });
+            tagData.sort((a, b) => b.amount - a.amount);
+            const tags = tagData.map((tag) => tag.tag);
+            console.log(tags);
+            sucCallback({tags: tags});
         })
 }
 
@@ -237,6 +252,10 @@ function Tags({TagsChange, setting, style, tags}: {
             tagsOpr.current = data.tags;
             localStorage.setItem('memosTags', JSON.stringify(tagsOpr.current));
         }, () => {
+            notification.error({
+                message: '错误',
+                description: '获取tags失败',
+            });
         });
     }, [setting.url, setting.key, TagsChange]);
     return <TagInput
