@@ -69,6 +69,11 @@ function useAutoCheckLogin(loginCtrRef) {
         });
 
         const interval = setInterval(() => {
+            // 如果没有登录信息，不检测
+            if (loginCtrRef.current.loginInfo.usr === "") {
+                return;
+            }
+
             SendCheckLogin((result) => {
                 if (result === null || result.User !== loginCtrRef.current.loginInfo.usr) {
                     loginCtrRef.current.onLogout();

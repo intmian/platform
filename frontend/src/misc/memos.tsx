@@ -132,7 +132,6 @@ function GetMemosTags(url: string, key: string, sucCallback: (data: {
             });
             tagData.sort((a, b) => b.amount - a.amount);
             const tags = tagData.map((tag) => tag.tag);
-            console.log(tags);
             sucCallback({tags: tags});
         })
 }
