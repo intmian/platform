@@ -7,11 +7,6 @@
       "src": "/plat-logo.png",
       "sizes": "1024x1024",
       "type": "image/png"
-    },
-    {
-      "src": "/plat-logo-mini.png",
-      "sizes": "64x64",
-      "type": "image/png"
     }
   ]
 }
