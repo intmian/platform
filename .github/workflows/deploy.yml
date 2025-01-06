@@ -1,4 +1,4 @@
-name: Deploy on Push
+name: 自动部署
 
 on:
   push:
@@ -13,8 +13,8 @@ jobs:
       - name: SSH登录
         uses: webfactory/ssh-agent@v0.5.3
         with:
-          ssh-private-key: ${{ secrets.SVR_KEY }}  # 你可以将私钥存储在 GitHub Secrets 中
+          ssh-private-key: ${{ secrets.SSH_KEY }}  # 你可以将私钥存储在 GitHub Secrets 中
 
       - name: 执行更新脚本
         run: |
-          /root/data/plat/update.sh
+          ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} 'bash -s' < /root/data/plat/update.sh
