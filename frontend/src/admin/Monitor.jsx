@@ -45,6 +45,9 @@ function ServiceInfo({name, startTime, initStatus, type}) {
         case 'account' :
             nameShow = '账号服务';
             break;
+        case 'cmd':
+            nameShow = '脚本管理';
+            break;
         default:
 
     }
