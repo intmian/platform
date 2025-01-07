@@ -140,7 +140,7 @@ func (p *PlatForm) Init(c context.Context) error {
 	go func() {
 		sig := <-sigC
 		p.log.Info("PLAT", "receive signal %v, exit", sig)
-		err := p.push.Push("PLAT", "外部强制结束，后端已退出", false)
+		err := p.push.Push("PLAT", "因外部信号，服务器已退出", false)
 		if err != nil {
 			p.log.WarningErr("PLAT", errors.WithMessage(err, "push exit err"))
 		}
