@@ -11,10 +11,6 @@ import (
 	coreShare "github.com/intmian/platform/backend/share"
 	"github.com/pkg/errors"
 	"time"
-	"github.com/shirou/gopsutil/cpu"
-	"github.com/shirou/gopsutil/mem"
-	"github.com/shirou/gopsutil/process"
-	"sort"
 )
 
 // core 提供共用的核心共享服务，并负责启动关闭各项服务
@@ -36,7 +32,7 @@ func (c *core) Init(plat *PlatForm) error {
 	c.ctx = context.WithoutCancel(c.plat.ctx)
 	c.service = make(map[coreShare.SvrFlag]coreShare.IService)
 	c.serviceMeta = make(map[coreShare.SvrFlag]*coreShare.ServiceMeta)
-	c.startTime = time.now()
+	c.startTime = time.Now()
 	c.registerSvr()
 	err := c.plat.push.Push("PLAT", "服务器已启动", false)
 	if err != nil {
@@ -181,46 +177,4 @@ func (c *core) sendAndRec(flag coreShare.SvrFlag, msg coreShare.Msg, valid coreS
 
 func (c *core) onRec(flag coreShare.SvrFlag, msg coreShare.Msg, valid coreShare.Valid) {
 	go c.service[flag].Handle(msg, valid)
-}
-
-func (c *core) GetSystemUsage() (float64, float64, []ProcessInfo, error) {
-	v, err := mem.VirtualMemory()
-	if err != nil {
-		return 0, 0, nil, err
-	}
-	cpuPercent, err := cpu.Percent(0, false)
-	if err != nil {
-		return 0, 0, nil, err
-	}
-	processes, err := process.Processes()
-	if err != nil {
-		return 0, 0, nil, err
-	}
-
-	type ProcessInfo struct {
-		Pid    int32   `json:"pid"`
-		Name   string  `json:"name"`
-		Memory float32 `json:"memory"`
-	}
-
-	var processInfos []ProcessInfo
-	for _, p := range processes {
-		memPercent, _ := p.MemoryPercent()
-		name, _ := p.Name()
-		processInfos = append(processInfos, ProcessInfo{
-			Pid:    p.Pid,
-			Name:   name,
-			Memory: memPercent,
-		})
-	}
-
-	sort.Slice(processInfos, func(i, j int) bool {
-		return processInfos[i].Memory > processInfos[j].Memory
-	})
-
-	if len(processInfos) > 10 {
-		processInfos = processInfos[:10]
-	}
-
-	return v.UsedPercent, cpuPercent[0], processInfos, nil
 }
