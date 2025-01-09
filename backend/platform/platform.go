@@ -14,6 +14,9 @@ import (
 	"os/signal"
 	"syscall"
 	"time"
+	"github.com/shirou/gopsutil/cpu"
+	"github.com/shirou/gopsutil/mem"
+	"github.com/shirou/gopsutil/process"
 )
 
 type PlatForm struct {
