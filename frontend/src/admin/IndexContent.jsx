@@ -5,6 +5,7 @@ import {Config} from "./Config.jsx";
 import {LoginCtx} from "../common/loginCtx.jsx";
 import {useContext} from "react";
 import {AccountAdmin} from "./AccountAdmin.jsx";
+import Performance from "./Performance.tsx";
 
 const {Content} = Layout;
 
@@ -41,6 +42,9 @@ function IndexContent({contentType}) {
             break;
         case 'account':
             content = <AccountAdmin/>;
+            break;
+        case 'performance':
+            content = <Performance/>;
             break;
         default:
             break;

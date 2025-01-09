@@ -18,4 +18,5 @@ func (m *webMgr) initAdminRoot(r *gin.Engine) {
 	admin.POST("/storage/set", m.plat.stoWebPack.WebSet)
 	admin.POST("/storage/get_all", m.plat.stoWebPack.WebGetAll)
 	admin.POST("/log/get", m.getLastLog)
+	admin.POST("/system/usage", m.getSystemUsage)
 }
