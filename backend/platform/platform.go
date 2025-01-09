@@ -10,6 +10,8 @@ import (
 	"github.com/intmian/mian_go_lib/xstorage"
 	"github.com/intmian/platform/backend/share"
 	"github.com/pkg/errors"
+	"net/http"
+	_ "net/http/pprof"
 	"os"
 	"os/signal"
 	"syscall"
@@ -146,6 +148,11 @@ func (p *PlatForm) Init(c context.Context) error {
 		}
 		time.Sleep(time.Second)
 		os.Exit(0)
+	}()
+
+	// 初始化pprof
+	go func() {
+		http.ListenAndServe("127.0.0.1:12351", nil)
 	}()
 
 	return nil
