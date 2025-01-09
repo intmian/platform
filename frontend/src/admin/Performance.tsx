@@ -1,5 +1,5 @@
 import {useEffect, useState} from 'react';
-import {Card, Col, Progress, Row, Table} from 'antd';
+import {Card, Col, List, Progress, Row, Table} from 'antd';
 
 function formatBytes(bytes: number): string {
     if (bytes === 0) return '0 Bytes';
@@ -113,38 +113,59 @@ const Performance = () => {
             <Row gutter={16} style={{marginTop: 24}}>
                 <Col span={12}>
                     <Card title="内存 详情">
-                        <ul>
-                            <li>Total: {formatBytes(data.memory.total)}</li>
-                            <li>Used: {formatBytes(data.memory.used)}</li>
-                            <li>Free: {formatBytes(data.memory.free)}</li>
-                            <li>Shared: {formatBytes(data.memory.shared)}</li>
-                            <li>Buffers: {formatBytes(data.memory.buffers)}</li>
-                            <li>Cached: {formatBytes(data.memory.cached)}</li>
-                            <li>Available: {formatBytes(data.memory.available)}</li>
-                        </ul>
+                        <List
+                            dataSource={[
+                                {label: 'Total', value: formatBytes(data.memory.total)},
+                                {label: 'Used', value: formatBytes(data.memory.used)},
+                                {label: 'Free', value: formatBytes(data.memory.free)},
+                                {label: 'Shared', value: formatBytes(data.memory.shared)},
+                                {label: 'Buffers', value: formatBytes(data.memory.buffers)},
+                                {label: 'Cached', value: formatBytes(data.memory.cached)},
+                                {label: 'Available', value: formatBytes(data.memory.available)},
+                            ]}
+                            renderItem={item => (
+                                <List.Item>
+                                    <List.Item.Meta
+                                        title={item.label}
+                                        description={item.value}
+                                    />
+                                </List.Item>
+                            )}
+                        />
                     </Card>
                 </Col>
                 <Col span={12}>
                     <Card title="Swap 详情">
-                        <ul>
-                            <li>Total: {formatBytes(data.swap.total)}</li>
-                            <li>Used: {formatBytes(data.swap.used)}</li>
-                            <li>Free: {formatBytes(data.swap.free)}</li>
-                            <li>Used Percent: {data.swap.usedPercent.toFixed(2)}%</li>
-                        </ul>
+                        <List
+                            dataSource={[
+                                {label: 'Total', value: formatBytes(data.swap.total)},
+                                {label: 'Used', value: formatBytes(data.swap.used)},
+                                {label: 'Free', value: formatBytes(data.swap.free)},
+                                {label: 'Used Percent', value: `${data.swap.usedPercent.toFixed(2)}%`},
+                            ]}
+                            renderItem={item => (
+                                <List.Item>
+                                    <List.Item.Meta
+                                        title={item.label}
+                                        description={item.value}
+                                    />
+                                </List.Item>
+                            )}
+                        />
                     </Card>
                 </Col>
             </Row>
             <Row gutter={16} style={{marginTop: 24}}>
                 <Col span={24}>
                     <Card title="CPU 详情">
-                        <ul>
-                            {data.cpu.info.map((info, index) => (
-                                <li key={index}>
+                        <List
+                            dataSource={data.cpu.info}
+                            renderItem={(info, index) => (
+                                <List.Item key={index}>
                                     {info.modelName} - {info.cores} cores
-                                </li>
-                            ))}
-                        </ul>
+                                </List.Item>
+                            )}
+                        />
                     </Card>
                 </Col>
             </Row>
