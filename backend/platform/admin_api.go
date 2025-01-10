@@ -348,3 +348,74 @@ func (m *webMgr) getSystemUsage(c *gin.Context) {
 		"top10": processInfos,
 	})
 }
+
+func (m *webMgr) getSystemUsageSSE(c *gin.Context) {
+	c.Header("Content-Type", "text/event-stream")
+	c.Header("Cache-Control", "no-cache")
+	c.Header("Connection", "keep-alive")
+
+	for {
+		v, _ := mem.VirtualMemory()
+		swap, _ := mem.SwapMemory()
+		cpuPercent, _ := cpu.Percent(0, false)
+		cpuInfo, _ := cpu.Info()
+		cpuTimes, _ := cpu.Times(false)
+		processes, _ := process.Processes()
+
+		type ProcessInfo struct {
+			Pid    int32   `json:"pid"`
+			Name   string  `json:"name"`
+			Memory float32 `json:"memory"`
+		}
+
+		var processInfos []ProcessInfo
+		for _, p := range processes {
+			memPercent, _ := p.MemoryPercent()
+			name, _ := p.Name()
+			processInfos = append(processInfos, ProcessInfo{
+				Pid:    p.Pid,
+				Name:   name,
+				Memory: memPercent,
+			})
+		}
+
+		sort.Slice(processInfos, func(i, j int) bool {
+			return processInfos[i].Memory > processInfos[j].Memory
+		})
+
+		if len(processInfos) > 10 {
+			processInfos = processInfos[:10]
+		}
+
+		data := gin.H{
+			"memory": gin.H{
+				"total":       v.Total,
+				"used":        v.Used,
+				"free":        v.Free,
+				"shared":      v.Shared,
+				"buffers":     v.Buffers,
+				"cached":      v.Cached,
+				"available":   v.Available,
+				"usedPercent": v.UsedPercent,
+			},
+			"swap": gin.H{
+				"total":       swap.Total,
+				"used":        swap.Used,
+				"free":        swap.Free,
+				"usedPercent": swap.UsedPercent,
+			},
+			"cpu": gin.H{
+				"percent": cpuPercent[0],
+				"info":    cpuInfo,
+				"times":   cpuTimes,
+			},
+			"top10": processInfos,
+		}
+
+		jsonData, _ := json.Marshal(data)
+		fmt.Fprintf(c.Writer, "data: %s\n\n", jsonData)
+		c.Writer.Flush()
+
+		time.Sleep(5 * time.Second)
+	}
+}
