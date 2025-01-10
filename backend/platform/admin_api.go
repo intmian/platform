@@ -459,8 +459,6 @@ func (m *webMgr) getSystemUsageSSE(c *gin.Context) {
 	// 循环发送 SSE 数据
 	for {
 		data, err := getSystemStats()
-		// DEBUG 打印时间和数据
-		fmt.Println(time.Now(), data)
 		if err != nil {
 			// 处理错误
 			fmt.Fprintf(c.Writer, "data: {\"error\": \"failed to retrieve system stats\"}\n\n")
