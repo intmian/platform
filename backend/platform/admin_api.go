@@ -465,6 +465,8 @@ func (m *webMgr) getSystemUsageSSE(c *gin.Context) {
 			// 处理错误
 			fmt.Fprintf(c.Writer, "data: {\"error\": \"failed to retrieve system stats\"}\n\n")
 			c.Writer.Flush()
+			// DEBUG
+			fmt.Println("Error1:", err)
 			return
 		}
 
@@ -473,6 +475,8 @@ func (m *webMgr) getSystemUsageSSE(c *gin.Context) {
 		if err != nil {
 			fmt.Fprintf(c.Writer, "data: {\"error\": \"failed to marshal data\"}\n\n")
 			c.Writer.Flush()
+			// DEBUG
+			fmt.Println("Error2:", err)
 			return
 		}
 
@@ -480,6 +484,8 @@ func (m *webMgr) getSystemUsageSSE(c *gin.Context) {
 		if _, err := c.Writer.Write([]byte("data: " + string(jsonData) + "\n\n")); err != nil {
 			// 如果写入出错，说明连接已关闭，退出循环
 			fmt.Println("Client disconnected:", err)
+			// DEBUG
+			fmt.Println("Error3:", err)
 			return
 		}
 
