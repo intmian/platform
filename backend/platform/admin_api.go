@@ -349,27 +349,66 @@ func (m *webMgr) getSystemUsage(c *gin.Context) {
 	})
 }
 
+type ProcessInfo struct {
+	Pid    int32   `json:"pid"`
+	Name   string  `json:"name"`
+	Cpu    float64 `json:"cpu"`
+	Memory float32 `json:"memory"`
+}
+
+// 获取内存或 CPU 排名前10的进程
+func topProcesses(processInfos []ProcessInfo, criteria string) []ProcessInfo {
+	switch criteria {
+	case "memory":
+		sort.Slice(processInfos, func(i, j int) bool {
+			return processInfos[i].Memory > processInfos[j].Memory
+		})
+	case "cpu":
+		sort.Slice(processInfos, func(i, j int) bool {
+			return processInfos[i].Cpu > processInfos[j].Cpu
+		})
+	}
+
+	if len(processInfos) > 10 {
+		return append([]ProcessInfo{}, processInfos[:10]...)
+	}
+	return append([]ProcessInfo{}, processInfos...)
+}
+
 func (m *webMgr) getSystemUsageSSE(c *gin.Context) {
 	c.Header("Content-Type", "text/event-stream")
 	c.Header("Cache-Control", "no-cache")
 	c.Header("Connection", "keep-alive")
 	c.Writer.Flush()
 
-	for {
-		v, _ := mem.VirtualMemory()
-		swap, _ := mem.SwapMemory()
-		cpuPercent, _ := cpu.Percent(0, false)
-		cpuInfo, _ := cpu.Info()
-		cpuTimes, _ := cpu.Times(false)
-		processes, _ := process.Processes()
-
-		type ProcessInfo struct {
-			Pid    int32   `json:"pid"`
-			Name   string  `json:"name"`
-			Cpu    float64 `json:"cpu"`
-			Memory float32 `json:"memory"`
+	// 定义获取系统信息的函数
+	getSystemStats := func() (gin.H, error) {
+		v, err := mem.VirtualMemory()
+		if err != nil {
+			return nil, err
+		}
+		swap, err := mem.SwapMemory()
+		if err != nil {
+			return nil, err
+		}
+		cpuPercent, err := cpu.Percent(0, false)
+		if err != nil {
+			return nil, err
+		}
+		cpuInfo, err := cpu.Info()
+		if err != nil {
+			return nil, err
+		}
+		cpuTimes, err := cpu.Times(false)
+		if err != nil {
+			return nil, err
+		}
+		processes, err := process.Processes()
+		if err != nil {
+			return nil, err
 		}
 
+		// 获取进程信息并生成ProcessInfo
 		var processInfos []ProcessInfo
 		for _, p := range processes {
 			memPercent, _ := p.MemoryPercent()
@@ -383,29 +422,11 @@ func (m *webMgr) getSystemUsageSSE(c *gin.Context) {
 			})
 		}
 
-		var processInfosMemory []ProcessInfo
-		var processInfosCpu []ProcessInfo
+		// 对进程按照内存使用和 CPU 使用分别排序，获取前10
+		processInfosMemory := topProcesses(processInfos, "memory")
+		processInfosCpu := topProcesses(processInfos, "cpu")
 
-		sort.Slice(processInfos, func(i, j int) bool {
-			return processInfos[i].Memory > processInfos[j].Memory
-		})
-
-		if len(processInfos) > 10 {
-			processInfosMemory = append([]ProcessInfo(nil), processInfos[:10]...)
-		} else {
-			processInfosMemory = append([]ProcessInfo(nil), processInfos...)
-		}
-
-		sort.Slice(processInfos, func(i, j int) bool {
-			return processInfos[i].Cpu > processInfos[j].Cpu
-		})
-
-		if len(processInfos) > 10 {
-			processInfosCpu = processInfos[:10]
-		} else {
-			processInfosCpu = processInfos
-		}
-
+		// 组装返回数据
 		data := gin.H{
 			"memory": gin.H{
 				"total":       v.Total,
@@ -432,10 +453,37 @@ func (m *webMgr) getSystemUsageSSE(c *gin.Context) {
 			"top10Cpu": processInfosCpu,
 		}
 
-		jsonData, _ := json.Marshal(data)
-		fmt.Fprintf(c.Writer, "data: %s\n\n", jsonData)
+		return data, nil
+	}
+
+	// 循环发送 SSE 数据
+	for {
+		data, err := getSystemStats()
+		if err != nil {
+			// 处理错误
+			fmt.Fprintf(c.Writer, "data: {\"error\": \"failed to retrieve system stats\"}\n\n")
+			c.Writer.Flush()
+			return
+		}
+
+		// 转换为 JSON 格式并发送数据
+		jsonData, err := json.Marshal(data)
+		if err != nil {
+			fmt.Fprintf(c.Writer, "data: {\"error\": \"failed to marshal data\"}\n\n")
+			c.Writer.Flush()
+			return
+		}
+
+		// 检查连接是否还有效
+		if _, err := c.Writer.Write([]byte("data: " + string(jsonData) + "\n\n")); err != nil {
+			// 如果写入出错，说明连接已关闭，退出循环
+			fmt.Println("Client disconnected:", err)
+			return
+		}
+
 		c.Writer.Flush()
 
+		// 防止阻塞并控制数据发送频率
 		time.Sleep(5 * time.Second)
 	}
 }
