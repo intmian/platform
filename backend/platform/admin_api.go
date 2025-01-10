@@ -456,8 +456,16 @@ func (m *webMgr) getSystemUsageSSE(c *gin.Context) {
 		return data, nil
 	}
 
+	begin := time.Now()
+
 	// 循环发送 SSE 数据
 	for {
+		// 太长时间的可能是忘记关了
+		if time.Since(begin) > time.Hour {
+			fmt.Fprintf(c.Writer, "data: {\"error\": \"timeout\"}\n\n")
+			c.Writer.Flush()
+			return
+		}
 		data, err := getSystemStats()
 		if err != nil {
 			// 处理错误
