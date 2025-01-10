@@ -32,27 +32,20 @@ const Performance = () => {
             info: [],
             times: [],
         },
-        top10: []
+        top10: [],
+        top10cpu: []
     });
 
     useEffect(() => {
-        const fetchData = async () => {
-            const response = await fetch('/api/admin/system/usage'
-                , {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                }
-            );
-            const result = await response.json();
+        const eventSource = new EventSource('/api/admin/system/usage/sse');
+        eventSource.onmessage = (event) => {
+            const result = JSON.parse(event.data);
             setData(result);
         };
 
-        fetchData();
-        const interval = setInterval(fetchData, 5000);
-
-        return () => clearInterval(interval);
+        return () => {
+            eventSource.close();
+        };
     }, []);
 
     const columns = [
@@ -70,6 +63,12 @@ const Performance = () => {
             title: '内存占用 (%)',
             dataIndex: 'memory',
             key: 'memory',
+            render: (text: number) => text.toFixed(2),
+        },
+        {
+            title: 'CPU占用 (%)',
+            dataIndex: 'cpu',
+            key: 'cpu',
             render: (text: number) => text.toFixed(2),
         },
     ];
@@ -100,9 +99,9 @@ const Performance = () => {
             </Card>
             <Row gutter={16} style={{marginTop: 24}}>
                 <Col span={24}>
-                    <Card title="Top 10 内存占用进程">
+                    <Card title="Top 10 内存和CPU占用进程">
                         <Table
-                            dataSource={data.top10}
+                            dataSource={data.top10.concat(data.top10cpu)}
                             columns={columns}
                             rowKey="pid"
                             pagination={false}
@@ -111,61 +110,59 @@ const Performance = () => {
                 </Col>
             </Row>
             <Row gutter={16} style={{marginTop: 24}}>
-                <Col span={12}>
-                    <Card title="内存 详情">
-                        <List
-                            dataSource={[
-                                {label: 'Total', value: formatBytes(data.memory.total)},
-                                {label: 'Used', value: formatBytes(data.memory.used)},
-                                {label: 'Free', value: formatBytes(data.memory.free)},
-                                {label: 'Shared', value: formatBytes(data.memory.shared)},
-                                {label: 'Buffers', value: formatBytes(data.memory.buffers)},
-                                {label: 'Cached', value: formatBytes(data.memory.cached)},
-                                {label: 'Available', value: formatBytes(data.memory.available)},
-                            ]}
-                            renderItem={item => (
-                                <List.Item>
-                                    <List.Item.Meta
-                                        title={item.label}
-                                        description={item.value}
-                                    />
-                                </List.Item>
-                            )}
-                        />
-                    </Card>
-                </Col>
-                <Col span={12}>
-                    <Card title="Swap 详情">
-                        <List
-                            dataSource={[
-                                {label: 'Total', value: formatBytes(data.swap.total)},
-                                {label: 'Used', value: formatBytes(data.swap.used)},
-                                {label: 'Free', value: formatBytes(data.swap.free)},
-                                {label: 'Used Percent', value: `${data.swap.usedPercent.toFixed(2)}%`},
-                            ]}
-                            renderItem={item => (
-                                <List.Item>
-                                    <List.Item.Meta
-                                        title={item.label}
-                                        description={item.value}
-                                    />
-                                </List.Item>
-                            )}
-                        />
-                    </Card>
-                </Col>
-            </Row>
-            <Row gutter={16} style={{marginTop: 24}}>
                 <Col span={24}>
-                    <Card title="CPU 详情">
-                        <List
-                            dataSource={data.cpu.info}
-                            renderItem={(info, index) => (
-                                <List.Item key={index}>
-                                    {info.modelName} - {info.cores} cores
-                                </List.Item>
-                            )}
-                        />
+                    <Card title="内存、Swap和CPU 详情">
+                        <Row gutter={16}>
+                            <Col span={8}>
+                                <List
+                                    dataSource={[
+                                        {label: '总内存', value: formatBytes(data.memory.total)},
+                                        {label: '已用内存', value: formatBytes(data.memory.used)},
+                                        {label: '空闲内存', value: formatBytes(data.memory.free)},
+                                        {label: '共享内存', value: formatBytes(data.memory.shared)},
+                                        {label: '缓冲区', value: formatBytes(data.memory.buffers)},
+                                        {label: '缓存', value: formatBytes(data.memory.cached)},
+                                        {label: '可用内存', value: formatBytes(data.memory.available)},
+                                    ]}
+                                    renderItem={item => (
+                                        <List.Item>
+                                            <List.Item.Meta
+                                                title={item.label}
+                                                description={item.value}
+                                            />
+                                        </List.Item>
+                                    )}
+                                />
+                            </Col>
+                            <Col span={8}>
+                                <List
+                                    dataSource={[
+                                        {label: '总Swap', value: formatBytes(data.swap.total)},
+                                        {label: '已用Swap', value: formatBytes(data.swap.used)},
+                                        {label: '空闲Swap', value: formatBytes(data.swap.free)},
+                                        {label: 'Swap使用率', value: `${data.swap.usedPercent.toFixed(2)}%`},
+                                    ]}
+                                    renderItem={item => (
+                                        <List.Item>
+                                            <List.Item.Meta
+                                                title={item.label}
+                                                description={item.value}
+                                            />
+                                        </List.Item>
+                                    )}
+                                />
+                            </Col>
+                            <Col span={8}>
+                                <List
+                                    dataSource={data.cpu.info}
+                                    renderItem={(info, index) => (
+                                        <List.Item key={index}>
+                                            {info.modelName} - {info.cores} 核心
+                                        </List.Item>
+                                    )}
+                                />
+                            </Col>
+                        </Row>
                     </Card>
                 </Col>
             </Row>
