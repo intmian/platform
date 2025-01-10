@@ -45,6 +45,11 @@ func (m *webMgr) Init(plat *PlatForm) error {
 		m.webEngine.Use(func(c *gin.Context) {
 			contentType := c.Request.Header.Get("Content-Type")
 			if c.Request.Method != "POST" && contentType != "application/json" {
+				// 如果是GET但是是SSE
+				if c.Request.Method == "GET" && c.Request.Header.Get("Accept") == "text/event-stream" {
+					c.Next()
+					return
+				}
 				// 如果以assets开头的请求转发
 				if len(c.Request.URL.Path) > 7 && c.Request.URL.Path[:7] == "/assets" {
 					c.File("./front/assets" + c.Request.URL.Path[7:])
@@ -55,6 +60,7 @@ func (m *webMgr) Init(plat *PlatForm) error {
 					return
 				}
 				c.File("./front/index.html")
+				c.Abort()
 			} else {
 				c.Next()
 			}

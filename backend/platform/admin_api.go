@@ -353,6 +353,7 @@ func (m *webMgr) getSystemUsageSSE(c *gin.Context) {
 	c.Header("Content-Type", "text/event-stream")
 	c.Header("Cache-Control", "no-cache")
 	c.Header("Connection", "keep-alive")
+	c.Writer.Flush()
 
 	for {
 		v, _ := mem.VirtualMemory()
@@ -365,6 +366,7 @@ func (m *webMgr) getSystemUsageSSE(c *gin.Context) {
 		type ProcessInfo struct {
 			Pid    int32   `json:"pid"`
 			Name   string  `json:"name"`
+			Cpu    float64 `json:"cpu"`
 			Memory float32 `json:"memory"`
 		}
 
@@ -372,19 +374,36 @@ func (m *webMgr) getSystemUsageSSE(c *gin.Context) {
 		for _, p := range processes {
 			memPercent, _ := p.MemoryPercent()
 			name, _ := p.Name()
+			pCpuPercent, _ := p.CPUPercent()
 			processInfos = append(processInfos, ProcessInfo{
 				Pid:    p.Pid,
 				Name:   name,
+				Cpu:    pCpuPercent,
 				Memory: memPercent,
 			})
 		}
+
+		var processInfosMemory []ProcessInfo
+		var processInfosCpu []ProcessInfo
 
 		sort.Slice(processInfos, func(i, j int) bool {
 			return processInfos[i].Memory > processInfos[j].Memory
 		})
 
 		if len(processInfos) > 10 {
-			processInfos = processInfos[:10]
+			processInfosMemory = append([]ProcessInfo(nil), processInfos[:10]...)
+		} else {
+			processInfosMemory = append([]ProcessInfo(nil), processInfos...)
+		}
+
+		sort.Slice(processInfos, func(i, j int) bool {
+			return processInfos[i].Cpu > processInfos[j].Cpu
+		})
+
+		if len(processInfos) > 10 {
+			processInfosCpu = processInfos[:10]
+		} else {
+			processInfosCpu = processInfos
 		}
 
 		data := gin.H{
@@ -409,7 +428,8 @@ func (m *webMgr) getSystemUsageSSE(c *gin.Context) {
 				"info":    cpuInfo,
 				"times":   cpuTimes,
 			},
-			"top10": processInfos,
+			"top10Mem": processInfosMemory,
+			"top10Cpu": processInfosCpu,
 		}
 
 		jsonData, _ := json.Marshal(data)
