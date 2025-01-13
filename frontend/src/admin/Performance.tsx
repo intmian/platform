@@ -1,5 +1,5 @@
 import {useEffect, useState} from 'react';
-import {Card, Col, List, Progress, Row, Table, Tabs} from 'antd';
+import {Card, Col, Flex, List, Progress, Row, Table, Tabs, Tooltip} from 'antd';
 import TabPane from "antd/es/tabs/TabPane";
 
 function formatBytes(bytes: number): string {
@@ -125,43 +125,91 @@ const Performance = () => {
             <Card style={{marginTop: 24}}>
                 <Tabs defaultActiveKey="1">
                     <TabPane tab="内存详情" key="1">
-                        <List
-                            dataSource={[
-                                {label: '总内存', value: formatBytes(data.memory.total)},
-                                {label: '已用内存', value: formatBytes(data.memory.used)},
-                                {label: '空闲内存', value: formatBytes(data.memory.free)},
-                                {label: '共享内存', value: formatBytes(data.memory.shared)},
-                                {label: '缓冲区', value: formatBytes(data.memory.buffers)},
-                                {label: '缓存', value: formatBytes(data.memory.cached)},
-                                {label: '可用内存', value: formatBytes(data.memory.available)},
-                            ]}
-                            renderItem={item => (
-                                <List.Item>
-                                    <List.Item.Meta
-                                        title={item.label}
+                        <Flex wrap gap={"small"}>
+                            {[
+                                {
+                                    label: '总内存',
+                                    value: formatBytes(data.memory.total),
+                                    meaning: "总内存是指系统中所有内存的总和"
+                                },
+                                {
+                                    label: '已用内存',
+                                    value: formatBytes(data.memory.used),
+                                    meaning: "已用内存是指系统中已经被使用的内存"
+                                },
+                                {
+                                    label: '空闲内存',
+                                    value: formatBytes(data.memory.free),
+                                    meaning: "空闲内存是指系统中未被使用的内存"
+                                },
+                                {
+                                    label: '共享内存',
+                                    value: formatBytes(data.memory.shared),
+                                    meaning: "共享内存是指系统中被多个进程共享的内存"
+                                },
+                                {
+                                    label: '缓冲区',
+                                    value: formatBytes(data.memory.buffers),
+                                    meaning: "缓冲区是指系统中用于缓冲的内存"
+                                },
+                                {
+                                    label: '缓存',
+                                    value: formatBytes(data.memory.cached),
+                                    meaning: "缓存是指系统中用于文件缓存的内存"
+                                },
+                                {
+                                    label: '可用内存',
+                                    value: formatBytes(data.memory.available),
+                                    meaning: "可用内存是指系统中可以被使用的内存"
+                                },
+                            ].map((item, index) => (
+                                <Card key={index} style={{
+                                    width: 130,
+                                    marginBottom: 16,
+                                }}>
+                                    <Card.Meta
+                                        title={<Tooltip title={item.meaning}>{item.label}</Tooltip>}
                                         description={item.value}
                                     />
-                                </List.Item>
-                            )}
-                        />
+                                </Card>
+                            ))}
+                        </Flex>
                     </TabPane>
                     <TabPane tab="Swap详情" key="2">
-                        <List
-                            dataSource={[
-                                {label: '总Swap', value: formatBytes(data.swap.total)},
-                                {label: '已用Swap', value: formatBytes(data.swap.used)},
-                                {label: '空闲Swap', value: formatBytes(data.swap.free)},
-                                {label: 'Swap使用率', value: `${data.swap.usedPercent.toFixed(2)}%`},
-                            ]}
-                            renderItem={item => (
-                                <List.Item>
-                                    <List.Item.Meta
-                                        title={item.label}
+                        <Flex wrap gap={"small"}>
+                            {[
+                                {
+                                    label: '总Swap',
+                                    value: formatBytes(data.swap.total),
+                                    meaning: "总Swap是指系统中所有Swap的总和"
+                                },
+                                {
+                                    label: '已用Swap',
+                                    value: formatBytes(data.swap.used),
+                                    meaning: "已用Swap是指系统中已经被使用的Swap"
+                                },
+                                {
+                                    label: '空闲Swap',
+                                    value: formatBytes(data.swap.free),
+                                    meaning: "空闲Swap是指系统中未被使用的Swap"
+                                },
+                                {
+                                    label: 'Swap使用率',
+                                    value: `${data.swap.usedPercent.toFixed(2)}%`,
+                                    meaning: "Swap使用率是指系统中Swap的使用率"
+                                },
+                            ].map((item, index) => (
+                                <Card key={index} style={{
+                                    width: 150,
+                                    marginBottom: 16,
+                                }}>
+                                    <Card.Meta
+                                        title={<Tooltip title={item.meaning}>{item.label}</Tooltip>}
                                         description={item.value}
                                     />
-                                </List.Item>
-                            )}
-                        />
+                                </Card>
+                            ))}
+                        </Flex>
                     </TabPane>
                     <TabPane tab="CPU详情" key="3">
                         <List
