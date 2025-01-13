@@ -1,6 +1,6 @@
 import {DayReport, sendGetReport, sendGetWholeReport, WholeReport} from "../common/newSendHttp";
 import React, {useEffect, useRef, useState} from "react";
-import {Button, Card, Col, Divider, List, Menu, Row, Tag, Typography} from 'antd';
+import {Button, Card, Col, Collapse, List, Menu, Row, Tag, Typography} from 'antd';
 import {CloudOutlined, MenuOutlined, WindowsOutlined} from '@ant-design/icons';
 import {Link} from "react-router-dom";
 import {useIsMobile} from "../common/hooksv2";
@@ -102,9 +102,10 @@ function WeatherCard({weather, weatherIndex}: WeatherCardProps) {
             borderRadius: '10px',               /* 圆角 */
             boxShadow: '0 4px 10px rgba(0, 0, 0, 0.15)', /* 阴影效果 */
             backgroundColor: '#fff',           /* 背景色 */
-            padding: '16px',                     /* 内边距 */
         }}>
-            <Row gutter={16}>
+            <Row gutter={16} style={{
+                marginBottom: '32px',
+            }}>
                 <Col span={6}>
                     <Title level={4}>天气</Title>
                     <Text>白天: {today.textDay}</Text><br/>
@@ -126,31 +127,36 @@ function WeatherCard({weather, weatherIndex}: WeatherCardProps) {
                     <Text><CloudOutlined/> {today.cloud}%</Text>
                 </Col>
             </Row>
-            <Divider/>
-            <Title level={4}>天气指数</Title>
-            <List
-                dataSource={indices}
-                renderItem={item => (
-                    <List.Item key={item.name}>
-                        <Row gutter={16} align="middle" style={{
-                            width: "100%",
-                        }}>
-                            <Col span={6}>
-                                <Text>{item.name}:</Text>
-                            </Col>
-                            <Col span={6}>
-                                <Tag
-                                    color={item.level > 3 ? "red" : item.level > 2 ? "orange" : item.level > 1 ? "yellow" : "green"}>
-                                    {item.category}
-                                </Tag>
-                            </Col>
-                            <Col span={12}>
-                                <Text>{item.text}</Text>
-                            </Col>
-                        </Row>
-                    </List.Item>
-                )}
-            />
+            <Collapse bordered={false}>
+                <Collapse.Panel header="天气指数" key="1" style={{
+                    // 不要背景颜色
+                    backgroundColor: "white",
+                }}>
+                    <List
+                        dataSource={indices}
+                        renderItem={item => (
+                            <List.Item key={item.name}>
+                                <Row gutter={16} align="middle" style={{
+                                    width: "100%",
+                                }}>
+                                    <Col span={6}>
+                                        <Text>{item.name}:</Text>
+                                    </Col>
+                                    <Col span={6}>
+                                        <Tag
+                                            color={item.level > 3 ? "red" : item.level > 2 ? "orange" : item.level > 1 ? "yellow" : "green"}>
+                                            {item.category}
+                                        </Tag>
+                                    </Col>
+                                    <Col span={12}>
+                                        <Text>{item.text}</Text>
+                                    </Col>
+                                </Row>
+                            </List.Item>
+                        )}
+                    />
+                </Collapse.Panel>
+            </Collapse>
         </Card>
     );
 }
