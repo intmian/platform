@@ -1,12 +1,14 @@
 import {Layout, Menu} from "antd";
 import {getItem} from "../tool.js";
+import {useIsMobile} from "../common/hooksv2";
 
 const {Sider} = Layout;
 
 function IndexSider({onChooseMenuItem, disable}) {
+    const isMobile = useIsMobile();
     return (
         <Sider
-            width={200}
+            width={isMobile ? 150 : 200}
             style={{
                 background: '#fff',
             }}

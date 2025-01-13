@@ -6,18 +6,20 @@ import {LoginCtx} from "../common/loginCtx.jsx";
 import {useContext} from "react";
 import {AccountAdmin} from "./AccountAdmin.jsx";
 import Performance from "./Performance.tsx";
+import {useIsMobile} from "../common/hooksv2";
 
 const {Content} = Layout;
 
 function IndexContent({contentType}) {
     const LoginCtr = useContext(LoginCtx);
+    const isMobile = useIsMobile();
     if (!LoginCtr.loginInfo.isValid() || !LoginCtr.loginInfo.hasPermission('admin')) {
         contentType = 'needLogin';
     }
     if (contentType === 'needLogin') {
         return <Content
             style={{
-                padding: "0 48px",
+                padding: isMobile ? "8px" : "0 48px",
                 display: "flex",
                 justifyContent: "center",
                 alignItems: "center",
@@ -51,7 +53,7 @@ function IndexContent({contentType}) {
     }
     return <Content
         style={{
-            padding: "0 48px",
+            padding: isMobile ? "8px" : "0 48px",
 
         }}
     >

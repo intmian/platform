@@ -2,6 +2,7 @@ import {Button, Card, Flex, List, message, Popconfirm, Progress, Space, Spin, Ta
 import {TimeFromStart} from "../common/misc.jsx";
 import {useEffect, useState} from "react";
 import {SendGetAdminServices, SendStartStopService} from "../common/sendhttp.js";
+import {useIsMobile} from "../common/hooksv2";
 
 const {Meta} = Card;
 
@@ -10,6 +11,8 @@ function ServiceInfo({name, startTime, initStatus, type}) {
     const [startTime2, setStartTime2] = useState(startTime);
     const [status, setStatus] = useState(initStatus);
     const [buttonLoading, setButtonLoading] = useState(false);
+    const isMobile = useIsMobile();
+
     let open = false;
     if (status === 'start') {
         open = true;
@@ -74,7 +77,7 @@ function ServiceInfo({name, startTime, initStatus, type}) {
     return <Card
         key={name}
         style={{
-            width: 330,
+            width: isMobile ? '100%' : 330,
             height: 100,
         }}
     >

@@ -1,16 +1,19 @@
 import IndexHeader from "./IndexHeader.jsx";
-import {Flex, Layout, message, notification, Spin, theme} from "antd";
+import {Button, Drawer, Flex, Layout, message, notification, Spin, theme} from "antd";
 import IndexSider from "./IndexSider.jsx";
 import IndexFooter from "./IndexFooter.jsx";
 import IndexContent from "./IndexContent.jsx";
 import {useContext, useRef, useState} from "react";
 import {LoginCtx} from "../common/loginCtx.jsx";
+import {useIsMobile} from "../common/hooksv2";
+import {MenuOutlined} from "@ant-design/icons";
 
 
 const {Content} = Layout;
 
 
 function Index() {
+    const [drawerVisible, setDrawerVisible] = useState(false);
     const [api, contextHolder] = notification.useNotification();
     const openNotificationWithIcon = (type, msg, desc) => {
         api[type]({
@@ -24,6 +27,8 @@ function Index() {
     const {
         token: {colorBgContainer, borderRadiusLG},
     } = theme.useToken();
+
+    const isMobile = useIsMobile();
 
     const loginCtr = useContext(LoginCtx);
     const loginShow = useRef(false);
@@ -59,7 +64,7 @@ function Index() {
         />
         <Content
             style={{
-                padding: '0 48px',
+                padding: isMobile ? '0 8px' : '0 48px',
             }}
         >
             <div
@@ -77,12 +82,47 @@ function Index() {
                     minHeight: '80vh'
                 }}
             >
-                <IndexSider
-                    disable={!loginCtr.loginInfo.isValid() || !loginCtr.loginInfo.hasPermission('admin')}
-                    onChooseMenuItem={(item) => {
-                        setContentType(item.key);
-                    }}
-                />
+
+                {!isMobile && (
+                    <IndexSider
+                        disable={!loginCtr.loginInfo.isValid() || !loginCtr.loginInfo.hasPermission('admin')}
+                        onChooseMenuItem={(item) => {
+                            setContentType(item.key);
+                        }}
+                    />
+                )}
+                {isMobile && (
+                    <>
+                        <Drawer
+                            title="Menu"
+                            placement="left"
+                            closable={true}
+                            onClose={() => setDrawerVisible(false)}
+                            open={drawerVisible}
+                            width={200}
+
+                        >
+                            <IndexSider
+                                disable={!loginCtr.loginInfo.isValid() || !loginCtr.loginInfo.hasPermission('admin')}
+                                onChooseMenuItem={(item) => {
+                                    setContentType(item.key);
+                                    setDrawerVisible(false);
+                                }}
+                            />
+                        </Drawer>
+                        <Button
+                            style={{
+                                position: 'fixed',
+                                top: 20,
+                                left: 10,
+                                zIndex: 100,
+                            }}
+                            icon={<MenuOutlined/>}
+                            type="primary"
+                            onClick={() => setDrawerVisible(true)}
+                        />
+                    </>
+                )}
                 {
                     // 未登录时显示登录提示
                     <IndexContent

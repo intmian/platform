@@ -5,6 +5,7 @@ import {useContext, useState} from "react";
 import biglogo from "/plat-logo.png";
 import {UserOutlined} from "@ant-design/icons";
 import {LoginCtx} from "../common/loginCtx.jsx";
+import {useIsMobile} from "../common/hooksv2";
 
 const {Header} = Layout;
 
@@ -70,6 +71,7 @@ function UsrArea({user, onLoginSuc, onLogOut}) {
 
 function IndexHeader({onLoginSuc, onLogOut}) {
     const loginCtr = useContext(LoginCtx);
+    const isMobile = useIsMobile();
     return <Header
         style={{
             display: 'flex',
@@ -79,7 +81,7 @@ function IndexHeader({onLoginSuc, onLogOut}) {
     >
         <Space size="0"
                style={{
-                   margin: 10,
+                   margin: isMobile ? "0" : "10px",
                    height: "100%",
                    // 白色背景
                }}
@@ -91,12 +93,12 @@ function IndexHeader({onLoginSuc, onLogOut}) {
             />
             <h1
                 style={{
-                    fontSize: 20,
+                    fontSize: "20px",
                     // fontWeight: 500,
                     minWidth: 0,
                 }}
             >
-                platform管理后台
+                {isMobile ? "管理后台" : "platform管理后台"}
             </h1>
         </Space>
         <Menu

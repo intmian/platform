@@ -4,6 +4,7 @@ import {sendGetStorage, sendSetStorage} from "../common/sendhttp.js";
 import {IsSliceType, Str2Unit, ValueType, ValueTypeStr} from "../common/def.js";
 import {FormItemArray} from "../common/misc.jsx";
 import {DeleteOutlined, FormOutlined} from "@ant-design/icons";
+import {useIsMobile} from "../common/hooksv2";
 
 // TODO: 做一下个别配置项的删除和修改，不同类型不同的展示组件
 
@@ -200,6 +201,7 @@ function Body({dataLastGet}) {
     const [inChange, setInChange] = useState(false);
     const OriginData = useRef(null);
     const [data, setData] = useState(dataLastGet);
+    const isMobile = useIsMobile();
     useEffect(() => {
         setData(dataLastGet);
     }, [dataLastGet]);
@@ -208,13 +210,14 @@ function Body({dataLastGet}) {
             title: '键',
             dataIndex: 'datakey',
             key: 'datakey',
-            width: 175,
+            // 文本超长会出现bug，指定width无效,具体见https://github.com/ant-design/ant-design/issues/13825#issuecomment-449889241
+            width: isMobile ? null : 175,
         },
         {
             title: '类型',
             dataIndex: 'type',
             key: 'type',
-            width: 120
+            width: isMobile ? null : 120
         },
         {
             title: '值',
@@ -225,9 +228,10 @@ function Body({dataLastGet}) {
             title: '操作',
             dataIndex: 'operation',
             key: 'operation',
-            width: 100
+            width: isMobile ? null : 100
         },
     ];
+    console.log(columns);
     // 修改图标和删除图标
     let data2 = []
     if (data !== null) {
@@ -321,7 +325,7 @@ function Body({dataLastGet}) {
                 originData={OriginData.current}
             /> : null
         }
-        <Table dataSource={data2} columns={columns}/>
+        <Table dataSource={data2} columns={columns} scroll={{x: 'max-content'}}/>
     </>;
 }
 
