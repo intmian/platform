@@ -1,5 +1,5 @@
 import {useCallback, useEffect, useRef, useState} from "react";
-import {Button, Checkbox, Form, Input, message, Modal, Popconfirm, Select, Space, Spin, Table,} from "antd";
+import {Button, Checkbox, Flex, Form, Input, message, Modal, Popconfirm, Select, Space, Spin, Table,} from "antd";
 import {sendGetStorage, sendSetStorage} from "../common/sendhttp.js";
 import {IsSliceType, Str2Unit, ValueType, ValueTypeStr} from "../common/def.js";
 import {FormItemArray} from "../common/misc.jsx";
@@ -138,6 +138,7 @@ function Header({OnDataChange}) {
     const [refreshFlag, setRefreshFlag] = useState(false);
     const [inAdd, setInAdd] = useState(false);
     const OriginData = useRef(null);
+    const isMobile = useIsMobile();
     useEffect(() => {
         // 需要刷新了就重新获取数据
         sendGetStorage("", false, (data) => {
@@ -152,6 +153,56 @@ function Header({OnDataChange}) {
         })
     }, [OnDataChange, refreshFlag]);
     // 其实应该用一个表单来做，但是当时没想太多，就这样了
+    if (isMobile) {
+        return <>
+            {inAdd ? <ChangeModal
+                showini={true}
+                onFinish={() => {
+                    setInAdd(false);
+                    setRefreshFlag(!refreshFlag);
+                }}
+                isAdd={true}>
+            </ChangeModal> : null}
+            <Input placeholder="搜索内容"
+                   onChange={
+                       (value) => {
+                           perm.current = value.target.value;
+                           OnDataChange(GetFilterData(OriginData.current, perm.current, useRe.current));
+                       }
+                   }
+
+                   style={{width: "100%", marginBottom: 10}}
+                   addonAfter={
+                       loading ? <Spin/> : null
+                   }
+            />
+            <Flex style={{marginBottom: 10}}
+                  justify={"space-between"}
+            >
+                <Checkbox
+                    onChange={(choose) => {
+                        useRe.current = choose.target.checked;
+                        setRefreshFlag(!refreshFlag);
+                    }}
+                >
+                    使用正则
+                </Checkbox>
+                <Button
+                    onClick={() => {
+                        setInAdd(true);
+                    }}
+                >
+                    新增
+                </Button>
+                <Button onClick={() => {
+                    setRefreshFlag(!refreshFlag);
+                }}>
+                    刷新
+                </Button>
+            </Flex>
+        </>
+    }
+
     return <Space>
         {inAdd ? <ChangeModal
             showini={true}

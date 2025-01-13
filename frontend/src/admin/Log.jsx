@@ -74,5 +74,5 @@ export function Log() {
             key: 'content',
         },
     ];
-    return <Table dataSource={logData} loading={loading} columns={columns}/>;
+    return <Table dataSource={logData} loading={loading} columns={columns} scroll={{x: 'max-content'}}/>;
 }

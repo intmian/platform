@@ -13,6 +13,7 @@ import {
     sendRegister
 } from "../common/sendhttp.js";
 import {accountHttp2ShowData} from "./acoountdata.js";
+import {useIsMobile} from "../common/hooksv2";
 
 // AddPermissionPanel 用于添加权限 onAdd为添加权限的回调 onCancel为取消添加权限的回调
 export function AddPermissionPanel({account, onAdd, onCancel}) {
@@ -93,7 +94,7 @@ function Permission({account, tokenID, iniPermission, onDelete}) {
     const [deleteing, setDeleteing] = useState(false);
     return <Row
         style={{
-            width: "100%",
+            width: useIsMobile() ? "90%" : "100%",
         }}
     >
         {contextHolder}
@@ -120,7 +121,7 @@ function Permission({account, tokenID, iniPermission, onDelete}) {
                         setNeedSave(true);
                     }}
                 style={{
-                    width: "90%",
+                    width: useIsMobile() ? "70%" : "80%"
                 }}
                 maxTagCount={'responsive'}
                 maxTagTextLength={5}
@@ -223,6 +224,7 @@ export function AccountPanel({name, initShowData, onDelete}) {
     const [messageApi, contextHolder] = message.useMessage();
     const [adding, setAdding] = useState(false);
     const [deleting, setDeleting] = useState(false);
+    const isMobile = useIsMobile();
     let addPermissionPanel = <AddPermissionPanel
         account={name}
         onAdd={
@@ -275,7 +277,7 @@ export function AccountPanel({name, initShowData, onDelete}) {
         <Card
             // body padding 设为0
             style={{
-                width: 410,
+                width: isMobile ? '100%' : 410,
                 padding: 10,
             }}
             // 用户名

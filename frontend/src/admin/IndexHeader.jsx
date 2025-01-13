@@ -98,32 +98,37 @@ function IndexHeader({onLoginSuc, onLogOut}) {
                     minWidth: 0,
                 }}
             >
-                {isMobile ? "管理后台" : "platform管理后台"}
+                platform管理后台
             </h1>
         </Space>
-        <Menu
-            mode="horizontal"
-            theme={'white'}
-            defaultSelectedKeys={['home']}
-            items={[
-                getItem('管理', 'home'),
-                getItem('笔记', 'note'),
-                getItem('工具', 'tool'),
-            ]
-            }
-            style={{
-                flex: 1,
-                minWidth: 0,
-            }}
-        />
-        <Space>
-            <Button type="link" href="https://www.intmian.com">我的博客</Button>
-            <UsrArea
-                user={loginCtr.loginInfo.usr}
-                onLoginSuc={onLoginSuc}
-                onLogOut={onLogOut}
-            />
-        </Space>
+        {
+            isMobile ? null : <div>
+                <Menu
+                    mode="horizontal"
+                    theme={'white'}
+                    defaultSelectedKeys={['home']}
+                    items={[
+                        getItem('管理', 'home'),
+                        getItem('笔记', 'note'),
+                        getItem('工具', 'tool'),
+                    ]
+                    }
+                    style={{
+                        flex: 1,
+                        minWidth: 0,
+                    }}
+                />
+                <Space>
+                    <Button type="link" href="https://www.intmian.com">我的博客</Button>
+                    <UsrArea
+                        user={loginCtr.loginInfo.usr}
+                        onLoginSuc={onLoginSuc}
+                        onLogOut={onLogOut}
+                    />
+                </Space>
+            </div>
+        }
+
     </Header>
 }
 
