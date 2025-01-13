@@ -108,6 +108,7 @@ const Performance = () => {
                             columns={columns}
                             rowKey="pid"
                             pagination={false}
+                            scroll={{x: 'max-content'}}
                         />
                     </TabPane>
                     <TabPane tab="CPU top10" key="2">
@@ -116,6 +117,7 @@ const Performance = () => {
                             columns={columns}
                             rowKey="pid"
                             pagination={false}
+                            scroll={{x: 'max-content'}}
                         />
                     </TabPane>
                 </Tabs>
@@ -164,9 +166,7 @@ const Performance = () => {
                                 },
                             ].map((item, index) => (
                                 <Card key={index} style={{
-                                    // 阴影倒角
-                                    boxShadow: '1px 1px 2px rgba(0, 0, 0, 0.5)',
-                                    borderRadius: '10px',
+
 
                                     width: 130,
                                     marginBottom: 4,
@@ -206,8 +206,6 @@ const Performance = () => {
                                 <Card key={index} style={{
                                     width: 150,
                                     marginBottom: 16,
-                                    boxShadow: '1px 1px 2px rgba(0, 0, 0, 0.5)',
-                                    borderRadius: '10px',
                                 }}>
                                     <Card.Meta
                                         title={<Tooltip title={item.meaning}>{item.label}</Tooltip>}
