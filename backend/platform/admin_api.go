@@ -165,7 +165,7 @@ func (m *webMgr) check(c *gin.Context) {
 	}
 
 	// 校验token是否有效
-	if m.CheckToken(&data) || data.ValidTime < time.Now().Unix() {
+	if !m.CheckToken(&data) || data.ValidTime < time.Now().Unix() {
 		c.JSON(200, gin.H{
 			"code": 1,
 			"msg":  "token invalid",
