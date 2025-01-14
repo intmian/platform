@@ -102,7 +102,7 @@ function IndexHeader({onLoginSuc, onLogOut}) {
             </h1>
         </Space>
         {
-            isMobile ? null : <div>
+            isMobile ? null : <Space style={{marginLeft: 'auto'}}>
                 <Menu
                     mode="horizontal"
                     theme={'white'}
@@ -118,15 +118,13 @@ function IndexHeader({onLoginSuc, onLogOut}) {
                         minWidth: 0,
                     }}
                 />
-                <Space>
-                    <Button type="link" href="https://www.intmian.com">我的博客</Button>
-                    <UsrArea
-                        user={loginCtr.loginInfo.usr}
-                        onLoginSuc={onLoginSuc}
-                        onLogOut={onLogOut}
-                    />
-                </Space>
-            </div>
+                <Button type="link" href="https://www.intmian.com">我的博客</Button>
+                <UsrArea
+                    user={loginCtr.loginInfo.usr}
+                    onLoginSuc={onLoginSuc}
+                    onLogOut={onLogOut}
+                />
+            </Space>
         }
 
     </Header>
