@@ -90,7 +90,11 @@ func (m *webMgr) Init(plat *PlatForm) error {
 	return nil
 }
 
-func (m *webMgr) CheckSignature(data *token.Data, wantPermission string) bool {
+func (m *webMgr) CheckTokenPermission(data *token.Data, wantPermission string) bool {
 	n := time.Now()
-	return m.jwt.CheckSignature(data, n, wantPermission)
+	return m.jwt.CheckPermission(data, n, wantPermission)
+}
+
+func (m *webMgr) CheckToken(data *token.Data) bool {
+	return m.jwt.CheckToken(data)
 }

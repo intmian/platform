@@ -17,6 +17,7 @@ import (
 
 // login 进行登录。需要去账号服务验证账号密码，然后在web mgr签名才行
 func (m *webMgr) login(c *gin.Context) {
+
 	// 从body中获得密码
 	body := struct {
 		Username string `json:"username"`
@@ -31,6 +32,8 @@ func (m *webMgr) login(c *gin.Context) {
 		return
 
 	}
+
+	// 去账号服验证账号密码是否正确，并获取密码对应的权限
 	ret, err := m.plat.core.sendAndRec(share.FlagAccount, share.MakeMsg(share3.CmdCheckToken, share3.CheckTokenReq{
 		Account: body.Username,
 		Pwd:     body.Password,
@@ -58,15 +61,15 @@ func (m *webMgr) login(c *gin.Context) {
 	// 异步执行一些登录成功后的操作
 	go m.onLogin(c, body.Username, permission, retr, err)
 
-	// 生成token
+	// 生成token，jwt签名
 	data := token.Data{
 		User:       body.Username,
 		Permission: permission,
 		ValidTime:  int64(time.Hour*24*7/time.Second) + time.Now().Unix(),
 	}
-
 	t := m.jwt.GenToken(body.Username, data.Permission, data.ValidTime)
 	data.Token = t
+
 	// 保存token
 	tokenS, _ := json.Marshal(data)
 	c.SetCookie("token", string(tokenS), 60*60*24*7, "/", "", false, true)
@@ -129,7 +132,7 @@ func (m *webMgr) getValid(c *gin.Context) share.Valid {
 	var r share.Valid
 	r.User = data.User
 	for _, v := range data.Permission {
-		if m.CheckSignature(&data, v) {
+		if m.CheckTokenPermission(&data, v) {
 			r.Permissions = append(r.Permissions, share.Permission(v))
 		}
 	}
@@ -148,6 +151,7 @@ func (m *webMgr) check(c *gin.Context) {
 		c.Abort()
 		return
 	}
+
 	// 解析token
 	var data token.Data
 	err = json.Unmarshal([]byte(tokenS), &data)
@@ -160,31 +164,36 @@ func (m *webMgr) check(c *gin.Context) {
 		return
 	}
 
-	var r share.Valid
-	r.User = data.User
-	for _, v := range data.Permission {
-		if m.CheckSignature(&data, v) {
-			r.Permissions = append(r.Permissions, share.Permission(v))
-		}
-	}
-	if r.Permissions == nil {
+	// 校验token是否有效
+	if m.CheckToken(&data) || data.ValidTime < time.Now().Unix() {
 		c.JSON(200, gin.H{
 			"code": 1,
 			"msg":  "token invalid",
 		})
+		c.Abort()
+		return
 	}
-	r.ValidTime = data.ValidTime
+
+	// 如果不具备admin权限，且有效期剩余两天，则刷新token
+	if !m.CheckTokenPermission(&data, "admin") && data.ValidTime-time.Now().Unix() < 60*60*24*2 {
+		data.ValidTime = time.Now().Unix() + 60*60*24*7
+		t := m.jwt.GenToken(data.User, data.Permission, data.ValidTime)
+		data.Token = t
+		tokenS, _ := json.Marshal(data)
+		c.SetCookie("token", string(tokenS), 60*60*24*7, "/", "", false, true)
+	}
+
 	c.JSON(200, gin.H{
 		"code": 0,
 		"msg":  "ok",
 		"data": struct {
 			User       string
-			Permission []share.Permission
+			Permission []string
 			ValidTime  int64
 		}{
-			User:       r.User,
-			Permission: r.Permissions,
-			ValidTime:  r.ValidTime,
+			User:       data.User,
+			Permission: data.Permission,
+			ValidTime:  data.ValidTime,
 		},
 	})
 }
@@ -211,7 +220,7 @@ func (m *webMgr) checkAdmin(c *gin.Context) {
 		c.Abort()
 		return
 	}
-	if !m.CheckSignature(&data, "admin") {
+	if !m.CheckTokenPermission(&data, "admin") {
 		c.JSON(200, gin.H{
 			"code": 1,
 			"msg":  "token invalid",
