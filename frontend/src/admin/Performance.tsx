@@ -1,5 +1,5 @@
 import {useEffect, useState} from 'react';
-import {Card, Col, Flex, List, Progress, Row, Table, Tabs, Tooltip} from 'antd';
+import {Card, Col, Flex, List, Progress, Result, Row, Spin, Table, Tabs, Tooltip} from 'antd';
 import TabPane from "antd/es/tabs/TabPane";
 
 function formatBytes(bytes: number): string {
@@ -10,38 +10,58 @@ function formatBytes(bytes: number): string {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
 }
 
+interface MemoryData {
+    total: number;
+    used: number;
+    free: number;
+    shared: number;
+    buffers: number;
+    cached: number;
+    available: number;
+    usedPercent: number;
+}
+
+interface SwapData {
+    total: number;
+    used: number;
+    free: number;
+    usedPercent: number;
+}
+
+interface CpuData {
+    percent: number;
+    info: any[];
+    times: any[];
+}
+
+interface PerformanceData {
+    memory: MemoryData;
+    swap: SwapData;
+    cpu: CpuData;
+    top10Mem: any[];
+    top10Cpu: any[];
+}
+
 const Performance = () => {
-    const [data, setData] = useState({
-        memory: {
-            total: 0,
-            used: 0,
-            free: 0,
-            shared: 0,
-            buffers: 0,
-            cached: 0,
-            available: 0,
-            usedPercent: 0,
-        },
-        swap: {
-            total: 0,
-            used: 0,
-            free: 0,
-            usedPercent: 0,
-        },
-        cpu: {
-            percent: 0,
-            info: [],
-            times: [],
-        },
-        top10Mem: [],
-        top10Cpu: []
-    });
+    const [data, setData] = useState<PerformanceData | null>(null);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(false);
 
     useEffect(() => {
         const eventSource = new EventSource('/api/admin/system/usage/sse');
         eventSource.onmessage = (event) => {
-            const result = JSON.parse(event.data);
-            setData(result);
+            try {
+                const result = JSON.parse(event.data);
+                if (isValidPerformanceData(result)) {
+                    setData(result);
+                    setLoading(false);
+                } else {
+                    throw new Error('Invalid data');
+                }
+            } catch (e) {
+                setError(true);
+                setLoading(false);
+            }
         };
 
         return () => {
@@ -73,6 +93,15 @@ const Performance = () => {
             render: (text: number) => text.toFixed(2),
         },
     ];
+    if (loading) {
+        return <Spin tip="Loading..."
+                     style={{display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh'}}/>;
+    }
+
+    if (error || !data) {
+        return <Result status="error" title="Error" subTitle="停留时间过长，请刷新界面"/>;
+    }
+
     console.log(data);
     return (
         <div className="site-statistic-demo-card">
@@ -230,5 +259,8 @@ const Performance = () => {
         </div>
     );
 };
-
 export default Performance;
+
+function isValidPerformanceData(data: any): data is PerformanceData {
+    return data && typeof data.memory === 'object' && typeof data.swap === 'object' && typeof data.cpu === 'object' && Array.isArray(data.top10Mem) && Array.isArray(data.top10Cpu);
+}
