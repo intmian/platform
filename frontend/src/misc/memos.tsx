@@ -1,4 +1,4 @@
-import React, {useCallback, useEffect, useImperativeHandle, useRef, useState} from "react";
+import React, {useCallback, useContext, useEffect, useImperativeHandle, useRef, useState} from "react";
 import {Button, Input, Modal, notification, Space, Spin, Tooltip} from "antd";
 import {CheckCircleTwoTone, CloseCircleTwoTone, SettingFilled, SyncOutlined} from "@ant-design/icons";
 import TagInput from "../common/TagInput";
@@ -7,6 +7,7 @@ import {sendCfgServiceGet, sendCfgServiceSet} from "../common/sendhttp";
 import {TextAreaRef} from "antd/es/input/TextArea";
 import {useIsMobile} from "../common/hooksv2";
 import User from "../common/User";
+import {LoginCtx} from "../common/loginCtx";
 
 // TODO: 使用ios打开网页时，当浏览器切换到后台，立刻重新切回前台，网页并未被回收，但是浏览器会自动刷新一次，此时如果停止刷新，使用是完全正常的，似乎是底层问题后面看看
 
@@ -444,12 +445,15 @@ function Memos() {
     }, []);
 
     // 从localStorage中获取配置
+    const loginCtr = useContext(LoginCtx);
     const NowSetting = useRef<MemosSetting>({});
     useEffect(() => {
+        if (loginCtr.loginInfo.usr === "") {
+            setLoading(false);
+            return;
+        }
         sendCfgServiceGet("note", (ret: any) => {
-            console.log(ret);
             if (ret.ok && ret.data && ret.data['note.setting']) {
-                console.log(ret.data['note.setting'].Data);
                 const setting = JSON.parse(ret.data['note.setting'].Data);
                 NowSetting.current.url = setting.url;
                 NowSetting.current.key = setting.key;

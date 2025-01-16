@@ -72,8 +72,12 @@ function UsrArea({user, onLoginSuc, onLogOut}: {
     onLoginSuc: (user: string) => void,
     onLogOut: () => void
 }) {
-    if (user !== null && user !== "") {
-        return <UserButton user={user} onLogOut={onLogOut}/>;
+    const [realUser, setRealUser] = useState(user);
+    if (realUser !== null && realUser !== "") {
+        return <UserButton user={realUser} onLogOut={() => {
+            onLogOut();
+            setRealUser("");
+        }}/>;
     }
     return <NeedLoginButton onLoginSuc={onLoginSuc}/>;
 }
@@ -107,7 +111,9 @@ function User() {
             // 刷新页面
             window.location.reload();
         }}
-        onLogOut={loginCtr.onLogout}
+        onLogOut={() => {
+            loginCtr.onLogout();
+        }}
     />
 }
 

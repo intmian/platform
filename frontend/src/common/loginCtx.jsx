@@ -1,5 +1,7 @@
 import {createContext, useEffect, useRef, useState} from "react";
 import {SendCheckLogin} from "./sendhttp.js";
+import {useIsMobile} from "./hooksv2";
+import {useLostFocus} from "./hook.js";
 
 export class LoginInfo {
     usr = "";
@@ -59,6 +61,16 @@ export class LoginCtr {
 }
 
 function useAutoCheckLogin(loginCtrRef) {
+    const isMobile = useIsMobile();
+    useLostFocus(() => {
+        // 手机端如果失去焦点的情况下，做一次检测
+        SendCheckLogin((result) => {
+            if (result != null && result.User !== loginCtrRef.current.loginInfo.usr) {
+                loginCtrRef.current.onLogout();
+            }
+        });
+    });
+
     useEffect(() => {
         SendCheckLogin((result) => {
             if (result !== null) {
@@ -69,13 +81,18 @@ function useAutoCheckLogin(loginCtrRef) {
         });
 
         const interval = setInterval(() => {
+            // 因为手机端网络不特别稳定，所以不做定期校验。、
+            if (isMobile) {
+                return;
+            }
+
             // 如果没有登录信息，不检测
             if (loginCtrRef.current.loginInfo.usr === "") {
                 return;
             }
 
             SendCheckLogin((result) => {
-                if (result === null || result.User !== loginCtrRef.current.loginInfo.usr) {
+                if (result != null && result.User !== loginCtrRef.current.loginInfo.usr) {
                     loginCtrRef.current.onLogout();
                 }
             });
