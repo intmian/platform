@@ -5,6 +5,7 @@ import TagInput from "../common/TagInput";
 import {useLostFocus} from "../common/hook";
 import {sendCfgServiceGet, sendCfgServiceSet} from "../common/sendhttp";
 import {TextAreaRef} from "antd/es/input/TextArea";
+import {useIsMobile} from "../common/hooksv2";
 
 // TODO: 使用ios打开网页时，当浏览器切换到后台，立刻重新切回前台，网页并未被回收，但是浏览器会自动刷新一次，此时如果停止刷新，使用是完全正常的，似乎是底层问题后面看看
 
@@ -425,6 +426,7 @@ function Memos() {
     const [loading, setLoading] = useState(true);
     const [openSetting, setOpenSetting] = useState(false);
     const [hidden, setHidden] = useState(false);
+    const isMobile = useIsMobile();
     // 更换Favicon为/newslogo.webp
     useEffect(() => {
         const existingFavicon = document.querySelector('link[rel="icon"], link[rel="shortcut icon"]');
@@ -576,8 +578,8 @@ function Memos() {
             height: "100%",
             // 居中
             display: "flex",  // 开启弹性盒
-            justifyContent: "center",//使子元素在主轴居中
-            alignItems: "center",  	//使子元素在侧轴进行居中
+            justifyContent: "center",  //使子元素在主轴上居中
+            alignItems: !isMobile ? "center" : "flex-start",  	//使子元素在侧轴进行居中
             // 背景
             backgroundColor: '#f5f5f5',
         }}
@@ -598,7 +600,7 @@ function Memos() {
         <div
             style={{
                 width: "400px",
-                height: "400px",
+                height: isMobile ? "300px" : "400px",
                 margin: "20px",
                 // 卡片边框阴影
                 backgroundColor: 'white',
