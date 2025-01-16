@@ -6,6 +6,7 @@ import {useLostFocus} from "../common/hook";
 import {sendCfgServiceGet, sendCfgServiceSet} from "../common/sendhttp";
 import {TextAreaRef} from "antd/es/input/TextArea";
 import {useIsMobile} from "../common/hooksv2";
+import User from "../common/User";
 
 // TODO: 使用ios打开网页时，当浏览器切换到后台，立刻重新切回前台，网页并未被回收，但是浏览器会自动刷新一次，此时如果停止刷新，使用是完全正常的，似乎是底层问题后面看看
 
@@ -621,7 +622,7 @@ function Memos() {
             >
                 <div
                     style={{
-                        width: '90%',
+                        width: '80%',
                         marginRight: '10px',
                     }}
                 >
@@ -638,10 +639,11 @@ function Memos() {
                         justifyContent: 'flex-end',
                         // 垂直居中
                         alignItems: 'center',
-                        width: '15%',
+                        width: '20%',
                         height: '100%',
                     }}
                 >
+                    <User/>
                     {setButton}
                 </Space>
             </div>

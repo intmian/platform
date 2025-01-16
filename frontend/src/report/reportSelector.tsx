@@ -1,8 +1,8 @@
 import {sendGenerateReport, sendGetReportList} from "../common/newSendHttp";
 import {useEffect, useState} from "react";
 import {Button, Col, Divider, List, Popconfirm, Row} from "antd";
-import ReportUser from "./reportUser";
 import {useIsMobile} from "../common/hooksv2";
+import User from "../common/User";
 
 function ReportSelector({onSelect}: {
     onSelect: (report: string) => void,
@@ -83,7 +83,7 @@ function ReportSelector({onSelect}: {
                 marginBottom: "10px"
             }}
         >
-            <ReportUser/>
+            <User/>
         </Row>
         <Divider/>
         {opre}

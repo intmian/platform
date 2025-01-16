@@ -1,6 +1,7 @@
 import {Button, Form, Input, message, Modal} from "antd";
 import {useState} from "react";
 import {sendLogin} from "./sendhttp.js";
+import {useIsMobile} from "./hooksv2";
 
 
 export default function LoginPanel({onLoginSuc, onCancel}) {
@@ -9,13 +10,14 @@ export default function LoginPanel({onLoginSuc, onCancel}) {
     const [showModal, setShowModal] = useState('true');
     const [form] = Form.useForm();
     const [loading, setLoading] = useState(false);
+    const isMobile = useIsMobile();
     return (
         <Modal
             title="登陆"
             open={showModal}
             footer={null}
             style={{
-                maxWidth: 450,
+                maxWidth: isMobile ? '300px' : '450px',
             }}
             onCancel={() => {
                 setShowModal(false);
