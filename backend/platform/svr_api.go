@@ -148,7 +148,7 @@ func (m *webMgr) cfgServiceSet(c *gin.Context) {
 		return
 	}
 	valid := m.getValid(c)
-	if !valid.HasPermission(getStr2Permission(svr, "cfg")) && !valid.HasPermission("admin") {
+	if !valid.HasOnePermission(share.Permission(svr), getStr2Permission(svr, "cfg"), "admin") {
 		c.JSON(200, gin.H{
 			"code": 1,
 			"msg":  "no permission",
@@ -169,6 +169,7 @@ func (m *webMgr) cfgServiceSet(c *gin.Context) {
 	}
 
 	err = m.plat.cfg.Set(xstorage.Join(svr, opr.Key), opr.Val)
+	c.JSON(200, makeOkReturn(nil))
 }
 
 func (m *webMgr) cfgServiceUserSet(c *gin.Context) {
@@ -215,11 +216,11 @@ func (m *webMgr) cfgServiceGet(c *gin.Context) {
 		return
 	}
 	valid := m.getValid(c)
-	if !valid.HasPermission(getStr2Permission(svr, "cfg")) && !valid.HasPermission("admin") {
+	if !valid.HasOnePermission(share.Permission(svr), getStr2Permission(svr, "cfg"), "admin") {
 		c.JSON(200, makeErrReturn("no permission"))
 		return
 	}
-	val, err := m.plat.cfg.GetWithFilter(svr+".", "")
+	val, err := m.plat.cfg.GetWithFilter(svr, "")
 	if err != nil {
 		c.JSON(200, makeErrReturn("inner error"))
 		return
@@ -230,7 +231,7 @@ func (m *webMgr) cfgServiceGet(c *gin.Context) {
 func (m *webMgr) cfgServiceUserGet(c *gin.Context) {
 	svr := c.Param("svr")
 	user := c.Param("user")
-	val, err := m.plat.cfg.GetWithFilter(svr+".", user)
+	val, err := m.plat.cfg.GetWithFilter(svr, user)
 	if err != nil {
 		c.JSON(200, makeErrReturn("inner error"))
 		return

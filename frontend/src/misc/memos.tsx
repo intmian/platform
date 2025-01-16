@@ -1,8 +1,9 @@
 import React, {useCallback, useEffect, useImperativeHandle, useRef, useState} from "react";
-import {Button, Input, notification, Space, Tooltip} from "antd";
-import {CheckCircleTwoTone, CloseCircleTwoTone, HomeOutlined, SettingFilled, SyncOutlined} from "@ant-design/icons";
+import {Button, Input, Modal, notification, Space, Spin, Tooltip} from "antd";
+import {CheckCircleTwoTone, CloseCircleTwoTone, SettingFilled, SyncOutlined} from "@ant-design/icons";
 import TagInput from "../common/TagInput";
 import {useLostFocus} from "../common/hook";
+import {sendCfgServiceGet, sendCfgServiceSet} from "../common/sendhttp";
 import {TextAreaRef} from "antd/es/input/TextArea";
 
 // TODO: 使用ios打开网页时，当浏览器切换到后台，立刻重新切回前台，网页并未被回收，但是浏览器会自动刷新一次，此时如果停止刷新，使用是完全正常的，似乎是底层问题后面看看
@@ -12,6 +13,52 @@ const {TextArea} = Input;
 interface MemosSetting {
     url: string
     key: string
+}
+
+function SettingPanel({onSuccess, onFail}: { onSuccess: (setting: MemosSetting) => void, onFail: () => void }) {
+    const [url, setUrl] = useState('');
+    const [key, setKey] = useState('');
+
+    return <Modal
+        title="配置"
+        open={true}
+
+        okText={"确定"}
+        cancelText={"取消"}
+
+        width={300}
+
+        onOk={() => {
+            if (url && key) {
+                sendCfgServiceSet('note', "setting", JSON.stringify({url: url, key: key}), (result: {
+                    ok: boolean;
+                }) => {
+                    if (result.ok) {
+                        onSuccess({url: url, key: key});
+                    } else {
+                        onFail();
+                    }
+                });
+            } else {
+                onFail();
+            }
+        }}
+        onCancel={onFail}
+    >
+        <Input
+            placeholder="URL"
+            value={url}
+            onChange={(e) => setUrl(e.target.value)}
+            style={{marginBottom: '10px', width: '100%'}}
+        />
+        <Input
+            placeholder="KEY"
+            value={key}
+            onChange={(e) => setKey(e.target.value)}
+            style={{marginBottom: '10px', width: '100%'}}
+
+        />
+    </Modal>
 }
 
 interface MemosReqStatus {
@@ -270,7 +317,11 @@ function Tags({TagsChange, setting, style, tags}: {
 
 
 // HideInput 用于输入并展示当前输入的内容，如果隐藏的模式下会对展示数据进行隐藏，ref用于清空，获得内容，触发隐藏逻辑等。
-function HideInput({functionsRef, style, onChange}: {
+function HideInput({
+                       functionsRef,
+                       style,
+                       onChange
+                   }: {
     functionsRef: React.MutableRefObject<{
         clear: () => void,
         get: () => string,
@@ -287,12 +338,30 @@ function HideInput({functionsRef, style, onChange}: {
     const hideTextRef: React.MutableRefObject<string> = useRef('');
     const inputRef: React.RefObject<TextAreaRef> = useRef(null);
 
+    // 从浏览器缓存加载数据
+    useEffect(() => {
+        const cachedInput = localStorage.getItem('note.lastInput');
+        if (cachedInput) {
+            setShowText(cachedInput);
+        }
+    }, []);
+
+    // 实时保存输入框的内容到浏览器缓存
+    useEffect(() => {
+        if (showText !== '') {
+            localStorage.setItem('note.lastInput', get());
+        }
+    }, [showText]);
+
     // 给父组件提供的方法
     const clear = useCallback(() => {
         setShowText('');
         hideTextRef.current = '';
+        localStorage.removeItem('note.lastInput'); // 清空缓存
     }, []);
+
     const get = useCallback(() => {
+        // 将inputHidden提取input中剩余的前缀*数放在前面，input中*后的内容放在后面.
         let starCount = 0;
         for (let i = 0; i < showText.length; i++) {
             if (showText[i] === '*') {
@@ -303,12 +372,13 @@ function HideInput({functionsRef, style, onChange}: {
         }
         return hideTextRef.current.slice(0, starCount) + showText.slice(starCount);
     }, [showText]);
+
     const hide = useCallback(() => {
         hideTextRef.current = showText;
         setShowText('*'.repeat(showText.length));
     }, [showText]);
+
     const show = useCallback(() => {
-        // 将inputHidden提取input中剩余的前缀*数放在前面，input中*后的内容放在后面.
         let starCount = 0;
         for (let i = 0; i < showText.length; i++) {
             if (showText[i] === '*') {
@@ -319,11 +389,13 @@ function HideInput({functionsRef, style, onChange}: {
         }
         setShowText(hideTextRef.current.slice(0, starCount) + showText.slice(starCount));
     }, [showText]);
+
     const focus = useCallback(() => {
         if (inputRef.current) {
             inputRef.current.focus();
         }
     }, []);
+
     useImperativeHandle(functionsRef, () => ({
         clear,
         get,
@@ -336,17 +408,23 @@ function HideInput({functionsRef, style, onChange}: {
         onChange(get());
     }, [get, onChange, showText]);
 
-    return <TextArea
-        ref={inputRef}
-        autoFocus
-        style={style}
-        value={showText} onChange={(e) => setShowText(e.target.value)}
-        // 提示 enter换行 ctrl+enter发送
-        placeholder={'Enter换行\nCtrl+Enter发送\ntab切换标签输入'}
-    />;
+    return (
+        <TextArea
+            ref={inputRef}
+            autoFocus
+            style={style}
+            value={showText}
+            onChange={(e) => setShowText(e.target.value)}
+            placeholder={'Enter换行\nCtrl+Enter发送\ntab切换标签输入'}
+        />
+    );
 }
 
+
 function Memos() {
+    const [loading, setLoading] = useState(true);
+    const [openSetting, setOpenSetting] = useState(false);
+    const [hidden, setHidden] = useState(false);
     // 更换Favicon为/newslogo.webp
     useEffect(() => {
         const existingFavicon = document.querySelector('link[rel="icon"], link[rel="shortcut icon"]');
@@ -363,56 +441,33 @@ function Memos() {
     }, []);
 
     // 从localStorage中获取配置
-    const memosSetting: MemosSetting = JSON.parse(localStorage.getItem('memosSetting') || '{}');
-    const NowSetting = useRef(memosSetting);
-
-    // 如果没有配置，需要用户输入，并设置到localStorage
-    if (!memosSetting.url || !memosSetting.key) {
-        let url = prompt('请输入备忘录的URL');
-        // 如果url不为空，且未包含http，默认在前面补全https://。
-        if (url && !url.includes('http')) {
-            url = 'https://' + url;
-        }
-        const key = prompt('请输入备忘录的KEY');
-        if (NowSetting.current) {
-            if (url) {
-                NowSetting.current.url = url;
+    const NowSetting = useRef<MemosSetting>({});
+    useEffect(() => {
+        sendCfgServiceGet("note", (ret: any) => {
+            console.log(ret);
+            if (ret.ok && ret.data && ret.data['note.setting']) {
+                console.log(ret.data['note.setting'].Data);
+                const setting = JSON.parse(ret.data['note.setting'].Data);
+                NowSetting.current.url = setting.url;
+                NowSetting.current.key = setting.key;
+            } else {
+                NowSetting.current.url = '';
+                NowSetting.current.key = '';
+                setOpenSetting(true);
             }
-            if (key) {
-                NowSetting.current.key = key;
-            }
-        } else {
-            NowSetting.current = {url: url || '', key: key || ''};
-        }
-        localStorage.setItem('memosSetting', JSON.stringify(NowSetting.current));
-    }
+            setLoading(false);
+        })
+    }, []);
 
-    const setUrlButton = <Button
-        size={"small"}
-        shape={"circle"}
-        icon={<HomeOutlined/>}
-        onClick={() => {
-            const url = prompt('请输入备忘录的URL');
-            if (url) {
-                NowSetting.current.url = url;
-            }
-            localStorage.setItem('memosSetting', JSON.stringify(NowSetting.current));
-        }}/>;
-
-    const setKeyButton = <Button
+    const setButton = <Button
         size={"small"}
         shape={"circle"}
         icon={<SettingFilled/>}
 
         onClick={() => {
-            const key = prompt('请输入备忘录的KEY');
-            if (key) {
-                NowSetting.current.key = key;
-            }
-            localStorage.setItem('memosSetting', JSON.stringify(NowSetting.current));
+            setOpenSetting(true);
         }}/>;
 
-    const [hidden, setHidden] = useState(false);
     const inputRef: React.MutableRefObject<{
         clear: () => void;
         get: () => string;
@@ -502,6 +557,17 @@ function Memos() {
         setTagsSelected(tags);
     }, []);
 
+    if (loading) {
+        return <Spin size="large"
+                     style={{
+                         display: 'flex',
+                         justifyContent: 'center',
+                         alignItems: 'center',
+                         height: '100vh',
+                     }}
+        />;
+    }
+
     return <div
         style={{
             // 绝对定位
@@ -516,6 +582,19 @@ function Memos() {
             backgroundColor: '#f5f5f5',
         }}
     >
+        {openSetting ? <SettingPanel
+            onSuccess={(setting: MemosSetting) => {
+                NowSetting.current = setting;
+                setOpenSetting(false);
+            }}
+            onFail={() => {
+                notification.error({
+                    message: '错误',
+                    description: '设置失败',
+                });
+                setOpenSetting(false);
+            }}/> : null
+        }
         <div
             style={{
                 width: "400px",
@@ -561,8 +640,7 @@ function Memos() {
                         height: '100%',
                     }}
                 >
-                    {setUrlButton}
-                    {setKeyButton}
+                    {setButton}
                 </Space>
             </div>
             {input}

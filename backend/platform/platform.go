@@ -155,6 +155,17 @@ func (p *PlatForm) Init(c context.Context) error {
 		http.ListenAndServe("127.0.0.1:12351", nil)
 	}()
 
+	// 初始化配置 TODO: 后续迁移到服务
+	err = p.cfg.AddParam(&xstorage.CfgParam{
+		Key:       "note.setting",
+		ValueType: xstorage.ValueTypeString,
+		CanUser:   false,
+		RealKey:   "note.setting",
+	})
+	if err != nil {
+		return errors.WithMessage(err, "add note.setting err")
+	}
+
 	return nil
 }
 

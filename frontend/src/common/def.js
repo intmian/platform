@@ -79,5 +79,6 @@ export const AllPermission = [
     'admin',
     "auto",
     "auto.report",
+    "memos.cfg",
     // 有什么新权限了，需要加在这里，然后在后端加上对应的权限
 ]
