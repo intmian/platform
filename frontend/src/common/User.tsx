@@ -1,4 +1,4 @@
-import {Avatar, Button, Popconfirm, Space, Spin} from "antd";
+import {Avatar, Button, Popconfirm, Spin} from "antd";
 import {UserOutlined} from "@ant-design/icons";
 import {useContext, useState} from "react";
 import LoginPanel from "../common/loginPanel";
@@ -29,12 +29,13 @@ function UserButton({user, onLogOut}: {
             })
         }}
     >
-        <Button type="primary" danger={true} shape={isMobile ? "circle" : "default"}>
-            <Space>
-                <Avatar size={22} icon={<UserOutlined/>}/>
-                {isMobile ? null : user}
-            </Space>
-        </Button>
+        {
+
+            <Avatar size={22} icon={<UserOutlined/>} style={{
+                backgroundColor: '#68a5d0',
+            }}/>
+
+        }
     </Popconfirm>;
 }
 

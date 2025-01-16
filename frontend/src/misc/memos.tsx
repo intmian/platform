@@ -523,7 +523,7 @@ function Memos() {
             tags: tags,
             id: lastReqId
         }, ...reqHis];
-        if (reqHisNow.current.length > 10) {
+        if (reqHisNow.current.length > 8) {
             reqHisNow.current.pop();
         }
         setReqHis(reqHisNow.current);
