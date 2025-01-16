@@ -448,6 +448,7 @@ function Memos() {
     const loginCtr = useContext(LoginCtx);
     const NowSetting = useRef<MemosSetting>({});
     useEffect(() => {
+        console.log(loginCtr.loginInfo.usr);
         if (loginCtr.loginInfo.usr === "") {
             setLoading(false);
             return;
@@ -464,7 +465,7 @@ function Memos() {
             }
             setLoading(false);
         })
-    }, []);
+    }, [loginCtr.loginInfo.usr]);
 
     const setButton = <Button
         size={"small"}
