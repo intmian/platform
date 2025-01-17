@@ -45,7 +45,7 @@ function Index() {
         </Flex>
     } else {
         if (loginCtr.loginInfo.isValid() && loginCtr.loginInfo.autoLogin && !loginShow.current) {
-            openNotificationWithIcon('success', '自动登录', `欢迎回来，${loginCtr.loginInfo.usr}`)
+            // openNotificationWithIcon('success', '自动登录', `欢迎回来，${loginCtr.loginInfo.usr}`)
             loginShow.current = true;
         }
     }

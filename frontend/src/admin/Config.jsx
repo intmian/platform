@@ -41,7 +41,6 @@ export function ChangeModal({showini, onFinish, isAdd, originData}) {
             form={form}
             onFinish={(value) => {
                 sendSetStorage(value.key, Str2Unit(value.value, typeNow), typeNow, (data) => {
-                    console.log(data)
                     if (data === null || data.code !== 0) {
                         message.error("操作失败");
                     } else {
@@ -282,7 +281,6 @@ function Body({dataLastGet}) {
             width: isMobile ? null : 100
         },
     ];
-    console.log(columns);
     // 修改图标和删除图标
     let data2 = []
     if (data !== null) {
