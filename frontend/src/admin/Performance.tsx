@@ -34,12 +34,28 @@ interface CpuData {
     times: any[];
 }
 
+type MemoryInfo = {
+    percent: number;
+    memoryInfo: MemoryExData;
+};
+
+type MemoryExData = {
+    rss: number;    // bytes
+    vms: number;    // bytes
+    hwm: number;    // bytes
+    data: number;   // bytes
+    stack: number;  // bytes
+    locked: number; // bytes
+    swap: number;   // bytes
+};
+
+
 interface PerformanceData {
     memory: MemoryData;
     swap: SwapData;
     cpu: CpuData;
-    top10Mem: any[];
-    top10Cpu: any[];
+    top10Mem: MemoryInfo[];
+    top10Cpu: MemoryInfo[];
 }
 
 const Performance = () => {
@@ -52,13 +68,14 @@ const Performance = () => {
         eventSource.onmessage = (event) => {
             try {
                 const result = JSON.parse(event.data);
+                console.log(result);
                 if (isValidPerformanceData(result)) {
                     setData(result);
                     setLoading(false);
                 } else {
                     throw new Error('Invalid data');
                 }
-            } catch (e) {
+            } catch {
                 setError(true);
                 setLoading(false);
             }
@@ -84,7 +101,21 @@ const Performance = () => {
             title: '内存占用 (%)',
             dataIndex: 'memory',
             key: 'memory',
-            render: (text: number) => text.toFixed(2),
+            render: (memory: MemoryInfo) => (
+                <Tooltip title={
+                    <div>
+                        <p>RSS: {formatBytes(memory.memoryInfo.rss)}</p>
+                        <p>VMS: {formatBytes(memory.memoryInfo.vms)}</p>
+                        <p>HWM: {formatBytes(memory.memoryInfo.hwm)}</p>
+                        <p>Data: {formatBytes(memory.memoryInfo.data)}</p>
+                        <p>Stack: {formatBytes(memory.memoryInfo.stack)}</p>
+                        <p>Locked: {formatBytes(memory.memoryInfo.locked)}</p>
+                        <p>Swap: {formatBytes(memory.memoryInfo.swap)}</p>
+                    </div>
+                }>
+                    {memory.percent.toFixed(2) + '(' + formatBytes(memory.memoryInfo.rss) + '|' + formatBytes(memory.memoryInfo.swap) + ')'}
+                </Tooltip>
+            ),
         },
         {
             title: 'CPU占用 (%)',

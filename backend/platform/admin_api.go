@@ -358,11 +358,16 @@ func (m *webMgr) getSystemUsage(c *gin.Context) {
 	})
 }
 
+type MemoryInfo struct {
+	Percent    float32                 `json:"percent"`
+	MemoryInfo *process.MemoryInfoStat `json:"memoryInfo"`
+}
+
 type ProcessInfo struct {
-	Pid    int32   `json:"pid"`
-	Name   string  `json:"name"`
-	Cpu    float64 `json:"cpu"`
-	Memory float32 `json:"memory"`
+	Pid    int32      `json:"pid"`
+	Name   string     `json:"name"`
+	Cpu    float64    `json:"cpu"`
+	Memory MemoryInfo `json:"memory"`
 }
 
 // 获取内存或 CPU 排名前10的进程
@@ -370,7 +375,7 @@ func topProcesses(processInfos []ProcessInfo, criteria string) []ProcessInfo {
 	switch criteria {
 	case "memory":
 		sort.Slice(processInfos, func(i, j int) bool {
-			return processInfos[i].Memory > processInfos[j].Memory
+			return processInfos[i].Memory.Percent > processInfos[j].Memory.Percent
 		})
 	case "cpu":
 		sort.Slice(processInfos, func(i, j int) bool {
@@ -423,11 +428,15 @@ func (m *webMgr) getSystemUsageSSE(c *gin.Context) {
 			memPercent, _ := p.MemoryPercent()
 			name, _ := p.Name()
 			pCpuPercent, _ := p.CPUPercent()
+			memInfo, _ := p.MemoryInfo()
 			processInfos = append(processInfos, ProcessInfo{
-				Pid:    p.Pid,
-				Name:   name,
-				Cpu:    pCpuPercent,
-				Memory: memPercent,
+				Pid:  p.Pid,
+				Name: name,
+				Cpu:  pCpuPercent,
+				Memory: MemoryInfo{
+					Percent:    memPercent,
+					MemoryInfo: memInfo,
+				},
 			})
 		}
 
