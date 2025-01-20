@@ -563,7 +563,7 @@ export function sendGenerateReport(req: GenerateReportReq, callback: (ret: {
     });
 }
 
-async function getWebPing(url: string, attempts: number = 5): Promise<{ delays: number[], lossRate: number }> {
+export async function getWebPing(url: string, attempts: number = 5): Promise<{ delays: number[], lossRate: number }> {
     const delays: number[] = [];
     let failedRequests = 0;
 

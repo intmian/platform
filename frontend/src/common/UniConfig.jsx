@@ -2,6 +2,7 @@ import {
     Badge,
     Button,
     Col,
+    Flex,
     Input,
     InputNumber,
     List,
@@ -174,12 +175,16 @@ function ShowControlSavePanel({configs, InitValue, ConfigParam, InitLoading, cfg
         icon={<SaveOutlined/>}
     >
     </Button>
-    return <Space>
+    return <Flex style={{
+        width: '100%',
+    }}
+                 gap={'small'}
+    >
         {contextHolder}
-        {head}
-        {body}
-        {foot}
-    </Space>
+        <div>{head}</div>
+        <div style={{flex: 1}}>{body}</div>
+        <div>{foot}</div>
+    </Flex>
 }
 
 /*
@@ -307,6 +312,12 @@ export class Configs {
     user = ''
 
     addBase(key, text, uniConfigType, tips) {
+        for (let i = 0; i < this.params.length; i++) {
+            if (this.params[i].key === key) {
+                return;
+            }
+        }
+
         let param = new ConfigParam();
         param.key = key;
         param.text = text;
@@ -361,7 +372,7 @@ export class Configs {
 }
 
 // UniConfig 一个通用的配置界面，用于显示和修改配置。建议不要和ctx一起耦合，单独处理全局的已有配置
-export function UniConfig({configs, server, user}) {
+export function UniConfig({configs, server = "", user = ""}) {
     // 加载中
     const [loading, setLoading] = useState(true);
     // 配置
@@ -404,7 +415,12 @@ export function UniConfig({configs, server, user}) {
                     realKey = server + '.' + user + '.' + configs.params[i].key;
                     break
             }
-            data = configData[realKey].Data;
+            if (configData[realKey] !== undefined) {
+                data = configData[realKey].Data;
+            } else {
+                data = null;
+            }
+
         }
         panels.push(<ConfigPanel
             configs={configs}

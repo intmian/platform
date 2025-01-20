@@ -1,8 +1,29 @@
-import {useEffect, useState} from 'react';
-import {Card, Col, Flex, List, Progress, Result, Row, Spin, Table, Tabs, Tooltip} from 'antd';
+import {useCallback, useEffect, useRef, useState} from 'react';
+import {
+    Button,
+    Card,
+    Col,
+    Flex,
+    List,
+    Modal,
+    Progress,
+    Result,
+    Row,
+    Space,
+    Spin,
+    Statistic,
+    Table,
+    Tabs,
+    Tooltip,
+    Typography
+} from 'antd';
 import TabPane from "antd/es/tabs/TabPane";
-import {ConfigPanel, Configs} from "../common/UniConfig";
-import {ConfigType} from "../common/UniConfigDef";
+import {Configs, UniConfig} from "../common/UniConfig";
+import {ConfigType, UniConfigType} from "../common/UniConfigDef";
+import {getWebPing} from "../common/newSendHttp";
+import {SettingOutlined} from "@ant-design/icons";
+
+const {Text} = Typography
 
 function formatBytes(bytes: number): string {
     if (bytes === 0) return '0 Bytes';
@@ -67,21 +88,218 @@ type PerformanceSettingData = {
     baseUrl: string;
 }
 
-function PerformanceSettings(dataRef: { current: PerformanceSettingData }) {
-    const config = new Configs()
-    config.addBase('realUrl', '后端真实地址或ip', ConfigType.Plat, '')
-    con
-    return <>
-        <ConfigPanel/>
-    </>
-
+function PerformanceSettings({onChange, onExit, show}: {
+    onChange: (data: PerformanceSettingData) => void,
+    onExit: () => void,
+    show: boolean
+}) {
+    const configRef = useRef(new Configs(() => {
+        onChange({
+            init: true,
+            outUrl: configRef.current.get('outUrl'),
+            realUrl: configRef.current.get('realUrl'),
+            baseUrl: configRef.current.get('baseUrl'),
+        })
+    }, ConfigType.Plat))
+    useEffect(() => {
+        configRef.current.addBase('realUrl', '后端真实地址', UniConfigType.String, '')
+        configRef.current.addBase('outUrl', 'CDN地址', UniConfigType.String, '')
+        configRef.current.addBase('baseUrl', '对比地址', UniConfigType.String, '')
+    }, []);
+    return <Modal
+        open={show}
+        footer={null}
+        maskClosable={true}
+        onCancel={() => {
+            onExit()
+        }}
+    >
+        <UniConfig
+            configs={configRef.current}
+        />
+    </Modal>
 }
+
+export function Ping({setting}: { setting: PerformanceSettingData }) {
+    const [pingData, setPingData] = useState({
+        base: {ping: 0, lost: 0, loading: true},
+        real: {ping: 0, lost: 0, loading: true},
+        out: {ping: 0, lost: 0, loading: true}
+    })
+
+    const fetchPingData = useCallback(async (url: string, key: keyof typeof pingData) => {
+        try {
+            const ret = await getWebPing(url)
+            const averagePing = ret.delays.length > 0 ? ret.delays.reduce((sum, delay) => sum + delay, 0) / ret.delays.length : 0
+            setPingData(prevState => ({
+                ...prevState,
+                [key]: {
+                    ping: averagePing,
+                    lost: ret.lossRate,
+                    loading: false
+                }
+            }))
+        } catch (error) {
+            console.error(`Error fetching ping data from ${url}:`, error)
+            setPingData(prevState => ({
+                ...prevState,
+                [key]: {
+                    ...prevState[key],
+                    loading: false
+                }
+            }))
+        }
+    }, [])
+
+    useEffect(() => {
+        if (setting.baseUrl) fetchPingData(setting.baseUrl, 'base')
+        if (setting.realUrl) fetchPingData(setting.realUrl, 'real')
+        if (setting.outUrl) fetchPingData(setting.outUrl, 'out')
+    }, [setting.baseUrl, setting.realUrl, setting.outUrl, fetchPingData])
+
+    // 计算延迟对比
+    const calculatePingDifference = (ping1: number, ping2: number) => {
+        if (ping1 === 0 || ping2 === 0) return 0
+        return ((ping2 - ping1) / ping1) * 100
+    }
+
+    // 是否完全加载完成
+    const isLoaded = !pingData.base.loading && !pingData.real.loading && !pingData.out.loading
+    const isSettingEnough = setting.init && setting.baseUrl && setting.realUrl && setting.outUrl
+
+    return <Flex justify={
+        'space-between'
+    } wrap={
+        'wrap'
+    }>
+        {!isLoaded && isSettingEnough ? <div style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                backgroundColor: 'rgba(0, 0, 0, 0.2)',
+                zIndex: 1,
+                display: 'flex',
+                justifyContent: 'center',
+                alignItems: 'center'
+            }}>
+                <Spin/>
+            </div>
+            : null}
+        {!isSettingEnough ? <div style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                backgroundColor: 'rgba(0, 0, 0, 0.2)',
+                zIndex: 1,
+                display: 'flex',
+                justifyContent: 'center',
+                alignItems: 'center'
+            }}>
+                <div style={{fontSize: '18px'}}>需要先进行配置</div>
+            </div>
+            : null}
+        <Card
+            style={{
+                width: 250,
+                height: 120,
+                margin: '8px'
+            }}
+        >
+            <Flex justify="space-between">
+                <Statistic
+                    title={"CDN ping"}
+                    value={pingData.out.ping}
+                    suffix="ms"
+                    precision={2}
+                />
+                <Statistic
+                    title={"CDN 丢包率"}
+                    value={pingData.out.lost}
+                    suffix="%"
+                    precision={2}
+                />
+            </Flex>
+            <Space
+                style={{
+                    // 靠右
+                    float: 'right'
+                }}
+            >
+                <Text type={calculatePingDifference(pingData.real.ping, pingData.out.ping) > 0 ? 'danger' : 'success'}>
+                    {`${calculatePingDifference(pingData.real.ping, pingData.out.ping).toFixed(2)}%`}
+                </Text>
+                <Text type={calculatePingDifference(pingData.base.ping, pingData.out.ping) > 0 ? 'danger' : 'success'}>
+                    {`${calculatePingDifference(pingData.base.ping, pingData.out.ping).toFixed(2)}%`}
+                </Text>
+            </Space>
+        </Card>
+        <Card
+            style={{
+                width: 250,
+                height: 120,
+                margin: '8px'
+            }}
+        >
+            <Flex justify="space-between">
+                <Statistic
+                    title={"后端 ping"}
+                    value={pingData.real.ping}
+                    suffix="ms"
+                    precision={2}
+                />
+                <Statistic
+                    title={"后端 丢包率"}
+                    value={pingData.real.lost}
+                    suffix="%"
+                    precision={2}
+                />
+            </Flex>
+            <Text type={calculatePingDifference(pingData.base.ping, pingData.real.ping) > 0 ? 'danger' : 'success'}
+                  style={{
+                      // 靠右
+                      float: 'right'
+                  }}
+            >
+                {`${calculatePingDifference(pingData.base.ping, pingData.real.ping).toFixed(2)}%`}
+            </Text>
+        </Card>
+        <Card
+            style={{
+                width: 250,
+                height: 120,
+                margin: '8px'
+            }}
+        >
+            <Flex justify="space-between">
+                <Statistic
+                    title={"基础 ping"}
+                    value={pingData.base.ping}
+                    suffix="ms"
+                    precision={2}
+                />
+                <Statistic
+                    title={"基础 丢包率"}
+                    value={pingData.base.lost}
+                    suffix="%"
+                    precision={2}
+                />
+            </Flex>
+        </Card>
+
+    </Flex>
+}
+
 
 const Performance = () => {
     const [data, setData] = useState<PerformanceData | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(false);
-
+    const [showSetting, setShowSetting] = useState(false)
+    const [setting, setSetting] = useState<PerformanceSettingData>({init: false, outUrl: '', realUrl: '', baseUrl: ''})
 
     useEffect(() => {
         const eventSource = new EventSource('/api/admin/system/usage/sse');
@@ -153,7 +371,20 @@ const Performance = () => {
     }
 
     return (
-        <div className="site-statistic-demo-card">
+        <div>
+            <div style={{
+                textAlign: 'right',
+            }}>
+                <Button
+                    style={{
+                        marginBottom: 16,
+                    }}
+                    onClick={() => setShowSetting(true)}
+                    type={"primary"}
+                    icon={<SettingOutlined/>}
+                />
+            </div>
+            <PerformanceSettings show={showSetting} onChange={setSetting} onExit={() => setShowSetting(false)}/>
             <Card>
                 <Row gutter={16}>
                     <Col span={12}>
@@ -176,6 +407,13 @@ const Performance = () => {
                     </Col>
                 </Row>
             </Card>
+
+            <Card
+                style={{marginTop: 24}}
+            >
+                <Ping setting={setting}/>
+            </Card>
+
             <Card
                 style={{marginTop: 24}}
             >

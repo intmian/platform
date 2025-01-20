@@ -3,20 +3,28 @@ import {Button, Card, Col, InputNumber, Row, Slider, Space, Typography} from "an
 import {CustomDeviceSimulator, DeviceSimulator} from "./DeviceSim.jsx";
 import {MenuPlus} from "../common/MenuPlus.jsx";
 import {EditableProps} from "./EditableProps.jsx";
-import {Configs, UniConfig} from "../common/UniConfig.jsx";
-import {ConfigType, UniConfigType} from "../common/UniConfigDef.js";
+import {Ping} from "../admin/Performance";
 
 const {Text} = Typography;
 
-const config = new Configs(() => {
-    console.log('config changed')
-    console.log(config.get('realUrl'))
-    console.log(config)
-}, ConfigType.Plat)
-
-config.addBase('realUrl', '真实地址', UniConfigType.String, '后端真是地址')
-
-const debug = <UniConfig configs={config} cfgMode={ConfigType.Plat}/>
+// const config = new Configs(() => {
+//     console.log('config changed')
+//     console.log(config.get('realUrl'))
+//     console.log(config)
+// }, ConfigType.Plat)
+//
+// config.addBase('realUrl', '真实地址', UniConfigType.String, '后端真是地址')
+//
+// const debug = <UniConfig configs={config} cfgMode={ConfigType.Plat}/>
+const settings = {
+    init: false,
+    outUrl: 'www.intmian.com',
+    baseUrl: 'www.baidu.com',
+    realUrl: '',
+}
+const debug = <Ping
+    setting={settings}
+/>
 
 // const debug = <Timeline style={{margin: 0, padding: 0, minHeight: 0}}
 //                         items={[
