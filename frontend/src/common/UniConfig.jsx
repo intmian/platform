@@ -15,7 +15,7 @@ import {
 } from "antd";
 import {useEffect, useState} from "react";
 import {ConfigType, UniConfigType} from "./UniConfigDef.js";
-import {CloseOutlined} from "@ant-design/icons";
+import {CloseOutlined, SaveOutlined} from "@ant-design/icons";
 import {
     sendCfgPlatGet,
     sendCfgPlatSet,
@@ -44,7 +44,7 @@ function enumPanel(ConfigMeta, value, onValueChange, operating) {
         options[enumVar] = text
     }
     return <Select
-        value={value}
+        defaultValue={value}
         onChange={onValueChange}
         disabled={operating}
     />
@@ -62,7 +62,7 @@ function ButtonPanel(ConfigParam) {
     />
 }
 
-function ShowControlSavePanel(InitValue, ConfigParam, InitLoading, cfgMode, server, user) {
+function ShowControlSavePanel({InitValue, ConfigParam, InitLoading, cfgMode, server, user}) {
     // 是否正在进行网络操作，内部加载中
     const [operating, setOperating] = useState(false);
     // 当前的值
@@ -72,42 +72,42 @@ function ShowControlSavePanel(InitValue, ConfigParam, InitLoading, cfgMode, serv
 
     // 头部
     const head = <Tooltip title={ConfigParam.tips}>
-        <div>{ConfigParam.text}</div>
+        <div>{ConfigParam.text}:</div>
     </Tooltip>
 
     // 数据操作区，处理value，并提示保存
     const onValueChange = (newValue) => {
         setNeedSave(true);
-        setValue(newValue);
+        setValue(newValue.target.value);
     }
     let body = null;
-    if (!InitLoading) {
+    if (InitLoading) {
         body = <Spin/>
     } else {
         // 根据类型显示不同的内容
         switch (ConfigParam.uniConfigType) {
             case UniConfigType.Bool:
                 body = <Switch
-                    checked={value}
+                    defaultChecked={InitValue}
                     onChange={onValueChange}
                     disabled={operating}
                 />
                 break
             case UniConfigType.String:
                 body = <Input
-                    value={value}
+                    defaultValue={InitValue}
                     onChange={onValueChange}
                     disabled={operating}
                 />
                 break
             case UniConfigType.Enum:
                 // 显示时显示value对应enum2text,选择项也从中取
-                body = enumPanel(ConfigParam, value, onValueChange, operating);
+                body = enumPanel(ConfigParam, InitValue, onValueChange, operating);
                 break
             case UniConfigType.Int:
             case UniConfigType.Float:
                 body = <InputNumber
-                    value={value}
+                    defaultValue={InitValue}
                     onChange={onValueChange}
                     disabled={operating}
                 />
@@ -117,7 +117,7 @@ function ShowControlSavePanel(InitValue, ConfigParam, InitLoading, cfgMode, serv
             case UniConfigType.SliceFloat:
             case UniConfigType.SliceString:
                 body = <MultiInput
-                    value={value}
+                    defaultValue={InitValue}
                     onValueChange={onValueChange}
                     operating={operating}
                     type={ConfigParam.uniConfigType}
@@ -138,7 +138,7 @@ function ShowControlSavePanel(InitValue, ConfigParam, InitLoading, cfgMode, serv
     let foot = <Button
         onClick={() => {
             setOperating(true);
-            let callback = (ret) => {
+            const callback = (ret) => {
                 if (ret.ok) {
                     openNotificationWithIcon('success', '保存成功', '保存成功');
                     setOperating(false);
@@ -146,22 +146,26 @@ function ShowControlSavePanel(InitValue, ConfigParam, InitLoading, cfgMode, serv
                 } else {
                     openNotificationWithIcon('error', '保存失败', '保存失败');
                     setOperating(false);
+                    setNeedSave(true);
                 }
             }
             switch (cfgMode) {
                 case ConfigType.Plat:
-                    sendCfgPlatSet(ConfigParam.key, value, ConfigParam.uniConfigType, callback)
+                    sendCfgPlatSet(ConfigParam.key, value, callback)
                     break
                 case ConfigType.Server:
-                    sendCfgServiceSet(server, ConfigParam.key, value, ConfigParam.uniConfigType, callback)
+                    sendCfgServiceSet(server, ConfigParam.key, value, callback)
                     break
                 case ConfigType.User:
-                    sendCfgServiceUserSet(server, user, ConfigParam.key, value, ConfigParam.uniConfigType, callback)
+                    sendCfgServiceUserSet(server, user, ConfigParam.key, value, callback)
                     break
             }
         }}
+        loading={operating}
         disabled={!needSave}
-    />
+        icon={<SaveOutlined/>}
+    >
+    </Button>
     return <Space>
         {contextHolder}
         {head}
@@ -180,13 +184,20 @@ function ShowControlSavePanel(InitValue, ConfigParam, InitLoading, cfgMode, serv
 * user 用户的名字
 * 如果正在加载中，会显示加载中的状态，否在会在底层未改变初始值的情况下显示值。
 * */
-function ConfigPanel({ConfigParam, InitLoading, InitValue, cfgMode, server, user}) {
+export function ConfigPanel({ConfigParam, InitLoading, InitValue, cfgMode, server, user}) {
     // 特殊处理的一些类型
     if (ConfigParam.uniConfigType === UniConfigType.Button) {
         return ButtonPanel(ConfigParam);
     }
     // 通用的展示、控制、保存组件
-    return ShowControlSavePanel(InitValue, ConfigParam, InitLoading, cfgMode, server, user);
+    return <ShowControlSavePanel
+        InitValue={InitValue}
+        ConfigParam={ConfigParam}
+        InitLoading={InitLoading}
+        cfgMode={cfgMode}
+        server={server}
+        user={user}
+    />
 }
 
 function MultiInput({value, onValueChange, operating, type}) {
@@ -270,7 +281,7 @@ function MultiInput({value, onValueChange, operating, type}) {
     </Space>
 }
 
-class Configs {
+export class Configs {
     params = []
 
     addBase(key, text, defaultValue, uniConfigType, tips) {
@@ -310,12 +321,25 @@ export function UniConfig({configs, cfgMode, server, user}) {
     let panels = [];
     for (let i = 0; i < configs.params.length; i++) {
         let data = null;
-        if (configData !== null && configData.length >= i) {
-            data = configData[i];
+        if (configData !== null) {
+            let realKey;
+            switch (cfgMode) {
+                case ConfigType.Plat:
+                    realKey = 'PLAT.' + configs.params[i].key;
+                    break
+                case ConfigType.Server:
+                    realKey = server + '.' + configs.params[i].key;
+                    break
+                case ConfigType.User:
+                    realKey = server + '.' + user + '.' + configs.params[i].key;
+                    break
+            }
+            data = configData[realKey].Data;
         }
         panels.push(<ConfigPanel
             key={i}
             ConfigParam={configs.params[i]}
+            cfgMode={cfgMode}
             InitLoading={loading}
             InitValue={data}
         />)

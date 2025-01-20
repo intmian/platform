@@ -1,6 +1,7 @@
 import {useEffect, useState} from 'react';
 import {Card, Col, Flex, List, Progress, Result, Row, Spin, Table, Tabs, Tooltip} from 'antd';
 import TabPane from "antd/es/tabs/TabPane";
+import {ConfigPanel} from "../common/UniConfig";
 
 function formatBytes(bytes: number): string {
     if (bytes === 0) return '0 Bytes';
@@ -58,10 +59,25 @@ interface PerformanceData {
     top10Cpu: MemoryInfo[];
 }
 
+type PerformanceSettingData = {
+    init: boolean;
+    outUrl: string;
+    realUrl: string;
+    baseUrl: string;
+}
+
+function PerformanceSettings(dataRef: { current: PerformanceSettingData }) {
+    return <>
+        <ConfigPanel/>
+    </>
+
+}
+
 const Performance = () => {
     const [data, setData] = useState<PerformanceData | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(false);
+
 
     useEffect(() => {
         const eventSource = new EventSource('/api/admin/system/usage/sse');

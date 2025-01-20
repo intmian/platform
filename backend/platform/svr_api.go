@@ -135,6 +135,7 @@ func (m *webMgr) cfgPlatSet(c *gin.Context) {
 		})
 		return
 	}
+	c.JSON(200, makeOkReturn(nil))
 }
 
 func (m *webMgr) cfgServiceSet(c *gin.Context) {

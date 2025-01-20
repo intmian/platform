@@ -156,16 +156,48 @@ func (p *PlatForm) Init(c context.Context) error {
 	}()
 
 	// 初始化配置 TODO: 后续迁移到服务
-	err = p.cfg.AddParam(&xstorage.CfgParam{
-		Key:       "note.setting",
-		ValueType: xstorage.ValueTypeString,
-		CanUser:   false,
-		RealKey:   "note.setting",
-	})
+	err = p.InitCfg()
 	if err != nil {
-		return errors.WithMessage(err, "add note.setting err")
+		return errors.WithMessage(err, "InitCfg err")
 	}
 
+	return nil
+}
+
+func (p *PlatForm) InitCfg() error {
+	params := []*xstorage.CfgParam{
+		// 新配置注册
+		{
+			Key:       "note.setting",
+			ValueType: xstorage.ValueTypeString,
+			CanUser:   false,
+			RealKey:   "note.setting",
+		},
+		{
+			Key:       "PLAT.realUrl",
+			ValueType: xstorage.ValueTypeString,
+			CanUser:   false,
+			RealKey:   "PLAT.realUrl",
+		},
+		{
+			Key:       "PLAT.outUrl",
+			ValueType: xstorage.ValueTypeString,
+			CanUser:   false,
+			RealKey:   "PLAT.outUrl",
+		},
+		{
+			Key:       "PLAT.baseUrl",
+			ValueType: xstorage.ValueTypeString,
+			CanUser:   false,
+			RealKey:   "PLAT.baseUrl",
+		},
+	}
+	for _, v := range params {
+		err := p.cfg.AddParam(v)
+		if err != nil {
+			return errors.WithMessage(err, "AddParam "+v.Key+" err")
+		}
+	}
 	return nil
 }
 

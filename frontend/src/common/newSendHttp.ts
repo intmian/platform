@@ -563,3 +563,34 @@ export function sendGenerateReport(req: GenerateReportReq, callback: (ret: {
     });
 }
 
+async function getWebPing(url: string, attempts: number = 5): Promise<{ delays: number[], lossRate: number }> {
+    const delays: number[] = [];
+    let failedRequests = 0;
+
+    const requests = Array.from({length: attempts}, async () => {
+        const startTime = Date.now();
+
+        try {
+            // 发起 HTTP 请求
+            await fetch(url);
+            const endTime = Date.now();
+            const latency = endTime - startTime;
+            delays.push(latency);
+        } catch (error) {
+            console.error(`请求失败: ${error}`);
+            delays.push(-1); // 记录失败请求，延迟为 -1
+            failedRequests++;
+        }
+    });
+
+    // 等待所有请求完成
+    await Promise.all(requests);
+
+    // 计算丢包率
+    const lossRate = (failedRequests / attempts) * 100;
+
+    return {
+        delays,
+        lossRate
+    };
+}

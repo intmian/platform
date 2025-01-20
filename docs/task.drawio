@@ -1,6 +1,6 @@
 <mxfile host="65bd71144e">
     <diagram id="U8_7rPyPP9F2TlcvUt8w" name="第 1 页">
-        <mxGraphModel dx="4686" dy="787" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
+        <mxGraphModel dx="4694" dy="787" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
             <root>
                 <mxCell id="0"/>
                 <mxCell id="1" parent="0"/>
@@ -73,108 +73,108 @@
                 <mxCell id="40" value="一些额外的内容" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" parent="1" vertex="1">
                     <mxGeometry x="-2990" y="80" width="60" height="30" as="geometry"/>
                 </mxCell>
-                <mxCell id="41" value="client" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+                <mxCell id="41" value="client" style="rounded=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
                     <mxGeometry x="-2640" y="70" width="80" height="40" as="geometry"/>
                 </mxCell>
-                <mxCell id="42" value="task" style="swimlane;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+                <mxCell id="42" value="task" style="swimlane;whiteSpace=wrap;html=1;" parent="1" vertex="1">
                     <mxGeometry x="-1790" y="60" width="680" height="460" as="geometry"/>
                 </mxCell>
-                <mxCell id="54" value="" style="edgeStyle=none;html=1;" edge="1" parent="42" source="43" target="53">
+                <mxCell id="54" value="" style="edgeStyle=none;html=1;" parent="42" source="43" target="53" edge="1">
                     <mxGeometry relative="1" as="geometry"/>
                 </mxCell>
-                <mxCell id="43" value="ID" style="rounded=1;whiteSpace=wrap;html=1;" vertex="1" parent="42">
+                <mxCell id="43" value="ID" style="rounded=1;whiteSpace=wrap;html=1;" parent="42" vertex="1">
                     <mxGeometry x="20" y="30" width="90" height="40" as="geometry"/>
                 </mxCell>
-                <mxCell id="56" style="edgeStyle=none;html=1;entryX=0;entryY=0.25;entryDx=0;entryDy=0;" edge="1" parent="42" source="44" target="55">
+                <mxCell id="56" style="edgeStyle=none;html=1;entryX=0;entryY=0.25;entryDx=0;entryDy=0;" parent="42" source="44" target="55" edge="1">
                     <mxGeometry relative="1" as="geometry"/>
                 </mxCell>
-                <mxCell id="59" value="" style="edgeStyle=none;html=1;" edge="1" parent="42" source="44" target="58">
+                <mxCell id="59" value="" style="edgeStyle=none;html=1;" parent="42" source="44" target="58" edge="1">
                     <mxGeometry relative="1" as="geometry"/>
                 </mxCell>
-                <mxCell id="44" value="Index" style="rounded=1;whiteSpace=wrap;html=1;" vertex="1" parent="42">
+                <mxCell id="44" value="Index" style="rounded=1;whiteSpace=wrap;html=1;" parent="42" vertex="1">
                     <mxGeometry x="20" y="95" width="90" height="40" as="geometry"/>
                 </mxCell>
-                <mxCell id="63" style="edgeStyle=none;html=1;entryX=0;entryY=0.25;entryDx=0;entryDy=0;" edge="1" parent="42" source="45" target="62">
+                <mxCell id="63" style="edgeStyle=none;html=1;entryX=0;entryY=0.25;entryDx=0;entryDy=0;" parent="42" source="45" target="62" edge="1">
                     <mxGeometry relative="1" as="geometry"/>
                 </mxCell>
-                <mxCell id="45" value="tags" style="rounded=1;whiteSpace=wrap;html=1;" vertex="1" parent="42">
+                <mxCell id="45" value="tags" style="rounded=1;whiteSpace=wrap;html=1;" parent="42" vertex="1">
                     <mxGeometry x="20" y="160" width="90" height="40" as="geometry"/>
                 </mxCell>
-                <mxCell id="57" style="edgeStyle=none;html=1;entryX=0;entryY=0.75;entryDx=0;entryDy=0;" edge="1" parent="42" source="46" target="55">
+                <mxCell id="57" style="edgeStyle=none;html=1;entryX=0;entryY=0.75;entryDx=0;entryDy=0;" parent="42" source="46" target="55" edge="1">
                     <mxGeometry relative="1" as="geometry"/>
                 </mxCell>
-                <mxCell id="46" value="note" style="rounded=1;whiteSpace=wrap;html=1;" vertex="1" parent="42">
+                <mxCell id="46" value="note" style="rounded=1;whiteSpace=wrap;html=1;" parent="42" vertex="1">
                     <mxGeometry x="20" y="230" width="90" height="40" as="geometry"/>
                 </mxCell>
-                <mxCell id="64" style="edgeStyle=none;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="42" source="47" target="65">
+                <mxCell id="64" style="edgeStyle=none;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" parent="42" source="47" target="65" edge="1">
                     <mxGeometry relative="1" as="geometry"/>
                 </mxCell>
-                <mxCell id="47" value="childs" style="rounded=1;whiteSpace=wrap;html=1;" vertex="1" parent="42">
+                <mxCell id="47" value="childs" style="rounded=1;whiteSpace=wrap;html=1;" parent="42" vertex="1">
                     <mxGeometry x="20" y="300" width="90" height="40" as="geometry"/>
                 </mxCell>
-                <mxCell id="53" value="由上层分配" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="42">
+                <mxCell id="53" value="由上层分配" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" parent="42" vertex="1">
                     <mxGeometry x="150" y="35" width="60" height="30" as="geometry"/>
                 </mxCell>
-                <mxCell id="55" value="存储task表" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="42">
+                <mxCell id="55" value="存储task表" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" parent="42" vertex="1">
                     <mxGeometry x="175" y="160" width="60" height="30" as="geometry"/>
                 </mxCell>
-                <mxCell id="58" value="创建时由上层制定，最大的排序依据+10，浮点排序，可以是子分区的也可以是childs的" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="42">
+                <mxCell id="58" value="创建时由上层制定，最大的排序依据+10，浮点排序，可以是子分区的也可以是childs的" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" parent="42" vertex="1">
                     <mxGeometry x="160" y="100" width="110" height="30" as="geometry"/>
                 </mxCell>
-                <mxCell id="62" value="tags表" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="42">
+                <mxCell id="62" value="tags表" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" parent="42" vertex="1">
                     <mxGeometry x="210" y="235" width="60" height="30" as="geometry"/>
                 </mxCell>
-                <mxCell id="66" style="edgeStyle=none;html=1;" edge="1" parent="42" source="65" target="55">
+                <mxCell id="66" style="edgeStyle=none;html=1;" parent="42" source="65" target="55" edge="1">
                     <mxGeometry relative="1" as="geometry"/>
                 </mxCell>
-                <mxCell id="65" value="序列化放到task表" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="42">
+                <mxCell id="65" value="序列化放到task表" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" parent="42" vertex="1">
                     <mxGeometry x="170" y="305" width="60" height="30" as="geometry"/>
                 </mxCell>
-                <mxCell id="67" value="client" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="42">
+                <mxCell id="67" value="client" style="rounded=0;whiteSpace=wrap;html=1;" parent="42" vertex="1">
                     <mxGeometry x="290" y="45" width="80" height="40" as="geometry"/>
                 </mxCell>
-                <mxCell id="69" value="移动subtask" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="42">
+                <mxCell id="69" value="移动subtask" style="rounded=0;whiteSpace=wrap;html=1;" parent="42" vertex="1">
                     <mxGeometry x="290" y="110" width="80" height="40" as="geometry"/>
                 </mxCell>
-                <mxCell id="72" style="edgeStyle=none;html=1;entryX=0.009;entryY=0.363;entryDx=0;entryDy=0;entryPerimeter=0;" edge="1" parent="42" source="70" target="73">
+                <mxCell id="72" style="edgeStyle=none;html=1;entryX=0.009;entryY=0.363;entryDx=0;entryDy=0;entryPerimeter=0;" parent="42" source="70" target="73" edge="1">
                     <mxGeometry relative="1" as="geometry">
                         <mxPoint x="420" y="190" as="targetPoint"/>
                     </mxGeometry>
                 </mxCell>
-                <mxCell id="70" value="移动isubtask到顶到底" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="42">
+                <mxCell id="70" value="移动isubtask到顶到底" style="rounded=0;whiteSpace=wrap;html=1;" parent="42" vertex="1">
                     <mxGeometry x="290" y="170" width="80" height="40" as="geometry"/>
                 </mxCell>
-                <mxCell id="73" value="如果特别多的情况下是有用的，不然一直拖动会比较麻烦" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="42">
+                <mxCell id="73" value="如果特别多的情况下是有用的，不然一直拖动会比较麻烦" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" parent="42" vertex="1">
                     <mxGeometry x="440" y="160" width="110" height="80" as="geometry"/>
                 </mxCell>
-                <mxCell id="68" value="person" style="swimlane;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+                <mxCell id="68" value="person" style="swimlane;whiteSpace=wrap;html=1;" parent="1" vertex="1">
                     <mxGeometry x="-2460" y="70" width="290" height="360" as="geometry"/>
                 </mxCell>
-                <mxCell id="81" style="edgeStyle=none;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="68" source="78" target="79">
+                <mxCell id="81" style="edgeStyle=none;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" parent="68" source="78" target="79" edge="1">
                     <mxGeometry relative="1" as="geometry"/>
                 </mxCell>
-                <mxCell id="78" value="根据ID初始化" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="68">
+                <mxCell id="78" value="根据ID初始化" style="rounded=0;whiteSpace=wrap;html=1;" parent="68" vertex="1">
                     <mxGeometry x="10" y="50" width="80" height="30" as="geometry"/>
                 </mxCell>
-                <mxCell id="79" value="root dir" style="rounded=1;whiteSpace=wrap;html=1;" vertex="1" parent="68">
+                <mxCell id="79" value="root dir" style="rounded=1;whiteSpace=wrap;html=1;" parent="68" vertex="1">
                     <mxGeometry x="150" y="45" width="90" height="40" as="geometry"/>
                 </mxCell>
-                <mxCell id="86" style="edgeStyle=none;html=1;entryX=0.663;entryY=1;entryDx=0;entryDy=0;entryPerimeter=0;" edge="1" parent="68" source="85" target="78">
+                <mxCell id="86" style="edgeStyle=none;html=1;entryX=0.663;entryY=1;entryDx=0;entryDy=0;entryPerimeter=0;" parent="68" source="85" target="78" edge="1">
                     <mxGeometry relative="1" as="geometry"/>
                 </mxCell>
-                <mxCell id="85" value="读取dir表相关东西，生成树状结构，不呢为了oop而oop，分层加载，修改都到person层整体保存" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="68">
+                <mxCell id="85" value="读取dir表相关东西，生成树状结构，不能为了oop而oop，分层加载，修改都到person层整体保存" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" parent="68" vertex="1">
                     <mxGeometry x="30" y="140" width="150" height="80" as="geometry"/>
                 </mxCell>
-                <mxCell id="77" value="dir" style="swimlane;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+                <mxCell id="77" value="dir" style="swimlane;whiteSpace=wrap;html=1;" parent="1" vertex="1">
                     <mxGeometry x="-2110" y="65" width="280" height="455" as="geometry"/>
                 </mxCell>
-                <mxCell id="84" value="纯内存结构，辅助操作" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="77">
+                <mxCell id="84" value="纯内存结构，辅助操作" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" parent="77" vertex="1">
                     <mxGeometry x="20" y="45" width="70" height="45" as="geometry"/>
                 </mxCell>
-                <mxCell id="87" value="[]taskGroup" style="rounded=1;whiteSpace=wrap;html=1;" vertex="1" parent="77">
+                <mxCell id="87" value="[]taskGroup" style="rounded=1;whiteSpace=wrap;html=1;" parent="77" vertex="1">
                     <mxGeometry x="10" y="155" width="90" height="40" as="geometry"/>
                 </mxCell>
-                <mxCell id="88" value="[]child" style="rounded=1;whiteSpace=wrap;html=1;" vertex="1" parent="77">
+                <mxCell id="88" value="[]child" style="rounded=1;whiteSpace=wrap;html=1;" parent="77" vertex="1">
                     <mxGeometry x="10" y="105" width="90" height="40" as="geometry"/>
                 </mxCell>
             </root>

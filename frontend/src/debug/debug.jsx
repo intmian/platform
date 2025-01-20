@@ -1,26 +1,17 @@
 import {useState} from "react";
-import {Button, Card, Col, InputNumber, Row, Slider, Space, Spin, Typography} from "antd";
+import {Button, Card, Col, InputNumber, Row, Slider, Space, Typography} from "antd";
 import {CustomDeviceSimulator, DeviceSimulator} from "./DeviceSim.jsx";
 import {MenuPlus} from "../common/MenuPlus.jsx";
 import {EditableProps} from "./EditableProps.jsx";
+import {Configs, UniConfig} from "../common/UniConfig.jsx";
+import {ConfigType, UniConfigType} from "../common/UniConfigDef.js";
 
 const {Text} = Typography;
 
-const debug = <div
-    style={{
-        position: 'fixed',
-        zIndex: 1000,
-        top: 0,
-        left: 0,
-        width: '100%',
-        height: '100%',
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
-    }}
->
-    <Spin size="large"/>
-</div>;
+const config = new Configs()
+config.addBase('realUrl', '真实地址', 'http://plat.intmian.com', UniConfigType.String, '后端真是地址')
+
+const debug = <UniConfig configs={config} cfgMode={ConfigType.Plat}/>
 
 // const debug = <Timeline style={{margin: 0, padding: 0, minHeight: 0}}
 //                         items={[
@@ -109,7 +100,7 @@ const debug = <div
 
 function DebugTool({debug, onChange, onRefresh}) {
     const [isMinimized, setIsMinimized] = useState(true);
-    const [position, setPosition] = useState({x: 200, y: 0});
+    const [position, setPosition] = useState({x: 800, y: 0});
 
     const handleMouseDown = (e) => {
         const offsetX = e.clientX - position.x;
