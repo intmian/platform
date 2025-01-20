@@ -50,7 +50,7 @@ function enumPanel(ConfigMeta, value, onValueChange, operating) {
     />
 }
 
-function ButtonPanel(ConfigParam) {
+function ButtonPanel({ConfigParam}) {
     const [operating, setOperating] = useState(false);
     return <Button
         onClick={() => {
@@ -62,7 +62,7 @@ function ButtonPanel(ConfigParam) {
     />
 }
 
-function ShowControlSavePanel({InitValue, ConfigParam, InitLoading, cfgMode, server, user}) {
+function ShowControlSavePanel({configs, InitValue, ConfigParam, InitLoading, cfgMode, server, user}) {
     // 是否正在进行网络操作，内部加载中
     const [operating, setOperating] = useState(false);
     // 当前的值
@@ -71,9 +71,15 @@ function ShowControlSavePanel({InitValue, ConfigParam, InitLoading, cfgMode, ser
     const [needSave, setNeedSave] = useState(false);
 
     // 头部
-    const head = <Tooltip title={ConfigParam.tips}>
-        <div>{ConfigParam.text}:</div>
-    </Tooltip>
+    let head;
+    if (ConfigParam.tips !== '') {
+        head = <Tooltip title={ConfigParam.tips}>
+            <div>{ConfigParam.text}:</div>
+        </Tooltip>
+    } else {
+        head = <div>{ConfigParam.text}:</div>
+    }
+
 
     // 数据操作区，处理value，并提示保存
     const onValueChange = (newValue) => {
@@ -138,11 +144,13 @@ function ShowControlSavePanel({InitValue, ConfigParam, InitLoading, cfgMode, ser
     let foot = <Button
         onClick={() => {
             setOperating(true);
+            const newValue = value;
             const callback = (ret) => {
                 if (ret.ok) {
                     openNotificationWithIcon('success', '保存成功', '保存成功');
                     setOperating(false);
                     setNeedSave(false);
+                    configs.set(ConfigParam.key, newValue);
                 } else {
                     openNotificationWithIcon('error', '保存失败', '保存失败');
                     setOperating(false);
@@ -151,13 +159,13 @@ function ShowControlSavePanel({InitValue, ConfigParam, InitLoading, cfgMode, ser
             }
             switch (cfgMode) {
                 case ConfigType.Plat:
-                    sendCfgPlatSet(ConfigParam.key, value, callback)
+                    sendCfgPlatSet(ConfigParam.key, newValue, callback)
                     break
                 case ConfigType.Server:
-                    sendCfgServiceSet(server, ConfigParam.key, value, callback)
+                    sendCfgServiceSet(server, ConfigParam.key, newValue, callback)
                     break
                 case ConfigType.User:
-                    sendCfgServiceUserSet(server, user, ConfigParam.key, value, callback)
+                    sendCfgServiceUserSet(server, user, ConfigParam.key, newValue, callback)
                     break
             }
         }}
@@ -184,13 +192,14 @@ function ShowControlSavePanel({InitValue, ConfigParam, InitLoading, cfgMode, ser
 * user 用户的名字
 * 如果正在加载中，会显示加载中的状态，否在会在底层未改变初始值的情况下显示值。
 * */
-export function ConfigPanel({ConfigParam, InitLoading, InitValue, cfgMode, server, user}) {
+export function ConfigPanel({configs, ConfigParam, InitLoading, InitValue, cfgMode, server, user}) {
     // 特殊处理的一些类型
     if (ConfigParam.uniConfigType === UniConfigType.Button) {
         return ButtonPanel(ConfigParam);
     }
     // 通用的展示、控制、保存组件
     return <ShowControlSavePanel
+        configs={configs}
         InitValue={InitValue}
         ConfigParam={ConfigParam}
         InitLoading={InitLoading}
@@ -282,21 +291,77 @@ function MultiInput({value, onValueChange, operating, type}) {
 }
 
 export class Configs {
-    params = []
+    constructor(onDataChanged, cfgMode, server, user) {
+        this.params = [];
+        this.onDataChanged = onDataChanged;
+        this.cfgMode = cfgMode;
+        this.server = server;
+        this.user = user;
+    }
 
-    addBase(key, text, defaultValue, uniConfigType, tips) {
+    cfgMode = ConfigType.Plat
+    params = []
+    data = {}
+    onDataChanged = null
+    server = ''
+    user = ''
+
+    addBase(key, text, uniConfigType, tips) {
         let param = new ConfigParam();
         param.key = key;
         param.text = text;
-        param.defaultValue = defaultValue;
         param.uniConfigType = uniConfigType
         param.tips = tips;
         this.params.push(param);
     }
+
+    get(key) {
+        // 判断params中是否有key
+        let param;
+        for (let i = 0; i < this.params.length; i++) {
+            if (this.params[i].key === key) {
+                param = this.params[i];
+                break;
+            }
+        }
+        if (param === undefined) {
+            return null;
+        }
+        let realKey = this.getRealID(key);
+        return this.data[realKey];
+    }
+
+    getRealID(key) {
+        let realKey;
+        switch (this.cfgMode) {
+            case ConfigType.Plat:
+                realKey = 'PLAT.' + key;
+                break
+            case ConfigType.Server:
+                realKey = this.server + '.' + key;
+                break
+            case ConfigType.User:
+                realKey = this.server + '.' + this.user + '.' + key;
+                break
+        }
+        return realKey;
+    }
+
+    setByDB(key, value) {
+        this.data[key] = value
+    }
+
+    set(key, value) {
+        let realKey = this.getRealID(key);
+        this.data[realKey] = value;
+        if (this.onDataChanged) {
+            this.onDataChanged(realKey, value);
+        }
+    }
 }
 
 // UniConfig 一个通用的配置界面，用于显示和修改配置。建议不要和ctx一起耦合，单独处理全局的已有配置
-export function UniConfig({configs, cfgMode, server, user}) {
+export function UniConfig({configs, server, user}) {
     // 加载中
     const [loading, setLoading] = useState(true);
     // 配置
@@ -307,15 +372,20 @@ export function UniConfig({configs, cfgMode, server, user}) {
         let callback = (ret) => {
             setConfigs(ret.data);
             setLoading(false);
+            // 后端传的key都是真实key不需要二次处理，所以调用特殊函数，同时为了避免重复渲染，最后触发一次回调。
+            for (let key in ret.data) {
+                configs.setByDB(key, ret.data[key].Data);
+            }
+            configs.onDataChanged()
         }
-        if (cfgMode === ConfigType.Plat) {
+        if (configs.cfgMode === ConfigType.Plat) {
             sendCfgPlatGet(callback)
-        } else if (cfgMode === ConfigType.Server) {
+        } else if (configs.cfgMode === ConfigType.Server) {
             sendCfgServiceGet(server, callback)
-        } else if (cfgMode === ConfigType.User) {
+        } else if (configs.cfgMode === ConfigType.User) {
             sendCfgServiceUserGet(server, user, callback)
         }
-    }, [cfgMode, server, user]);
+    }, [configs.cfgMode, configs, server, user]);
 
     // 配置面板
     let panels = [];
@@ -323,7 +393,7 @@ export function UniConfig({configs, cfgMode, server, user}) {
         let data = null;
         if (configData !== null) {
             let realKey;
-            switch (cfgMode) {
+            switch (configs.cfgMode) {
                 case ConfigType.Plat:
                     realKey = 'PLAT.' + configs.params[i].key;
                     break
@@ -337,9 +407,10 @@ export function UniConfig({configs, cfgMode, server, user}) {
             data = configData[realKey].Data;
         }
         panels.push(<ConfigPanel
+            configs={configs}
             key={i}
             ConfigParam={configs.params[i]}
-            cfgMode={cfgMode}
+            cfgMode={configs.cfgMode}
             InitLoading={loading}
             InitValue={data}
         />)

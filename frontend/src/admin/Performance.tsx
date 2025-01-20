@@ -1,7 +1,8 @@
 import {useEffect, useState} from 'react';
 import {Card, Col, Flex, List, Progress, Result, Row, Spin, Table, Tabs, Tooltip} from 'antd';
 import TabPane from "antd/es/tabs/TabPane";
-import {ConfigPanel} from "../common/UniConfig";
+import {ConfigPanel, Configs} from "../common/UniConfig";
+import {ConfigType} from "../common/UniConfigDef";
 
 function formatBytes(bytes: number): string {
     if (bytes === 0) return '0 Bytes';
@@ -67,6 +68,9 @@ type PerformanceSettingData = {
 }
 
 function PerformanceSettings(dataRef: { current: PerformanceSettingData }) {
+    const config = new Configs()
+    config.addBase('realUrl', '后端真实地址或ip', ConfigType.Plat, '')
+    con
     return <>
         <ConfigPanel/>
     </>

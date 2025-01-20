@@ -8,8 +8,13 @@ import {ConfigType, UniConfigType} from "../common/UniConfigDef.js";
 
 const {Text} = Typography;
 
-const config = new Configs()
-config.addBase('realUrl', '真实地址', 'http://plat.intmian.com', UniConfigType.String, '后端真是地址')
+const config = new Configs(() => {
+    console.log('config changed')
+    console.log(config.get('realUrl'))
+    console.log(config)
+}, ConfigType.Plat)
+
+config.addBase('realUrl', '真实地址', UniConfigType.String, '后端真是地址')
 
 const debug = <UniConfig configs={config} cfgMode={ConfigType.Plat}/>
 
