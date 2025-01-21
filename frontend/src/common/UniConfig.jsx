@@ -6,6 +6,7 @@ import {
     Input,
     InputNumber,
     List,
+    Modal,
     notification,
     Row,
     Select,
@@ -465,4 +466,19 @@ export function UniConfig({configCtr, server = "", user = ""}) {
             </List.Item>
         )}
     />
+}
+
+export function UniConfigModal({ctr, onExit, show}) {
+    return <Modal
+        open={show}
+        footer={null}
+        maskClosable={true}
+        onCancel={() => {
+            onExit()
+        }}
+    >
+        <UniConfig
+            configCtr={ctr}
+        />
+    </Modal>
 }
