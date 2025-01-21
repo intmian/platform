@@ -1,5 +1,6 @@
 import {
     Button,
+    Collapse,
     Flex,
     Input,
     InputNumber,
@@ -324,11 +325,18 @@ function MultiInput({defaultValue, onValueChange, operating, type}) {
     >
         添加新值
     </Button>;
+    return <Collapse
+        bordered={false}
+        size={"small"}
+        style={{width: '100%'}}
+        items={[{
+            key: '1', label: '点击修改', children: <Space direction={"vertical"} style={{width: '100%'}}>
+                {coms}
+                {adder}
+            </Space>
+        }]}
+    />
 
-    return <Space direction={"vertical"} style={{width: '100%'}}>
-        {coms}
-        {adder}
-    </Space>;
 }
 
 export class ConfigsCtr {
