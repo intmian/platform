@@ -568,17 +568,23 @@ export async function getWebPing(url: string, attempts: number = 5): Promise<{ d
     let failedRequests = 0;
 
     const requests = Array.from({length: attempts}, async () => {
+        await new Promise(resolve => setTimeout(resolve, Math.random() * 5000));
         const startTime = Date.now();
 
         try {
             // 发起 HTTP 请求
-            await fetch(url);
+            await fetch(url, {
+                headers: {
+                    'Cache-Control': 'no-cache',  // 禁止缓存
+                },
+                cache: 'no-store',  // 强制不使用浏览器缓存
+            });
             const endTime = Date.now();
             const latency = endTime - startTime;
             delays.push(latency);
         } catch (error) {
             console.error(`请求失败: ${error}`);
-            delays.push(-1); // 记录失败请求，延迟为 -1
+            delays.push(9999); // 记录失败请求，延迟为 -1
             failedRequests++;
         }
     });
