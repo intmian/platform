@@ -228,117 +228,107 @@ function MultiInput({defaultValue, onValueChange, operating, type}) {
         defaultValue = [];
     }
     const [RealValue, setRealValue] = useState(defaultValue);
-    // 一组editor，每个editor右上角有一个删除按钮，点击删除按钮会删除这个editor，后面有一个按钮可以添加新的editor
-    let coms = []
+
     const InputStyle = {
-        // flex 占满
         flex: 1,
     }
+
+    let coms = [];
     for (let i = 0; i < RealValue.length; i++) {
         let editor = null;
         switch (type) {
             case ConfigType.SliceBool:
                 editor = <Switch
                     style={InputStyle}
-                    defaultChecked={RealValue[i]}
+                    checked={RealValue[i]}
                     onChange={(newValue) => {
-                        const newRealValue = RealValue.slice();
+                        const newRealValue = [...RealValue];
                         newRealValue[i] = newValue;
                         setRealValue(newRealValue);
                         onValueChange(newRealValue);
                     }}
                     disabled={operating}
                 />
-                break
+                break;
             case ConfigType.SliceInt:
             case ConfigType.SliceFloat:
                 editor = <InputNumber
                     style={InputStyle}
-                    defaultValue={RealValue[i]}
+                    value={RealValue[i]} // 使用 value 而不是 defaultValue
                     onChange={(newValue) => {
-                        const newRealValue = RealValue.slice();
+                        const newRealValue = [...RealValue];
                         newRealValue[i] = newValue;
                         setRealValue(newRealValue);
                         onValueChange(newRealValue);
                     }}
                     disabled={operating}
                 />
-                break
+                break;
             case ConfigType.SliceString:
                 editor = <Input
                     style={InputStyle}
-                    defaultValue={RealValue[i]}
+                    value={RealValue[i]} // 使用 value 而不是 defaultValue
                     onChange={(newValue) => {
-                        const newRealValue = RealValue.slice();
+                        const newRealValue = [...RealValue];
                         newRealValue[i] = newValue.target.value;
                         setRealValue(newRealValue);
                         onValueChange(newRealValue);
                     }}
                     disabled={operating}
                 />
-                break
+                break;
         }
 
-        // 添加新组件
         coms.push(<Row style={{
             width: '100%',
             display: 'flex',
             justifyContent: 'space-between',
-        }} key={`${i}-${Date.now()}`}>
+        }} key={i}> {/* 使用 i 作为 key，保证稳定 */}
             <Flex gap={"small"} style={{width: "100%"}}>
                 {editor}
                 <Button onClick={() => {
-                    const newRealValue = RealValue.slice();
+                    const newRealValue = [...RealValue];
                     newRealValue.splice(i, 1);
                     setRealValue(newRealValue);
                     onValueChange(newRealValue);
                 }}
                         type={"text"}
-                        icon={<CloseOutlined
-                            style={{
-                                color: 'red',
-                            }}
-                        />}
-                >
-                </Button>
+                        icon={<CloseOutlined style={{color: 'red'}}/>}
+                />
             </Flex>
-        </Row>)
+        </Row>);
     }
 
-    // 增加新值区域
     let defaultNew = null;
     switch (type) {
         case ConfigType.SliceBool:
             defaultNew = false;
-            break
+            break;
         case ConfigType.SliceInt:
         case ConfigType.SliceFloat:
             defaultNew = 0;
-            break
+            break;
         case ConfigType.SliceString:
             defaultNew = '';
-            break
+            break;
     }
+
     let adder = <Button
         onClick={() => {
-            const newValue = RealValue.concat(defaultNew);
+            const newValue = [...RealValue, defaultNew];
             setRealValue(newValue);
             onValueChange(newValue);
         }}
         type={"dashed"}
-        style={{
-            width: '100%',
-        }}
+        style={{width: '100%'}}
     >
         添加新值
-    </Button>
+    </Button>;
 
-    return <Space direction={"vertical"} style={{
-        width: '100%',
-    }}>
+    return <Space direction={"vertical"} style={{width: '100%'}}>
         {coms}
         {adder}
-    </Space>
+    </Space>;
 }
 
 export class ConfigsCtr {
