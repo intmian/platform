@@ -15,7 +15,7 @@ import {
     Tooltip
 } from "antd";
 import {useEffect, useState} from "react";
-import {ConfigType, UniConfigType} from "./UniConfigDef.js";
+import {ConfigsType, ConfigType} from "./UniConfigDef.js";
 import {CloseOutlined, SaveOutlined} from "@ant-design/icons";
 import {
     sendCfgPlatGet,
@@ -93,36 +93,36 @@ function ShowControlSavePanel({configs, InitValue, ConfigParam, InitLoading, cfg
     } else {
         // 根据类型显示不同的内容
         switch (ConfigParam.uniConfigType) {
-            case UniConfigType.Bool:
+            case ConfigType.Bool:
                 body = <Switch
                     defaultChecked={InitValue}
                     onChange={onValueChange}
                     disabled={operating}
                 />
                 break
-            case UniConfigType.String:
+            case ConfigType.String:
                 body = <Input
                     defaultValue={InitValue}
                     onChange={onValueChange}
                     disabled={operating}
                 />
                 break
-            case UniConfigType.Enum:
+            case ConfigType.Enum:
                 // 显示时显示value对应enum2text,选择项也从中取
                 body = enumPanel(ConfigParam, InitValue, onValueChange, operating);
                 break
-            case UniConfigType.Int:
-            case UniConfigType.Float:
+            case ConfigType.Int:
+            case ConfigType.Float:
                 body = <InputNumber
                     defaultValue={InitValue}
                     onChange={onValueChange}
                     disabled={operating}
                 />
                 break
-            case UniConfigType.SliceBool:
-            case UniConfigType.SliceInt:
-            case UniConfigType.SliceFloat:
-            case UniConfigType.SliceString:
+            case ConfigType.SliceBool:
+            case ConfigType.SliceInt:
+            case ConfigType.SliceFloat:
+            case ConfigType.SliceString:
                 body = <MultiInput
                     defaultValue={InitValue}
                     onValueChange={onValueChange}
@@ -159,13 +159,13 @@ function ShowControlSavePanel({configs, InitValue, ConfigParam, InitLoading, cfg
                 }
             }
             switch (cfgMode) {
-                case ConfigType.Plat:
+                case ConfigsType.Plat:
                     sendCfgPlatSet(ConfigParam.key, newValue, callback)
                     break
-                case ConfigType.Server:
+                case ConfigsType.Server:
                     sendCfgServiceSet(server, ConfigParam.key, newValue, callback)
                     break
-                case ConfigType.User:
+                case ConfigsType.User:
                     sendCfgServiceUserSet(server, user, ConfigParam.key, newValue, callback)
                     break
             }
@@ -199,7 +199,7 @@ function ShowControlSavePanel({configs, InitValue, ConfigParam, InitLoading, cfg
 * */
 export function ConfigPanel({configs, ConfigParam, InitLoading, InitValue, cfgMode, server, user}) {
     // 特殊处理的一些类型
-    if (ConfigParam.uniConfigType === UniConfigType.Button) {
+    if (ConfigParam.uniConfigType === ConfigType.Button) {
         return ButtonPanel(ConfigParam);
     }
     // 通用的展示、控制、保存组件
@@ -220,7 +220,7 @@ function MultiInput({value, onValueChange, operating, type}) {
     for (let i = 0; i < value.length; i++) {
         let editor = null;
         switch (type) {
-            case UniConfigType.SliceBool:
+            case ConfigType.SliceBool:
                 editor = <Switch
                     checked={value[i]}
                     onChange={(newValue) => {
@@ -230,8 +230,8 @@ function MultiInput({value, onValueChange, operating, type}) {
                     disabled={operating}
                 />
                 break
-            case UniConfigType.SliceInt:
-            case UniConfigType.SliceFloat:
+            case ConfigType.SliceInt:
+            case ConfigType.SliceFloat:
                 editor = <InputNumber
                     value={value[i]}
                     onChange={(newValue) => {
@@ -241,7 +241,7 @@ function MultiInput({value, onValueChange, operating, type}) {
                     disabled={operating}
                 />
                 break
-            case UniConfigType.SliceString:
+            case ConfigType.SliceString:
                 editor = <Input
                     value={value[i]}
                     onChange={(newValue) => {
@@ -268,14 +268,14 @@ function MultiInput({value, onValueChange, operating, type}) {
 
     let defaultNew = null;
     switch (type) {
-        case UniConfigType.SliceBool:
+        case ConfigType.SliceBool:
             defaultNew = false;
             break
-        case UniConfigType.SliceInt:
-        case UniConfigType.SliceFloat:
+        case ConfigType.SliceInt:
+        case ConfigType.SliceFloat:
             defaultNew = 0;
             break
-        case UniConfigType.SliceString:
+        case ConfigType.SliceString:
             defaultNew = '';
             break
     }
@@ -295,25 +295,25 @@ function MultiInput({value, onValueChange, operating, type}) {
     </Space>
 }
 
-export class Configs {
-    constructor(onDataChanged, cfgMode, server, user) {
-        this.params = [];
-        this.onDataChanged = onDataChanged;
+export class ConfigsCtr {
+    constructor(cfgMode, server, user) {
+        this.configs = [];
         this.cfgMode = cfgMode;
         this.server = server;
         this.user = user;
     }
 
-    cfgMode = ConfigType.Plat
-    params = []
+    cfgMode = ConfigsType.Plat
+    configs = []
     data = {}
-    onDataChanged = null
+    onDataChanged = []
     server = ''
     user = ''
+    inInit = true
 
-    addBase(key, text, uniConfigType, tips) {
-        for (let i = 0; i < this.params.length; i++) {
-            if (this.params[i].key === key) {
+    addBaseConfig(key, text, uniConfigType, tips) {
+        for (let i = 0; i < this.configs.length; i++) {
+            if (this.configs[i].key === key) {
                 return;
             }
         }
@@ -323,15 +323,25 @@ export class Configs {
         param.text = text;
         param.uniConfigType = uniConfigType
         param.tips = tips;
-        this.params.push(param);
+        this.configs.push(param);
+    }
+
+    addCallback(f) {
+        this.onDataChanged.push(f);
+    }
+
+    callBack() {
+        for (let i = 0; i < this.onDataChanged.length; i++) {
+            this.onDataChanged[i]();
+        }
     }
 
     get(key) {
         // 判断params中是否有key
         let param;
-        for (let i = 0; i < this.params.length; i++) {
-            if (this.params[i].key === key) {
-                param = this.params[i];
+        for (let i = 0; i < this.configs.length; i++) {
+            if (this.configs[i].key === key) {
+                param = this.configs[i];
                 break;
             }
         }
@@ -345,13 +355,13 @@ export class Configs {
     getRealID(key) {
         let realKey;
         switch (this.cfgMode) {
-            case ConfigType.Plat:
+            case ConfigsType.Plat:
                 realKey = 'PLAT.' + key;
                 break
-            case ConfigType.Server:
+            case ConfigsType.Server:
                 realKey = this.server + '.' + key;
                 break
-            case ConfigType.User:
+            case ConfigsType.User:
                 realKey = this.server + '.' + this.user + '.' + key;
                 break
         }
@@ -365,14 +375,30 @@ export class Configs {
     set(key, value) {
         let realKey = this.getRealID(key);
         this.data[realKey] = value;
-        if (this.onDataChanged) {
-            this.onDataChanged(realKey, value);
+        this.callBack()
+    }
+
+    init() {
+        let callback = (ret) => {
+            // 后端传的key都是真实key不需要二次处理，所以调用特殊函数，同时为了避免重复渲染，最后触发一次回调。
+            for (let key in ret.data) {
+                this.setByDB(key, ret.data[key].Data);
+            }
+            this.inInit = false;
+            this.callBack()
+        }
+        if (this.cfgMode === ConfigsType.Plat) {
+            sendCfgPlatGet(callback)
+        } else if (this.cfgMode === ConfigsType.Server) {
+            sendCfgServiceGet(this.server, callback)
+        } else if (this.cfgMode === ConfigsType.User) {
+            sendCfgServiceUserGet(this.server, this.user, callback)
         }
     }
 }
 
 // UniConfig 一个通用的配置界面，用于显示和修改配置。建议不要和ctx一起耦合，单独处理全局的已有配置
-export function UniConfig({configs, server = "", user = ""}) {
+export function UniConfig({configCtr, server = "", user = ""}) {
     // 加载中
     const [loading, setLoading] = useState(true);
     // 配置
@@ -385,34 +411,34 @@ export function UniConfig({configs, server = "", user = ""}) {
             setLoading(false);
             // 后端传的key都是真实key不需要二次处理，所以调用特殊函数，同时为了避免重复渲染，最后触发一次回调。
             for (let key in ret.data) {
-                configs.setByDB(key, ret.data[key].Data);
+                configCtr.setByDB(key, ret.data[key].Data);
             }
-            configs.onDataChanged()
+            configCtr.onDataChanged()
         }
-        if (configs.cfgMode === ConfigType.Plat) {
+        if (configCtr.cfgMode === ConfigsType.Plat) {
             sendCfgPlatGet(callback)
-        } else if (configs.cfgMode === ConfigType.Server) {
+        } else if (configCtr.cfgMode === ConfigsType.Server) {
             sendCfgServiceGet(server, callback)
-        } else if (configs.cfgMode === ConfigType.User) {
+        } else if (configCtr.cfgMode === ConfigsType.User) {
             sendCfgServiceUserGet(server, user, callback)
         }
-    }, [configs.cfgMode, configs, server, user]);
+    }, [configCtr.cfgMode, configCtr, server, user]);
 
     // 配置面板
     let panels = [];
-    for (let i = 0; i < configs.params.length; i++) {
+    for (let i = 0; i < configCtr.configs.length; i++) {
         let data = null;
         if (configData !== null) {
             let realKey;
-            switch (configs.cfgMode) {
-                case ConfigType.Plat:
-                    realKey = 'PLAT.' + configs.params[i].key;
+            switch (configCtr.cfgMode) {
+                case ConfigsType.Plat:
+                    realKey = 'PLAT.' + configCtr.configs[i].key;
                     break
-                case ConfigType.Server:
-                    realKey = server + '.' + configs.params[i].key;
+                case ConfigsType.Server:
+                    realKey = server + '.' + configCtr.configs[i].key;
                     break
-                case ConfigType.User:
-                    realKey = server + '.' + user + '.' + configs.params[i].key;
+                case ConfigsType.User:
+                    realKey = server + '.' + user + '.' + configCtr.configs[i].key;
                     break
             }
             if (configData[realKey] !== undefined) {
@@ -423,10 +449,10 @@ export function UniConfig({configs, server = "", user = ""}) {
 
         }
         panels.push(<ConfigPanel
-            configs={configs}
+            configs={configCtr}
             key={i}
-            ConfigParam={configs.params[i]}
-            cfgMode={configs.cfgMode}
+            ConfigParam={configCtr.configs[i]}
+            cfgMode={configCtr.cfgMode}
             InitLoading={loading}
             InitValue={data}
         />)

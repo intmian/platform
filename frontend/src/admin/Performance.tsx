@@ -1,4 +1,4 @@
-import {useCallback, useEffect, useRef, useState} from 'react';
+import {useCallback, useEffect, useState} from 'react';
 import {
     Button,
     Card,
@@ -18,8 +18,8 @@ import {
     Typography
 } from 'antd';
 import TabPane from "antd/es/tabs/TabPane";
-import {Configs, UniConfig} from "../common/UniConfig";
-import {ConfigType, UniConfigType} from "../common/UniConfigDef";
+import {ConfigsCtr, UniConfig} from "../common/UniConfig";
+import {ConfigsType, ConfigType} from "../common/UniConfigDef";
 import {getWebPing} from "../common/newSendHttp";
 import {SettingOutlined} from "@ant-design/icons";
 
@@ -88,24 +88,16 @@ type PerformanceSettingData = {
     baseUrl: string;
 }
 
-function PerformanceSettings({onChange, onExit, show}: {
-    onChange: (data: PerformanceSettingData) => void,
+const PerformanceConfigs = new ConfigsCtr(ConfigsType.Plat)
+PerformanceConfigs.addBaseConfig('realUrl', '后端真实地址', ConfigType.String, '')
+PerformanceConfigs.addBaseConfig('outUrl', 'CDN地址', ConfigType.String, '')
+PerformanceConfigs.addBaseConfig('baseUrl', '对比地址', ConfigType.String, '')
+PerformanceConfigs.init()
+
+function PerformanceSettings({onExit, show}: {
     onExit: () => void,
     show: boolean
 }) {
-    const configRef = useRef(new Configs(() => {
-        onChange({
-            init: true,
-            outUrl: configRef.current.get('outUrl'),
-            realUrl: configRef.current.get('realUrl'),
-            baseUrl: configRef.current.get('baseUrl'),
-        })
-    }, ConfigType.Plat))
-    useEffect(() => {
-        configRef.current.addBase('realUrl', '后端真实地址', UniConfigType.String, '')
-        configRef.current.addBase('outUrl', 'CDN地址', UniConfigType.String, '')
-        configRef.current.addBase('baseUrl', '对比地址', UniConfigType.String, '')
-    }, []);
     return <Modal
         open={show}
         footer={null}
@@ -115,7 +107,7 @@ function PerformanceSettings({onChange, onExit, show}: {
         }}
     >
         <UniConfig
-            configs={configRef.current}
+            configCtr={PerformanceConfigs}
         />
     </Modal>
 }
@@ -302,6 +294,23 @@ const Performance = () => {
     const [setting, setSetting] = useState<PerformanceSettingData>({init: false, outUrl: '', realUrl: '', baseUrl: ''})
 
     useEffect(() => {
+        setSetting({
+            init: !PerformanceConfigs.inInit,
+            outUrl: PerformanceConfigs.get('outUrl'),
+            realUrl: PerformanceConfigs.get('realUrl'),
+            baseUrl: PerformanceConfigs.get('baseUrl')
+        })
+        PerformanceConfigs.addCallback(() => {
+            setSetting({
+                init: true,
+                outUrl: PerformanceConfigs.get('outUrl'),
+                realUrl: PerformanceConfigs.get('realUrl'),
+                baseUrl: PerformanceConfigs.get('baseUrl')
+            })
+        })
+    }, []);
+
+    useEffect(() => {
         const eventSource = new EventSource('/api/admin/system/usage/sse');
         eventSource.onmessage = (event) => {
             try {
@@ -384,7 +393,7 @@ const Performance = () => {
                     icon={<SettingOutlined/>}
                 />
             </div>
-            <PerformanceSettings show={showSetting} onChange={setSetting} onExit={() => setShowSetting(false)}/>
+            <PerformanceSettings show={showSetting} onExit={() => setShowSetting(false)}/>
             <Card>
                 <Row gutter={16}>
                     <Col span={12}>
