@@ -22,10 +22,11 @@ function IndexSider({onChooseMenuItem, disable}) {
                 }}
                 items={[
                     getItem('监控', 'monitor'),
-                    getItem('后台数据', 'config'),
+                    getItem('后台数据', 'db'),
                     getItem('日志', 'log'),
                     getItem('账号', 'account'),
                     getItem('性能', 'performance'),
+                    getItem('设置', 'setting'),
                 ]}
                 onSelect={onChooseMenuItem}
             />

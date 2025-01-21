@@ -7,6 +7,7 @@ import {useContext} from "react";
 import {AccountAdmin} from "./AccountAdmin.jsx";
 import Performance from "./Performance.tsx";
 import {useIsMobile} from "../common/hooksv2";
+import Setting from "./Setting";
 
 const {Content} = Layout;
 
@@ -39,7 +40,7 @@ function IndexContent({contentType}) {
         case 'log':
             content = <Log/>;
             break;
-        case 'config':
+        case 'db':
             content = <Config/>;
             break;
         case 'account':
@@ -47,6 +48,9 @@ function IndexContent({contentType}) {
             break;
         case 'performance':
             content = <Performance/>;
+            break;
+        case 'setting':
+            content = <Setting/>;
             break;
         default:
             break;

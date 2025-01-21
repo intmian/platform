@@ -191,6 +191,12 @@ func (p *PlatForm) InitCfg() error {
 			CanUser:   false,
 			RealKey:   "PLAT.baseUrl",
 		},
+		{
+			Key:       "auto.news.keys",
+			ValueType: xstorage.ValueTypeSliceString,
+			CanUser:   false,
+			RealKey:   "auto.news.keys",
+		},
 	}
 	for _, v := range params {
 		err := p.cfg.AddParam(v)

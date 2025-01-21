@@ -65,7 +65,7 @@ function ButtonPanel({ConfigParam}) {
     />
 }
 
-function ShowControlSavePanel({configs, InitValue, ConfigParam, InitLoading, cfgMode, server, user, tileLength}) {
+function ShowControlSavePanel({configs, InitValue, ConfigParam, InitLoading, cfgMode, tileLength}) {
     // 是否正在进行网络操作，内部加载中
     const [operating, setOperating] = useState(false);
     // 当前的值
@@ -171,10 +171,10 @@ function ShowControlSavePanel({configs, InitValue, ConfigParam, InitLoading, cfg
                     sendCfgPlatSet(realKey, newValue, callback)
                     break
                 case ConfigsType.Server:
-                    sendCfgServiceSet(server, realKey, newValue, callback)
+                    sendCfgServiceSet(configs.server, realKey, newValue, callback)
                     break
                 case ConfigsType.User:
-                    sendCfgServiceUserSet(server, user, realKey, newValue, callback)
+                    sendCfgServiceUserSet(configs.server, configs.user, realKey, newValue, callback)
                     break
             }
         }}
@@ -207,7 +207,7 @@ function ShowControlSavePanel({configs, InitValue, ConfigParam, InitLoading, cfg
 * user 用户的名字
 * 如果正在加载中，会显示加载中的状态，否在会在底层未改变初始值的情况下显示值。
 * */
-export function ConfigPanel({configs, ConfigParam, InitLoading, InitValue, cfgMode, server, user, tileLength}) {
+export function ConfigPanel({configs, ConfigParam, InitLoading, InitValue, cfgMode, tileLength}) {
     // 特殊处理的一些类型
     if (ConfigParam.uniConfigType === ConfigType.Button) {
         return ButtonPanel(ConfigParam);
@@ -220,8 +220,6 @@ export function ConfigPanel({configs, ConfigParam, InitLoading, InitValue, cfgMo
         ConfigParam={ConfigParam}
         InitLoading={InitLoading}
         cfgMode={cfgMode}
-        server={server}
-        user={user}
     />
 }
 
@@ -229,7 +227,7 @@ function MultiInput({defaultValue, onValueChange, operating, type}) {
     if (defaultValue == null) {
         defaultValue = [];
     }
-    const [RealValue, setRealValue] = useState(defaultValue.Data);
+    const [RealValue, setRealValue] = useState(defaultValue);
     // 一组editor，每个editor右上角有一个删除按钮，点击删除按钮会删除这个editor，后面有一个按钮可以添加新的editor
     let coms = []
     const InputStyle = {
@@ -457,7 +455,6 @@ export function UniConfig({configCtr}) {
         // 初始化过了就用ctr的数据初始化，否则请求数据
         if (!configCtr.inInit) {
             setLoading(false);
-            console.log('初始化过了', configCtr.data)
             setConfigs(configCtr.data);
             return;
         }
