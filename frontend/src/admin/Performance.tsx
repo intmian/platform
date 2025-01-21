@@ -26,7 +26,7 @@ import {SettingOutlined} from "@ant-design/icons";
 const {Text} = Typography
 
 function formatBytes(bytes: number): string {
-    if (bytes === 0) return '0 Bytes';
+    if (bytes === 0) return '0 B';
     const k = 1024;
     const sizes = ['B', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
@@ -359,7 +359,7 @@ const Performance = () => {
                         <p>Swap: {formatBytes(memory.memoryInfo.swap)}</p>
                     </div>
                 }>
-                    {memory.percent.toFixed(2) + '(' + formatBytes(memory.memoryInfo.rss) + '|' + formatBytes(memory.memoryInfo.swap) + ')'}
+                    {memory.percent.toFixed(2) + '(' + formatBytes(memory.memoryInfo.rss) + ')'}
                 </Tooltip>
             ),
         },
