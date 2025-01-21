@@ -1,7 +1,5 @@
 import {
-    Badge,
     Button,
-    Col,
     Flex,
     Input,
     InputNumber,
@@ -13,7 +11,8 @@ import {
     Space,
     Spin,
     Switch,
-    Tooltip
+    Tooltip,
+    Typography
 } from "antd";
 import {useEffect, useState} from "react";
 import {ConfigsType, ConfigType} from "./UniConfigDef.js";
@@ -26,6 +25,8 @@ import {
     sendCfgServiceUserGet,
     sendCfgServiceUserSet
 } from "./sendhttp.js";
+
+const {Text} = Typography;
 
 // ConfigParam 配置的参数
 class ConfigParam {
@@ -64,7 +65,7 @@ function ButtonPanel({ConfigParam}) {
     />
 }
 
-function ShowControlSavePanel({configs, InitValue, ConfigParam, InitLoading, cfgMode, server, user}) {
+function ShowControlSavePanel({configs, InitValue, ConfigParam, InitLoading, cfgMode, server, user, tileLength}) {
     // 是否正在进行网络操作，内部加载中
     const [operating, setOperating] = useState(false);
     // 当前的值
@@ -73,20 +74,18 @@ function ShowControlSavePanel({configs, InitValue, ConfigParam, InitLoading, cfg
     const [needSave, setNeedSave] = useState(false);
 
     // 头部
-    let head;
+    let head = <Text>{ConfigParam.text}:</Text>;
     if (ConfigParam.tips !== '') {
         head = <Tooltip title={ConfigParam.tips}>
-            <div>{ConfigParam.text}:</div>
+            {head}
         </Tooltip>
-    } else {
-        head = <div>{ConfigParam.text}:</div>
     }
 
 
     // 数据操作区，处理value，并提示保存
     const onValueChange = (newValue) => {
         setNeedSave(true);
-        setValue(newValue.target.value);
+        setValue(newValue);
     }
     let body = null;
     if (InitLoading) {
@@ -97,14 +96,18 @@ function ShowControlSavePanel({configs, InitValue, ConfigParam, InitLoading, cfg
             case ConfigType.Bool:
                 body = <Switch
                     defaultChecked={InitValue}
-                    onChange={onValueChange}
+                    onChange={(ret) => {
+                        onValueChange(ret.target.value)
+                    }}
                     disabled={operating}
                 />
                 break
             case ConfigType.String:
                 body = <Input
                     defaultValue={InitValue}
-                    onChange={onValueChange}
+                    onChange={(ret) => {
+                        onValueChange(ret.target.value)
+                    }}
                     disabled={operating}
                 />
                 break
@@ -116,7 +119,9 @@ function ShowControlSavePanel({configs, InitValue, ConfigParam, InitLoading, cfg
             case ConfigType.Float:
                 body = <InputNumber
                     defaultValue={InitValue}
-                    onChange={onValueChange}
+                    onChange={(ret) => {
+                        onValueChange(ret.target.value)
+                    }}
                     disabled={operating}
                 />
                 break
@@ -146,7 +151,9 @@ function ShowControlSavePanel({configs, InitValue, ConfigParam, InitLoading, cfg
     let foot = <Button
         onClick={() => {
             setOperating(true);
-            const newValue = value;
+            // 转换为json字符串
+            const newValue = JSON.stringify(value);
+            const realKey = ConfigParam.key;
             const callback = (ret) => {
                 if (ret.ok) {
                     openNotificationWithIcon('success', '保存成功', '保存成功');
@@ -161,13 +168,13 @@ function ShowControlSavePanel({configs, InitValue, ConfigParam, InitLoading, cfg
             }
             switch (cfgMode) {
                 case ConfigsType.Plat:
-                    sendCfgPlatSet(ConfigParam.key, newValue, callback)
+                    sendCfgPlatSet(realKey, newValue, callback)
                     break
                 case ConfigsType.Server:
-                    sendCfgServiceSet(server, ConfigParam.key, newValue, callback)
+                    sendCfgServiceSet(server, realKey, newValue, callback)
                     break
                 case ConfigsType.User:
-                    sendCfgServiceUserSet(server, user, ConfigParam.key, newValue, callback)
+                    sendCfgServiceUserSet(server, user, realKey, newValue, callback)
                     break
             }
         }}
@@ -182,7 +189,9 @@ function ShowControlSavePanel({configs, InitValue, ConfigParam, InitLoading, cfg
                  gap={'small'}
     >
         {contextHolder}
-        <div>{head}</div>
+        <div style={{
+            width: tileLength + 0.5 + 'em', display: 'flex', alignItems: 'center', height: '32px'
+        }}>{head}</div>
         <div style={{flex: 1}}>{body}</div>
         <div>{foot}</div>
     </Flex>
@@ -198,13 +207,14 @@ function ShowControlSavePanel({configs, InitValue, ConfigParam, InitLoading, cfg
 * user 用户的名字
 * 如果正在加载中，会显示加载中的状态，否在会在底层未改变初始值的情况下显示值。
 * */
-export function ConfigPanel({configs, ConfigParam, InitLoading, InitValue, cfgMode, server, user}) {
+export function ConfigPanel({configs, ConfigParam, InitLoading, InitValue, cfgMode, server, user, tileLength}) {
     // 特殊处理的一些类型
     if (ConfigParam.uniConfigType === ConfigType.Button) {
         return ButtonPanel(ConfigParam);
     }
     // 通用的展示、控制、保存组件
     return <ShowControlSavePanel
+        tileLength={tileLength}
         configs={configs}
         InitValue={InitValue}
         ConfigParam={ConfigParam}
@@ -215,18 +225,29 @@ export function ConfigPanel({configs, ConfigParam, InitLoading, InitValue, cfgMo
     />
 }
 
-function MultiInput({value, onValueChange, operating, type}) {
+function MultiInput({defaultValue, onValueChange, operating, type}) {
+    if (defaultValue == null) {
+        defaultValue = [];
+    }
+    const [RealValue, setRealValue] = useState(defaultValue.Data);
     // 一组editor，每个editor右上角有一个删除按钮，点击删除按钮会删除这个editor，后面有一个按钮可以添加新的editor
     let coms = []
-    for (let i = 0; i < value.length; i++) {
+    const InputStyle = {
+        // flex 占满
+        flex: 1,
+    }
+    for (let i = 0; i < RealValue.length; i++) {
         let editor = null;
         switch (type) {
             case ConfigType.SliceBool:
                 editor = <Switch
-                    checked={value[i]}
+                    style={InputStyle}
+                    defaultChecked={RealValue[i]}
                     onChange={(newValue) => {
-                        value[i] = newValue;
-                        onValueChange(value);
+                        const newRealValue = RealValue.slice();
+                        newRealValue[i] = newValue;
+                        setRealValue(newRealValue);
+                        onValueChange(newRealValue);
                     }}
                     disabled={operating}
                 />
@@ -234,39 +255,59 @@ function MultiInput({value, onValueChange, operating, type}) {
             case ConfigType.SliceInt:
             case ConfigType.SliceFloat:
                 editor = <InputNumber
-                    value={value[i]}
+                    style={InputStyle}
+                    defaultValue={RealValue[i]}
                     onChange={(newValue) => {
-                        value[i] = newValue;
-                        onValueChange(value);
+                        const newRealValue = RealValue.slice();
+                        newRealValue[i] = newValue;
+                        setRealValue(newRealValue);
+                        onValueChange(newRealValue);
                     }}
                     disabled={operating}
                 />
                 break
             case ConfigType.SliceString:
                 editor = <Input
-                    value={value[i]}
+                    style={InputStyle}
+                    defaultValue={RealValue[i]}
                     onChange={(newValue) => {
-                        value[i] = newValue;
-                        onValueChange(value);
+                        const newRealValue = RealValue.slice();
+                        newRealValue[i] = newValue.target.value;
+                        setRealValue(newRealValue);
+                        onValueChange(newRealValue);
                     }}
                     disabled={operating}
                 />
                 break
         }
-        coms.push(<Col>
-            <Badge
-                count={
-                    < CloseOutlined
-                        style={{fontSize: '20px'}}
-                        onClick={() => console.log('删除')}
-                    />}
-                key={i}>
 
+        // 添加新组件
+        coms.push(<Row style={{
+            width: '100%',
+            display: 'flex',
+            justifyContent: 'space-between',
+        }} key={`${i}-${Date.now()}`}>
+            <Flex gap={"small"} style={{width: "100%"}}>
                 {editor}
-            </Badge>)
-        </Col>)
+                <Button onClick={() => {
+                    const newRealValue = RealValue.slice();
+                    newRealValue.splice(i, 1);
+                    setRealValue(newRealValue);
+                    onValueChange(newRealValue);
+                }}
+                        type={"text"}
+                        icon={<CloseOutlined
+                            style={{
+                                color: 'red',
+                            }}
+                        />}
+                >
+                </Button>
+            </Flex>
+        </Row>)
     }
 
+    // 增加新值区域
     let defaultNew = null;
     switch (type) {
         case ConfigType.SliceBool:
@@ -282,17 +323,23 @@ function MultiInput({value, onValueChange, operating, type}) {
     }
     let adder = <Button
         onClick={() => {
-            value.push(defaultNew);
-            // 默认添加零值，这里不需要默认值
-            onValueChange(value);
+            const newValue = RealValue.concat(defaultNew);
+            setRealValue(newValue);
+            onValueChange(newValue);
         }}
-    >添加</Button>
+        type={"dashed"}
+        style={{
+            width: '100%',
+        }}
+    >
+        添加新值
+    </Button>
 
-    return <Space>
-        <Row style={{overflow: 'auto', width: '100%', height: '100vh'}}>
-            {coms}
-            {adder}
-        </Row>
+    return <Space direction={"vertical"} style={{
+        width: '100%',
+    }}>
+        {coms}
+        {adder}
     </Space>
 }
 
@@ -399,7 +446,7 @@ export class ConfigsCtr {
 }
 
 // UniConfig 一个通用的配置界面，用于显示和修改配置。建议不要和ctx一起耦合，单独处理全局的已有配置
-export function UniConfig({configCtr, server = "", user = ""}) {
+export function UniConfig({configCtr}) {
     // 加载中
     const [loading, setLoading] = useState(true);
     // 配置
@@ -407,6 +454,13 @@ export function UniConfig({configCtr, server = "", user = ""}) {
 
     // 初始化
     useEffect(() => {
+        // 初始化过了就用ctr的数据初始化，否则请求数据
+        if (!configCtr.inInit) {
+            setLoading(false);
+            console.log('初始化过了', configCtr.data)
+            setConfigs(configCtr.data);
+            return;
+        }
         let callback = (ret) => {
             setConfigs(ret.data);
             setLoading(false);
@@ -414,19 +468,34 @@ export function UniConfig({configCtr, server = "", user = ""}) {
             for (let key in ret.data) {
                 configCtr.setByDB(key, ret.data[key].Data);
             }
-            configCtr.onDataChanged()
+            configCtr.callBack()
         }
         if (configCtr.cfgMode === ConfigsType.Plat) {
             sendCfgPlatGet(callback)
         } else if (configCtr.cfgMode === ConfigsType.Server) {
-            sendCfgServiceGet(server, callback)
+            sendCfgServiceGet(configCtr.server, callback)
         } else if (configCtr.cfgMode === ConfigsType.User) {
-            sendCfgServiceUserGet(server, user, callback)
+            sendCfgServiceUserGet(configCtr.server, configCtr.user, callback)
         }
-    }, [configCtr.cfgMode, configCtr, server, user]);
+    }, [configCtr.cfgMode, configCtr, configCtr.server, configCtr.user]);
 
     // 配置面板
     let panels = [];
+    let maxTitleLength = 0;
+
+    for (let i = 0; i < configCtr.configs.length; i++) {
+        // 英文字符按照0.5计算
+        let titleLength = configCtr.configs[i].text.length * 0.5;
+        for (let j = 0; j < configCtr.configs[i].text.length; j++) {
+            if (configCtr.configs[i].text.charCodeAt(j) > 255) {
+                titleLength += 0.5;
+            }
+        }
+        if (titleLength > maxTitleLength) {
+            maxTitleLength = titleLength
+        }
+    }
+
     for (let i = 0; i < configCtr.configs.length; i++) {
         let data = null;
         if (configData !== null) {
@@ -436,18 +505,17 @@ export function UniConfig({configCtr, server = "", user = ""}) {
                     realKey = 'PLAT.' + configCtr.configs[i].key;
                     break
                 case ConfigsType.Server:
-                    realKey = server + '.' + configCtr.configs[i].key;
+                    realKey = configCtr.server + '.' + configCtr.configs[i].key;
                     break
                 case ConfigsType.User:
-                    realKey = server + '.' + user + '.' + configCtr.configs[i].key;
+                    realKey = configCtr.server + '.' + configCtr.user + '.' + configCtr.configs[i].key;
                     break
             }
             if (configData[realKey] !== undefined) {
-                data = configData[realKey].Data;
+                data = configData[realKey];
             } else {
                 data = null;
             }
-
         }
         panels.push(<ConfigPanel
             configs={configCtr}
@@ -456,6 +524,7 @@ export function UniConfig({configCtr, server = "", user = ""}) {
             cfgMode={configCtr.cfgMode}
             InitLoading={loading}
             InitValue={data}
+            tileLength={maxTitleLength}
         />)
     }
     return <List
