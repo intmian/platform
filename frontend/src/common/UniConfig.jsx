@@ -532,8 +532,9 @@ export function UniConfig({configCtr}) {
     />
 }
 
-export function UniConfigModal({ctr, onExit, show}) {
+export function UniConfigModal({name, ctr, onExit, show}) {
     return <Modal
+        title={name}
         open={show}
         footer={null}
         maskClosable={true}

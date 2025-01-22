@@ -5,7 +5,6 @@ import {
     Col,
     Flex,
     List,
-    Modal,
     Progress,
     Result,
     Row,
@@ -18,7 +17,7 @@ import {
     Typography
 } from 'antd';
 import TabPane from "antd/es/tabs/TabPane";
-import {ConfigsCtr, UniConfig} from "../common/UniConfig";
+import {ConfigsCtr, UniConfigModal} from "../common/UniConfig";
 import {ConfigsType, ConfigType} from "../common/UniConfigDef";
 import {getWebPing} from "../common/newSendHttp";
 import {SettingOutlined} from "@ant-design/icons";
@@ -94,23 +93,6 @@ PerformanceConfigs.addBaseConfig('outUrl', 'CDN地址', ConfigType.String, '')
 PerformanceConfigs.addBaseConfig('baseUrl', '对比地址', ConfigType.String, '')
 PerformanceConfigs.init()
 
-function PerformanceSettings({onExit, show}: {
-    onExit: () => void,
-    show: boolean
-}) {
-    return <Modal
-        open={show}
-        footer={null}
-        maskClosable={true}
-        onCancel={() => {
-            onExit()
-        }}
-    >
-        <UniConfig
-            configCtr={PerformanceConfigs}
-        />
-    </Modal>
-}
 
 export function Ping({setting}: { setting: PerformanceSettingData }) {
     const [pingData, setPingData] = useState({
@@ -393,7 +375,8 @@ const Performance = () => {
                     icon={<SettingOutlined/>}
                 />
             </div>
-            <PerformanceSettings show={showSetting} onExit={() => setShowSetting(false)}/>
+            <UniConfigModal name={"ping配置"} ctr={PerformanceConfigs} show={showSetting}
+                            onExit={() => setShowSetting(false)}/>
             <Card>
                 <Row gutter={16}>
                     <Col span={12}>
