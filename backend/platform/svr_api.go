@@ -136,6 +136,7 @@ func (m *webMgr) cfgPlatSet(c *gin.Context) {
 		return
 	}
 	c.JSON(200, makeOkReturn(nil))
+	m.plat.log.Info("PLAT", "cfgPlatSet [%s] [%s]", opr.Key, opr.Val)
 }
 
 func (m *webMgr) cfgServiceSet(c *gin.Context) {
@@ -171,6 +172,7 @@ func (m *webMgr) cfgServiceSet(c *gin.Context) {
 
 	err = m.plat.cfg.Set(xstorage.Join(svr, opr.Key), opr.Val)
 	c.JSON(200, makeOkReturn(nil))
+	m.plat.log.Info("PLAT", "cfgServiceSet [%s] [%s] [%s]", svr, opr.Key, opr.Val)
 }
 
 func (m *webMgr) cfgServiceUserSet(c *gin.Context) {
