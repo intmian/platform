@@ -411,7 +411,7 @@ func (m *webMgr) getSystemUsageSSE(c *gin.Context) {
 		}
 		cpuInfo, err := cpu.Info()
 		if err != nil {
-			return nil, err
+			cpuInfo = nil
 		}
 		cpuTimes, err := cpu.Times(false)
 		if err != nil {

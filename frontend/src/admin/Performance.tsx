@@ -126,9 +126,9 @@ export function Ping({setting}: { setting: PerformanceSettingData }) {
     }, [])
 
     useEffect(() => {
-        if (setting.baseUrl) fetchPingData(setting.baseUrl, 'base')
-        if (setting.realUrl) fetchPingData(setting.realUrl, 'real')
-        if (setting.outUrl) fetchPingData(setting.outUrl, 'out')
+        if (setting.baseUrl) fetchPingData(setting.baseUrl, 'base').then()
+        if (setting.realUrl) fetchPingData(setting.realUrl, 'real').then()
+        if (setting.outUrl) fetchPingData(setting.outUrl, 'out').then()
     }, [setting.baseUrl, setting.realUrl, setting.outUrl, fetchPingData])
 
     // 计算延迟对比
@@ -178,14 +178,14 @@ export function Ping({setting}: { setting: PerformanceSettingData }) {
             : null}
         <Card
             style={{
-                width: 250,
+                width: 320,
                 height: 120,
                 margin: '8px'
             }}
         >
             <Flex justify="space-between">
                 <Statistic
-                    title={"CDN ping"}
+                    title={"CDN GET"}
                     value={pingData.out.ping}
                     suffix="ms"
                     precision={2}
@@ -203,9 +203,11 @@ export function Ping({setting}: { setting: PerformanceSettingData }) {
                     float: 'right'
                 }}
             >
+                vs直连：
                 <Text type={calculatePingDifference(pingData.real.ping, pingData.out.ping) > 0 ? 'danger' : 'success'}>
                     {`${calculatePingDifference(pingData.real.ping, pingData.out.ping).toFixed(2)}%`}
                 </Text>
+                vs基础：
                 <Text type={calculatePingDifference(pingData.base.ping, pingData.out.ping) > 0 ? 'danger' : 'success'}>
                     {`${calculatePingDifference(pingData.base.ping, pingData.out.ping).toFixed(2)}%`}
                 </Text>
@@ -213,14 +215,14 @@ export function Ping({setting}: { setting: PerformanceSettingData }) {
         </Card>
         <Card
             style={{
-                width: 250,
+                width: 320,
                 height: 120,
                 margin: '8px'
             }}
         >
             <Flex justify="space-between">
                 <Statistic
-                    title={"后端 ping"}
+                    title={"后端 GET"}
                     value={pingData.real.ping}
                     suffix="ms"
                     precision={2}
@@ -232,25 +234,33 @@ export function Ping({setting}: { setting: PerformanceSettingData }) {
                     precision={2}
                 />
             </Flex>
-            <Text type={calculatePingDifference(pingData.base.ping, pingData.real.ping) > 0 ? 'danger' : 'success'}
-                  style={{
-                      // 靠右
-                      float: 'right'
-                  }}
+            <Space
+                style={{
+                    // 靠右
+                    float: 'right'
+                }}
             >
-                {`${calculatePingDifference(pingData.base.ping, pingData.real.ping).toFixed(2)}%`}
-            </Text>
+                vs基础：
+                <Text type={calculatePingDifference(pingData.base.ping, pingData.real.ping) > 0 ? 'danger' : 'success'}
+                      style={{
+                          // 靠右
+                          float: 'right'
+                      }}
+                >
+                    {`${calculatePingDifference(pingData.base.ping, pingData.real.ping).toFixed(2)}%`}
+                </Text>
+            </Space>
         </Card>
         <Card
             style={{
-                width: 250,
+                width: 320,
                 height: 120,
                 margin: '8px'
             }}
         >
             <Flex justify="space-between">
                 <Statistic
-                    title={"基础 ping"}
+                    title={"基础 GET"}
                     value={pingData.base.ping}
                     suffix="ms"
                     precision={2}

@@ -152,8 +152,12 @@ function ShowControlSavePanel({configs, InitValue, ConfigParam, InitLoading, cfg
     let foot = <Button
         onClick={() => {
             setOperating(true);
-            // 转换为json字符串
-            const newValue = JSON.stringify(value);
+            let newValue;
+            if (ConfigParam.uniConfigType !== ConfigType.String) {
+                newValue = JSON.stringify(value);
+            } else {
+                newValue = value;
+            }
             const realKey = ConfigParam.key;
             const callback = (ret) => {
                 if (ret.ok) {
@@ -340,13 +344,6 @@ function MultiInput({defaultValue, onValueChange, operating, type}) {
 }
 
 export class ConfigsCtr {
-    constructor(cfgMode, server, user) {
-        this.configs = [];
-        this.cfgMode = cfgMode;
-        this.server = server;
-        this.user = user;
-    }
-
     cfgMode = ConfigsType.Plat
     configs = []
     data = {}
@@ -354,6 +351,13 @@ export class ConfigsCtr {
     server = ''
     user = ''
     inInit = true
+
+    constructor(cfgMode, server, user) {
+        this.configs = [];
+        this.cfgMode = cfgMode;
+        this.server = server;
+        this.user = user;
+    }
 
     addBaseConfig(key, text, uniConfigType, tips) {
         for (let i = 0; i < this.configs.length; i++) {

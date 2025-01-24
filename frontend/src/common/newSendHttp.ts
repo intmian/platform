@@ -563,7 +563,7 @@ export function sendGenerateReport(req: GenerateReportReq, callback: (ret: {
     });
 }
 
-export async function getWebPing(url: string, attempts: number = 5): Promise<{ delays: number[], lossRate: number }> {
+export async function getWebPing(url: string, attempts: number = 10): Promise<{ delays: number[], lossRate: number }> {
     const delays: number[] = [];
     let failedRequests = 0;
 
@@ -574,6 +574,7 @@ export async function getWebPing(url: string, attempts: number = 5): Promise<{ d
         try {
             // 发起 HTTP 请求
             await fetch(url, {
+                mode: 'no-cors',
                 headers: {
                     'Cache-Control': 'no-cache',  // 禁止缓存
                 },
@@ -584,7 +585,7 @@ export async function getWebPing(url: string, attempts: number = 5): Promise<{ d
             delays.push(latency);
         } catch (error) {
             console.error(`请求失败: ${error}`);
-            delays.push(9999); // 记录失败请求，延迟为 -1
+            delays.push(999); // 记录失败请求，延迟为 999ms
             failedRequests++;
         }
     });
