@@ -11,7 +11,7 @@ func TestCreateDir(t *testing.T) {
 	user := misc.InputWithFile("user")
 	passwd := misc.InputWithFile("passwd")
 	dbName := misc.InputWithFile("db_name")
-	setting := DBSetting{
+	setting := Setting{
 		User:   user,
 		Passwd: passwd,
 		Host:   host,

@@ -335,7 +335,7 @@
                     <mxGeometry x="20" y="40" width="80" height="40" as="geometry"/>
                 </mxCell>
                 <mxCell id="158" value="addTask" style="rounded=0;whiteSpace=wrap;html=1;shadow=1;glass=0;" parent="143" vertex="1">
-                    <mxGeometry x="170" y="115" width="120" height="45" as="geometry"/>
+                    <mxGeometry x="40" y="115" width="120" height="45" as="geometry"/>
                 </mxCell>
                 <mxCell id="160" value="move" style="rounded=0;whiteSpace=wrap;html=1;shadow=1;glass=0;" parent="143" vertex="1">
                     <mxGeometry x="170" y="190" width="120" height="45" as="geometry"/>
@@ -380,6 +380,9 @@
                 </mxCell>
                 <mxCell id="196" value="所有ID，都是全用户唯一的，方便引用和迁移" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="167">
                     <mxGeometry x="490" y="170" width="70" height="70" as="geometry"/>
+                </mxCell>
+                <mxCell id="197" value="Text" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="167">
+                    <mxGeometry x="338" y="370" width="60" height="30" as="geometry"/>
                 </mxCell>
                 <mxCell id="168" value="都是辅助类，缓不缓存后面看" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" parent="1" vertex="1">
                     <mxGeometry x="-2720" y="40" width="110" height="40" as="geometry"/>

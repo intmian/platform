@@ -13,6 +13,7 @@ type TaskDB struct {
 	ParentTaskID     uint32
 	Index            float32
 	Deleted          bool
+	Done             bool
 	CreatedAt        time.Time
 	UpdatedAt        time.Time
 }
@@ -25,6 +26,7 @@ func CreateTask(db *gorm.DB, userID, parentSubGroupID, parentTaskID uint32, note
 		Note:             note,
 		Index:            index,
 		Deleted:          false,
+		Done:             false,
 		CreatedAt:        time.Now(),
 		UpdatedAt:        time.Now(),
 	}
@@ -43,8 +45,14 @@ func GetTaskByID(db *gorm.DB, taskID uint32) (*TaskDB, error) {
 	return &task, result.Error
 }
 
-func GetTasksByParentSubGroupID(db *gorm.DB, parentSubGroupID uint32, limit int, offset int) []TaskDB {
+func GetTasksByParentSubGroupID(db *gorm.DB, parentSubGroupID uint32, limit int, offset int, done bool) []TaskDB {
 	var tasks []TaskDB
-	db.Where("parent_sub_group_id = ?", parentSubGroupID).Limit(limit).Offset(offset).Find(&tasks)
+	db.Where("parent_sub_group_id = ? and done = ?", parentSubGroupID, done).Limit(limit).Offset(offset).Find(&tasks)
+	return tasks
+}
+
+func GetTasksByParentTaskID(db *gorm.DB, parentTaskID uint32, limit int, offset int, done bool) []TaskDB {
+	var tasks []TaskDB
+	db.Where("parent_task_id = ? and done = ?", parentTaskID, done).Limit(limit).Offset(offset).Find(&tasks)
 	return tasks
 }
