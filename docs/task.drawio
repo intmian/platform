@@ -1,6 +1,6 @@
 <mxfile host="65bd71144e">
     <diagram id="U8_7rPyPP9F2TlcvUt8w" name="第 1 页">
-        <mxGraphModel dx="4694" dy="787" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
+        <mxGraphModel dx="4379" dy="1997" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
             <root>
                 <mxCell id="0"/>
                 <mxCell id="1" parent="0"/>
@@ -8,10 +8,10 @@
                     <mxGeometry relative="1" as="geometry"/>
                 </mxCell>
                 <mxCell id="10" value="开局时加载文件夹系统" style="rounded=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
-                    <mxGeometry x="189.9999999999999" y="50" width="80" height="40" as="geometry"/>
+                    <mxGeometry x="-190.0000000000001" y="80" width="80" height="40" as="geometry"/>
                 </mxCell>
                 <mxCell id="11" value="从本地读取加载情况，依次" style="rounded=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
-                    <mxGeometry x="189.9999999999999" y="170" width="80" height="40" as="geometry"/>
+                    <mxGeometry x="-190.0000000000001" y="200" width="80" height="40" as="geometry"/>
                 </mxCell>
                 <mxCell id="13" value="" style="rounded=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
                     <mxGeometry x="-3280" y="10" width="400" height="390" as="geometry"/>
@@ -73,20 +73,14 @@
                 <mxCell id="40" value="一些额外的内容" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" parent="1" vertex="1">
                     <mxGeometry x="-2990" y="80" width="60" height="30" as="geometry"/>
                 </mxCell>
-                <mxCell id="41" value="client" style="rounded=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
-                    <mxGeometry x="-2640" y="70" width="80" height="40" as="geometry"/>
-                </mxCell>
                 <mxCell id="42" value="task" style="swimlane;whiteSpace=wrap;html=1;" parent="1" vertex="1">
-                    <mxGeometry x="-1790" y="60" width="680" height="460" as="geometry"/>
+                    <mxGeometry x="-1160" y="400" width="360" height="535" as="geometry"/>
                 </mxCell>
                 <mxCell id="54" value="" style="edgeStyle=none;html=1;" parent="42" source="43" target="53" edge="1">
                     <mxGeometry relative="1" as="geometry"/>
                 </mxCell>
                 <mxCell id="43" value="ID" style="rounded=1;whiteSpace=wrap;html=1;" parent="42" vertex="1">
                     <mxGeometry x="20" y="30" width="90" height="40" as="geometry"/>
-                </mxCell>
-                <mxCell id="56" style="edgeStyle=none;html=1;entryX=0;entryY=0.25;entryDx=0;entryDy=0;" parent="42" source="44" target="55" edge="1">
-                    <mxGeometry relative="1" as="geometry"/>
                 </mxCell>
                 <mxCell id="59" value="" style="edgeStyle=none;html=1;" parent="42" source="44" target="58" edge="1">
                     <mxGeometry relative="1" as="geometry"/>
@@ -130,52 +124,280 @@
                 <mxCell id="65" value="序列化放到task表" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" parent="42" vertex="1">
                     <mxGeometry x="170" y="305" width="60" height="30" as="geometry"/>
                 </mxCell>
-                <mxCell id="67" value="client" style="rounded=0;whiteSpace=wrap;html=1;" parent="42" vertex="1">
-                    <mxGeometry x="290" y="45" width="80" height="40" as="geometry"/>
+                <mxCell id="105" value="loadall" style="rounded=0;whiteSpace=wrap;html=1;shadow=1;glass=0;" parent="42" vertex="1">
+                    <mxGeometry x="30" y="445" width="130" height="45" as="geometry"/>
                 </mxCell>
-                <mxCell id="69" value="移动subtask" style="rounded=0;whiteSpace=wrap;html=1;" parent="42" vertex="1">
-                    <mxGeometry x="290" y="110" width="80" height="40" as="geometry"/>
+                <mxCell id="130" value="根据subgroup从数据库中查询的基础信息初始化" style="rounded=0;whiteSpace=wrap;html=1;shadow=1;glass=0;" parent="42" vertex="1">
+                    <mxGeometry x="30" y="365" width="120" height="45" as="geometry"/>
                 </mxCell>
-                <mxCell id="72" style="edgeStyle=none;html=1;entryX=0.009;entryY=0.363;entryDx=0;entryDy=0;entryPerimeter=0;" parent="42" source="70" target="73" edge="1">
-                    <mxGeometry relative="1" as="geometry">
-                        <mxPoint x="420" y="190" as="targetPoint"/>
-                    </mxGeometry>
+                <mxCell id="151" value="子任务先不加载，只加载默认的无parenttask的任务" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" parent="42" vertex="1">
+                    <mxGeometry x="200" y="420" width="130" height="50" as="geometry"/>
                 </mxCell>
-                <mxCell id="70" value="移动isubtask到顶到底" style="rounded=0;whiteSpace=wrap;html=1;" parent="42" vertex="1">
-                    <mxGeometry x="290" y="170" width="80" height="40" as="geometry"/>
+                <mxCell id="68" value="user" style="swimlane;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+                    <mxGeometry x="-2470" y="70" width="300" height="360" as="geometry"/>
                 </mxCell>
-                <mxCell id="73" value="如果特别多的情况下是有用的，不然一直拖动会比较麻烦" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" parent="42" vertex="1">
-                    <mxGeometry x="440" y="160" width="110" height="80" as="geometry"/>
+                <mxCell id="90" value="dirmgr" style="rounded=1;whiteSpace=wrap;html=1;" parent="68" vertex="1">
+                    <mxGeometry x="170" y="37.5" width="90" height="40" as="geometry"/>
                 </mxCell>
-                <mxCell id="68" value="person" style="swimlane;whiteSpace=wrap;html=1;" parent="1" vertex="1">
-                    <mxGeometry x="-2460" y="70" width="290" height="360" as="geometry"/>
+                <mxCell id="135" value="taskmgr" style="rounded=1;whiteSpace=wrap;html=1;" parent="68" vertex="1">
+                    <mxGeometry x="170" y="100" width="90" height="40" as="geometry"/>
                 </mxCell>
-                <mxCell id="81" style="edgeStyle=none;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" parent="68" source="78" target="79" edge="1">
+                <mxCell id="137" value="taskGroupMgr" style="rounded=1;whiteSpace=wrap;html=1;" parent="68" vertex="1">
+                    <mxGeometry x="170" y="169" width="90" height="40" as="geometry"/>
+                </mxCell>
+                <mxCell id="175" value="movegroup" style="rounded=0;whiteSpace=wrap;html=1;shadow=1;glass=0;" vertex="1" parent="68">
+                    <mxGeometry x="10" y="31" width="120" height="45" as="geometry"/>
+                </mxCell>
+                <mxCell id="176" value="三个管理器直接向外部暴露，如果设计多管理器的才注册到user" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="68">
+                    <mxGeometry x="40" y="105" width="110" height="30" as="geometry"/>
+                </mxCell>
+                <mxCell id="177" value="userID" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="68">
+                    <mxGeometry x="180" y="230" width="60" height="30" as="geometry"/>
+                </mxCell>
+                <mxCell id="183" value="creategroup" style="rounded=0;whiteSpace=wrap;html=1;shadow=1;glass=0;" vertex="1" parent="68">
+                    <mxGeometry x="10" y="169" width="120" height="45" as="geometry"/>
+                </mxCell>
+                <mxCell id="195" value="" style="edgeStyle=none;html=1;" edge="1" parent="68" source="193" target="194">
                     <mxGeometry relative="1" as="geometry"/>
                 </mxCell>
-                <mxCell id="78" value="根据ID初始化" style="rounded=0;whiteSpace=wrap;html=1;" parent="68" vertex="1">
-                    <mxGeometry x="10" y="50" width="80" height="30" as="geometry"/>
+                <mxCell id="193" value="createTask" style="rounded=0;whiteSpace=wrap;html=1;shadow=1;glass=0;" vertex="1" parent="68">
+                    <mxGeometry x="10" y="240" width="120" height="45" as="geometry"/>
                 </mxCell>
-                <mxCell id="79" value="root dir" style="rounded=1;whiteSpace=wrap;html=1;" parent="68" vertex="1">
-                    <mxGeometry x="150" y="45" width="90" height="40" as="geometry"/>
-                </mxCell>
-                <mxCell id="86" style="edgeStyle=none;html=1;entryX=0.663;entryY=1;entryDx=0;entryDy=0;entryPerimeter=0;" parent="68" source="85" target="78" edge="1">
-                    <mxGeometry relative="1" as="geometry"/>
-                </mxCell>
-                <mxCell id="85" value="读取dir表相关东西，生成树状结构，不能为了oop而oop，分层加载，修改都到person层整体保存" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" parent="68" vertex="1">
-                    <mxGeometry x="30" y="140" width="150" height="80" as="geometry"/>
+                <mxCell id="194" value="get group subgourp user" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="68">
+                    <mxGeometry x="20" y="310" width="80" height="40" as="geometry"/>
                 </mxCell>
                 <mxCell id="77" value="dir" style="swimlane;whiteSpace=wrap;html=1;" parent="1" vertex="1">
-                    <mxGeometry x="-2110" y="65" width="280" height="455" as="geometry"/>
+                    <mxGeometry x="-1820" y="70" width="400" height="310" as="geometry"/>
                 </mxCell>
                 <mxCell id="84" value="纯内存结构，辅助操作" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" parent="77" vertex="1">
                     <mxGeometry x="20" y="45" width="70" height="45" as="geometry"/>
                 </mxCell>
                 <mxCell id="87" value="[]taskGroup" style="rounded=1;whiteSpace=wrap;html=1;" parent="77" vertex="1">
-                    <mxGeometry x="10" y="155" width="90" height="40" as="geometry"/>
+                    <mxGeometry x="270" y="155" width="90" height="40" as="geometry"/>
                 </mxCell>
                 <mxCell id="88" value="[]child" style="rounded=1;whiteSpace=wrap;html=1;" parent="77" vertex="1">
-                    <mxGeometry x="10" y="105" width="90" height="40" as="geometry"/>
+                    <mxGeometry x="30" y="155" width="90" height="40" as="geometry"/>
+                </mxCell>
+                <mxCell id="97" value="ID" style="rounded=1;whiteSpace=wrap;html=1;" parent="77" vertex="1">
+                    <mxGeometry x="30" y="90" width="90" height="40" as="geometry"/>
+                </mxCell>
+                <mxCell id="98" value="title" style="rounded=1;whiteSpace=wrap;html=1;" parent="77" vertex="1">
+                    <mxGeometry x="270" y="90.5" width="90" height="40" as="geometry"/>
+                </mxCell>
+                <mxCell id="99" value="notice" style="rounded=1;whiteSpace=wrap;html=1;" parent="77" vertex="1">
+                    <mxGeometry x="270" y="35.5" width="90" height="40" as="geometry"/>
+                </mxCell>
+                <mxCell id="101" value="getTaskGroup" style="rounded=0;whiteSpace=wrap;html=1;shadow=1;glass=0;" parent="77" vertex="1">
+                    <mxGeometry x="35" y="210" width="80" height="40" as="geometry"/>
+                </mxCell>
+                <mxCell id="170" value="save2db" style="rounded=0;whiteSpace=wrap;html=1;shadow=1;glass=0;" vertex="1" parent="77">
+                    <mxGeometry x="255" y="210" width="120" height="45" as="geometry"/>
+                </mxCell>
+                <mxCell id="171" value="change" style="rounded=0;whiteSpace=wrap;html=1;shadow=1;glass=0;" vertex="1" parent="77">
+                    <mxGeometry x="130" y="250" width="120" height="45" as="geometry"/>
+                </mxCell>
+                <mxCell id="89" value="dirmgr" style="swimlane;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+                    <mxGeometry x="-2130" y="-180" width="270" height="550" as="geometry"/>
+                </mxCell>
+                <mxCell id="78" value="根据ID初始化" style="rounded=0;whiteSpace=wrap;html=1;" parent="89" vertex="1">
+                    <mxGeometry x="15" y="42.5" width="80" height="30" as="geometry"/>
+                </mxCell>
+                <mxCell id="79" value="root dir" style="rounded=1;whiteSpace=wrap;html=1;" parent="89" vertex="1">
+                    <mxGeometry x="155" y="37.5" width="90" height="40" as="geometry"/>
+                </mxCell>
+                <mxCell id="85" value="读取dir表相关东西，生成树状结构，不能为了oop而oop，分层加载，修改都到person层整体保存&lt;br&gt;全量加载&lt;br&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" parent="89" vertex="1">
+                    <mxGeometry x="15" y="112.5" width="150" height="80" as="geometry"/>
+                </mxCell>
+                <mxCell id="86" style="edgeStyle=none;html=1;entryX=0.663;entryY=1;entryDx=0;entryDy=0;entryPerimeter=0;" parent="89" source="85" target="78" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="81" style="edgeStyle=none;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" parent="89" source="78" target="79" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="92" value="getDir" style="rounded=0;whiteSpace=wrap;html=1;shadow=1;glass=0;" parent="89" vertex="1">
+                    <mxGeometry x="15" y="210" width="80" height="40" as="geometry"/>
+                </mxCell>
+                <mxCell id="93" value="getDirTree" style="rounded=0;whiteSpace=wrap;html=1;shadow=1;glass=0;" parent="89" vertex="1">
+                    <mxGeometry x="15" y="280" width="80" height="40" as="geometry"/>
+                </mxCell>
+                <mxCell id="94" value="moveDir(src,trg)" style="rounded=0;whiteSpace=wrap;html=1;shadow=1;glass=0;" parent="89" vertex="1">
+                    <mxGeometry x="15" y="333" width="105" height="47" as="geometry"/>
+                </mxCell>
+                <mxCell id="95" value="createDir(father)" style="rounded=0;whiteSpace=wrap;html=1;shadow=1;glass=0;" parent="89" vertex="1">
+                    <mxGeometry x="15" y="390" width="105" height="50" as="geometry"/>
+                </mxCell>
+                <mxCell id="96" value="getDIr(ID)" style="rounded=0;whiteSpace=wrap;html=1;shadow=1;glass=0;" parent="89" vertex="1">
+                    <mxGeometry x="15" y="460" width="80" height="40" as="geometry"/>
+                </mxCell>
+                <mxCell id="100" value="search(Text)" style="rounded=0;whiteSpace=wrap;html=1;shadow=1;glass=0;" parent="89" vertex="1">
+                    <mxGeometry x="120" y="460" width="80" height="40" as="geometry"/>
+                </mxCell>
+                <mxCell id="182" value="oncreategroup" style="rounded=0;whiteSpace=wrap;html=1;shadow=1;glass=0;" vertex="1" parent="89">
+                    <mxGeometry x="130" y="395" width="120" height="45" as="geometry"/>
+                </mxCell>
+                <mxCell id="184" value="addgrouptodir" style="rounded=0;whiteSpace=wrap;html=1;shadow=1;glass=0;" vertex="1" parent="89">
+                    <mxGeometry x="140" y="265" width="120" height="45" as="geometry"/>
+                </mxCell>
+                <mxCell id="102" value="group" style="swimlane;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+                    <mxGeometry x="-2164" y="450" width="510" height="535" as="geometry"/>
+                </mxCell>
+                <mxCell id="106" value="[]subgroup" style="rounded=1;whiteSpace=wrap;html=1;" parent="102" vertex="1">
+                    <mxGeometry x="35" y="45" width="90" height="40" as="geometry"/>
+                </mxCell>
+                <mxCell id="108" value="subgroup" style="swimlane;whiteSpace=wrap;html=1;" parent="102" vertex="1">
+                    <mxGeometry x="240" y="45" width="240" height="315" as="geometry"/>
+                </mxCell>
+                <mxCell id="113" value="name" style="rounded=1;whiteSpace=wrap;html=1;" parent="108" vertex="1">
+                    <mxGeometry x="20" y="40" width="90" height="40" as="geometry"/>
+                </mxCell>
+                <mxCell id="118" value="[]tasks" style="rounded=1;whiteSpace=wrap;html=1;" parent="108" vertex="1">
+                    <mxGeometry x="140" y="40" width="90" height="40" as="geometry"/>
+                </mxCell>
+                <mxCell id="119" value="getTasksByfileter" style="rounded=0;whiteSpace=wrap;html=1;shadow=1;glass=0;" parent="108" vertex="1">
+                    <mxGeometry x="20" y="108" width="100" height="42" as="geometry"/>
+                </mxCell>
+                <mxCell id="187" value="deltasks" style="rounded=0;whiteSpace=wrap;html=1;shadow=1;glass=0;" vertex="1" parent="108">
+                    <mxGeometry x="20" y="180" width="120" height="45" as="geometry"/>
+                </mxCell>
+                <mxCell id="190" value="bindTask" style="rounded=0;whiteSpace=wrap;html=1;shadow=1;glass=0;" vertex="1" parent="108">
+                    <mxGeometry x="14" y="245" width="120" height="45" as="geometry"/>
+                </mxCell>
+                <mxCell id="114" value="load" style="rounded=0;whiteSpace=wrap;html=1;shadow=1;glass=0;" parent="102" vertex="1">
+                    <mxGeometry x="35" y="120" width="120" height="45" as="geometry"/>
+                </mxCell>
+                <mxCell id="115" value="getSub" style="rounded=0;whiteSpace=wrap;html=1;shadow=1;glass=0;" parent="102" vertex="1">
+                    <mxGeometry x="35" y="195" width="120" height="45" as="geometry"/>
+                </mxCell>
+                <mxCell id="185" value="delsub" style="rounded=0;whiteSpace=wrap;html=1;shadow=1;glass=0;" vertex="1" parent="102">
+                    <mxGeometry x="37" y="290" width="120" height="45" as="geometry"/>
+                </mxCell>
+                <mxCell id="191" value="onCreate" style="rounded=0;whiteSpace=wrap;html=1;shadow=1;glass=0;" vertex="1" parent="102">
+                    <mxGeometry x="37" y="370" width="120" height="45" as="geometry"/>
+                </mxCell>
+                <mxCell id="192" value="新建默认subgroup默认的不会显示除非有两个" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="102">
+                    <mxGeometry x="35" y="440" width="188" height="40" as="geometry"/>
+                </mxCell>
+                <mxCell id="116" value="前端为了加速需要一次发送需要的数据，例如上次代开的，不然默认都不展开" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" parent="1" vertex="1">
+                    <mxGeometry x="-2750" y="165" width="170" height="75" as="geometry"/>
+                </mxCell>
+                <mxCell id="120" value="web api" style="swimlane;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+                    <mxGeometry x="-3080" y="450" width="470" height="1080" as="geometry"/>
+                </mxCell>
+                <mxCell id="121" value="获取完整dir树，包含&lt;br&gt;基础的名字，到根节点为止&lt;br&gt;userid" style="rounded=0;whiteSpace=wrap;html=1;shadow=1;glass=0;" parent="120" vertex="1">
+                    <mxGeometry x="30" y="40" width="120" height="55" as="geometry"/>
+                </mxCell>
+                <mxCell id="122" value="获取taskgroup的subgroup以及至少第一页的内容&lt;br&gt;userID,dirID" style="rounded=0;whiteSpace=wrap;html=1;shadow=1;glass=0;" parent="120" vertex="1">
+                    <mxGeometry x="30" y="455" width="120" height="65" as="geometry"/>
+                </mxCell>
+                <mxCell id="123" value="分页根据subgroup查询task基础信息&lt;br&gt;groupid,subgoupIndex,&lt;br&gt;pagenum,pageindex" style="rounded=0;whiteSpace=wrap;html=1;shadow=1;glass=0;" parent="120" vertex="1">
+                    <mxGeometry x="30" y="530" width="120" height="65" as="geometry"/>
+                </mxCell>
+                <mxCell id="124" value="查询task详细信息&lt;br&gt;userid,taskid," style="rounded=0;whiteSpace=wrap;html=1;shadow=1;glass=0;" parent="120" vertex="1">
+                    <mxGeometry x="30" y="710" width="120" height="45" as="geometry"/>
+                </mxCell>
+                <mxCell id="125" value="修改task详细信息&lt;br&gt;userid,taskid,ptltask" style="rounded=0;whiteSpace=wrap;html=1;shadow=1;glass=0;" parent="120" vertex="1">
+                    <mxGeometry x="30" y="780" width="120" height="45" as="geometry"/>
+                </mxCell>
+                <mxCell id="126" value="移动某一个dir或group&lt;br&gt;userID,group,dirID,targetID" style="rounded=0;whiteSpace=wrap;html=1;shadow=1;glass=0;" parent="120" vertex="1">
+                    <mxGeometry x="30" y="115" width="120" height="45" as="geometry"/>
+                </mxCell>
+                <mxCell id="127" value="新建空的dir&lt;br&gt;userid,parentID,text,notice" style="rounded=0;whiteSpace=wrap;html=1;shadow=1;glass=0;" parent="120" vertex="1">
+                    <mxGeometry x="30" y="165" width="120" height="45" as="geometry"/>
+                </mxCell>
+                <mxCell id="128" value="新建空的taskgroup&lt;br&gt;userID,.id note fatherDirID" style="rounded=0;whiteSpace=wrap;html=1;shadow=1;glass=0;" parent="120" vertex="1">
+                    <mxGeometry x="30" y="385" width="120" height="45" as="geometry"/>
+                </mxCell>
+                <mxCell id="132" value="新建task&lt;br&gt;userid,dirid,subgroupid&lt;br&gt;afterwho" style="rounded=0;whiteSpace=wrap;html=1;shadow=1;glass=0;" parent="120" vertex="1">
+                    <mxGeometry x="30" y="879" width="120" height="45" as="geometry"/>
+                </mxCell>
+                <mxCell id="133" value="修改dir内容&lt;br&gt;userid,dirID,text，totice" style="rounded=0;whiteSpace=wrap;html=1;shadow=1;glass=0;" parent="120" vertex="1">
+                    <mxGeometry x="30" y="270" width="120" height="45" as="geometry"/>
+                </mxCell>
+                <mxCell id="161" value="删除dir&lt;br&gt;userID,dirID" style="rounded=0;whiteSpace=wrap;html=1;shadow=1;glass=0;" parent="120" vertex="1">
+                    <mxGeometry x="30" y="220" width="120" height="45" as="geometry"/>
+                </mxCell>
+                <mxCell id="164" value="删除subgroup&lt;br&gt;userID groupid subgroupid" style="rounded=0;whiteSpace=wrap;html=1;shadow=1;glass=0;" parent="120" vertex="1">
+                    <mxGeometry x="30" y="620" width="120" height="45" as="geometry"/>
+                </mxCell>
+                <mxCell id="165" value="删除task" style="rounded=0;whiteSpace=wrap;html=1;shadow=1;glass=0;" parent="120" vertex="1">
+                    <mxGeometry x="30" y="955" width="120" height="45" as="geometry"/>
+                </mxCell>
+                <mxCell id="166" value="删除group&lt;br&gt;userID groupID" style="rounded=0;whiteSpace=wrap;html=1;shadow=1;glass=0;" parent="120" vertex="1">
+                    <mxGeometry x="30" y="330" width="120" height="45" as="geometry"/>
+                </mxCell>
+                <mxCell id="143" value="taskMgr" style="swimlane;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+                    <mxGeometry x="-1610" y="460" width="300" height="360" as="geometry"/>
+                </mxCell>
+                <mxCell id="156" value="getTask" style="rounded=0;whiteSpace=wrap;html=1;shadow=1;glass=0;" parent="143" vertex="1">
+                    <mxGeometry x="170" y="40" width="120" height="45" as="geometry"/>
+                </mxCell>
+                <mxCell id="157" value="定期需要清除下缓存" style="rounded=0;whiteSpace=wrap;html=1;" parent="143" vertex="1">
+                    <mxGeometry x="20" y="40" width="80" height="40" as="geometry"/>
+                </mxCell>
+                <mxCell id="158" value="addTask" style="rounded=0;whiteSpace=wrap;html=1;shadow=1;glass=0;" parent="143" vertex="1">
+                    <mxGeometry x="170" y="115" width="120" height="45" as="geometry"/>
+                </mxCell>
+                <mxCell id="160" value="move" style="rounded=0;whiteSpace=wrap;html=1;shadow=1;glass=0;" parent="143" vertex="1">
+                    <mxGeometry x="170" y="190" width="120" height="45" as="geometry"/>
+                </mxCell>
+                <mxCell id="69" value="移动subtask" style="rounded=0;whiteSpace=wrap;html=1;" parent="143" vertex="1">
+                    <mxGeometry x="10" y="180" width="80" height="40" as="geometry"/>
+                </mxCell>
+                <mxCell id="70" value="移动isubtask到顶到底" style="rounded=0;whiteSpace=wrap;html=1;" parent="143" vertex="1">
+                    <mxGeometry x="10" y="240" width="80" height="40" as="geometry"/>
+                </mxCell>
+                <mxCell id="73" value="如果特别多的情况下是有用的，不然一直拖动会比较麻烦" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" parent="143" vertex="1">
+                    <mxGeometry x="160" y="230" width="110" height="80" as="geometry"/>
+                </mxCell>
+                <mxCell id="72" style="edgeStyle=none;html=1;entryX=0.009;entryY=0.363;entryDx=0;entryDy=0;entryPerimeter=0;" parent="143" source="70" target="73" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <mxPoint x="140" y="260" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="159" value="[]subtasks" style="rounded=1;whiteSpace=wrap;html=1;" parent="143" vertex="1">
+                    <mxGeometry x="10" y="290" width="90" height="40" as="geometry"/>
+                </mxCell>
+                <mxCell id="153" value="如果这样设计就需要连一次表查询，不过可以join也问题不大，也好做更多拓展" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" parent="1" vertex="1">
+                    <mxGeometry x="-270" y="580" width="170" height="120" as="geometry"/>
+                </mxCell>
+                <mxCell id="167" value="DB" style="swimlane;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+                    <mxGeometry x="-1270" y="990" width="620" height="430" as="geometry"/>
+                </mxCell>
+                <mxCell id="155" value="subgroup表&lt;br&gt;userid&lt;br&gt;parentgroupid&lt;br&gt;name&lt;br&gt;note&lt;br&gt;index" style="shape=process;whiteSpace=wrap;html=1;backgroundOutline=1;" parent="167" vertex="1">
+                    <mxGeometry x="170" y="40" width="170" height="100" as="geometry"/>
+                </mxCell>
+                <mxCell id="139" value="taskGroup表&lt;br&gt;userid&lt;br&gt;groupID&lt;br&gt;name&lt;br&gt;note&lt;br&gt;parentDIr" style="shape=process;whiteSpace=wrap;html=1;backgroundOutline=1;" parent="167" vertex="1">
+                    <mxGeometry x="10" y="40" width="135" height="140" as="geometry"/>
+                </mxCell>
+                <mxCell id="149" value="task表&lt;br&gt;userid&lt;br&gt;parentSubGroup&lt;br&gt;parentTaskID&lt;br&gt;taskID&lt;br&gt;index&lt;br&gt;note&lt;br&gt;deleted" style="shape=process;whiteSpace=wrap;html=1;backgroundOutline=1;" parent="167" vertex="1">
+                    <mxGeometry x="10" y="189" width="117" height="120" as="geometry"/>
+                </mxCell>
+                <mxCell id="150" value="tags表&lt;br&gt;userid&lt;br&gt;taskID&lt;br&gt;tag" style="shape=process;whiteSpace=wrap;html=1;backgroundOutline=1;" parent="167" vertex="1">
+                    <mxGeometry x="310" y="189" width="117" height="120" as="geometry"/>
+                </mxCell>
+                <mxCell id="169" value="dir表&lt;br&gt;userid&lt;br&gt;dirid&lt;br&gt;dirtitle&lt;br&gt;dirnote&lt;br&gt;dirparent" style="shape=process;whiteSpace=wrap;html=1;backgroundOutline=1;" vertex="1" parent="167">
+                    <mxGeometry x="380" y="50" width="180" height="100" as="geometry"/>
+                </mxCell>
+                <mxCell id="196" value="所有ID，都是全用户唯一的，方便引用和迁移" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="167">
+                    <mxGeometry x="490" y="170" width="70" height="70" as="geometry"/>
+                </mxCell>
+                <mxCell id="168" value="都是辅助类，缓不缓存后面看" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" parent="1" vertex="1">
+                    <mxGeometry x="-2720" y="40" width="110" height="40" as="geometry"/>
+                </mxCell>
+                <mxCell id="173" value="groupMgr" style="swimlane;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+                    <mxGeometry x="-2570" y="450" width="360" height="430" as="geometry"/>
+                </mxCell>
+                <mxCell id="174" value="getgroup" style="rounded=0;whiteSpace=wrap;html=1;shadow=1;glass=0;" vertex="1" parent="173">
+                    <mxGeometry x="40" y="45" width="120" height="45" as="geometry"/>
+                </mxCell>
+                <mxCell id="181" value="creategroup" style="rounded=0;whiteSpace=wrap;html=1;shadow=1;glass=0;" vertex="1" parent="173">
+                    <mxGeometry x="200" y="45" width="120" height="45" as="geometry"/>
+                </mxCell>
+                <mxCell id="179" value="userMgr" style="swimlane;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+                    <mxGeometry x="-2610" y="-417" width="360" height="430" as="geometry"/>
+                </mxCell>
+                <mxCell id="180" value="getUser" style="rounded=0;whiteSpace=wrap;html=1;shadow=1;glass=0;" vertex="1" parent="179">
+                    <mxGeometry x="30" y="47" width="120" height="45" as="geometry"/>
                 </mxCell>
             </root>
         </mxGraphModel>
