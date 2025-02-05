@@ -6,17 +6,14 @@ import (
 )
 
 func TestCreateDir(t *testing.T) {
-	host := misc.InputWithFile("host")
-	port := misc.InputWithFile("port")
-	user := misc.InputWithFile("user")
-	passwd := misc.InputWithFile("passwd")
-	dbName := misc.InputWithFile("db_name")
+	account := misc.InputWithFile("account")
+	token := misc.InputWithFile("token")
+	dbid := misc.InputWithFile("dbid")
+	t.Log(account, token, dbid)
 	setting := Setting{
-		User:   user,
-		Passwd: passwd,
-		Host:   host,
-		Port:   port,
-		DbName: dbName,
+		AccountID: account,
+		ApiToken:  token,
+		DBID:      dbid,
 	}
 	mgr, err := NewMgr(setting)
 	if err != nil {

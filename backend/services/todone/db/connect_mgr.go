@@ -3,21 +3,19 @@ package db
 import (
 	"errors"
 	"fmt"
-	"gorm.io/driver/mysql"
+	"github.com/kofj/gorm-driver-d1/gormd1"
 	"gorm.io/gorm"
 )
 
 type Setting struct {
-	User   string
-	Passwd string
-	Host   string
-	Port   string
-	DbName string
+	AccountID string
+	ApiToken  string
+	DBID      string
 }
 
 func (s *Setting) ToStr() string {
-	str := "%s:%s@tcp(%s:%s)/%s?charset=utf8&parseTime=True&loc=Local"
-	return fmt.Sprintf(str, s.User, s.Passwd, s.Host, s.Port, s.DbName)
+	str := "d1://%s:%s@%s"
+	return fmt.Sprintf(str, s.AccountID, s.ApiToken, s.DBID)
 }
 
 // GTodoneDBMgr 全应用全局数据库管理器
@@ -60,7 +58,7 @@ func (d *Mgr) Init(setting Setting) error {
 }
 
 func (d *Mgr) Connect(t ConnectType, orm interface{}) error {
-	db, err := gorm.Open(mysql.Open(d.Setting.ToStr()))
+	db, err := gorm.Open(gormd1.Open(d.Setting.ToStr()))
 	if err != nil {
 		return errors.Join(err, ErrConnectDbFailed)
 	}

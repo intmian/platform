@@ -3,8 +3,7 @@ package db
 import "gorm.io/gorm"
 
 type GroupDB struct {
-	ID uint32 `gorm:"primaryKey"`
-	Parent
+	ID     uint32 `gorm:"primaryKey"`
 	UserID uint32
 	Title  string
 	Note   string

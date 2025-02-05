@@ -4,3 +4,4 @@ qodana.yaml
 services/auto/test.db
 test
 pack
+SecConfig.json
