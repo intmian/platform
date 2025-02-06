@@ -575,7 +575,15 @@ func (d *Day) Do() {
 	str = fmt.Sprintf(str, len(report.BbcNews), len(report.NytNews))
 	md.AddContent(str)
 	md.AddTitle("摘要", 3)
-	md.AddContent(report.Summary)
+	// 拆分段落分别添加
+	if strings.Contains(report.Summary, "\n") {
+		paragraphs := strings.Split(report.Summary, "\n")
+		for _, p := range paragraphs {
+			md.AddContent(p)
+		}
+	} else {
+		md.AddContent(report.Summary)
+	}
 
 	// 后续加入大盘和美元的简单摘要。
 	// TODO: 后续加入大盘和美元的简单摘要。
