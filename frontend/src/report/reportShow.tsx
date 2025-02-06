@@ -161,6 +161,22 @@ function WeatherCard({weather, weatherIndex}: WeatherCardProps) {
     );
 }
 
+function SummaryCard({summary}: { summary: string }) {
+    // 拆分成段落
+    const paragraphs = summary.split('\n');
+
+    return <Card title="概要" style={{
+        marginBottom: '16px',
+        borderRadius: '10px',               /* 圆角 */
+        boxShadow: '0 4px 10px rgba(0, 0, 0, 0.15)', /* 阴影效果 */
+        backgroundColor: '#fff',           /* 背景色 */
+    }}>
+        {paragraphs.map((p, i) => (
+            <Typography.Paragraph key={i}>{p}<br/></Typography.Paragraph>
+        ))}
+    </Card>;
+}
+
 function NewsCard({title, articles}: { title: string, articles?: NewsArticle[] }) {
     const isMobile = useIsMobile();
 
@@ -261,6 +277,7 @@ interface DashboardProps {
     data: {
         Weather?: WeatherData;
         WeatherIndex?: WeatherIndexData;
+        Summary?: string;
         BbcNews: NewsArticle[];
         NytNews: NewsArticle[];
         GoogleNews: GoogleNewsGroup[];
@@ -390,6 +407,7 @@ function Dashboard({data}: DashboardProps) {
         }}>
             {/* 左侧内容 */}
             <div style={{flex: 1}}>
+                {data.Summary && <SummaryCard summary={data.Summary}/>}
                 {Weather && <div ref={weatherRef}>
                     <WeatherCard weather={Weather} weatherIndex={WeatherIndex}/>
                 </div>}
