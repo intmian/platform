@@ -3,7 +3,7 @@ package db
 import (
 	"errors"
 	"fmt"
-	"github.com/kofj/gorm-driver-d1/gormd1"
+	"github.com/intmian/gorm-driver-d1/gormd1"
 	"gorm.io/gorm"
 )
 
