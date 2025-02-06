@@ -153,11 +153,7 @@ function ShowControlSavePanel({configs, InitValue, ConfigParam, InitLoading, cfg
         onClick={() => {
             setOperating(true);
             let newValue;
-            if (ConfigParam.uniConfigType !== ConfigType.String) {
-                newValue = JSON.stringify(value);
-            } else {
-                newValue = value;
-            }
+            newValue = JSON.stringify(value);
             const realKey = ConfigParam.key;
             const callback = (ret) => {
                 if (ret.ok) {
