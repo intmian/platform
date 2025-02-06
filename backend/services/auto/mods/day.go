@@ -1,6 +1,7 @@
 package mods
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/intmian/mian_go_lib/tool/ai"
@@ -32,6 +33,7 @@ var GDay *Day
 type DayReport struct {
 	Weather      spider.WeatherReturn
 	WeatherIndex spider.IndexReturn
+	Summary      string
 	BbcNews      []spider.BBCRssItem
 	NytNews      []spider.NYTimesRssItem
 	GoogleNews   []struct {
@@ -255,7 +257,12 @@ func (d *Day) GenerateDayReport() (*DayReport, error) {
 	if err != nil {
 		tool.GLog.WarningErr("auto.Day", errors.Join(errors.New("func GenerateDayReport() translate error"), err))
 	}
-	// 3. 存储
+	// 3. 生成摘要
+	err = summary(report)
+	if err != nil {
+		tool.GLog.WarningErr("auto.Day", errors.Join(errors.New("func GenerateDayReport() summary error"), err))
+	}
+	// 4. 存储
 	timeStr := time.Now().Format("2006-01-02")
 	err = d.dayReportStorage.SetToJson(timeStr, report)
 	if err != nil {
@@ -401,6 +408,86 @@ func translateNews(newsBBC []spider.BBCRssItem, newsNYT []spider.NYTimesRssItem,
 	return nil
 }
 
+func summary(report *DayReport) error {
+	// 获取配置
+	base, token, err := getOpenAIConfig()
+	if err != nil {
+		return err
+	}
+
+	// 创建 OpenAI 实例
+	chat := ai.NewOpenAI(base, token, false, ai.AiTypeDeepSeek)
+	if chat == nil {
+		return errors.New("NewOpenAI error")
+	}
+
+	type Query struct {
+		HotNews []struct {
+			Title       string `json:"title"`
+			Description string `json:"description"`
+		} `json:"hot_news"`
+		KeyWordNews map[string][]struct {
+			Title string `json:"title"`
+		} `json:"key_word_news"`
+	}
+
+	// 生成查询
+	query := Query{
+		HotNews: make([]struct {
+			Title       string `json:"title"`
+			Description string `json:"description"`
+		}, 0, len(report.NytNews)),
+		KeyWordNews: make(map[string][]struct {
+			Title string `json:"title"`
+		}),
+	}
+	for _, news := range report.BbcNews {
+		query.HotNews = append(query.HotNews, struct {
+			Title       string `json:"title"`
+			Description string `json:"description"`
+		}{Title: news.Title, Description: news.Description})
+	}
+	for _, news := range report.NytNews {
+		query.HotNews = append(query.HotNews, struct {
+			Title       string `json:"title"`
+			Description string `json:"description"`
+		}{Title: news.Title, Description: news.Description})
+	}
+	for _, keyNews := range report.GoogleNews {
+		for _, news := range keyNews.News {
+			query.KeyWordNews[keyNews.KeyWord] = append(query.KeyWordNews[keyNews.KeyWord], struct {
+				Title string `json:"title"`
+			}{Title: news.Title})
+		}
+	}
+	// 转换为json
+	queryJson, err := json.Marshal(query)
+	if err != nil {
+		return errors.Join(errors.New("func summary() json.Marshal error"), err)
+	}
+	prompt := "请作为新闻整合器，阅读以下提供的新闻（包含热点新闻以及我根据关键词搜集的谷歌新闻），新闻将以json格式给出。\n请写一个400字左右的每日新闻汇报，输出为两段话（第一段300字左右总结热点新闻，第二段简单概括下有新闻的关键词涉及的新闻，这两段之间使用两个空行分割，不要使用markdown语法，不要输出额外的段落和标题），语言凝练，不产生废话或套话，不做评价。允许对相关新闻进行整合，但每条新闻都必须被提及，且不丢失任何信息。"
+	ans, err := chat.Chat(prompt + "\n" + string(queryJson))
+	if err != nil {
+		return err
+	}
+	// 清除多余的空格和换行符
+	strs := strings.Split(ans, "\n")
+	ans = ""
+	for i, str := range strs {
+		str = strings.TrimSpace(str)
+		if str == "" {
+			continue
+		}
+		ans += str
+		if i != len(strs)-1 {
+			ans += "\n"
+		}
+	}
+
+	report.Summary = ans
+	return nil
+}
+
 func translate(report *DayReport) error {
 	// 获取配置
 	base, token, err := getOpenAIConfig()
@@ -409,7 +496,7 @@ func translate(report *DayReport) error {
 	}
 
 	// 创建 OpenAI 实例
-	chat := ai.NewOpenAI(base, token, true, ai.DefaultRenshe)
+	chat := ai.NewOpenAI(base, token, true, ai.AiTypeChatGPT)
 	if chat == nil {
 		return errors.New("NewOpenAI error")
 	}
@@ -430,7 +517,7 @@ func translateW(report *WholeReport) error {
 	}
 
 	// 创建 OpenAI 实例
-	chat := ai.NewOpenAI(base, token, true, ai.DefaultRenshe)
+	chat := ai.NewOpenAI(base, token, true, ai.AiTypeChatGPT)
 	if chat == nil {
 		return errors.New("NewOpenAI error")
 	}
@@ -487,6 +574,8 @@ func (d *Day) Do() {
 	str := `今日有%d条BBC新闻，%d条纽约时报新闻`
 	str = fmt.Sprintf(str, len(report.BbcNews), len(report.NytNews))
 	md.AddContent(str)
+	md.AddTitle("摘要", 3)
+	md.AddContent(report.Summary)
 
 	// 后续加入大盘和美元的简单摘要。
 	// TODO: 后续加入大盘和美元的简单摘要。

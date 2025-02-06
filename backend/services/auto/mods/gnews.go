@@ -136,7 +136,7 @@ func getNews(newsToken, base, token string, cheap bool) (string, error) {
 			“content”:“......”
 			}
 		*/
-		o := ai.NewOpenAI(base, token, cheap, ai.NewsRenshe)
+		o := ai.NewOpenAI(base, token, cheap, ai.AiTypeChatGPT)
 		re, err = o.Chat(`You are a journalist who is proficient in writing in both English and Chinese. The following is the data of the hot news of the past day crawled by using crawler (including title and summary), please do the following processing according to these contents.
 1. if the content of the news is not in Simplified Chinese, then translate it into Simplified Chinese (there is no need to translate proper nouns and people's names into Chinese).
 2. Generate a concise, friendly and readable summary (no more than 30 words) for each news item based on the news title and abstract.
