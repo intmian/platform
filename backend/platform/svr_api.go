@@ -204,7 +204,7 @@ func (m *webMgr) cfgPlatGet(c *gin.Context) {
 		c.JSON(200, makeErrReturn("no permission"))
 		return
 	}
-	val, err := m.plat.cfg.GetAll()
+	val, err := m.plat.cfg.GetWithFilter("PLAT", "")
 	if err != nil {
 		c.JSON(200, makeErrReturn("inner error"))
 		return
