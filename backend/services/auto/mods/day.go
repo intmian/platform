@@ -416,7 +416,7 @@ func summary(report *DayReport) error {
 	}
 
 	// 创建 OpenAI 实例
-	chat := ai.NewOpenAI(base, token, false, ai.AiTypeDeepSeek)
+	chat := ai.NewOpenAI(base, token, true, ai.AiTypeChatGPT)
 	if chat == nil {
 		return errors.New("NewOpenAI error")
 	}
@@ -426,9 +426,6 @@ func summary(report *DayReport) error {
 			Title       string `json:"title"`
 			Description string `json:"description"`
 		} `json:"hot_news"`
-		KeyWordNews map[string][]struct {
-			Title string `json:"title"`
-		} `json:"key_word_news"`
 	}
 
 	// 生成查询
@@ -437,9 +434,6 @@ func summary(report *DayReport) error {
 			Title       string `json:"title"`
 			Description string `json:"description"`
 		}, 0, len(report.NytNews)),
-		KeyWordNews: make(map[string][]struct {
-			Title string `json:"title"`
-		}),
 	}
 	for _, news := range report.BbcNews {
 		query.HotNews = append(query.HotNews, struct {
@@ -453,19 +447,13 @@ func summary(report *DayReport) error {
 			Description string `json:"description"`
 		}{Title: news.Title, Description: news.Description})
 	}
-	for _, keyNews := range report.GoogleNews {
-		for _, news := range keyNews.News {
-			query.KeyWordNews[keyNews.KeyWord] = append(query.KeyWordNews[keyNews.KeyWord], struct {
-				Title string `json:"title"`
-			}{Title: news.Title})
-		}
-	}
+
 	// 转换为json
 	queryJson, err := json.Marshal(query)
 	if err != nil {
 		return errors.Join(errors.New("func summary() json.Marshal error"), err)
 	}
-	prompt := "请作为新闻整合器，阅读以下提供的新闻（包含热点新闻以及我根据关键词搜集的谷歌新闻），新闻将以json格式给出。\n请写一个400字左右的每日新闻汇报，输出为两段话（第一段300字左右总结热点新闻，第二段简单概括下有新闻的关键词涉及的新闻，这两段之间使用两个空行分割，不要使用markdown语法，不要输出额外的段落和标题），语言凝练，不产生废话或套话，不做评价。允许对相关新闻进行整合，但每条新闻都必须被提及，且不丢失任何信息。"
+	prompt := "请作为新闻整合器，阅读以下提供的新闻（包含热点新闻），新闻将以json格式给出。\n请写一个300字左右的每日新闻汇报，输出为一段话（不要使用markdown语法，不要输出额外的段落和标题），语言凝练，不产生废话或套话，不做评价。允许对相关或类似新闻进行整合，但每条新闻都必须被提及，且不丢失任何信息。"
 	ans, err := chat.Chat(prompt + "\n" + string(queryJson))
 	if err != nil {
 		return err
