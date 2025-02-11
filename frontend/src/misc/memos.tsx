@@ -670,7 +670,7 @@ function Memos() {
                     }</Button>
                     <Button
                         type="primary"
-                        disabled={!canSubmit && !loadingSetting}
+                        disabled={!canSubmit || !loadingSetting}
                         onClick={submit}
                     >
                         发送
