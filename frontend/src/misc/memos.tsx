@@ -148,7 +148,7 @@ function GetMemosTags(url: string, key: string, sucCallback: (data: {
     tags: string[]
 }) => void, failCallback: () => void) {
     // 这个项目相当的神奇，tags没有单独存储，而是加载所有的笔记，从笔记中读取关联的tags…tags只计算在这里，两万条大概800k
-    fetch(url + '/api/v1/memos?pageSize=10000000&filter=creator == \'users/1\'&view=MEMO_VIEW_METADATA_ONLY', {
+    fetch(url + '/api/v1/users/1/stats', {
         method: 'GET',
         headers: {
             'Content-Type': 'application/json',
@@ -157,25 +157,7 @@ function GetMemosTags(url: string, key: string, sucCallback: (data: {
     })
         .then(response => response.json())
         .then(data => {
-            const tag2num = new Map<string, number>();
-            if (!data.memos || data.memos.length === 0) {
-                failCallback();
-                return;
-            }
-            for (const memo of data.memos) {
-                for (const tag of memo.property.tags) {
-                    if (tag2num.has(tag)) {
-                        const oldNum = tag2num.get(tag);
-                        if (oldNum) {
-                            tag2num.set(tag, oldNum + 1);
-                        } else {
-                            tag2num.set(tag, 1);
-                        }
-                    } else {
-                        tag2num.set(tag, 1);
-                    }
-                }
-            }
+            const tag2num = new Map(Object.entries(data.tagCount));
             const tagData: TagData[] = [];
             tag2num.forEach((value, key) => {
                 tagData.push({tag: key, amount: value});
@@ -297,6 +279,9 @@ function Tags({TagsChange, setting, style, tags}: {
     const tagsOprDisk = JSON.parse(localStorage.getItem('memosTags') || '[]');
     const tagsOpr: { current: string[] } = useRef(tagsOprDisk);
     useEffect(() => {
+        if (setting.url === '' || setting.key === '') {
+            return;
+        }
         GetMemosTags(setting.url, setting.key, (data) => {
             tagsOpr.current = data.tags;
             localStorage.setItem('memosTags', JSON.stringify(tagsOpr.current));
@@ -425,7 +410,8 @@ function HideInput({
 
 
 function Memos() {
-    const [loading, setLoading] = useState(true);
+    const [loadingUser, setLoadingUser] = useState(true);
+    const [loadingSetting, setLoadingSetting] = useState(true);
     const [openSetting, setOpenSetting] = useState(false);
     const [hidden, setHidden] = useState(false);
     const isMobile = useIsMobile();
@@ -446,24 +432,22 @@ function Memos() {
 
     // 从localStorage中获取配置
     const loginCtr = useContext(LoginCtx);
-    const NowSetting = useRef<MemosSetting>({});
+    const [NowSetting, setNowSetting] = useState<MemosSetting>({url: '', key: ''});
     useEffect(() => {
-        console.log(loginCtr.loginInfo.usr);
         if (loginCtr.loginInfo.usr === "") {
-            setLoading(false);
+            setLoadingUser(false);
             return;
         }
         sendCfgServiceGet("note", (ret: any) => {
             if (ret.ok && ret.data && ret.data['note.setting']) {
                 const setting = JSON.parse(ret.data['note.setting'].Data);
-                NowSetting.current.url = setting.url;
-                NowSetting.current.key = setting.key;
+                setNowSetting(setting);
             } else {
-                NowSetting.current.url = '';
-                NowSetting.current.key = '';
+                setNowSetting({url: '', key: ''});
                 setOpenSetting(true);
             }
-            setLoading(false);
+            setLoadingSetting(false);
+            setLoadingUser(false);
         })
     }, [loginCtr.loginInfo.usr]);
 
@@ -471,7 +455,7 @@ function Memos() {
         size={"small"}
         shape={"circle"}
         icon={<SettingFilled/>}
-
+        loading={loadingSetting}
         onClick={() => {
             setOpenSetting(true);
         }}/>;
@@ -503,7 +487,7 @@ function Memos() {
                              }}
                              onChange={(text) => {
                                  // 当输入框内容发生变化时，检查是否可以发送，这样可以减少刷新次数
-                                 setCanSubmit(NowSetting.current.url !== '' && NowSetting.current.key !== '' && text !== '');
+                                 setCanSubmit(NowSetting.url !== '' && NowSetting.key !== '' && text !== '');
                              }}
     />
 
@@ -565,7 +549,7 @@ function Memos() {
         setTagsSelected(tags);
     }, []);
 
-    if (loading) {
+    if (loadingUser) {
         return <Spin size="large"
                      style={{
                          display: 'flex',
@@ -592,7 +576,7 @@ function Memos() {
     >
         {openSetting ? <SettingPanel
             onSuccess={(setting: MemosSetting) => {
-                NowSetting.current = setting;
+                setNowSetting(setting);
                 setOpenSetting(false);
             }}
             onFail={() => {
@@ -633,8 +617,8 @@ function Memos() {
                 >
                     <MemosQueue
                         reqs={reqHis}
-                        url={NowSetting.current.url}
-                        apiKey={NowSetting.current.key}
+                        url={NowSetting.url}
+                        apiKey={NowSetting.key}
                     />
                 </div>
                 <Space
@@ -661,7 +645,7 @@ function Memos() {
                 <Tags
                     TagsChange={tagsChange}
                     tags={tagsSelected}
-                    setting={NowSetting.current}
+                    setting={NowSetting}
                     style={{
                         // 宽度自动填充
                         flexGrow: 1,
@@ -686,7 +670,7 @@ function Memos() {
                     }</Button>
                     <Button
                         type="primary"
-                        disabled={!canSubmit}
+                        disabled={!canSubmit && !loadingSetting}
                         onClick={submit}
                     >
                         发送
