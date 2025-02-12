@@ -3,14 +3,15 @@ package db
 import "gorm.io/gorm"
 
 type DirDB struct {
-	UserID   uint32
+	UserID   string
 	ID       uint32 `gorm:"primaryKey"`
 	Title    string
 	Note     string
 	ParentID uint32
+	Index    float32
 }
 
-func CreateDir(db *gorm.DB, userID, parentID uint32, title, note string) (uint32, error) {
+func CreateDir(db *gorm.DB, userID string, parentID uint32, title, note string) (uint32, error) {
 	dir := DirDB{
 		UserID:   userID,
 		Title:    title,
@@ -46,4 +47,10 @@ func ChangeDirParent(db *gorm.DB, dirID, parentID uint32) error {
 
 func DeleteDir(db *gorm.DB, dirID uint32) error {
 	return db.Where("id = ?", dirID).Delete(&DirDB{}).Error
+}
+
+func GetDirsByUserID(db *gorm.DB, userID string) ([]DirDB, error) {
+	var dirs []DirDB
+	result := db.Where("user_id = ?", userID).Find(&dirs)
+	return dirs, result.Error
 }

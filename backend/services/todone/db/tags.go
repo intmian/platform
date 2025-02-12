@@ -3,12 +3,12 @@ package db
 import "gorm.io/gorm"
 
 type TagsDB struct {
-	userID uint32 // 主要是为了筛选用户有哪些tag
+	userID string // 主要是为了筛选用户有哪些tag
 	taskID uint32
 	tag    string
 }
 
-func AddTags(db *gorm.DB, userID, taskID uint32, tag string) error {
+func AddTags(db *gorm.DB, userID string, taskID uint32, tag string) error {
 	tags := TagsDB{
 		userID: userID,
 		taskID: taskID,

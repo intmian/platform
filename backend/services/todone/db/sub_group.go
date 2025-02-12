@@ -21,9 +21,9 @@ func CreateSubGroup(db *gorm.DB, parentGroupID uint32, title, note string, index
 	return subGroup.ID, result.Error
 }
 
-func GetSubGroupByParentGroupID(db *gorm.DB, parentGroupID uint32) []SubGroupDB {
+func GetSubGroupByParentSortByIndex(db *gorm.DB, parentGroupID uint32) []SubGroupDB {
 	var subGroups []SubGroupDB
-	db.Where("parent_group_id = ?", parentGroupID).Find(&subGroups)
+	db.Where("parent_group_id = ?", parentGroupID).Order("Index").Find(&subGroups)
 	return subGroups
 }
 
@@ -33,4 +33,10 @@ func DeleteSubGroup(db *gorm.DB, subGroupID uint32) error {
 
 func DeleteSubGroupByParentGroupID(db *gorm.DB, parentGroupID uint32) error {
 	return db.Where("parent_group_id = ?", parentGroupID).Delete(&SubGroupDB{}).Error
+}
+
+func GetParentGroupIDMaxIndex(db *gorm.DB, parentGroupID uint32) float32 {
+	var maxIndex float32
+	db.Model(&SubGroupDB{}).Where("parent_group_id = ?", parentGroupID).Select("max(index)").Scan(&maxIndex)
+	return maxIndex
 }

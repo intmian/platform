@@ -6,7 +6,7 @@ import (
 )
 
 type TaskDB struct {
-	UserID           uint32
+	UserID           string
 	TaskID           uint32 `gorm:"primaryKey"`
 	Note             string
 	ParentSubGroupID uint32
@@ -18,7 +18,7 @@ type TaskDB struct {
 	UpdatedAt        time.Time
 }
 
-func CreateTask(db *gorm.DB, userID, parentSubGroupID, parentTaskID uint32, note string, index float32) (uint32, error) {
+func CreateTask(db *gorm.DB, userID string, parentSubGroupID, parentTaskID uint32, note string, index float32) (uint32, error) {
 	task := TaskDB{
 		UserID:           userID,
 		ParentSubGroupID: parentSubGroupID,
@@ -55,4 +55,11 @@ func GetTasksByParentTaskID(db *gorm.DB, parentTaskID uint32, limit int, offset 
 	var tasks []TaskDB
 	db.Where("parent_task_id = ? and done = ?", parentTaskID, done).Limit(limit).Offset(offset).Find(&tasks)
 	return tasks
+}
+
+func GetSubTaskMaxIndex(db *gorm.DB, parentTaskID uint32) float32 {
+	// 如果没有子任务，返回0
+	var maxIndex float32
+	db.Model(&TaskDB{}).Where("parent_task_id = ?", parentTaskID).Select("max(index)").Row().Scan(&maxIndex)
+	return maxIndex
 }

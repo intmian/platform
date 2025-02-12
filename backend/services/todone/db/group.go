@@ -3,13 +3,15 @@ package db
 import "gorm.io/gorm"
 
 type GroupDB struct {
-	ID     uint32 `gorm:"primaryKey"`
-	UserID uint32
-	Title  string
-	Note   string
+	ID        uint32 `gorm:"primaryKey"`
+	UserID    string
+	Title     string
+	Note      string
+	ParentDir uint32
+	Index     float32
 }
 
-func CreateGroup(db *gorm.DB, userID uint32, title, note string) (uint32, error) {
+func CreateGroup(db *gorm.DB, userID string, title, note string) (uint32, error) {
 	group := GroupDB{
 		UserID: userID,
 		Title:  title,
@@ -39,4 +41,10 @@ func ChangeGroupNote(db *gorm.DB, groupID uint32, note string) error {
 
 func DeleteGroup(db *gorm.DB, groupID uint32) error {
 	return db.Where("id = ?", groupID).Delete(&GroupDB{}).Error
+}
+
+func GetGroupsByUser(db *gorm.DB, userID string) ([]GroupDB, error) {
+	var groups []GroupDB
+	result := db.Where("user_id = ?", userID).Find(&groups)
+	return groups, result.Error
 }

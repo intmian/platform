@@ -1,6 +1,6 @@
 <mxfile host="65bd71144e">
     <diagram id="U8_7rPyPP9F2TlcvUt8w" name="第 1 页">
-        <mxGraphModel dx="4379" dy="1997" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
+        <mxGraphModel dx="4520" dy="1956" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
             <root>
                 <mxCell id="0"/>
                 <mxCell id="1" parent="0"/>
@@ -133,6 +133,9 @@
                 <mxCell id="151" value="子任务先不加载，只加载默认的无parenttask的任务" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" parent="42" vertex="1">
                     <mxGeometry x="200" y="420" width="130" height="50" as="geometry"/>
                 </mxCell>
+                <mxCell id="198" value="tags挂在下面" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="42">
+                    <mxGeometry x="273" y="35" width="60" height="30" as="geometry"/>
+                </mxCell>
                 <mxCell id="68" value="user" style="swimlane;whiteSpace=wrap;html=1;" parent="1" vertex="1">
                     <mxGeometry x="-2470" y="70" width="300" height="360" as="geometry"/>
                 </mxCell>
@@ -145,29 +148,32 @@
                 <mxCell id="137" value="taskGroupMgr" style="rounded=1;whiteSpace=wrap;html=1;" parent="68" vertex="1">
                     <mxGeometry x="170" y="169" width="90" height="40" as="geometry"/>
                 </mxCell>
-                <mxCell id="175" value="movegroup" style="rounded=0;whiteSpace=wrap;html=1;shadow=1;glass=0;" vertex="1" parent="68">
+                <mxCell id="175" value="movegroup" style="rounded=0;whiteSpace=wrap;html=1;shadow=1;glass=0;" parent="68" vertex="1">
                     <mxGeometry x="10" y="31" width="120" height="45" as="geometry"/>
                 </mxCell>
-                <mxCell id="176" value="三个管理器直接向外部暴露，如果设计多管理器的才注册到user" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="68">
+                <mxCell id="176" value="三个管理器直接向外部暴露，如果设计多管理器的才注册到user" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" parent="68" vertex="1">
                     <mxGeometry x="40" y="105" width="110" height="30" as="geometry"/>
                 </mxCell>
-                <mxCell id="177" value="userID" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="68">
+                <mxCell id="177" value="userID" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" parent="68" vertex="1">
                     <mxGeometry x="180" y="230" width="60" height="30" as="geometry"/>
                 </mxCell>
-                <mxCell id="183" value="creategroup" style="rounded=0;whiteSpace=wrap;html=1;shadow=1;glass=0;" vertex="1" parent="68">
+                <mxCell id="183" value="creategroup" style="rounded=0;whiteSpace=wrap;html=1;shadow=1;glass=0;" parent="68" vertex="1">
                     <mxGeometry x="10" y="169" width="120" height="45" as="geometry"/>
                 </mxCell>
-                <mxCell id="195" value="" style="edgeStyle=none;html=1;" edge="1" parent="68" source="193" target="194">
+                <mxCell id="195" value="" style="edgeStyle=none;html=1;" parent="68" source="193" target="194" edge="1">
                     <mxGeometry relative="1" as="geometry"/>
                 </mxCell>
-                <mxCell id="193" value="createTask" style="rounded=0;whiteSpace=wrap;html=1;shadow=1;glass=0;" vertex="1" parent="68">
+                <mxCell id="193" value="createTask" style="rounded=0;whiteSpace=wrap;html=1;shadow=1;glass=0;" parent="68" vertex="1">
                     <mxGeometry x="10" y="240" width="120" height="45" as="geometry"/>
                 </mxCell>
-                <mxCell id="194" value="get group subgourp user" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="68">
+                <mxCell id="194" value="get group subgourp user" style="rounded=0;whiteSpace=wrap;html=1;" parent="68" vertex="1">
                     <mxGeometry x="20" y="310" width="80" height="40" as="geometry"/>
                 </mxCell>
+                <mxCell id="199" value="锁在这一级，避免任何并发问题" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="68">
+                    <mxGeometry x="185" y="270" width="85" height="55" as="geometry"/>
+                </mxCell>
                 <mxCell id="77" value="dir" style="swimlane;whiteSpace=wrap;html=1;" parent="1" vertex="1">
-                    <mxGeometry x="-1820" y="70" width="400" height="310" as="geometry"/>
+                    <mxGeometry x="-1830" y="60" width="400" height="310" as="geometry"/>
                 </mxCell>
                 <mxCell id="84" value="纯内存结构，辅助操作" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" parent="77" vertex="1">
                     <mxGeometry x="20" y="45" width="70" height="45" as="geometry"/>
@@ -190,10 +196,10 @@
                 <mxCell id="101" value="getTaskGroup" style="rounded=0;whiteSpace=wrap;html=1;shadow=1;glass=0;" parent="77" vertex="1">
                     <mxGeometry x="35" y="210" width="80" height="40" as="geometry"/>
                 </mxCell>
-                <mxCell id="170" value="save2db" style="rounded=0;whiteSpace=wrap;html=1;shadow=1;glass=0;" vertex="1" parent="77">
+                <mxCell id="170" value="save2db" style="rounded=0;whiteSpace=wrap;html=1;shadow=1;glass=0;" parent="77" vertex="1">
                     <mxGeometry x="255" y="210" width="120" height="45" as="geometry"/>
                 </mxCell>
-                <mxCell id="171" value="change" style="rounded=0;whiteSpace=wrap;html=1;shadow=1;glass=0;" vertex="1" parent="77">
+                <mxCell id="171" value="change" style="rounded=0;whiteSpace=wrap;html=1;shadow=1;glass=0;" parent="77" vertex="1">
                     <mxGeometry x="130" y="250" width="120" height="45" as="geometry"/>
                 </mxCell>
                 <mxCell id="89" value="dirmgr" style="swimlane;whiteSpace=wrap;html=1;" parent="1" vertex="1">
@@ -232,10 +238,10 @@
                 <mxCell id="100" value="search(Text)" style="rounded=0;whiteSpace=wrap;html=1;shadow=1;glass=0;" parent="89" vertex="1">
                     <mxGeometry x="120" y="460" width="80" height="40" as="geometry"/>
                 </mxCell>
-                <mxCell id="182" value="oncreategroup" style="rounded=0;whiteSpace=wrap;html=1;shadow=1;glass=0;" vertex="1" parent="89">
+                <mxCell id="182" value="oncreategroup" style="rounded=0;whiteSpace=wrap;html=1;shadow=1;glass=0;" parent="89" vertex="1">
                     <mxGeometry x="130" y="395" width="120" height="45" as="geometry"/>
                 </mxCell>
-                <mxCell id="184" value="addgrouptodir" style="rounded=0;whiteSpace=wrap;html=1;shadow=1;glass=0;" vertex="1" parent="89">
+                <mxCell id="184" value="addgrouptodir" style="rounded=0;whiteSpace=wrap;html=1;shadow=1;glass=0;" parent="89" vertex="1">
                     <mxGeometry x="140" y="265" width="120" height="45" as="geometry"/>
                 </mxCell>
                 <mxCell id="102" value="group" style="swimlane;whiteSpace=wrap;html=1;" parent="1" vertex="1">
@@ -256,10 +262,10 @@
                 <mxCell id="119" value="getTasksByfileter" style="rounded=0;whiteSpace=wrap;html=1;shadow=1;glass=0;" parent="108" vertex="1">
                     <mxGeometry x="20" y="108" width="100" height="42" as="geometry"/>
                 </mxCell>
-                <mxCell id="187" value="deltasks" style="rounded=0;whiteSpace=wrap;html=1;shadow=1;glass=0;" vertex="1" parent="108">
+                <mxCell id="187" value="deltasks" style="rounded=0;whiteSpace=wrap;html=1;shadow=1;glass=0;" parent="108" vertex="1">
                     <mxGeometry x="20" y="180" width="120" height="45" as="geometry"/>
                 </mxCell>
-                <mxCell id="190" value="bindTask" style="rounded=0;whiteSpace=wrap;html=1;shadow=1;glass=0;" vertex="1" parent="108">
+                <mxCell id="190" value="bindTask" style="rounded=0;whiteSpace=wrap;html=1;shadow=1;glass=0;" parent="108" vertex="1">
                     <mxGeometry x="14" y="245" width="120" height="45" as="geometry"/>
                 </mxCell>
                 <mxCell id="114" value="load" style="rounded=0;whiteSpace=wrap;html=1;shadow=1;glass=0;" parent="102" vertex="1">
@@ -268,14 +274,17 @@
                 <mxCell id="115" value="getSub" style="rounded=0;whiteSpace=wrap;html=1;shadow=1;glass=0;" parent="102" vertex="1">
                     <mxGeometry x="35" y="195" width="120" height="45" as="geometry"/>
                 </mxCell>
-                <mxCell id="185" value="delsub" style="rounded=0;whiteSpace=wrap;html=1;shadow=1;glass=0;" vertex="1" parent="102">
+                <mxCell id="185" value="delsub" style="rounded=0;whiteSpace=wrap;html=1;shadow=1;glass=0;" parent="102" vertex="1">
                     <mxGeometry x="37" y="290" width="120" height="45" as="geometry"/>
                 </mxCell>
-                <mxCell id="191" value="onCreate" style="rounded=0;whiteSpace=wrap;html=1;shadow=1;glass=0;" vertex="1" parent="102">
+                <mxCell id="191" value="onCreate" style="rounded=0;whiteSpace=wrap;html=1;shadow=1;glass=0;" parent="102" vertex="1">
                     <mxGeometry x="37" y="370" width="120" height="45" as="geometry"/>
                 </mxCell>
-                <mxCell id="192" value="新建默认subgroup默认的不会显示除非有两个" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="102">
+                <mxCell id="192" value="新建默认subgroup默认的不会显示除非有两个" style="rounded=0;whiteSpace=wrap;html=1;" parent="102" vertex="1">
                     <mxGeometry x="35" y="440" width="188" height="40" as="geometry"/>
+                </mxCell>
+                <mxCell id="200" value="全量加载sub" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="102">
+                    <mxGeometry x="320" y="403" width="60" height="30" as="geometry"/>
                 </mxCell>
                 <mxCell id="116" value="前端为了加速需要一次发送需要的数据，例如上次代开的，不然默认都不展开" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" parent="1" vertex="1">
                     <mxGeometry x="-2750" y="165" width="170" height="75" as="geometry"/>
@@ -308,7 +317,7 @@
                     <mxGeometry x="30" y="385" width="120" height="45" as="geometry"/>
                 </mxCell>
                 <mxCell id="132" value="新建task&lt;br&gt;userid,dirid,subgroupid&lt;br&gt;afterwho" style="rounded=0;whiteSpace=wrap;html=1;shadow=1;glass=0;" parent="120" vertex="1">
-                    <mxGeometry x="30" y="879" width="120" height="45" as="geometry"/>
+                    <mxGeometry x="30" y="850" width="120" height="45" as="geometry"/>
                 </mxCell>
                 <mxCell id="133" value="修改dir内容&lt;br&gt;userid,dirID,text，totice" style="rounded=0;whiteSpace=wrap;html=1;shadow=1;glass=0;" parent="120" vertex="1">
                     <mxGeometry x="30" y="270" width="120" height="45" as="geometry"/>
@@ -320,7 +329,7 @@
                     <mxGeometry x="30" y="620" width="120" height="45" as="geometry"/>
                 </mxCell>
                 <mxCell id="165" value="删除task" style="rounded=0;whiteSpace=wrap;html=1;shadow=1;glass=0;" parent="120" vertex="1">
-                    <mxGeometry x="30" y="955" width="120" height="45" as="geometry"/>
+                    <mxGeometry x="30" y="930" width="120" height="45" as="geometry"/>
                 </mxCell>
                 <mxCell id="166" value="删除group&lt;br&gt;userID groupID" style="rounded=0;whiteSpace=wrap;html=1;shadow=1;glass=0;" parent="120" vertex="1">
                     <mxGeometry x="30" y="330" width="120" height="45" as="geometry"/>
@@ -375,31 +384,31 @@
                 <mxCell id="150" value="tags表&lt;br&gt;userid&lt;br&gt;taskID&lt;br&gt;tag" style="shape=process;whiteSpace=wrap;html=1;backgroundOutline=1;" parent="167" vertex="1">
                     <mxGeometry x="310" y="189" width="117" height="120" as="geometry"/>
                 </mxCell>
-                <mxCell id="169" value="dir表&lt;br&gt;userid&lt;br&gt;dirid&lt;br&gt;dirtitle&lt;br&gt;dirnote&lt;br&gt;dirparent" style="shape=process;whiteSpace=wrap;html=1;backgroundOutline=1;" vertex="1" parent="167">
-                    <mxGeometry x="380" y="50" width="180" height="100" as="geometry"/>
+                <mxCell id="169" value="dir表&lt;br&gt;userid&lt;br&gt;dirid&lt;br&gt;dirtitle&lt;br&gt;dirnote&lt;br&gt;dirparent" style="shape=process;whiteSpace=wrap;html=1;backgroundOutline=1;" parent="167" vertex="1">
+                    <mxGeometry x="370" y="40" width="180" height="100" as="geometry"/>
                 </mxCell>
-                <mxCell id="196" value="所有ID，都是全用户唯一的，方便引用和迁移" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="167">
+                <mxCell id="196" value="所有ID，都是全用户唯一的，方便引用和迁移" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" parent="167" vertex="1">
                     <mxGeometry x="490" y="170" width="70" height="70" as="geometry"/>
                 </mxCell>
-                <mxCell id="197" value="Text" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="167">
+                <mxCell id="197" value="Text" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" parent="167" vertex="1">
                     <mxGeometry x="338" y="370" width="60" height="30" as="geometry"/>
                 </mxCell>
                 <mxCell id="168" value="都是辅助类，缓不缓存后面看" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" parent="1" vertex="1">
                     <mxGeometry x="-2720" y="40" width="110" height="40" as="geometry"/>
                 </mxCell>
-                <mxCell id="173" value="groupMgr" style="swimlane;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+                <mxCell id="173" value="groupMgr" style="swimlane;whiteSpace=wrap;html=1;" parent="1" vertex="1">
                     <mxGeometry x="-2570" y="450" width="360" height="430" as="geometry"/>
                 </mxCell>
-                <mxCell id="174" value="getgroup" style="rounded=0;whiteSpace=wrap;html=1;shadow=1;glass=0;" vertex="1" parent="173">
+                <mxCell id="174" value="getgroup" style="rounded=0;whiteSpace=wrap;html=1;shadow=1;glass=0;" parent="173" vertex="1">
                     <mxGeometry x="40" y="45" width="120" height="45" as="geometry"/>
                 </mxCell>
-                <mxCell id="181" value="creategroup" style="rounded=0;whiteSpace=wrap;html=1;shadow=1;glass=0;" vertex="1" parent="173">
+                <mxCell id="181" value="creategroup" style="rounded=0;whiteSpace=wrap;html=1;shadow=1;glass=0;" parent="173" vertex="1">
                     <mxGeometry x="200" y="45" width="120" height="45" as="geometry"/>
                 </mxCell>
-                <mxCell id="179" value="userMgr" style="swimlane;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+                <mxCell id="179" value="userMgr" style="swimlane;whiteSpace=wrap;html=1;" parent="1" vertex="1">
                     <mxGeometry x="-2610" y="-417" width="360" height="430" as="geometry"/>
                 </mxCell>
-                <mxCell id="180" value="getUser" style="rounded=0;whiteSpace=wrap;html=1;shadow=1;glass=0;" vertex="1" parent="179">
+                <mxCell id="180" value="getUser" style="rounded=0;whiteSpace=wrap;html=1;shadow=1;glass=0;" parent="179" vertex="1">
                     <mxGeometry x="30" y="47" width="120" height="45" as="geometry"/>
                 </mxCell>
             </root>

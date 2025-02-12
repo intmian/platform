@@ -2,13 +2,10 @@ module github.com/intmian/platform
 
 go 1.21.0
 
-toolchain go1.23.5
-
 require (
 	github.com/bwmarrin/snowflake v0.3.0
 	github.com/gin-gonic/gin v1.9.1
-	github.com/intmian/gorm-driver-d1 v0.0.0-20250205101858-bf6ff4160ff6
-	github.com/intmian/mian_go_lib v0.0.0-20250120045211-c97cec630839
+	github.com/intmian/mian_go_lib v0.0.0-20250212030326-3f5c8b691111
 	github.com/pkg/errors v0.9.1
 	github.com/robfig/cron v1.2.0
 	github.com/shirou/gopsutil v3.21.10+incompatible
@@ -49,7 +46,6 @@ require (
 	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/kevinburke/ssh_config v1.2.0 // indirect
 	github.com/klauspost/cpuid/v2 v2.2.4 // indirect
-	github.com/kofj/gorm-driver-d1 v1.0.0-rc1 // indirect
 	github.com/leodido/go-urn v1.2.4 // indirect
 	github.com/mattn/go-isatty v0.0.19 // indirect
 	github.com/mattn/go-sqlite3 v1.14.22 // indirect

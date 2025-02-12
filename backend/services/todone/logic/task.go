@@ -3,6 +3,7 @@ package logic
 import (
 	"errors"
 	"github.com/intmian/platform/backend/services/todone/db"
+	"math"
 )
 
 type TaskLogic struct {
@@ -32,7 +33,7 @@ func (t *TaskLogic) GetTaskData() (*db.TaskDB, error) {
 	connect := db.GTodoneDBMgr.GetConnect(db.ConnectTypeTask)
 	taskDB, err := db.GetTaskByID(connect, t.id)
 	if err != nil || taskDB == nil {
-		return nil, errors.Join(err, errors.New("get task data failed"))
+		return nil, errors.Join(err, ErrGetTaskDataFailed)
 	}
 	t.dbData = taskDB
 	return taskDB, nil
@@ -63,11 +64,11 @@ func (t *TaskLogic) GetChildIDs(limit int, offset int, done bool) ([]uint32, err
 func (t *TaskLogic) AddTag(tag string) error {
 	tags, err := t.GetTags()
 	if err != nil {
-		return errors.Join(err, errors.New("get tags failed"))
+		return errors.Join(err, ErrGetTagsFailed)
 	}
 	for _, t := range tags {
 		if t == tag {
-			return errors.New("tag already exists")
+			return ErrTagAlreadyExists
 		}
 	}
 	t.tagsDB = append(t.tagsDB, tag)
@@ -79,7 +80,7 @@ func (t *TaskLogic) AddTag(tag string) error {
 func (t *TaskLogic) RemoveTag(tag string) error {
 	tags, err := t.GetTags()
 	if err != nil {
-		return errors.Join(err, errors.New("get tags failed"))
+		return errors.Join(err, ErrGetTagsFailed)
 	}
 	for i, tag2 := range tags {
 		if tag2 == tag {
@@ -97,4 +98,32 @@ func (t *TaskLogic) RemoveAllTags() error {
 	err := db.DeleteTagByTaskID(tagsDB, t.id)
 	t.tagsDB = nil
 	return err
+}
+
+func (t *TaskLogic) BindParentTask(parentID uint32) error {
+	t.dbData.ParentTaskID = parentID
+	connect := db.GTodoneDBMgr.GetConnect(db.ConnectTypeTask)
+	return db.UpdateTask(connect, t.dbData)
+}
+
+func (t *TaskLogic) Delete() error {
+	t.dbData.Deleted = true
+	connect := db.GTodoneDBMgr.GetConnect(db.ConnectTypeTask)
+	return db.UpdateTask(connect, t.dbData)
+}
+
+func (t *TaskLogic) ChangeDone(done bool) error {
+	t.dbData.Done = done
+	connect := db.GTodoneDBMgr.GetConnect(db.ConnectTypeTask)
+	return db.UpdateTask(connect, t.dbData)
+}
+
+func (t *TaskLogic) GeneSubTaskIndex() float32 {
+	connect := db.GTodoneDBMgr.GetConnect(db.ConnectTypeTask)
+	maxIndex := db.GetSubTaskMaxIndex(connect, t.dbData.ParentTaskID)
+	if math.Floor(float64(maxIndex)) == float64(maxIndex) {
+		return maxIndex + 1
+	} else {
+		return float32(math.Ceil(float64(maxIndex))) + 1
+	}
 }

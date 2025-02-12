@@ -60,6 +60,7 @@ func (c *core) startService(flag coreShare.SvrFlag) error {
 		Log:     c.plat.log,
 		Push:    c.plat.push,
 		Storage: c.plat.storage,
+		Cfg:     c.plat.cfg,
 		CallOther: func(to coreShare.SvrFlag, msg coreShare.Msg) {
 			c.onRec(to, msg, coreShare.Valid{FromSys: true})
 		},

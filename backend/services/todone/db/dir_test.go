@@ -9,7 +9,6 @@ func TestCreateDir(t *testing.T) {
 	account := misc.InputWithFile("account")
 	token := misc.InputWithFile("token")
 	dbid := misc.InputWithFile("dbid")
-	t.Log(account, token, dbid)
 	setting := Setting{
 		AccountID: account,
 		ApiToken:  token,
@@ -24,5 +23,5 @@ func TestCreateDir(t *testing.T) {
 		t.Fatal(err)
 	}
 	dirDB := mgr.GetConnect(ConnectTypeDir)
-	CreateDir(dirDB, 1, 2, "title", "content")
+	CreateDir(dirDB, "1", 2, "title", "content")
 }
