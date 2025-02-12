@@ -29,3 +29,8 @@ func (d *DirLogic) ToProtocol() protocol.PDir {
 		Index: d.dbData.Index,
 	}
 }
+
+func (d *DirLogic) Save() error {
+	conn := db.GTodoneDBMgr.GetConnect(db.ConnectTypeDir)
+	return db.ChangeDir(conn, d.dbData)
+}

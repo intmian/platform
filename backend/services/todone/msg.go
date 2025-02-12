@@ -58,6 +58,8 @@ const CmdCreateDir share.Cmd = "createDir"
 type CreateDirReq struct {
 	UserID      string
 	ParentDirID uint32
+	AfterID     uint32
+	AfterIsDir  bool
 	Title       string
 	Note        string
 }
