@@ -8,6 +8,7 @@ type GroupDB struct {
 	Title     string
 	Note      string
 	ParentDir uint32
+	Deleted   bool
 	Index     float32
 }
 
@@ -40,7 +41,8 @@ func ChangeGroupNote(db *gorm.DB, groupID uint32, note string) error {
 }
 
 func DeleteGroup(db *gorm.DB, groupID uint32) error {
-	return db.Where("id = ?", groupID).Delete(&GroupDB{}).Error
+	// 将deleted字段置为true
+	return db.Model(&GroupDB{}).Where("id = ?", groupID).Update("deleted", true).Error
 }
 
 func GetGroupsByUser(db *gorm.DB, userID string) ([]GroupDB, error) {

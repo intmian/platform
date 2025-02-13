@@ -284,3 +284,44 @@ func (u *UserLogic) MoveDir(dirID, trgDir uint32, afterID uint32, afterDir bool)
 
 	return nil
 }
+
+func (u *UserLogic) DelDir(dirID uint32) error {
+	// 判断是否存在
+	dir, ok := u.dirMap[dirID]
+	if !ok {
+		return errors.New("dir not exist")
+	}
+	// 判断是否有子节点
+	if len(dir.childs) != 0 || len(dir.groups) != 0 {
+		return errors.New("dir has child")
+	}
+
+	// 更新内存
+	parentID := dir.dir.dbData.ParentID
+	if parentID == 0 {
+		return errors.New("can't del root dir")
+	}
+	parent, ok := u.dirMap[parentID]
+	if !ok {
+		return errors.New("parent dir not exist")
+	}
+	for i, child := range parent.childs {
+		if child == dir {
+			parent.childs = append(parent.childs[:i], parent.childs[i+1:]...)
+			break
+		}
+	}
+	delete(u.dirMap, dirID)
+
+	// 更新数据库
+	connect := db.GTodoneDBMgr.GetConnect(db.ConnectTypeDir)
+	if connect == nil {
+		return errors.New("get connect failed")
+	}
+	err := dir.dir.Delete()
+	if err != nil {
+		return errors.Join(err, errors.New("delete dir failed"))
+	}
+
+	return nil
+}

@@ -53,9 +53,30 @@ func (s *Service) OnChangeDir(valid backendshare.Valid, req ChangeDirReq) (ret C
 	}
 	user.Lock()
 	defer user.Unlock()
-	err = user.ChangeDir(req.DirID, req.Title, req.Note)
+	dir := user.GetDirLogic(req.DirID)
+	if dir == nil {
+		err = errors.New("dir not exist")
+		return
+	}
+	err = dir.ChangeData(req.Title, req.Note, 0)
 	if err != nil {
 		err = errors.New("change dir failed")
+		return
+	}
+	return
+}
+
+func (s *Service) OnDelDir(valid backendshare.Valid, req DelDirReq) (ret DelDirRet, err error) {
+	user := s.userMgr.GetUserLogic(req.UserID)
+	if user == nil {
+		err = errors.New("user not exist")
+		return
+	}
+	user.Lock()
+	defer user.Unlock()
+	err = user.DelDir(req.DirID)
+	if err != nil {
+		err = errors.New("del dir failed")
 		return
 	}
 	return

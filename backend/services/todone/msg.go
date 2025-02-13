@@ -81,6 +81,17 @@ type ChangeDirRet struct {
 	Suc bool
 }
 
+const CmdDelDir share.Cmd = "delDir"
+
+type DelDirReq struct {
+	UserID string
+	DirID  uint32
+}
+
+type DelDirRet struct {
+	Suc bool
+}
+
 const CmdDelGroup share.Cmd = "delGroup"
 
 type DelGroupReq struct {

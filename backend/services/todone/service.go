@@ -98,6 +98,8 @@ func (s *Service) HandleRpc(msg backendshare.Msg, valid backendshare.Valid) (int
 		return backendshare.HandleRpcTool("changeDir", msg, valid, s.OnChangeDir)
 	case CmdDelGroup:
 		return backendshare.HandleRpcTool("delGroup", msg, valid, s.OnDelGroup)
+	case CmdDelDir:
+		return backendshare.HandleRpcTool("delDir", msg, valid, s.OnDelDir)
 	}
 
 	return nil, nil
