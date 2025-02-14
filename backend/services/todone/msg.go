@@ -21,10 +21,12 @@ type MoveDirReq struct {
 	UserID string
 	DirID  uint32
 	TrgDir uint32 // 放在哪个目录下
+
+	AfterID    uint32
+	AfterIsDir bool
 }
 
 type MoveDirRet struct {
-	Suc bool
 }
 
 const MoveGroup share.Cmd = "moveGroup"
@@ -33,24 +35,15 @@ type MoveGroupReq struct {
 	UserID  string
 	GroupID uint32
 	TrgDir  uint32 // 放在哪个目录下
+
+	AfterID    uint32
+	AfterIsDir bool
 }
 
 type MoveGroupRet struct {
-	Suc bool
-}
-
-const MoveDirGroupAfterOther share.Cmd = "moveDirGroupAfterOther"
-
-type MoveDirGroupAfterOtherReq struct {
-	UserID      string
-	IsDir       bool
-	Id          uint32
-	IsTargetDir bool
-	TargetId    uint32 // 为0表示放在最前面
 }
 
 type MoveDirGroupAfterOtherRet struct {
-	Suc bool
 }
 
 const CmdCreateDir share.Cmd = "createDir"
@@ -78,7 +71,6 @@ type ChangeDirReq struct {
 }
 
 type ChangeDirRet struct {
-	Suc bool
 }
 
 const CmdDelDir share.Cmd = "delDir"
@@ -89,7 +81,6 @@ type DelDirReq struct {
 }
 
 type DelDirRet struct {
-	Suc bool
 }
 
 const CmdDelGroup share.Cmd = "delGroup"
@@ -100,5 +91,120 @@ type DelGroupReq struct {
 }
 
 type DelGroupRet struct {
-	Suc bool
+}
+
+const CmdCreateGroup share.Cmd = "createGroup"
+
+type CreateGroupReq struct {
+	UserID     string
+	Title      string
+	Note       string
+	ParentDir  uint32
+	AfterID    uint32
+	AfterIsDir bool
+}
+
+type CreateGroupRet struct {
+	GroupID uint32
+	Index   float32
+}
+
+const CmdChangeGroup share.Cmd = "changeGroup"
+
+type ChangeGroupReq struct {
+	UserID string
+	Group  protocol.PGroup
+	Title  string
+	Note   string
+}
+
+type ChangeGroupRet struct {
+}
+
+const CmdGetSubGroup share.Cmd = "getSubGroup"
+
+type GetSubGroupReq struct {
+	UserID  string
+	GroupID uint32
+}
+
+type GetSubGroupRet struct {
+	SubGroups []protocol.PSubGroup
+}
+
+const CmdGetTaskByPage share.Cmd = "getTaskByPage"
+
+type GetTaskByPageReq struct {
+	UserID     string
+	GroupID    uint32
+	SubGroupID uint32
+	Page       int
+	PageNum    int
+}
+
+type DelSubGroupReq struct {
+	UserID     string
+	GroupID    uint32
+	SubGroupID uint32
+}
+
+type DelSubGroupRet struct {
+}
+
+const CmdGetTask share.Cmd = "getTask"
+
+type GetTaskReq struct {
+	UserID string
+	TaskID uint32
+}
+
+type GetTaskRet struct {
+	Task protocol.PTask
+}
+
+const CmdChangeTask share.Cmd = "changeTask"
+
+type ChangeTaskReq struct {
+	UserID string
+	TaskID uint32
+	Title  string
+	Note   string
+}
+
+type ChangeTaskRet struct {
+}
+
+type ChangeDoneTaskReq struct {
+	UserID string
+	TaskID uint32
+	Done   bool
+}
+
+type ChangeDoneTaskRet struct {
+}
+
+const CmdCreateTask share.Cmd = "createTask"
+
+type CreateTaskReq struct {
+	UserID     string
+	GroupID    uint32
+	SubGroupID uint32
+	ParentTask uint32
+	Title      string
+	Note       string
+	AfterID    uint32
+}
+
+type CreateTaskRet struct {
+	TaskID uint32
+}
+
+const CmdDelTask share.Cmd = "delTask"
+
+type DelTaskReq struct {
+	UserID string
+	TaskID uint32
+}
+
+type DelTaskRet struct {
 }

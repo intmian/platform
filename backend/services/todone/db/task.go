@@ -47,13 +47,13 @@ func GetTaskByID(db *gorm.DB, taskID uint32) (*TaskDB, error) {
 
 func GetTasksByParentSubGroupID(db *gorm.DB, parentSubGroupID uint32, limit int, offset int, done bool) []TaskDB {
 	var tasks []TaskDB
-	db.Where("parent_sub_group_id = ? and done = ?", parentSubGroupID, done).Limit(limit).Offset(offset).Find(&tasks)
+	db.Where("parent_sub_group_id = ? and done = ?", parentSubGroupID, done).Where("deleted = ?", false).Limit(limit).Offset(offset).Find(&tasks)
 	return tasks
 }
 
 func GetTasksByParentTaskID(db *gorm.DB, parentTaskID uint32, limit int, offset int, done bool) []TaskDB {
 	var tasks []TaskDB
-	db.Where("parent_task_id = ? and done = ?", parentTaskID, done).Limit(limit).Offset(offset).Find(&tasks)
+	db.Where("parent_task_id = ? and done = ?", parentTaskID, done).Where("deleted = ?", false).Limit(limit).Offset(offset).Find(&tasks)
 	return tasks
 }
 

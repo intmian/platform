@@ -82,7 +82,34 @@ func (s *Service) OnDelDir(valid backendshare.Valid, req DelDirReq) (ret DelDirR
 	return
 }
 
-func (s *Service) OnDelGroup(valid backendshare.Valid, req DelGroupReq) (ret DelGroupRet, err error) {
+func (s *Service) OnCreateGroup(valid backendshare.Valid, req CreateGroupReq) (ret CreateGroupRet, err error) {
 	// TODO
-	return
+}
+
+func (s *Service) OnChangeGroup(valid backendshare.Valid, req ChangeGroupReq) (ret ChangeGroupRet, err error) {
+	// TODO
+}
+
+func (s *Service) OnGetSubGroup(valid backendshare.Valid, req GetSubGroupReq) (ret GetSubGroupRet, err error) {
+	// TODO
+}
+
+func (s *Service) OnGetTaskByPage(valid backendshare.Valid, req GetTaskByPageReq) (ret GetTaskByPageRet, err error) {
+	// TODO
+}
+
+func (s *Service) OnGetTask(valid backendshare.Valid, req GetTaskReq) (ret GetTaskRet, err error) {
+	// TODO
+}
+
+func (s *Service) OnChangeTask(valid backendshare.Valid, req ChangeTaskReq) (ret ChangeTaskRet, err error) {
+	// TODO
+}
+
+func (s *Service) OnCreateTask(valid backendshare.Valid, req CreateTaskReq) (ret CreateTaskRet, err error) {
+	// TODO
+}
+
+func (s *Service) OnDelTask(valid backendshare.Valid, req DelTaskReq) (ret DelTaskRet, err error) {
+	// TODO
 }

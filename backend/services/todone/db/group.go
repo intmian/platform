@@ -47,6 +47,6 @@ func DeleteGroup(db *gorm.DB, groupID uint32) error {
 
 func GetGroupsByUser(db *gorm.DB, userID string) ([]GroupDB, error) {
 	var groups []GroupDB
-	result := db.Where("user_id = ?", userID).Find(&groups)
+	result := db.Where("user_id = ?", userID).Where("deleted = ?", false).Order("index").Find(&groups)
 	return groups, result.Error
 }

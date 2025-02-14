@@ -96,10 +96,26 @@ func (s *Service) HandleRpc(msg backendshare.Msg, valid backendshare.Valid) (int
 		return backendshare.HandleRpcTool("createDir", msg, valid, s.OnCreateDir)
 	case CmdChangeDir:
 		return backendshare.HandleRpcTool("changeDir", msg, valid, s.OnChangeDir)
-	case CmdDelGroup:
-		return backendshare.HandleRpcTool("delGroup", msg, valid, s.OnDelGroup)
 	case CmdDelDir:
 		return backendshare.HandleRpcTool("delDir", msg, valid, s.OnDelDir)
+	case CmdDelGroup:
+		return backendshare.HandleRpcTool("delGroup", msg, valid, s.OnDelGroup)
+	case CmdCreateGroup:
+		return backendshare.HandleRpcTool("createGroup", msg, valid, s.OnCreateGroup)
+	case CmdChangeGroup:
+		return backendshare.HandleRpcTool("changeGroup", msg, valid, s.OnChangeGroup)
+	case CmdGetSubGroup:
+		return backendshare.HandleRpcTool("getSubGroup", msg, valid, s.OnGetSubGroup)
+	case CmdGetTaskByPage:
+		return backendshare.HandleRpcTool("getTaskByPage", msg, valid, s.OnGetTaskByPage)
+	case CmdGetTask:
+		return backendshare.HandleRpcTool("getTask", msg, valid, s.OnGetTask)
+	case CmdChangeTask:
+		return backendshare.HandleRpcTool("changeTask", msg, valid, s.OnChangeTask)
+	case CmdCreateTask:
+		return backendshare.HandleRpcTool("createTask", msg, valid, s.OnCreateTask)
+	case CmdDelTask:
+		return backendshare.HandleRpcTool("delTask", msg, valid, s.OnDelTask)
 	}
 
 	return nil, nil
