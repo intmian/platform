@@ -13,7 +13,7 @@ export interface UniResult {
 }
 
 // 通用的异步POST请求，只适配platform的通用后端返回格式，如果code不为0，或者没有code字段，返回null或者不为200的状态码，返回null
-async function UniPost(url: string, req: object) {
+export async function UniPost(url: string, req: object) {
     const result: UniResult = {
         data: {},
         ok: false
