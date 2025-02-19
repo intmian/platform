@@ -32,6 +32,7 @@ const (
 	NameNote    SvrName = "note"
 	NameAccount SvrName = "account"
 	NameCmd     SvrName = "cmd"
+	NameTodone  SvrName = "todone"
 )
 
 const (
@@ -40,6 +41,7 @@ const (
 	FlagNote
 	FlagAccount
 	FlagCmd
+	FlagTodone
 )
 
 type ServiceStatus int

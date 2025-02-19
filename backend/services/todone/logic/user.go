@@ -285,6 +285,97 @@ func (u *UserLogic) MoveDir(dirID, trgDir uint32, afterID uint32, afterDir bool)
 	return nil
 }
 
+func (u *UserLogic) MoveGroup(parentDirID, groupID, trgDir uint32, afterID uint32, afterDir bool) error {
+	// 校验目标节点是否存在
+	trg, ok := u.dirMap[trgDir]
+	if !ok {
+		return errors.New("target dir not exist")
+	}
+	parent, ok := u.dirMap[parentDirID]
+	if !ok {
+		return errors.New("parent dir not exist")
+	}
+	var group *GroupLogic
+	for _, grp := range parent.groups {
+		if grp.dbData.ID == groupID {
+			group = grp
+			break
+		}
+	}
+	if group == nil {
+		return errors.New("group not exist")
+	}
+
+	// 更新内存
+	oldParentID := group.dbData.ParentDir
+	if oldParentID == 0 {
+		return errors.New("can't move root group")
+	}
+	oldParent, ok := u.dirMap[oldParentID]
+	if !ok {
+		return errors.New("old parent dir not exist")
+	}
+	// 从原来的父节点中删除
+	for i, grp := range oldParent.groups {
+		if grp == group {
+			oldParent.groups = append(oldParent.groups[:i], oldParent.groups[i+1:]...)
+			break
+		}
+	}
+	// 放到新的父节点中
+	trg.groups = append(trg.groups, group)
+	if afterID != 0 {
+		// 根据afterID找到位置，放在其后，如果后面还有，Index取中间值，否则+1
+		leftIndex := float32(0)
+		rightIndex := float32(0)
+		if afterDir {
+			for _, child := range trg.childs {
+				if child.dir.dbData.ID == afterID {
+					leftIndex = child.dir.dbData.Index
+					break
+				}
+			}
+		} else {
+			for _, grp := range trg.groups {
+				if grp.dbData.ID == afterID {
+					leftIndex = grp.dbData.Index
+					break
+				}
+			}
+		}
+		// 遍历所有child和group，找到比leftIndex大的最小值
+		for _, child := range trg.childs {
+			if child.dir.dbData.Index > leftIndex {
+				if rightIndex == 0 || child.dir.dbData.Index < rightIndex {
+					rightIndex = child.dir.dbData.Index
+				}
+			}
+		}
+		for _, grp := range trg.groups {
+			if grp.dbData.Index > leftIndex {
+				if rightIndex == 0 || grp.dbData.Index < rightIndex {
+					rightIndex = grp.dbData.Index
+				}
+			}
+		}
+		var newIndex float32
+		if rightIndex == 0 {
+			newIndex = leftIndex + 1
+		} else {
+			newIndex = (leftIndex + rightIndex) / 2
+		}
+		group.dbData.Index = newIndex
+	}
+
+	// 更新数据库
+	err := group.Save()
+	if err != nil {
+		return errors.Join(err, errors.New("save group failed"))
+	}
+
+	return nil
+}
+
 func (u *UserLogic) DelDir(dirID uint32) error {
 	// 判断是否存在
 	dir, ok := u.dirMap[dirID]
@@ -324,4 +415,121 @@ func (u *UserLogic) DelDir(dirID uint32) error {
 	}
 
 	return nil
+}
+
+func (u *UserLogic) DelGroup(groupID uint32) error {
+	// 判断是否存在
+	var group *GroupLogic
+	for _, grp := range u.dirTree.groups {
+		if grp.dbData.ID == groupID {
+			group = grp
+			break
+		}
+	}
+	if group == nil {
+		return errors.New("group not exist")
+	}
+
+	// 更新内存
+	parentID := group.dbData.ParentDir
+	if parentID == 0 {
+		return errors.New("can't del root group")
+	}
+	parent, ok := u.dirMap[parentID]
+	if !ok {
+		return errors.New("parent dir not exist")
+	}
+	for i, grp := range parent.groups {
+		if grp == group {
+			parent.groups = append(parent.groups[:i], parent.groups[i+1:]...)
+			break
+		}
+	}
+
+	// 更新数据库
+	err := group.Delete()
+	if err != nil {
+		return errors.Join(err, errors.New("delete group failed"))
+	}
+
+	return nil
+}
+
+func (u *UserLogic) CreateGroup(parentDirID uint32, title, note string, afterID uint32, afterIsDir bool) (uint32, error, float32) {
+	// 校验父节点是否存在
+	if parentDirID != 0 {
+		return 0, errors.New("parent dir not exist"), 0
+	} else {
+		if _, ok := u.dirMap[parentDirID]; !ok {
+			return 0, errors.New("parent dir not exist"), 0
+		}
+	}
+
+	// 更新数据库
+	connect := db.GTodoneDBMgr.GetConnect(db.ConnectTypeGroup)
+	if connect == nil {
+		return 0, errors.New("get connect failed"), 0
+	}
+	groupID, err := db.CreateGroup(connect, u.userID, title, note, parentDirID)
+	if err != nil {
+		return 0, errors.Join(err, errors.New("create group failed")), 0
+	}
+
+	// 更新内存
+	group := NewGroupLogic(groupID)
+	group.dbData.ParentDir = parentDirID
+	if parentDir, ok := u.dirMap[parentDirID]; ok {
+		parentDir.groups = append(parentDir.groups, group)
+	}
+
+	// 找到一个合适的index，最大的index+1
+	maxIndex := float32(0)
+	parentDir, ok := u.dirMap[parentDirID]
+	if ok {
+		for _, child := range parentDir.childs {
+			if child.dir.dbData.Index > maxIndex {
+				maxIndex = child.dir.dbData.Index
+			}
+		}
+		for _, group := range parentDir.groups {
+			if group.dbData.Index > maxIndex {
+				maxIndex = group.dbData.Index
+			}
+		}
+	} else {
+		maxIndex = 1
+	}
+	group.dbData.Index = maxIndex + 1
+	err = group.Save()
+	if err != nil {
+		return 0, errors.Join(err, errors.New("save group failed")), 0
+	}
+
+	return groupID, nil, group.dbData.Index
+}
+
+func (u *UserLogic) GetGroupLogic(parentDirID, groupID uint32) *GroupLogic {
+	dir, ok := u.dirMap[parentDirID]
+	if !ok {
+		return nil
+	}
+	for _, group := range dir.groups {
+		if group.dbData.ID == groupID {
+			return group
+		}
+	}
+	return nil
+}
+
+func (u *UserLogic) GetSubGroupLogic(parentDirID, groupID, subGroupID uint32) *SubGroupLogic {
+	group := u.GetGroupLogic(parentDirID, groupID)
+	if group == nil {
+		return nil
+	}
+	return group.GetSubGroupLogic(subGroupID)
+}
+
+func (u *UserLogic) GetTaskLogic(taskID uint32) *TaskLogic {
+	t := NewTaskLogic(taskID)
+	return t
 }

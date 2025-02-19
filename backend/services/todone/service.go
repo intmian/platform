@@ -11,11 +11,8 @@ import (
 
 // Service 业务
 type Service struct {
-	share    backendshare.ServiceShare
-	userMgr  logic.UserMgr
-	dirMgr   logic.DirMgr
-	groupMgr logic.GroupMgr
-	taskMgr  logic.TaskMgr
+	share   backendshare.ServiceShare
+	userMgr logic.UserMgr
 }
 
 func (s *Service) Start(share backendshare.ServiceShare) error {
@@ -62,9 +59,6 @@ func (s *Service) Start(share backendshare.ServiceShare) error {
 func (s *Service) Stop() error {
 	// 释放管理器以释放资源
 	s.userMgr = logic.UserMgr{}
-	s.dirMgr = logic.DirMgr{}
-	s.groupMgr = logic.GroupMgr{}
-	s.taskMgr = logic.TaskMgr{}
 
 	return nil
 }
@@ -92,6 +86,10 @@ func (s *Service) HandleRpc(msg backendshare.Msg, valid backendshare.Valid) (int
 	switch msg.Cmd() {
 	case CmdGetDirTree:
 		return backendshare.HandleRpcTool("getDirTree", msg, valid, s.OnGetDirTree)
+	case CmdMoveDir:
+		return backendshare.HandleRpcTool("moveDir", msg, valid, s.OnMoveDir)
+	case CmdMoveGroup:
+		return backendshare.HandleRpcTool("moveGroup", msg, valid, s.OnMoveGroup)
 	case CmdCreateDir:
 		return backendshare.HandleRpcTool("createDir", msg, valid, s.OnCreateDir)
 	case CmdChangeDir:

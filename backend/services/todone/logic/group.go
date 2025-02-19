@@ -11,10 +11,6 @@ type GroupLogic struct {
 	subGroups []*SubGroupLogic
 }
 
-type SubGroupLogic struct {
-	dbData *db.SubGroupDB
-}
-
 func NewGroupLogic(ID uint32) *GroupLogic {
 	return &GroupLogic{
 		dbData: &db.GroupDB{
@@ -104,4 +100,31 @@ func (g *GroupLogic) ToProtocol() protocol.PGroup {
 		Note:  g.dbData.Note,
 		Index: g.dbData.Index,
 	}
+}
+
+func (g *GroupLogic) ChangeData(title, note string, index float32) error {
+	if title != "" {
+		g.dbData.Title = title
+	}
+	if note != "" {
+		g.dbData.Note = note
+	}
+	if index != 0 {
+		g.dbData.Index = index
+	}
+	err := g.Save()
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (g *GroupLogic) Save() error {
+	connect := db.GTodoneDBMgr.GetConnect(db.ConnectTypeGroup)
+	return db.ChangeGroup(connect, g.dbData)
+}
+
+func (g *GroupLogic) Delete() error {
+	connect := db.GTodoneDBMgr.GetConnect(db.ConnectTypeGroup)
+	return db.DeleteGroup(connect, g.dbData.ID)
 }

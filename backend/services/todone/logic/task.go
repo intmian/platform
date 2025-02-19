@@ -3,8 +3,15 @@ package logic
 import (
 	"errors"
 	"github.com/intmian/platform/backend/services/todone/db"
+	"github.com/intmian/platform/backend/services/todone/protocol"
 	"math"
+	"time"
 )
+
+/*
+因为task一般都以筛选条件进行查询，子任务也是一级级展开的，所以不需要mgr进行缓存，子任务也不保存在父任务的逻辑中，因为存在加载的问题
+因为懒加载所以需要注意下加载问题
+*/
 
 type TaskLogic struct {
 	dbData *db.TaskDB
@@ -126,4 +133,75 @@ func (t *TaskLogic) GeneSubTaskIndex() float32 {
 	} else {
 		return float32(math.Ceil(float64(maxIndex))) + 1
 	}
+}
+
+func (t *TaskLogic) HasSubTask() (bool, error) {
+	connect := db.GTodoneDBMgr.GetConnect(db.ConnectTypeTask)
+	tasksDB := db.GetTasksByParentTaskID(connect, t.id, 1, 0, false)
+	return len(tasksDB) > 0, nil
+}
+
+func (t *TaskLogic) ToProtocol() protocol.PTask {
+	data, _ := t.GetTaskData()
+	tags, _ := t.GetTags()
+	hasSubTask, _ := t.HasSubTask()
+	var pTask protocol.PTask
+	if data == nil {
+		return pTask
+	}
+	pTask.ID = data.TaskID
+	pTask.Title = data.Note
+	pTask.Note = data.Note
+	pTask.Done = data.Done
+	pTask.Index = data.Index
+	pTask.Tags = tags
+	pTask.HaveSubTask = hasSubTask
+	return pTask
+}
+
+func (t *TaskLogic) GetID() uint32 {
+	return t.id
+}
+
+func (t *TaskLogic) ChangeFromProtocol(pTask protocol.PTask) error {
+	data, err := t.GetTaskData()
+	if err != nil {
+		return errors.Join(err, ErrGetTaskDataFailed)
+	}
+	if pTask.Title != "" {
+		data.Note = pTask.Title
+	}
+	if pTask.Note != "" {
+		data.Note = pTask.Note
+	}
+	if pTask.Index != 0 {
+		data.Index = pTask.Index
+	}
+	if pTask.Done != data.Done {
+		data.Done = pTask.Done
+	}
+	connect := db.GTodoneDBMgr.GetConnect(db.ConnectTypeTask)
+	return db.UpdateTask(connect, data)
+}
+
+func (t *TaskLogic) CreateSubTask(userID string, title, note string) (*TaskLogic, error) {
+	nextIndex := t.GeneSubTaskIndex()
+	connect := db.GTodoneDBMgr.GetConnect(db.ConnectTypeTask)
+	ID, err := db.CreateTask(connect, userID, 0, t.id, title, note, nextIndex)
+	if err != nil {
+		return nil, err
+	}
+	task := NewTaskLogic(ID)
+	task.OnBindOutData(&db.TaskDB{
+		TaskID:       ID,
+		ParentTaskID: t.id,
+		Title:        title,
+		Note:         note,
+		Index:        nextIndex,
+		Deleted:      false,
+		Done:         false,
+		CreatedAt:    time.Now(),
+		UpdatedAt:    time.Now(),
+	})
+	return task, nil
 }

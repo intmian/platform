@@ -15,7 +15,7 @@ type GetDirTreeRet struct {
 	DirTree protocol.PDirTree
 }
 
-const MoveDir share.Cmd = "moveDir"
+const CmdMoveDir share.Cmd = "moveDir"
 
 type MoveDirReq struct {
 	UserID string
@@ -29,12 +29,13 @@ type MoveDirReq struct {
 type MoveDirRet struct {
 }
 
-const MoveGroup share.Cmd = "moveGroup"
+const CmdMoveGroup share.Cmd = "moveGroup"
 
 type MoveGroupReq struct {
-	UserID  string
-	GroupID uint32
-	TrgDir  uint32 // 放在哪个目录下
+	UserID      string
+	GroupID     uint32
+	ParentDirID uint32
+	TrgDir      uint32 // 放在哪个目录下
 
 	AfterID    uint32
 	AfterIsDir bool
@@ -112,10 +113,11 @@ type CreateGroupRet struct {
 const CmdChangeGroup share.Cmd = "changeGroup"
 
 type ChangeGroupReq struct {
-	UserID string
-	Group  protocol.PGroup
-	Title  string
-	Note   string
+	UserID      string
+	ParentDirID uint32
+	Group       protocol.PGroup
+	Title       string
+	Note        string
 }
 
 type ChangeGroupRet struct {
@@ -124,8 +126,9 @@ type ChangeGroupRet struct {
 const CmdGetSubGroup share.Cmd = "getSubGroup"
 
 type GetSubGroupReq struct {
-	UserID  string
-	GroupID uint32
+	UserID      string
+	ParentDirID uint32
+	GroupID     uint32
 }
 
 type GetSubGroupRet struct {
@@ -135,11 +138,17 @@ type GetSubGroupRet struct {
 const CmdGetTaskByPage share.Cmd = "getTaskByPage"
 
 type GetTaskByPageReq struct {
-	UserID     string
-	GroupID    uint32
-	SubGroupID uint32
-	Page       int
-	PageNum    int
+	UserID      string
+	ParentDirID uint32
+	GroupID     uint32
+	SubGroupID  uint32
+	Page        int
+	PageNum     int
+	ContainDone bool
+}
+
+type GetTaskByPageRet struct {
+	Tasks []protocol.PTask
 }
 
 type DelSubGroupReq struct {
@@ -166,9 +175,7 @@ const CmdChangeTask share.Cmd = "changeTask"
 
 type ChangeTaskReq struct {
 	UserID string
-	TaskID uint32
-	Title  string
-	Note   string
+	Data   protocol.PTask
 }
 
 type ChangeTaskRet struct {
@@ -187,6 +194,7 @@ const CmdCreateTask share.Cmd = "createTask"
 
 type CreateTaskReq struct {
 	UserID     string
+	DirID      uint32
 	GroupID    uint32
 	SubGroupID uint32
 	ParentTask uint32

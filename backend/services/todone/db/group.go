@@ -12,11 +12,12 @@ type GroupDB struct {
 	Index     float32
 }
 
-func CreateGroup(db *gorm.DB, userID string, title, note string) (uint32, error) {
+func CreateGroup(db *gorm.DB, userID string, title, note string, parentDirID uint32) (uint32, error) {
 	group := GroupDB{
-		UserID: userID,
-		Title:  title,
-		Note:   note,
+		UserID:    userID,
+		Title:     title,
+		Note:      note,
+		ParentDir: parentDirID,
 	}
 	result := db.Create(&group)
 	return group.ID, result.Error
