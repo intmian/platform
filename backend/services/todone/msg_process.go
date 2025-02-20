@@ -31,7 +31,7 @@ func (s *Service) OnMoveDir(valid backendshare.Valid, req MoveDirReq) (ret MoveD
 	user.Lock()
 	defer user.Unlock()
 
-	err = user.MoveDir(req.DirID, req.TrgDir, req.AfterID, req.AfterIsDir)
+	err = user.MoveDir(req.DirID, req.TrgDir, req.AfterID)
 	if err != nil {
 		err = errors.Join(err, errors.New("move dir failed"))
 	}
@@ -47,7 +47,7 @@ func (s *Service) OnMoveGroup(valid backendshare.Valid, req MoveGroupReq) (ret M
 	user.Lock()
 	defer user.Unlock()
 
-	err = user.MoveGroup(req.ParentDirID, req.GroupID, req.TrgDir, req.AfterID, req.AfterIsDir)
+	err = user.MoveGroup(req.ParentDirID, req.GroupID, req.TrgDir, req.AfterID)
 	if err != nil {
 		err = errors.Join(err, errors.New("move group failed"))
 	}
@@ -86,7 +86,7 @@ func (s *Service) OnCreateDir(valid backendshare.Valid, req CreateDirReq) (ret C
 	}
 	ret.DirID = ID
 	if req.AfterID != 0 {
-		err = user.MoveDir(ID, req.ParentDirID, req.AfterID, req.AfterIsDir)
+		err = user.MoveDir(ID, req.ParentDirID, req.AfterID)
 		if err != nil {
 			err = errors.New("move dir failed")
 			return
@@ -134,7 +134,7 @@ func (s *Service) OnDelDir(valid backendshare.Valid, req DelDirReq) (ret DelDirR
 
 func (s *Service) OnCreateGroup(valid backendshare.Valid, req CreateGroupReq) (ret CreateGroupRet, err error) {
 	s.userMgr.SafeUseUserLogic(req.UserID, func(user *logic.UserLogic) {
-		ID, err2, index := user.CreateGroup(req.ParentDir, req.Title, req.Note, req.AfterID, req.AfterIsDir)
+		ID, err2, index := user.CreateGroup(req.ParentDir, req.Title, req.Note, req.AfterID)
 		if err2 != nil {
 			err = errors.Join(err, err2)
 			return

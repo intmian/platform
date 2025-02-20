@@ -22,8 +22,7 @@ type MoveDirReq struct {
 	DirID  uint32
 	TrgDir uint32 // 放在哪个目录下
 
-	AfterID    uint32
-	AfterIsDir bool
+	AfterID uint32
 }
 
 type MoveDirRet struct {
@@ -37,8 +36,7 @@ type MoveGroupReq struct {
 	ParentDirID uint32
 	TrgDir      uint32 // 放在哪个目录下
 
-	AfterID    uint32
-	AfterIsDir bool
+	AfterID uint32
 }
 
 type MoveGroupRet struct {
@@ -53,7 +51,6 @@ type CreateDirReq struct {
 	UserID      string
 	ParentDirID uint32
 	AfterID     uint32
-	AfterIsDir  bool
 	Title       string
 	Note        string
 }
@@ -97,12 +94,11 @@ type DelGroupRet struct {
 const CmdCreateGroup share.Cmd = "createGroup"
 
 type CreateGroupReq struct {
-	UserID     string
-	Title      string
-	Note       string
-	ParentDir  uint32
-	AfterID    uint32
-	AfterIsDir bool
+	UserID    string
+	Title     string
+	Note      string
+	ParentDir uint32
+	AfterID   uint32
 }
 
 type CreateGroupRet struct {

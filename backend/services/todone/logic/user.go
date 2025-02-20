@@ -204,7 +204,7 @@ func (u *UserLogic) CreateDir(parentDirID uint32, title, note string) (uint32, e
 	return dirID, nil
 }
 
-func (u *UserLogic) MoveDir(dirID, trgDir uint32, afterID uint32, afterDir bool) error {
+func (u *UserLogic) MoveDir(dirID, trgDir uint32, afterID uint32) error {
 	// 校验目标节点是否存在
 	trg, ok := u.dirMap[trgDir]
 	if !ok {
@@ -237,22 +237,14 @@ func (u *UserLogic) MoveDir(dirID, trgDir uint32, afterID uint32, afterDir bool)
 		// 根据afterID找到位置，放在其后，如果后面还有，Index取中间值，否则+1
 		leftIndex := float32(0)
 		rightIndex := float32(0)
-		if afterDir {
-			for _, child := range trg.childs {
-				if child.dir.dbData.ID == afterID {
-					leftIndex = child.dir.dbData.Index
-					break
-				}
-			}
-		} else {
-			for _, child := range trg.groups {
-				if child.dbData.ID == afterID {
-					leftIndex = child.dbData.Index
-					break
-				}
+		for _, child := range trg.childs {
+			if child.dir.dbData.ID == afterID {
+				leftIndex = child.dir.dbData.Index
+				break
 			}
 		}
-		// 遍历所有child和group，找到比leftIndex大的最小值
+
+		// 遍历所有child，找到比leftIndex大的最小值
 		for _, child := range trg.childs {
 			if child.dir.dbData.Index > leftIndex {
 				if rightIndex == 0 || child.dir.dbData.Index < rightIndex {
@@ -260,13 +252,7 @@ func (u *UserLogic) MoveDir(dirID, trgDir uint32, afterID uint32, afterDir bool)
 				}
 			}
 		}
-		for _, group := range trg.groups {
-			if group.dbData.Index > leftIndex {
-				if rightIndex == 0 || group.dbData.Index < rightIndex {
-					rightIndex = group.dbData.Index
-				}
-			}
-		}
+
 		var newIndex float32
 		if rightIndex == 0 {
 			newIndex = leftIndex + 1
@@ -285,7 +271,7 @@ func (u *UserLogic) MoveDir(dirID, trgDir uint32, afterID uint32, afterDir bool)
 	return nil
 }
 
-func (u *UserLogic) MoveGroup(parentDirID, groupID, trgDir uint32, afterID uint32, afterDir bool) error {
+func (u *UserLogic) MoveGroup(parentDirID, groupID, trgDir uint32, afterID uint32) error {
 	// 校验目标节点是否存在
 	trg, ok := u.dirMap[trgDir]
 	if !ok {
@@ -328,29 +314,13 @@ func (u *UserLogic) MoveGroup(parentDirID, groupID, trgDir uint32, afterID uint3
 		// 根据afterID找到位置，放在其后，如果后面还有，Index取中间值，否则+1
 		leftIndex := float32(0)
 		rightIndex := float32(0)
-		if afterDir {
-			for _, child := range trg.childs {
-				if child.dir.dbData.ID == afterID {
-					leftIndex = child.dir.dbData.Index
-					break
-				}
-			}
-		} else {
-			for _, grp := range trg.groups {
-				if grp.dbData.ID == afterID {
-					leftIndex = grp.dbData.Index
-					break
-				}
+		for _, grp := range trg.groups {
+			if grp.dbData.ID == afterID {
+				leftIndex = grp.dbData.Index
+				break
 			}
 		}
-		// 遍历所有child和group，找到比leftIndex大的最小值
-		for _, child := range trg.childs {
-			if child.dir.dbData.Index > leftIndex {
-				if rightIndex == 0 || child.dir.dbData.Index < rightIndex {
-					rightIndex = child.dir.dbData.Index
-				}
-			}
-		}
+		// 遍历所有group，找到比leftIndex大的最小值
 		for _, grp := range trg.groups {
 			if grp.dbData.Index > leftIndex {
 				if rightIndex == 0 || grp.dbData.Index < rightIndex {
@@ -455,7 +425,7 @@ func (u *UserLogic) DelGroup(groupID uint32) error {
 	return nil
 }
 
-func (u *UserLogic) CreateGroup(parentDirID uint32, title, note string, afterID uint32, afterIsDir bool) (uint32, error, float32) {
+func (u *UserLogic) CreateGroup(parentDirID uint32, title, note string, afterID uint32) (uint32, error, float32) {
 	// 校验父节点是否存在
 	if parentDirID != 0 {
 		return 0, errors.New("parent dir not exist"), 0
@@ -482,24 +452,52 @@ func (u *UserLogic) CreateGroup(parentDirID uint32, title, note string, afterID 
 		parentDir.groups = append(parentDir.groups, group)
 	}
 
-	// 找到一个合适的index，最大的index+1
-	maxIndex := float32(0)
-	parentDir, ok := u.dirMap[parentDirID]
-	if ok {
-		for _, child := range parentDir.childs {
-			if child.dir.dbData.Index > maxIndex {
-				maxIndex = child.dir.dbData.Index
+	if afterID != 0 {
+		// 根据afterID找到位置，放在其后，如果后面还有，Index取中间值，否则+1
+		leftIndex := float32(0)
+		rightIndex := float32(0)
+		for _, grp := range u.dirTree.groups {
+			if grp.dbData.ID == afterID {
+				leftIndex = grp.dbData.Index
+				break
 			}
 		}
-		for _, group := range parentDir.groups {
-			if group.dbData.Index > maxIndex {
-				maxIndex = group.dbData.Index
+		// 遍历所有group，找到比leftIndex大的最小值
+		for _, grp := range u.dirTree.groups {
+			if grp.dbData.Index > leftIndex {
+				if rightIndex == 0 || grp.dbData.Index < rightIndex {
+					rightIndex = grp.dbData.Index
+				}
 			}
 		}
+		var newIndex float32
+		if rightIndex == 0 {
+			newIndex = leftIndex + 1
+		} else {
+			newIndex = (leftIndex + rightIndex) / 2
+		}
+		group.dbData.Index = newIndex
 	} else {
-		maxIndex = 1
+		// 找到一个合适的index，最大的index+1
+		maxIndex := float32(0)
+		parentDir, ok := u.dirMap[parentDirID]
+		if ok {
+			for _, child := range parentDir.childs {
+				if child.dir.dbData.Index > maxIndex {
+					maxIndex = child.dir.dbData.Index
+				}
+			}
+			for _, group := range parentDir.groups {
+				if group.dbData.Index > maxIndex {
+					maxIndex = group.dbData.Index
+				}
+			}
+		} else {
+			maxIndex = 1
+		}
+		group.dbData.Index = maxIndex + 1
 	}
-	group.dbData.Index = maxIndex + 1
+
 	err = group.Save()
 	if err != nil {
 		return 0, errors.Join(err, errors.New("save group failed")), 0
