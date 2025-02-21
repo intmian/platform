@@ -1,6 +1,6 @@
-import {UniPost, UniResult} from "../common/newSendHttp";
+import {UniPost, UniResult} from "../../common/newSendHttp";
 import {PDirTree, PGroup, PSubGroup, PTask} from "./protocal";
-import config from "../config.json";
+import config from "../../config.json";
 
 export interface GetDirTreeReq {
     UserID: string
@@ -16,7 +16,6 @@ export interface MoveDirReq {
     DirID: number
     TrgDir: number// 放在哪个目录下
     AfterID: number
-    AfterIsDir: boolean
 }
 
 export type MoveDirRet = object
@@ -28,7 +27,6 @@ export interface MoveGroupReq {
     ParentDirID: number
     TrgDir: number// 放在哪个目录下
     AfterID: number
-    AfterIsDir: boolean
 }
 
 export type MoveGroupRet = object
@@ -38,7 +36,6 @@ export interface CreateDirReq {
     UserID: string
     ParentDirID: number
     AfterID: number
-    AfterIsDir: boolean
     Title: string
     Note: string
 }
@@ -80,7 +77,6 @@ export interface CreateGroupReq {
     Note: string
     ParentDir: number
     AfterID: number
-    AfterIsDir: boolean
 }
 
 export interface CreateGroupRet {

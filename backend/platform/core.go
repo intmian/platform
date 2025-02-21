@@ -8,6 +8,7 @@ import (
 	"github.com/intmian/platform/backend/services/account"
 	"github.com/intmian/platform/backend/services/auto"
 	"github.com/intmian/platform/backend/services/cmd"
+	"github.com/intmian/platform/backend/services/todone"
 	coreShare "github.com/intmian/platform/backend/share"
 	"github.com/pkg/errors"
 	"time"
@@ -115,7 +116,7 @@ func (c *core) registerSvr() {
 	c.service[coreShare.FlagAuto] = &auto.Service{}
 	c.service[coreShare.FlagAccount] = &account.Service{}
 	c.service[coreShare.FlagCmd] = &cmd.Service{}
-	c.service[coreShare.FlagTodone] = &auto.Service{}
+	c.service[coreShare.FlagTodone] = &todone.Service{}
 	// 新增服务要在这里注册
 	for k, _ := range c.service {
 		c.serviceMeta[k] = &coreShare.ServiceMeta{}
