@@ -77,9 +77,6 @@ func (c *core) startService(flag coreShare.SvrFlag) error {
 	//err = c.plat.push.Push("PLAT", fmt.Sprintf("服务 %s 成功启动", name), false)
 	c.serviceMeta[flag].Status = coreShare.StatusStart
 	c.serviceMeta[flag].StartTime = time.Now()
-	if err != nil {
-		c.plat.log.WarningErr("PLAT", errors.WithMessage(err, "startService push err"))
-	}
 	c.plat.log.Info("PLAT", fmt.Sprintf("服务 %s 成功启动", name))
 	return nil
 }
