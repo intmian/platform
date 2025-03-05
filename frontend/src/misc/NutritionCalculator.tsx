@@ -82,7 +82,9 @@ const NutritionCalculator = () => {
     };
 
     return (
-        <Form layout="vertical" style={{maxWidth: 800, margin: '0 auto'}}>
+        <Form layout="vertical" style={{
+            maxWidth: 800, margin: '0 auto', padding: 24
+        }}>
             {/* 食品热量计算部分 */}
             <Title level={4} style={{marginBottom: 24}}>食品热量计算</Title>
             <Row gutter={isMobile ? 0 : 16}>
