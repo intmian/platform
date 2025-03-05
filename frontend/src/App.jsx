@@ -9,6 +9,7 @@ import Anniversary from "./misc/love";
 import {lazy} from 'react';
 import ReportPanel from "./report/report";
 import {Todone} from "./todone/Main";
+import NutritionCalculator from "./misc/NutritionCalculator";
 
 const Memos = lazy(() => import('./misc/memos'));
 
@@ -65,6 +66,10 @@ const router = createBrowserRouter([
     {
         path: '/todone',
         element: <Todone/>,
+    },
+    {
+        path: '/loss-fat',
+        element: <NutritionCalculator/>,
     }
 ])
 
