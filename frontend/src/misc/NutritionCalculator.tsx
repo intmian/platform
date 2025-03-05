@@ -15,8 +15,9 @@ const mobileInputProps = {
     controls: false,
     style: {
         width: '100%',
-        fontSize: '16px' // 解决iOS缩放问题
-    }
+        // fontSize: '16px' // 解决iOS缩放问题
+    },
+    size: 'large'
 };
 
 // 桌面端输入配置
@@ -137,7 +138,7 @@ const NutritionCalculator = () => {
                             value={formData.unitKcal}
                             onChange={v => handleUnitChange('unitKcal', Number(v))}
                             min={0}
-                            step={0.1}
+                            step={1}
                             {...useInputProps()}
                             addonAfter="Kcal/unit"
                         />
@@ -149,7 +150,7 @@ const NutritionCalculator = () => {
                             value={formData.unitKj}
                             onChange={v => handleUnitChange('unitKj', Number(v))}
                             min={0}
-                            step={0.1}
+                            step={1}
                             {...useInputProps()}
                             addonAfter="kJ/unit"
                         />
