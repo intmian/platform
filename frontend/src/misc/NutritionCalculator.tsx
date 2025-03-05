@@ -87,7 +87,7 @@ const NutritionCalculator = () => {
     // 更新衍生字段
     const updateSecondaryFields = (data: any) => {
         // 计算脂肪量
-        data.fat = Number((data.totalKcal / 9).toFixed(2));
+        data.fat = Number((data.totalKcal / 7.7).toFixed(2));
 
         // 计算百分比
         data.malePercent = Number(((data.totalKcal / DAILY_KCAL_MALE) * 100).toFixed(1));
@@ -140,7 +140,7 @@ const NutritionCalculator = () => {
                             min={0}
                             step={1}
                             {...useInputProps()}
-                            addonAfter="Kcal/unit"
+                            addonAfter="kcal/unit"
                         />
                     </Form.Item>
                 </Col>
@@ -169,7 +169,7 @@ const NutritionCalculator = () => {
                             min={0}
                             step={1}
                             {...useInputProps()}
-                            addonAfter="Kcal"
+                            addonAfter="kcal"
                         />
                     </Form.Item>
                 </Col>
@@ -245,7 +245,7 @@ const NutritionCalculator = () => {
                                 const newFat = formatFat(formData.fat).unit === 'kg'
                                     ? Number(v) * 1000
                                     : Number(v);
-                                handleTotalChange('totalKcal', newFat * 9);
+                                handleTotalChange('totalKcal', newFat * 7.7);
                             }}
                             {...useInputProps()}
                         />
