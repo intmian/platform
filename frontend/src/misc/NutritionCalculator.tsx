@@ -236,10 +236,7 @@ const NutritionCalculator = () => {
                             min={0}
                             addonAfter={formatFat(formData.fat).unit}
                             parser={value => {
-                                const num = parseFloat(value?.toString().replace(/[^\d.]/g, '') || 0);
-                                return formatFat(formData.fat).unit === 'kg'
-                                    ? num * 1000
-                                    : num;
+                                return parseFloat(value || "0");
                             }}
                             onChange={v => {
                                 const newFat = formatFat(formData.fat).unit === 'kg'
