@@ -1,6 +1,7 @@
 import {useState} from 'react';
-import {Col, Form, InputNumber, Row, Typography} from 'antd';
+import {Col, Form, InputNumber, Row, Tooltip, Typography} from 'antd';
 import {useIsMobile} from "../common/hooksv2";
+import {QuestionCircleOutlined} from '@ant-design/icons';
 
 const {Title} = Typography;
 
@@ -108,7 +109,28 @@ const NutritionCalculator = () => {
             maxWidth: 800, margin: '0 auto', padding: 24
         }}>
             {/* 食品热量计算部分 */}
-            <Title level={4} style={{marginBottom: 24}}>食品热量计算</Title>
+            <Title level={4} style={{marginBottom: 24}}>食品热量计算
+                <Tooltip
+                    title={
+                        <div style={{color: 'white', maxWidth: 300}}>
+                            <div>逻辑：输入食物热量将会同步修改总热量、热量占比、对应脂肪。修改后三者也会自动相互转换。</div>
+                            <div>食物热量填写方法：如果面包的营养标签写了100g含有254kJ，同时重量为200g，那么单位质量或体积填200，单位热量(千焦)填254。</div>
+                            <div>青年男性参考按照2500Kj，青年女性参考按照2000Kj计算。</div>
+                            <div>脂肪按照1g脂肪7.7Kcal计算（人体脂肪含水所以不是9）。</div>
+                        </div>
+
+                    }
+                    overlayInnerStyle={{
+                        color: 'white', // 设置文字颜色
+                        maxWidth: 300, // 设置最大宽度，避免内容太长
+                    }}
+                >
+                    <QuestionCircleOutlined
+                        style={{marginLeft: 8}}
+                    />
+                </Tooltip>
+            </Title>
+
             <Row gutter={isMobile ? 8 : 16}>
                 <Col xs={12} sm={6}>
                     <Form.Item label="总质量或体积">
