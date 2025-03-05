@@ -109,8 +109,8 @@ const NutritionCalculator = () => {
         }}>
             {/* 食品热量计算部分 */}
             <Title level={4} style={{marginBottom: 24}}>食品热量计算</Title>
-            <Row gutter={isMobile ? 0 : 16}>
-                <Col xs={24} sm={6}>
+            <Row gutter={isMobile ? 8 : 16}>
+                <Col xs={12} sm={6}>
                     <Form.Item label="总质量或体积">
                         <InputNumber
                             value={formData.unitTotal}
@@ -121,7 +121,7 @@ const NutritionCalculator = () => {
                         />
                     </Form.Item>
                 </Col>
-                <Col xs={24} sm={6}>
+                <Col xs={12} sm={6}>
                     <Form.Item label="单位质量或体积">
                         <InputNumber
                             value={formData.unitNum}
@@ -132,7 +132,7 @@ const NutritionCalculator = () => {
                         />
                     </Form.Item>
                 </Col>
-                <Col xs={24} sm={6}>
+                <Col xs={12} sm={6}>
                     <Form.Item label="单位热量(大卡) ">
                         <InputNumber
                             value={formData.unitKcal}
@@ -144,7 +144,7 @@ const NutritionCalculator = () => {
                         />
                     </Form.Item>
                 </Col>
-                <Col xs={24} sm={6}>
+                <Col xs={12} sm={6}>
                     <Form.Item label="单位热量(千焦)">
                         <InputNumber
                             value={formData.unitKj}
@@ -160,8 +160,8 @@ const NutritionCalculator = () => {
 
             {/* 总热量部分 */}
             <Title level={4} style={{marginBottom: 24, marginTop: 24}}>总热量</Title>
-            <Row gutter={isMobile ? 0 : 16}>
-                <Col xs={24} sm={12}>
+            <Row gutter={isMobile ? 8 : 16}>
+                <Col xs={12} sm={12}>
                     <Form.Item label="大卡">
                         <InputNumber
                             value={formData.totalKcal}
@@ -173,7 +173,7 @@ const NutritionCalculator = () => {
                         />
                     </Form.Item>
                 </Col>
-                <Col xs={24} sm={12}>
+                <Col xs={12} sm={12}>
                     <Form.Item label="千焦">
                         <InputNumber
                             value={formData.totalKj}
@@ -189,8 +189,8 @@ const NutritionCalculator = () => {
 
             {/* 热量百分比部分 */}
             <Title level={4} style={{marginBottom: 24, marginTop: 24}}>热量占比</Title>
-            <Row gutter={isMobile ? 0 : 16}>
-                <Col xs={24} sm={12}>
+            <Row gutter={isMobile ? 8 : 16}>
+                <Col xs={12} sm={12}>
                     <Form.Item label="青年男性参考">
                         <InputNumber
                             value={formData.malePercent}
@@ -207,7 +207,7 @@ const NutritionCalculator = () => {
                         />
                     </Form.Item>
                 </Col>
-                <Col xs={24} sm={12}>
+                <Col xs={12} sm={12}>
                     <Form.Item label="青年女性参考">
                         <InputNumber
                             value={formData.femalePercent}
