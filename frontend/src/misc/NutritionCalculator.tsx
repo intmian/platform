@@ -133,7 +133,7 @@ const NutritionCalculator = () => {
                     </Form.Item>
                 </Col>
                 <Col xs={24} sm={6}>
-                    <Form.Item label="单位热量 ">
+                    <Form.Item label="单位热量(大卡) ">
                         <InputNumber
                             value={formData.unitKcal}
                             onChange={v => handleUnitChange('unitKcal', Number(v))}
@@ -145,7 +145,7 @@ const NutritionCalculator = () => {
                     </Form.Item>
                 </Col>
                 <Col xs={24} sm={6}>
-                    <Form.Item label="单位热量">
+                    <Form.Item label="单位热量(千焦)">
                         <InputNumber
                             value={formData.unitKj}
                             onChange={v => handleUnitChange('unitKj', Number(v))}
