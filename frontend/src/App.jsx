@@ -8,6 +8,7 @@ import Anniversary from "./misc/love";
 
 import {lazy} from 'react';
 import ReportPanel from "./report/report";
+import {Todone} from "./todone/Main";
 
 const Memos = lazy(() => import('./misc/memos'));
 
@@ -60,6 +61,10 @@ const router = createBrowserRouter([
     {
         path: '/day-report/:date',
         element: <ReportPanel/>,
+    },
+    {
+        path: '/todone',
+        element: <Todone/>,
     }
 ])
 

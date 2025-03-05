@@ -374,9 +374,9 @@ export class ConfigsCtr {
         this.onDataChanged.push(f);
     }
 
-    callBack() {
+    callBack(isInit) {
         for (let i = 0; i < this.onDataChanged.length; i++) {
-            this.onDataChanged[i]();
+            this.onDataChanged[i](isInit);
         }
     }
 
@@ -419,7 +419,7 @@ export class ConfigsCtr {
     set(key, value) {
         let realKey = this.getRealID(key);
         this.data[realKey] = value;
-        this.callBack()
+        this.callBack(false)
     }
 
     init() {
@@ -429,7 +429,7 @@ export class ConfigsCtr {
                 this.setByDB(key, ret.data[key].Data);
             }
             this.inInit = false;
-            this.callBack()
+            this.callBack(true)
         }
         if (this.cfgMode === ConfigsType.Plat) {
             sendCfgPlatGet(callback)
@@ -445,25 +445,21 @@ export class ConfigsCtr {
 export function UniConfig({configCtr}) {
     // 加载中
     const [loading, setLoading] = useState(true);
-    // 配置
-    const [configData, setConfigs] = useState(null);
 
     // 初始化
     useEffect(() => {
         // 初始化过了就用ctr的数据初始化，否则请求数据
         if (!configCtr.inInit) {
             setLoading(false);
-            setConfigs(configCtr.data);
             return;
         }
         let callback = (ret) => {
-            setConfigs(ret.data);
             setLoading(false);
             // 后端传的key都是真实key不需要二次处理，所以调用特殊函数，同时为了避免重复渲染，最后触发一次回调。
             for (let key in ret.data) {
                 configCtr.setByDB(key, ret.data[key].Data);
             }
-            configCtr.callBack()
+            configCtr.callBack(true)
         }
         if (configCtr.cfgMode === ConfigsType.Plat) {
             sendCfgPlatGet(callback)
@@ -493,7 +489,7 @@ export function UniConfig({configCtr}) {
 
     for (let i = 0; i < configCtr.configs.length; i++) {
         let data = null;
-        if (configData !== null) {
+        if (configCtr.data !== null) {
             let realKey;
             switch (configCtr.cfgMode) {
                 case ConfigsType.Plat:
@@ -506,8 +502,8 @@ export function UniConfig({configCtr}) {
                     realKey = configCtr.server + '.' + configCtr.user + '.' + configCtr.configs[i].key;
                     break
             }
-            if (configData[realKey] !== undefined) {
-                data = configData[realKey];
+            if (configCtr.data[realKey] !== undefined) {
+                data = configCtr.data[realKey];
             } else {
                 data = null;
             }

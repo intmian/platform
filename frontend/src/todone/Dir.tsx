@@ -10,23 +10,42 @@ import {
     sendGetDirTree
 } from "./net/send_back";
 import {CopyTwoTone, DeleteTwoTone, EditTwoTone, FileAddTwoTone, FileTextTwoTone} from "@ant-design/icons";
+import {Addr} from "./addr";
 
-function DirTreeNodeTitle({title, isDir, note, onClickAddChild, onClickChange, onClickDel, onClickCopy}: {
+function DirTreeNodeTitle({
+                              title,
+                              isDir,
+                              note,
+                              onClickAddChild,
+                              onClickChange,
+                              onClickDel,
+                              addr
+                          }: {
     title: string,
     isDir: boolean,
     note: string,
-    onClickAddChild?: () => void,
+    onClickAddChild?: (dir: PDir) => void,
     onClickChange: () => void,
     onClickDel: () => void,
-    onClickCopy: () => void,
+    addr: Addr,
 }) {
+    // 提取本层ID
+    const dirID = addr.getLastUnit().ID;
     return <div>
         <Tooltip title={note}>
             {title}
         </Tooltip>
-        {isDir ? <DirAddPanel onAddDir={} userID={} DirID={}/> : null}
+        {isDir && onClickAddChild ?
+            <DirAddPanel onAddDir={onClickAddChild} userID={addr.userID} DirID={dirID}/> : null}
         <Button onClick={onClickChange} icon={<EditTwoTone/>}/>
-        <Button onClick={onClickCopy} icon={<CopyTwoTone/>}/>
+        <Button onClick={
+            () => {
+                // 写到剪贴板
+                navigator.clipboard.writeText(addr.toString()).then(() => {
+                    message.success(`复制成功：${addr}`).then();
+                });
+            }
+        } icon={<CopyTwoTone/>}/>
         <Popconfirm title={"确定要删除吗？"} onConfirm={onClickDel} okText={"确定"} cancelText={"取消"}>
             <Button icon={<DeleteTwoTone/>} danger/>
         </Popconfirm>
@@ -120,25 +139,27 @@ function DirAddPanel({DirID, onAddDir, userID}: { onAddDir: (dir: PDir) => void,
     </div>
 }
 
-function PDir2TreeDataNode(pDir: PDirTree, addr: string, onRefresh: () => void): TreeDataNode {
+function PDir2TreeDataNode(pDir: PDirTree, addr: Addr, onRefresh: () => void): TreeDataNode {
     /*
     * 将PDirTree一层层展开，需要注意，对同一层级的group和dir需要进行排序。dir放在上面，group放在下面，根据Index排序。
     * */
-    const thisDirAddr = `${addr}/dir-${pDir.RootDir.ID}`;
+    addr.addDir(pDir.RootDir.ID);
     // 排序本层级
     pDir.ChildrenDir = pDir.ChildrenDir.sort((a, b) => a.RootDir.Index - b.RootDir.Index);
     pDir.ChildrenGrp = pDir.ChildrenGrp.sort((a, b) => a.Index - b.Index);
     // 生成本层级
     const ret: TreeDataNode[] = [];
     for (const dir of pDir.ChildrenDir) {
-        ret.push(PDir2TreeDataNode(dir, thisDirAddr, onRefresh));
+        ret.push(PDir2TreeDataNode(dir, addr, onRefresh));
     }
     for (const grp of pDir.ChildrenGrp) {
-        const childAddr = `${thisDirAddr}/grp-${grp.ID}`;
+        const groupAddr = addr.copy();
+        groupAddr.addGroup(grp.ID);
         ret.push({
             key: `grp-${grp.ID}`,
             icon: <FileTextTwoTone/>,
             title: <DirTreeNodeTitle
+                addr={groupAddr}
                 isDir={false}
                 title={grp.Title}
                 note={grp.Note}
@@ -146,32 +167,29 @@ function PDir2TreeDataNode(pDir: PDirTree, addr: string, onRefresh: () => void):
                 }}
                 onClickDel={() => {
                 }}
-                onClickCopy={() => {
-                    // 写到剪贴板
-                    navigator.clipboard.writeText(childAddr).then(() => {
-                        message.success(`复制成功：${childAddr}`).then();
-                    });
-                }}
+
             />,
         });
     }
     return {
         key: `dir-${pDir.RootDir.ID}`,
         title: <DirTreeNodeTitle
+            addr={addr}
             isDir={true}
             title={pDir.RootDir.Title}
             note={pDir.RootDir.Note}
-            onClickAddChild={() => {
+            onClickAddChild={(dir) => {
+                // 修改pDir，然后刷新
+                pDir.ChildrenDir.push({
+                    RootDir: dir,
+                    ChildrenDir: [],
+                    ChildrenGrp: [],
+                });
+                onRefresh();
             }}
             onClickChange={() => {
             }}
             onClickDel={() => {
-            }}
-            onClickCopy={() => {
-                // 写到剪贴板
-                navigator.clipboard.writeText(thisDirAddr).then(() => {
-                    message.success(`复制成功：${thisDirAddr}`).then();
-                });
             }}
         />,
         children: ret,
@@ -203,8 +221,9 @@ export function Dir({userID, onSelectGroup}: { userID: string, onSelectGroup: (g
     if (dirTree === null) {
         return <div>数据加载失败！</div>
     }
+    const rootAddr = new Addr(userID);
     return <Tree
-        treeData={[PDir2TreeDataNode(dirTree, "", () => {
+        treeData={[PDir2TreeDataNode(dirTree, rootAddr, () => {
             setDirTree(dirTree);
         })]}
         showLine={true}
@@ -223,5 +242,4 @@ export function Dir({userID, onSelectGroup}: { userID: string, onSelectGroup: (g
             }
         }}
     />
-
 }
