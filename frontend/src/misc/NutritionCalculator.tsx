@@ -9,6 +9,27 @@ const KCAL_TO_KJ = 4.184;
 const DAILY_KCAL_MALE = 2500;
 const DAILY_KCAL_FEMALE = 2000;
 
+// 优化移动端输入配置
+const mobileInputProps = {
+    inputMode: 'decimal' as const,
+    controls: false,
+    style: {
+        width: '100%',
+        fontSize: '16px' // 解决iOS缩放问题
+    }
+};
+
+// 桌面端输入配置
+const desktopInputProps = {
+    style: {width: '100%'}
+};
+
+// 获取当前输入框配置
+const useInputProps = () => {
+    const isMobile = useIsMobile();
+    return isMobile ? mobileInputProps : desktopInputProps;
+}
+
 const NutritionCalculator = () => {
     const isMobile = useIsMobile();
     const [formData, setFormData] = useState({
@@ -95,7 +116,7 @@ const NutritionCalculator = () => {
                             onChange={v => updateCalculations({...formData, unitTotal: Number(v)})}
                             min={0}
                             step={1}
-                            style={{width: '100%'}}
+                            {...useInputProps()}
                         />
                     </Form.Item>
                 </Col>
@@ -105,30 +126,32 @@ const NutritionCalculator = () => {
                             value={formData.unitNum}
                             onChange={v => updateCalculations({...formData, unitNum: Number(v)})}
                             min={0}
-                            step={0.1}
-                            style={{width: '100%'}}
+                            step={1}
+                            {...useInputProps()}
                         />
                     </Form.Item>
                 </Col>
                 <Col xs={24} sm={6}>
-                    <Form.Item label="单位热量 (kcal/g)">
+                    <Form.Item label="单位热量 ">
                         <InputNumber
                             value={formData.unitKcal}
                             onChange={v => handleUnitChange('unitKcal', Number(v))}
                             min={0}
                             step={0.1}
-                            style={{width: '100%'}}
+                            {...useInputProps()}
+                            addonAfter="Kcal/unit"
                         />
                     </Form.Item>
                 </Col>
                 <Col xs={24} sm={6}>
-                    <Form.Item label="单位热量 (kJ/g)">
+                    <Form.Item label="单位热量">
                         <InputNumber
                             value={formData.unitKj}
                             onChange={v => handleUnitChange('unitKj', Number(v))}
                             min={0}
                             step={0.1}
-                            style={{width: '100%'}}
+                            {...useInputProps()}
+                            addonAfter="kJ/unit"
                         />
                     </Form.Item>
                 </Col>
@@ -138,24 +161,26 @@ const NutritionCalculator = () => {
             <Title level={4} style={{marginBottom: 24, marginTop: 24}}>总热量</Title>
             <Row gutter={isMobile ? 0 : 16}>
                 <Col xs={24} sm={12}>
-                    <Form.Item label="大卡 (kcal)">
+                    <Form.Item label="大卡">
                         <InputNumber
                             value={formData.totalKcal}
                             onChange={v => handleTotalChange('totalKcal', Number(v))}
                             min={0}
                             step={1}
-                            style={{width: '100%'}}
+                            {...useInputProps()}
+                            addonAfter="Kcal"
                         />
                     </Form.Item>
                 </Col>
                 <Col xs={24} sm={12}>
-                    <Form.Item label="千焦 (kJ)">
+                    <Form.Item label="千焦">
                         <InputNumber
                             value={formData.totalKj}
                             onChange={v => handleTotalChange('totalKj', Number(v))}
                             min={0}
                             step={1}
-                            style={{width: '100%'}}
+                            {...useInputProps()}
+                            addonAfter="kJ"
                         />
                     </Form.Item>
                 </Col>
@@ -175,9 +200,9 @@ const NutritionCalculator = () => {
                             min={0}
                             max={500}
                             step={1}
-                            formatter={value => `${value}%`}
+                            addonAfter="%"
                             parser={value => parseFloat(value?.toString().replace('%', '') || '0')}
-                            style={{width: '100%'}}
+                            {...useInputProps()}
                         />
                     </Form.Item>
                 </Col>
@@ -192,9 +217,9 @@ const NutritionCalculator = () => {
                             min={0}
                             max={500}
                             step={1}
-                            formatter={value => `${value}%`}
+                            addonAfter="%"
                             parser={value => parseFloat(value?.toString().replace('%', '') || '0')}
-                            style={{width: '100%'}}
+                            {...useInputProps()}
                         />
                     </Form.Item>
                 </Col>
@@ -208,10 +233,7 @@ const NutritionCalculator = () => {
                         <InputNumber
                             value={formatFat(formData.fat).value}
                             min={0}
-                            step={formatFat(formData.fat).unit === 'kg' ? 0.1 : 1}
-                            formatter={value =>
-                                `${value} ${formatFat(formData.fat).unit}`
-                            }
+                            addonAfter={formatFat(formData.fat).unit}
                             parser={value => {
                                 const num = parseFloat(value?.toString().replace(/[^\d.]/g, '') || 0);
                                 return formatFat(formData.fat).unit === 'kg'
@@ -224,7 +246,7 @@ const NutritionCalculator = () => {
                                     : Number(v);
                                 handleTotalChange('totalKcal', newFat * 9);
                             }}
-                            style={{width: '100%'}}
+                            {...useInputProps()}
                         />
                     </Form.Item>
                 </Col>
