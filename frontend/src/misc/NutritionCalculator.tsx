@@ -1,5 +1,5 @@
 import {useState} from 'react';
-import {Col, Form, InputNumber, Row, Tooltip, Typography} from 'antd';
+import {Button, Col, Form, InputNumber, Row, Tooltip, Typography} from 'antd';
 import {useIsMobile} from "../common/hooksv2";
 import {QuestionCircleOutlined} from '@ant-design/icons';
 
@@ -140,7 +140,16 @@ const NutritionCalculator = () => {
                             min={0}
                             step={1}
                             {...useInputProps()}
-                        />
+                            addonAfter={<Button
+                                // 将刚好一份按钮
+                                onClick={
+                                    () => updateCalculations({...formData, unitTotal: 1, unitNum: 1})
+                                }
+                                type={"text"}
+                            >
+                                刚好一份
+                            </Button>
+                            }/>
                     </Form.Item>
                 </Col>
                 <Col xs={12} sm={6}>
@@ -151,6 +160,14 @@ const NutritionCalculator = () => {
                             min={0}
                             step={1}
                             {...useInputProps()}
+                            addonAfter={<Button
+                                type={"text"}
+                                onClick={
+                                    () => updateCalculations({...formData, unitNum: 0})
+                                }
+                            >
+                                清空
+                            </Button>}
                         />
                     </Form.Item>
                 </Col>
