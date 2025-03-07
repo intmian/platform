@@ -1,6 +1,6 @@
 import {useEffect, useState} from "react";
 import {PDir, PDirTree} from "./net/protocal";
-import {Button, Form, Input, message, Modal, Popconfirm, Spin, Tooltip, Tree, TreeDataNode} from "antd";
+import {Dropdown, Form, Input, MenuProps, message, Modal, Spin, Switch, Tooltip, Tree, TreeDataNode} from "antd";
 import {
     CreateDirReq,
     CreateGroupReq,
@@ -9,7 +9,15 @@ import {
     sendCreateGroup,
     sendGetDirTree
 } from "./net/send_back";
-import {CopyTwoTone, DeleteTwoTone, EditTwoTone, FileAddTwoTone, FileTextTwoTone} from "@ant-design/icons";
+import {
+    CopyOutlined,
+    DeleteOutlined,
+    DownOutlined,
+    EditOutlined,
+    FileAddOutlined,
+    FileOutlined,
+    FolderOutlined
+} from "@ant-design/icons";
 import {Addr} from "./addr";
 
 function DirTreeNodeTitle({
@@ -29,39 +37,141 @@ function DirTreeNodeTitle({
     onClickDel: () => void,
     addr: Addr,
 }) {
+    const [startAdd, setStartAdd] = useState(false);
     // 提取本层ID
     const dirID = addr.getLastUnit().ID;
-    return <div>
-        <Tooltip title={note}>
-            {title}
-        </Tooltip>
-        {isDir && onClickAddChild ?
-            <DirAddPanel onAddDir={onClickAddChild} userID={addr.userID} DirID={dirID}/> : null}
-        <Button onClick={onClickChange} icon={<EditTwoTone/>}/>
-        <Button onClick={
-            () => {
+    if (title === "") {
+        title = "无标题";
+    }
+    const items: MenuProps['items'] = []
+    if (isDir && onClickAddChild) {
+        items.push(
+            {
+                key: 'addDir',
+                icon: <FileAddOutlined/>,
+                label: "添加",
+                onClick: () => {
+                    setStartAdd(true);
+                }
+            }
+        )
+    }
+    items.push(
+        {
+            key: 'change',
+            icon: <EditOutlined/>,
+            onClick: onClickChange,
+            label: "修改"
+        },
+        {
+            key: 'copy',
+            onClick: () => {
                 // 写到剪贴板
                 navigator.clipboard.writeText(addr.toString()).then(() => {
                     message.success(`复制成功：${addr}`).then();
                 });
-            }
-        } icon={<CopyTwoTone/>}/>
-        <Popconfirm title={"确定要删除吗？"} onConfirm={onClickDel} okText={"确定"} cancelText={"取消"}>
-            <Button icon={<DeleteTwoTone/>} danger/>
-        </Popconfirm>
+            },
+            icon: <CopyOutlined/>,
+            label: "复制"
+        },
+        {
+            key: 'del',
+            onClick: onClickDel,
+            icon: <DeleteOutlined/>,
+            danger: true,
+            label: "删除"
+        }
+    )
+
+    return <div>
+        {isDir && onClickAddChild ?
+            <DirAddPanel onAddDir={onClickAddChild} userID={addr.userID} DirID={dirID} startAdd={startAdd}
+                         onFinish={() => {
+                             setStartAdd(false)
+                         }}/>
+            : null}
+        {isDir ? <FolderOutlined/> : <FileOutlined/>}
+        <Tooltip title={note}>
+            {title}
+        </Tooltip>
+
+        <Dropdown menu={{items}}>
+            <DownOutlined/>
+        </Dropdown>
     </div>
 }
 
-function DirAddPanel({DirID, onAddDir, userID}: { onAddDir: (dir: PDir) => void, userID: string, DirID: number }) {
-    const [startAdd, setStartAdd] = useState(false);
+function DirAddPanel({DirID, onAddDir, onFinish, userID, startAdd,}: {
+    onAddDir: (dir: PDir) => void,
+    userID: string,
+    DirID: number,
+    startAdd: boolean,
+    onFinish: () => void,
+}) {
     const [loading, setLoading] = useState(false);
     const [form] = Form.useForm();
 
-    return <div>
-        <Button onClick={() => {
-            setStartAdd(true);
-        }} icon={<FileAddTwoTone/>}/>
-        {startAdd ? <Modal>
+    return <>
+        {startAdd ? <Modal
+            open={startAdd}
+            onCancel={onFinish}
+            loading={loading}
+            onOk={() => {
+                const values = form.getFieldsValue();
+                if (values.title === undefined || values.note === undefined) {
+                    return;
+                }
+                setLoading(true);
+                if (values.isGroup) {
+                    const req: CreateGroupReq = {
+                        UserID: userID,
+                        Title: values.title,
+                        Note: values.note,
+                        ParentDir: DirID,
+                        AfterID: 0,
+                    };
+                    sendCreateGroup(req, (ret) => {
+                        setLoading(false);
+                        if (ret.ok) {
+                            const dir: PDir = {
+                                ID: ret.data.GroupID,
+                                Title: values.title,
+                                Note: values.note,
+                                Index: ret.data.Index,
+                            };
+                            onAddDir(dir);
+                            message.success("添加成功").then();
+                        } else {
+                            message.error("添加失败").then();
+                        }
+                    });
+                    onFinish();
+                } else {
+                    const req: CreateDirReq = {
+                        UserID: userID,
+                        Title: values.title,
+                        Note: values.note,
+                        ParentDirID: DirID,
+                        AfterID: 0,
+                    };
+                    sendCreateDir(req, (ret) => {
+                        setLoading(false);
+                        if (ret.ok) {
+                            const dir: PDir = {
+                                ID: ret.data.DirID,
+                                Title: values.title,
+                                Note: values.note,
+                                Index: 0,
+                            };
+                            onAddDir(dir);
+                            message.success("添加成功").then();
+                        } else {
+                            message.error("添加失败").then();
+                        }
+                    })
+                }
+            }}
+        >
             <Form form={form}>
                 <Form.Item label={"标题"} name={"title"}>
                     <Input/>
@@ -70,73 +180,11 @@ function DirAddPanel({DirID, onAddDir, userID}: { onAddDir: (dir: PDir) => void,
                     <Input/>
                 </Form.Item>
                 <Form.Item label={"是否为任务组"} name={"isGroup"}>
-                    <Input/>
-                </Form.Item>
-                <Form.Item>
-                    <Button onClick={() => {
-                        const values = form.getFieldsValue();
-                        if (values.title === undefined || values.note === undefined) {
-                            return;
-                        }
-                        setLoading(true);
-                        if (values.isGroup) {
-                            const req: CreateGroupReq = {
-                                UserID: userID,
-                                Title: values.title,
-                                Note: values.note,
-                                ParentDir: DirID,
-                                AfterID: 0,
-                            };
-                            sendCreateGroup(req, (ret) => {
-                                setLoading(false);
-                                if (ret.ok) {
-                                    const dir: PDir = {
-                                        ID: ret.data.GroupID,
-                                        Title: values.title,
-                                        Note: values.note,
-                                        Index: ret.data.Index,
-                                    };
-                                    onAddDir(dir);
-                                    message.success("添加成功").then();
-                                } else {
-                                    message.error("添加失败").then();
-                                }
-                            });
-                            setStartAdd(false);
-                        } else {
-                            const req: CreateDirReq = {
-                                UserID: userID,
-                                Title: values.title,
-                                Note: values.note,
-                                ParentDirID: DirID,
-                                AfterID: 0,
-                            };
-                            sendCreateDir(req, (ret) => {
-                                setLoading(false);
-                                if (ret.ok) {
-                                    const dir: PDir = {
-                                        ID: ret.data.DirID,
-                                        Title: values.title,
-                                        Note: values.note,
-                                        Index: 0,
-                                    };
-                                    onAddDir(dir);
-                                    message.success("添加成功").then();
-                                } else {
-                                    message.error("添加失败").then();
-                                }
-                            })
-                        }
-                    }}
-                            loading={loading}
-                    >确定</Button>
-                    <Button onClick={() => {
-                        setStartAdd(false);
-                    }}>取消</Button>
+                    <Switch/>
                 </Form.Item>
             </Form>
         </Modal> : null}
-    </div>
+    </>
 }
 
 function PDir2TreeDataNode(pDir: PDirTree, addr: Addr, onRefresh: () => void): TreeDataNode {
@@ -163,7 +211,6 @@ function PDir2TreeDataNode(pDir: PDirTree, addr: Addr, onRefresh: () => void): T
         groupAddr.addGroup(grp.ID);
         ret.push({
             key: `grp-${grp.ID}`,
-            icon: <FileTextTwoTone/>,
             title: <DirTreeNodeTitle
                 addr={groupAddr}
                 isDir={false}
@@ -173,7 +220,6 @@ function PDir2TreeDataNode(pDir: PDirTree, addr: Addr, onRefresh: () => void): T
                 }}
                 onClickDel={() => {
                 }}
-
             />,
         });
     }

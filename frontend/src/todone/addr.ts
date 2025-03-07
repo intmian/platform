@@ -82,6 +82,8 @@ export class Addr {
     }
 
     public copy() {
-        return {...this}
+        const addr = new Addr(this.userID)
+        addr.units = this.units.slice()
+        return addr
     }
 }

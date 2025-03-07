@@ -151,7 +151,7 @@ func (u *UserLogic) GetDirTree() (*protocol.PDirTree, error) {
 
 func (u *UserLogic) CreateDir(parentDirID uint32, title, note string) (uint32, error) {
 	// 校验父节点是否存在
-	if parentDirID != 0 {
+	if parentDirID == 0 {
 		return 0, errors.New("parent dir not exist")
 	} else {
 		if _, ok := u.dirMap[parentDirID]; !ok {
@@ -427,7 +427,7 @@ func (u *UserLogic) DelGroup(groupID uint32) error {
 
 func (u *UserLogic) CreateGroup(parentDirID uint32, title, note string, afterID uint32) (uint32, error, float32) {
 	// 校验父节点是否存在
-	if parentDirID != 0 {
+	if parentDirID == 0 {
 		return 0, errors.New("parent dir not exist"), 0
 	} else {
 		if _, ok := u.dirMap[parentDirID]; !ok {
