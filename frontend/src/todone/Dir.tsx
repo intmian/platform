@@ -145,6 +145,12 @@ function PDir2TreeDataNode(pDir: PDirTree, addr: Addr, onRefresh: () => void): T
     * */
     addr.addDir(pDir.RootDir.ID);
     // 排序本层级
+    if (pDir.ChildrenDir === null) {
+        pDir.ChildrenDir = [];
+    }
+    if (pDir.ChildrenGrp === null) {
+        pDir.ChildrenGrp = [];
+    }
     pDir.ChildrenDir = pDir.ChildrenDir.sort((a, b) => a.RootDir.Index - b.RootDir.Index);
     pDir.ChildrenGrp = pDir.ChildrenGrp.sort((a, b) => a.Index - b.Index);
     // 生成本层级
