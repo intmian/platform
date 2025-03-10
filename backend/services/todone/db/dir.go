@@ -11,7 +11,7 @@ type DirDB struct {
 	Index    float32
 }
 
-func CreateDir(db *gorm.DB, userID string, parentID uint32, title, note string) (uint32, error) {
+func CreateDir(db *gorm.DB, userID string, parentID uint32, title, note string) (*DirDB, error) {
 	dir := DirDB{
 		UserID:   userID,
 		Title:    title,
@@ -20,7 +20,7 @@ func CreateDir(db *gorm.DB, userID string, parentID uint32, title, note string) 
 	}
 	// 返回插入的ID
 	result := db.Create(&dir)
-	return dir.ID, result.Error
+	return &dir, result.Error
 }
 
 func GetDir(db *gorm.DB, dirID uint32) (*DirDB, error) {

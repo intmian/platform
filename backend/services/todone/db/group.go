@@ -12,7 +12,7 @@ type GroupDB struct {
 	Index     float32
 }
 
-func CreateGroup(db *gorm.DB, userID string, title, note string, parentDirID uint32) (uint32, error) {
+func CreateGroup(db *gorm.DB, userID string, title, note string, parentDirID uint32) (*GroupDB, error) {
 	group := GroupDB{
 		UserID:    userID,
 		Title:     title,
@@ -20,7 +20,7 @@ func CreateGroup(db *gorm.DB, userID string, title, note string, parentDirID uin
 		ParentDir: parentDirID,
 	}
 	result := db.Create(&group)
-	return group.ID, result.Error
+	return &group, result.Error
 }
 
 func GetGroup(db *gorm.DB, groupID uint32) (*GroupDB, error) {

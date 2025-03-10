@@ -81,8 +81,11 @@ func (u *UserLogic) buildDirTree() error {
 	// 构建树
 	dirMap := make(map[uint32]*dirTreeNode)
 	for _, dir := range dirs {
+		l := NewDirLogic(dir.ID)
+		newDir := dir
+		l.OnBindOutData(&newDir)
 		dirMap[dir.ID] = &dirTreeNode{
-			dir: NewDirLogic(dir.ID),
+			dir: l,
 		}
 	}
 	for _, dir := range dirs {
@@ -93,7 +96,9 @@ func (u *UserLogic) buildDirTree() error {
 	for _, group := range groups {
 		dirID := group.ParentDir
 		if dirNode, ok := dirMap[dirID]; ok {
-			dirNode.groups = append(dirNode.groups, NewGroupLogic(group.ID))
+			l := NewGroupLogic(group.ID)
+			l.OnBindOutData(&*&group)
+			dirNode.groups = append(dirNode.groups, l)
 		}
 	}
 	u.dirMap = dirMap
@@ -112,14 +117,12 @@ func (u *UserLogic) buildDirTree() error {
 		if connect == nil {
 			return errors.New("get connect failed when create root dir")
 		}
-		dirID, err := db.CreateDir(connect, u.userID, 0, "root", "default root dir")
+		dir, err := db.CreateDir(connect, u.userID, 0, "root", "default root dir")
 		if err != nil {
 			return err
 		}
-		logic := NewDirLogic(dirID)
-		logic.OnBindOutData(&db.DirDB{
-			ID: dirID,
-		})
+		logic := NewDirLogic(dir.ID)
+		logic.OnBindOutData(dir)
 	}
 	return nil
 }
@@ -132,21 +135,20 @@ func (u *UserLogic) GetDirTree() (*protocol.PDirTree, error) {
 		}
 	}
 
-	var buildTree func(node *dirTreeNode) *protocol.PDirTree
-	buildTree = func(node *dirTreeNode) *protocol.PDirTree {
-		ret := &protocol.PDirTree{
-			RootDir: node.dir.ToProtocol(),
-		}
-		for _, child := range node.childs {
-			ret.ChildrenDir = append(ret.ChildrenDir, *buildTree(child))
-		}
-		for _, group := range node.groups {
-			ret.ChildrenGrp = append(ret.ChildrenGrp, group.ToProtocol())
-		}
-		return ret
-	}
+	return dirTreeToProtocol(u.dirTree), nil
+}
 
-	return buildTree(u.dirTree), nil
+func dirTreeToProtocol(node *dirTreeNode) *protocol.PDirTree {
+	ret := &protocol.PDirTree{
+		RootDir: node.dir.ToProtocol(),
+	}
+	for _, child := range node.childs {
+		ret.ChildrenDir = append(ret.ChildrenDir, *dirTreeToProtocol(child))
+	}
+	for _, group := range node.groups {
+		ret.ChildrenGrp = append(ret.ChildrenGrp, group.ToProtocol())
+	}
+	return ret
 }
 
 func (u *UserLogic) CreateDir(parentDirID uint32, title, note string) (uint32, error) {
@@ -164,16 +166,18 @@ func (u *UserLogic) CreateDir(parentDirID uint32, title, note string) (uint32, e
 	if connect == nil {
 		return 0, errors.New("get connect failed")
 	}
-	dirID, err := db.CreateDir(connect, u.userID, parentDirID, title, note)
+	dir, err := db.CreateDir(connect, u.userID, parentDirID, title, note)
 	if err != nil {
 		return 0, errors.Join(err, errors.New("create dir failed"))
 	}
 
 	// 更新内存
+	dirLogic := NewDirLogic(dir.ID)
+	dirLogic.OnBindOutData(dir)
 	dirNode := &dirTreeNode{
-		dir: NewDirLogic(dirID),
+		dir: dirLogic,
 	}
-	u.dirMap[dirID] = dirNode
+	u.dirMap[dir.ID] = dirNode
 	if parentDir, ok := u.dirMap[parentDirID]; ok {
 		parentDir.childs = append(parentDir.childs, dirNode)
 	}
@@ -201,7 +205,7 @@ func (u *UserLogic) CreateDir(parentDirID uint32, title, note string) (uint32, e
 		return 0, errors.Join(err, errors.New("save dir failed"))
 	}
 
-	return dirID, nil
+	return dir.ID, nil
 }
 
 func (u *UserLogic) MoveDir(dirID, trgDir uint32, afterID uint32) error {
@@ -440,13 +444,14 @@ func (u *UserLogic) CreateGroup(parentDirID uint32, title, note string, afterID 
 	if connect == nil {
 		return 0, errors.New("get connect failed"), 0
 	}
-	groupID, err := db.CreateGroup(connect, u.userID, title, note, parentDirID)
+	groupDB, err := db.CreateGroup(connect, u.userID, title, note, parentDirID)
 	if err != nil {
 		return 0, errors.Join(err, errors.New("create group failed")), 0
 	}
 
 	// 更新内存
-	group := NewGroupLogic(groupID)
+	group := NewGroupLogic(groupDB.ID)
+	group.OnBindOutData(groupDB)
 	group.dbData.ParentDir = parentDirID
 	if parentDir, ok := u.dirMap[parentDirID]; ok {
 		parentDir.groups = append(parentDir.groups, group)
@@ -503,7 +508,7 @@ func (u *UserLogic) CreateGroup(parentDirID uint32, title, note string, afterID 
 		return 0, errors.Join(err, errors.New("save group failed")), 0
 	}
 
-	return groupID, nil, group.dbData.Index
+	return groupDB.ID, nil, group.dbData.Index
 }
 
 func (u *UserLogic) GetGroupLogic(parentDirID, groupID uint32) *GroupLogic {

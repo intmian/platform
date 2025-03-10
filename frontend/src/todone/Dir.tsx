@@ -1,6 +1,6 @@
 import {useEffect, useState} from "react";
 import {PDir, PDirTree} from "./net/protocal";
-import {Dropdown, Form, Input, MenuProps, message, Modal, Spin, Switch, Tooltip, Tree, TreeDataNode} from "antd";
+import {Dropdown, Form, Input, MenuProps, message, Modal, Space, Spin, Switch, Tooltip, Tree, TreeDataNode} from "antd";
 import {
     CreateDirReq,
     CreateGroupReq,
@@ -12,7 +12,6 @@ import {
 import {
     CopyOutlined,
     DeleteOutlined,
-    DownOutlined,
     EditOutlined,
     FileAddOutlined,
     FileOutlined,
@@ -91,13 +90,16 @@ function DirTreeNodeTitle({
                          }}/>
             : null}
         {isDir ? <FolderOutlined/> : <FileOutlined/>}
-        <Tooltip title={note}>
-            {title}
-        </Tooltip>
+        <Space>
+            <Tooltip title={note}>
+                {title}
+            </Tooltip>
 
-        <Dropdown menu={{items}}>
-            <DownOutlined/>
-        </Dropdown>
+            <Dropdown menu={{items}}>
+                ...
+            </Dropdown>
+        </Space>
+
     </div>
 }
 
@@ -278,8 +280,6 @@ export function Dir({userID, onSelectGroup}: { userID: string, onSelectGroup: (g
         treeData={[PDir2TreeDataNode(dirTree, rootAddr, () => {
             setDirTree(dirTree);
         })]}
-        showLine={true}
-        showIcon={true}
         onSelect={(selectedKeys) => {
             if (selectedKeys.length === 0) {
                 return;
