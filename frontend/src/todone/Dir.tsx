@@ -1,5 +1,5 @@
 import {useEffect, useState} from "react";
-import {PDir, PDirTree} from "./net/protocal";
+import {PDir, PDirTree, PGroup} from "./net/protocal";
 import {Dropdown, Form, Input, MenuProps, message, Modal, Space, Spin, Switch, Tooltip, Tree, TreeDataNode} from "antd";
 import {
     CreateDirReq,
@@ -23,7 +23,8 @@ function DirTreeNodeTitle({
                               title,
                               isDir,
                               note,
-                              onClickAddChild,
+                              onAddDir,
+                              onAddGroup,
                               onClickChange,
                               onClickDel,
                               addr
@@ -31,7 +32,8 @@ function DirTreeNodeTitle({
     title: string,
     isDir: boolean,
     note: string,
-    onClickAddChild?: (dir: PDir) => void,
+    onAddDir?: (dir: PDir) => void,
+    onAddGroup?: (group: PGroup) => void,
     onClickChange: () => void,
     onClickDel: () => void,
     addr: Addr,
@@ -43,7 +45,7 @@ function DirTreeNodeTitle({
         title = "无标题";
     }
     const items: MenuProps['items'] = []
-    if (isDir && onClickAddChild) {
+    if (isDir && onAddDir && onAddGroup) {
         items.push(
             {
                 key: 'addDir',
@@ -82,33 +84,46 @@ function DirTreeNodeTitle({
         }
     )
 
-    return <div>
-        {isDir && onClickAddChild ?
-            <DirAddPanel onAddDir={onClickAddChild} userID={addr.userID} DirID={dirID} startAdd={startAdd}
-                         onFinish={() => {
-                             setStartAdd(false)
-                         }}/>
-            : null}
-        {isDir ? <FolderOutlined/> : <FileOutlined/>}
-        <Space>
-            <Tooltip title={note}>
-                {title}
-            </Tooltip>
+    return <Space>
+        <Tooltip title={dirID + " " + note}>
+            {isDir && onAddDir && onAddGroup ?
+                <DirAddPanel
+                    onAddDir={
+                        (dir) => {
+                            onAddDir(dir);
+                            setStartAdd(false);
+                        }
+                    }
+                    onAddGroup={
+                        (group) => {
+                            onAddGroup(group);
+                            setStartAdd(false);
+                        }
+                    }
+                    userID={addr.userID}
+                    DirID={dirID}
+                    startAdd={startAdd}
+                    onCancel={() => {
+                        setStartAdd(false)
+                    }}/>
+                : null}
+            {isDir ? <FolderOutlined/> : <FileOutlined/>}
+            {title}
+        </Tooltip>
+        <Dropdown menu={{items}}>
+            ...
+        </Dropdown>
+    </Space>
 
-            <Dropdown menu={{items}}>
-                ...
-            </Dropdown>
-        </Space>
-
-    </div>
 }
 
-function DirAddPanel({DirID, onAddDir, onFinish, userID, startAdd,}: {
+function DirAddPanel({DirID, onAddDir, onAddGroup, onCancel, userID, startAdd,}: {
     onAddDir: (dir: PDir) => void,
+    onAddGroup: (group: PGroup) => void,
     userID: string,
     DirID: number,
     startAdd: boolean,
-    onFinish: () => void,
+    onCancel: () => void,
 }) {
     const [loading, setLoading] = useState(false);
     const [form] = Form.useForm();
@@ -116,8 +131,11 @@ function DirAddPanel({DirID, onAddDir, onFinish, userID, startAdd,}: {
     return <>
         {startAdd ? <Modal
             open={startAdd}
-            onCancel={onFinish}
-            loading={loading}
+            onCancel={onCancel}
+            okText={"添加"}
+            closeIcon={null}
+            confirmLoading={loading}
+            cancelText={"取消"}
             onOk={() => {
                 const values = form.getFieldsValue();
                 if (values.title === undefined || values.note === undefined) {
@@ -135,19 +153,20 @@ function DirAddPanel({DirID, onAddDir, onFinish, userID, startAdd,}: {
                     sendCreateGroup(req, (ret) => {
                         setLoading(false);
                         if (ret.ok) {
-                            const dir: PDir = {
+                            const group: PGroup = {
                                 ID: ret.data.GroupID,
                                 Title: values.title,
                                 Note: values.note,
                                 Index: ret.data.Index,
                             };
-                            onAddDir(dir);
+                            onAddGroup(group);
                             message.success("添加成功").then();
                         } else {
+                            onCancel();
                             message.error("添加失败").then();
                         }
                     });
-                    onFinish();
+                    onCancel();
                 } else {
                     const req: CreateDirReq = {
                         UserID: userID,
@@ -163,7 +182,7 @@ function DirAddPanel({DirID, onAddDir, onFinish, userID, startAdd,}: {
                                 ID: ret.data.DirID,
                                 Title: values.title,
                                 Note: values.note,
-                                Index: 0,
+                                Index: ret.data.Index,
                             };
                             onAddDir(dir);
                             message.success("添加成功").then();
@@ -175,10 +194,14 @@ function DirAddPanel({DirID, onAddDir, onFinish, userID, startAdd,}: {
             }}
         >
             <Form form={form}>
-                <Form.Item label={"标题"} name={"title"}>
+                <Form.Item label={"标题"} name={"title"}
+                           rules={[{required: true, message: "请输入标题"}]}
+                >
                     <Input/>
                 </Form.Item>
-                <Form.Item label={"备注"} name={"note"}>
+                <Form.Item label={"备注"} name={"note"}
+                           rules={[{required: true, message: "请输入备注"}]}
+                >
                     <Input/>
                 </Form.Item>
                 <Form.Item label={"是否为任务组"} name={"isGroup"}>
@@ -206,7 +229,8 @@ function PDir2TreeDataNode(pDir: PDirTree, addr: Addr, onRefresh: () => void): T
     // 生成本层级
     const ret: TreeDataNode[] = [];
     for (const dir of pDir.ChildrenDir) {
-        ret.push(PDir2TreeDataNode(dir, addr, onRefresh));
+        const dirAddr = addr.copy();
+        ret.push(PDir2TreeDataNode(dir, dirAddr, onRefresh));
     }
     for (const grp of pDir.ChildrenGrp) {
         const groupAddr = addr.copy();
@@ -232,13 +256,18 @@ function PDir2TreeDataNode(pDir: PDirTree, addr: Addr, onRefresh: () => void): T
             isDir={true}
             title={pDir.RootDir.Title}
             note={pDir.RootDir.Note}
-            onClickAddChild={(dir) => {
+            onAddDir={(dir) => {
                 // 修改pDir，然后刷新
                 pDir.ChildrenDir.push({
                     RootDir: dir,
                     ChildrenDir: [],
                     ChildrenGrp: [],
                 });
+                onRefresh();
+            }}
+            onAddGroup={(group) => {
+                // 修改pDir，然后刷新
+                pDir.ChildrenGrp.push(group);
                 onRefresh();
             }}
             onClickChange={() => {
@@ -267,18 +296,16 @@ export function Dir({userID, onSelectGroup}: { userID: string, onSelectGroup: (g
     }, [userID]);
 
     // 显示加载中
-    if (loading) {
+    if (loading || dirTree === null) {
         return <Spin>Loading...</Spin>
     }
 
     // 显示树
-    if (dirTree === null) {
-        return <div>数据加载失败！</div>
-    }
     const rootAddr = new Addr(userID);
     return <Tree
         treeData={[PDir2TreeDataNode(dirTree, rootAddr, () => {
-            setDirTree(dirTree);
+            const newDirTree = {...dirTree};
+            setDirTree(newDirTree);
         })]}
         onSelect={(selectedKeys) => {
             if (selectedKeys.length === 0) {

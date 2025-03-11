@@ -57,6 +57,7 @@ type CreateDirReq struct {
 
 type CreateDirRet struct {
 	DirID uint32
+	Index float32
 }
 
 const CmdChangeDir share.Cmd = "changeDir"

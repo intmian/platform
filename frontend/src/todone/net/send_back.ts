@@ -42,6 +42,7 @@ export interface CreateDirReq {
 
 export interface CreateDirRet {
     DirID: number
+    Index: number
 }
 
 

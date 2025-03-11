@@ -151,24 +151,24 @@ func dirTreeToProtocol(node *dirTreeNode) *protocol.PDirTree {
 	return ret
 }
 
-func (u *UserLogic) CreateDir(parentDirID uint32, title, note string) (uint32, error) {
+func (u *UserLogic) CreateDir(parentDirID uint32, title, note string) (*db.DirDB, error) {
 	// 校验父节点是否存在
 	if parentDirID == 0 {
-		return 0, errors.New("parent dir not exist")
+		return nil, errors.New("parent dir not exist")
 	} else {
 		if _, ok := u.dirMap[parentDirID]; !ok {
-			return 0, errors.New("parent dir not exist")
+			return nil, errors.New("parent dir not exist")
 		}
 	}
 
 	// 更新数据库
 	connect := db.GTodoneDBMgr.GetConnect(db.ConnectTypeDir)
 	if connect == nil {
-		return 0, errors.New("get connect failed")
+		return nil, errors.New("get connect failed")
 	}
 	dir, err := db.CreateDir(connect, u.userID, parentDirID, title, note)
 	if err != nil {
-		return 0, errors.Join(err, errors.New("create dir failed"))
+		return nil, errors.Join(err, errors.New("create dir failed"))
 	}
 
 	// 更新内存
@@ -202,10 +202,10 @@ func (u *UserLogic) CreateDir(parentDirID uint32, title, note string) (uint32, e
 	dirNode.dir.dbData.Index = maxIndex + 1
 	err = dirNode.dir.Save()
 	if err != nil {
-		return 0, errors.Join(err, errors.New("save dir failed"))
+		return nil, errors.Join(err, errors.New("save dir failed"))
 	}
 
-	return dir.ID, nil
+	return dir, nil
 }
 
 func (u *UserLogic) MoveDir(dirID, trgDir uint32, afterID uint32) error {

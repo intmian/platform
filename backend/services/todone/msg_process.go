@@ -79,12 +79,12 @@ func (s *Service) OnCreateDir(valid backendshare.Valid, req CreateDirReq) (ret C
 	}
 	user.Lock()
 	defer user.Unlock()
-	ID, err := user.CreateDir(req.ParentDirID, req.Title, req.Note)
+	dirDB, err := user.CreateDir(req.ParentDirID, req.Title, req.Note)
 	if err != nil {
 		err = errors.New("create dir failed")
 		return
 	}
-	ret.DirID = ID
+	ret.DirID = dirDB.ID
 	if req.AfterID != 0 {
 		err = user.MoveDir(ID, req.ParentDirID, req.AfterID)
 		if err != nil {
@@ -92,6 +92,7 @@ func (s *Service) OnCreateDir(valid backendshare.Valid, req CreateDirReq) (ret C
 			return
 		}
 	}
+	ret.Index = dirDB.Index
 	return
 }
 
