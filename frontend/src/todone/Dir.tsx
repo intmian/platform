@@ -39,7 +39,8 @@ import {
     FileAddOutlined,
     FileOutlined,
     FolderOutlined,
-    LoadingOutlined
+    LoadingOutlined,
+    MoreOutlined
 } from "@ant-design/icons";
 import {Addr, AddrUnitType} from "./addr";
 
@@ -140,8 +141,8 @@ function DirTreeNodeTitle({
         }
     )
 
-    return <Space>
-        <Tooltip title={note}>
+    return <Tooltip title={note}>
+        <Space size={2}>
             {startChange ? <DirChangePanel
                 addr={addr}
                 title={title}
@@ -178,14 +179,13 @@ function DirTreeNodeTitle({
                 : null}
             {isDir ? <FolderOutlined/> : <FileOutlined/>}
             {title}
-        </Tooltip>
-        {operation ? <LoadingOutlined/> : null}
-        <Dropdown menu={{items}}>
-            <div>
-                ...
-            </div>
-        </Dropdown>
-    </Space>
+
+            {operation ? <LoadingOutlined/> : null}
+            <Dropdown menu={{items}}>
+                <MoreOutlined/>
+            </Dropdown>
+        </Space>
+    </Tooltip>
 
 }
 
@@ -204,10 +204,12 @@ function DirChangePanel(props: DirChangePanelProps) {
     const isDir = props.addr.getLastUnit().Type === AddrUnitType.Dir;
     return <Modal
         title={props.addr.toString()}
+        closeIcon={null}
         okText={"修改"}
         cancelText={"取消"}
         onCancel={props.onCancel}
         confirmLoading={loading}
+        open={true}
         onOk={() => {
             const values = form.getFieldsValue();
             setLoading(true);
@@ -256,94 +258,103 @@ function DirChangePanel(props: DirChangePanelProps) {
             <Form.Item label={"备注"} name={"note"} initialValue={props.note}>
                 <Input/>
             </Form.Item>
-            <Form.Item label={"地址"} name={"index"}>
-                <Input/>
-                <Button onClick={() => {
-                    // 从输入的地址解析出目标dirID
-                    const addr = new Addr(props.addr.userID);
-                    addr.bindAddr(props.addr.toString());
-                    const trgDirID = addr.getLastUnit().ID;
-                    if (trgDirID === 0 || addr.getLastUnit().Type !== AddrUnitType.Dir) {
-                        message.error("地址错误").then();
-                        return;
-                    }
-                    if (isDir) {
-                        const req: MoveDirReq = {
-                            UserID: props.addr.userID,
-                            DirID: props.addr.getLastUnit().ID,
-                            TrgDir: trgDirID,
-                            AfterID: 0,
+            <Space>
+                <Form.Item label={"地址"} name={"newAddr"}>
+                    <Input/>
+                </Form.Item>
+                <Form.Item>
+                    <Button onClick={() => {
+                        // 解析出目标dirID
+                        const values = form.getFieldsValue();
+                        const addr = new Addr(props.addr.userID);
+                        addr.bindAddr(values.newAddr);
+                        const trgDirID = addr.getParentUnit().ID
+                        const afterID = addr.getLastUnit().ID;
+                        if (trgDirID === 0 || afterID === 0 || addr.getParentUnit().Type !== AddrUnitType.Dir) {
+                            message.error("地址错误").then();
+                            return;
                         }
-                        sendMoveDir(req, (ret) => {
-                            if (ret.ok) {
-                                message.success("移动成功").then();
-                                props.onMove(trgDirID, ret.data.Index);
-                            } else {
-                                message.error("移动失败").then();
+                        if (isDir) {
+                            const req: MoveDirReq = {
+                                UserID: props.addr.userID,
+                                DirID: props.addr.getLastUnit().ID,
+                                TrgDir: trgDirID,
+                                AfterID: afterID,
                             }
-                        })
-                    } else {
-                        const req: MoveGroupReq = {
-                            UserID: props.addr.userID,
-                            GroupID: props.addr.getLastUnit().ID,
-                            ParentDirID: addr.getUnit(addr.getLength() - 2).ID,
-                            TrgDir: trgDirID,
-                            AfterID: 0,
+                            sendMoveDir(req, (ret) => {
+                                if (ret.ok) {
+                                    message.success("移动成功").then();
+                                    props.onMove(trgDirID, ret.data.Index);
+                                } else {
+                                    message.error("移动失败").then();
+                                }
+                            })
+                        } else {
+                            const req: MoveGroupReq = {
+                                UserID: props.addr.userID,
+                                GroupID: props.addr.getLastUnit().ID,
+                                ParentDirID: props.addr.getParentUnit().ID,
+                                TrgDir: trgDirID,
+                                AfterID: afterID,
+                            }
+                            sendMoveGroup(req, (ret) => {
+                                if (ret.ok) {
+                                    message.success("移动成功").then();
+                                    props.onMove(trgDirID, ret.data.Index);
+                                } else {
+                                    message.error("移动失败").then();
+                                }
+                            })
                         }
-                        sendMoveGroup(req, (ret) => {
-                            if (ret.ok) {
-                                message.success("移动成功").then();
-                                props.onMove(trgDirID, ret.data.Index);
-                            } else {
-                                message.error("移动失败").then();
-                            }
-                        })
-                    }
-                }}>移到到之中</Button>
-                <Button onClick={() => {
-                    // 解析出目标dirID
-                    const addr = new Addr(props.addr.userID);
-                    addr.bindAddr(props.addr.toString());
-                    const trgDirID = addr.getParentUnit().ID
-                    const afterID = addr.getLastUnit().ID;
-                    if (trgDirID === 0 || afterID || addr.getParentUnit().Type !== AddrUnitType.Dir) {
-                        message.error("地址错误").then();
-                        return;
-                    }
-                    if (isDir) {
-                        const req: MoveDirReq = {
-                            UserID: props.addr.userID,
-                            DirID: props.addr.getLastUnit().ID,
-                            TrgDir: trgDirID,
-                            AfterID: afterID,
+                    }}>移到之后</Button>
+                </Form.Item>
+                <Form.Item>
+                    <Button onClick={() => {
+                        const values = form.getFieldsValue();
+                        // 从输入的地址解析出目标dirID
+                        const addr = new Addr(props.addr.userID);
+                        addr.bindAddr(values.newAddr);
+                        const trgDirID = addr.getLastUnit().ID;
+                        if (trgDirID === 0 || addr.getLastUnit().Type !== AddrUnitType.Dir) {
+                            message.error("地址错误").then();
+                            return;
                         }
-                        sendMoveDir(req, (ret) => {
-                            if (ret.ok) {
-                                message.success("移动成功").then();
-                                props.onMove(trgDirID, ret.data.Index);
-                            } else {
-                                message.error("移动失败").then();
+                        if (isDir) {
+                            const req: MoveDirReq = {
+                                UserID: props.addr.userID,
+                                DirID: props.addr.getLastUnit().ID,
+                                TrgDir: trgDirID,
+                                AfterID: 0,
                             }
-                        })
-                    } else {
-                        const req: MoveGroupReq = {
-                            UserID: props.addr.userID,
-                            GroupID: props.addr.getLastUnit().ID,
-                            ParentDirID: addr.getUnit(addr.getLength() - 2).ID,
-                            TrgDir: trgDirID,
-                            AfterID: afterID,
+                            sendMoveDir(req, (ret) => {
+                                if (ret.ok) {
+                                    message.success("移动成功").then();
+                                    props.onMove(trgDirID, ret.data.Index);
+                                } else {
+                                    message.error("移动失败").then();
+                                }
+                            })
+                        } else {
+                            const req: MoveGroupReq = {
+                                UserID: props.addr.userID,
+                                GroupID: props.addr.getLastUnit().ID,
+                                ParentDirID: addr.getUnit(addr.getLength() - 2).ID,
+                                TrgDir: trgDirID,
+                                AfterID: 0,
+                            }
+                            sendMoveGroup(req, (ret) => {
+                                if (ret.ok) {
+                                    message.success("移动成功").then();
+                                    props.onMove(trgDirID, ret.data.Index);
+                                } else {
+                                    message.error("移动失败").then();
+                                }
+                            })
                         }
-                        sendMoveGroup(req, (ret) => {
-                            if (ret.ok) {
-                                message.success("移动成功").then();
-                                props.onMove(trgDirID, ret.data.Index);
-                            } else {
-                                message.error("移动失败").then();
-                            }
-                        })
-                    }
-                }}>移到到后</Button>
-            </Form.Item>
+                    }}>移到之中</Button>
+                </Form.Item>
+            </Space>
+
         </Form>
     </Modal>
 }
@@ -397,7 +408,6 @@ function DirAddPanel({DirID, onAddDir, onAddGroup, onCancel, userID, startAdd,}:
                             message.error("添加失败").then();
                         }
                     });
-                    onCancel();
                 } else {
                     const req: CreateDirReq = {
                         UserID: userID,
@@ -419,6 +429,7 @@ function DirAddPanel({DirID, onAddDir, onAddGroup, onCancel, userID, startAdd,}:
                             message.success("添加成功").then();
                         } else {
                             message.error("添加失败").then();
+                            onCancel();
                         }
                     })
                 }
@@ -478,7 +489,10 @@ function PDir2TreeDataNode(pDir: PDirTree, addr: Addr, onRefresh: () => void, on
                 isDir={false}
                 title={grp.Title}
                 note={grp.Note}
-                onChange={() => {
+                onChange={(title: string, note: string) => {
+                    grp.Title = title;
+                    grp.Note = note;
+                    onRefresh();
                 }}
                 onDelSelf={() => {
                     pDir.ChildrenGrp = pDir.ChildrenGrp.filter((value) => value.ID !== grp.ID);
@@ -513,7 +527,10 @@ function PDir2TreeDataNode(pDir: PDirTree, addr: Addr, onRefresh: () => void, on
                 pDir.ChildrenGrp.push(group);
                 onRefresh();
             }}
-            onChange={() => {
+            onChange={(title: string, note: string) => {
+                pDir.RootDir.Title = title;
+                pDir.RootDir.Note = note;
+                onRefresh();
             }}
             onDelSelf={() => {
                 // 移除本dir并更新

@@ -265,6 +265,15 @@ func (u *UserLogic) MoveDir(dirID, trgDir uint32, afterID uint32) (float32, erro
 			newIndex = (leftIndex + rightIndex) / 2
 		}
 		src.dir.dbData.Index = newIndex
+	} else {
+		// 放在最后面
+		maxIndex := float32(0)
+		for _, child := range trg.childs {
+			if child.dir.dbData.Index > maxIndex {
+				maxIndex = child.dir.dbData.Index
+			}
+		}
+		src.dir.dbData.Index = maxIndex + 1
 	}
 
 	// 更新数据库
@@ -340,6 +349,15 @@ func (u *UserLogic) MoveGroup(parentDirID, groupID, trgDir, afterID uint32) (flo
 			newIndex = (leftIndex + rightIndex) / 2
 		}
 		group.dbData.Index = newIndex
+	} else {
+		// 放在最后面
+		maxIndex := float32(0)
+		for _, grp := range trg.groups {
+			if grp.dbData.Index > maxIndex {
+				maxIndex = grp.dbData.Index
+			}
+		}
+		group.dbData.Index = maxIndex + 1
 	}
 
 	// 更新数据库
