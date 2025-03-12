@@ -16,6 +16,9 @@ export interface PDirTree {
     RootDir: PDir;
     ChildrenDir: PDirTree[];
     ChildrenGrp: PGroup[];
+
+    // 以下是前端补充数据
+    Delete: boolean;
 }
 
 export interface PSubGroup {

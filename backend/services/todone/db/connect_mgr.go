@@ -8,6 +8,7 @@ import (
 	"gorm.io/gorm/logger"
 	"log"
 	"os"
+	"sync"
 	"time"
 )
 
@@ -30,11 +31,30 @@ func InitGMgr(setting Setting) error {
 	if err != nil {
 		return err
 	}
-	err1 := GTodoneDBMgr.Connect(ConnectTypeDir, &DirDB{})
-	err2 := GTodoneDBMgr.Connect(ConnectTypeGroup, &GroupDB{})
-	err3 := GTodoneDBMgr.Connect(ConnectTypeTask, &TaskDB{})
-	err4 := GTodoneDBMgr.Connect(ConnectionTypeTags, &TagsDB{})
-	err5 := GTodoneDBMgr.Connect(ConnectionTypeSubGroup, &SubGroupDB{})
+	wait := sync.WaitGroup{}
+	wait.Add(5)
+	var err1, err2, err3, err4, err5 error
+	go func() {
+		err1 = GTodoneDBMgr.Connect(ConnectTypeDir, &DirDB{})
+		wait.Done()
+	}()
+	go func() {
+		err2 = GTodoneDBMgr.Connect(ConnectTypeGroup, &GroupDB{})
+		wait.Done()
+	}()
+	go func() {
+		err3 = GTodoneDBMgr.Connect(ConnectTypeTask, &TaskDB{})
+		wait.Done()
+	}()
+	go func() {
+		err4 = GTodoneDBMgr.Connect(ConnectionTypeTags, &TagsDB{})
+		wait.Done()
+	}()
+	go func() {
+		err5 = GTodoneDBMgr.Connect(ConnectionTypeSubGroup, &SubGroupDB{})
+		wait.Done()
+	}()
+	wait.Wait()
 	if err1 != nil || err2 != nil || err3 != nil || err4 != nil || err5 != nil {
 		return errors.Join(err1, err2, err3, err4, err5)
 	}

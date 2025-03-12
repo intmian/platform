@@ -1,4 +1,4 @@
-enum AddrUnitType {
+export enum AddrUnitType {
     UnValid,
     Dir,
     Group,
@@ -79,6 +79,10 @@ export class Addr {
 
     public getLastUnit() {
         return this.units[this.units.length - 1]
+    }
+
+    public getParentUnit() {
+        return this.units[this.units.length - 2]
     }
 
     public copy() {

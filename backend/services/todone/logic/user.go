@@ -97,7 +97,8 @@ func (u *UserLogic) buildDirTree() error {
 		dirID := group.ParentDir
 		if dirNode, ok := dirMap[dirID]; ok {
 			l := NewGroupLogic(group.ID)
-			l.OnBindOutData(&*&group)
+			newGroup := group
+			l.OnBindOutData(&newGroup)
 			dirNode.groups = append(dirNode.groups, l)
 		}
 	}
@@ -208,25 +209,25 @@ func (u *UserLogic) CreateDir(parentDirID uint32, title, note string) (*db.DirDB
 	return dir, nil
 }
 
-func (u *UserLogic) MoveDir(dirID, trgDir uint32, afterID uint32) error {
+func (u *UserLogic) MoveDir(dirID, trgDir uint32, afterID uint32) (float32, error) {
 	// 校验目标节点是否存在
 	trg, ok := u.dirMap[trgDir]
 	if !ok {
-		return errors.New("target dir not exist")
+		return 0, errors.New("target dir not exist")
 	}
 	src, ok := u.dirMap[dirID]
 	if !ok {
-		return errors.New("src dir not exist")
+		return 0, errors.New("src dir not exist")
 	}
 
 	// 更新内存
 	oldParentID := src.dir.dbData.ParentID
 	if oldParentID == 0 {
-		return errors.New("can't move root dir")
+		return 0, errors.New("can't move root dir")
 	}
 	oldParent, ok := u.dirMap[oldParentID]
 	if !ok {
-		return errors.New("old parent dir not exist")
+		return 0, errors.New("old parent dir not exist")
 	}
 	// 从原来的父节点中删除
 	for i, child := range oldParent.childs {
@@ -269,21 +270,21 @@ func (u *UserLogic) MoveDir(dirID, trgDir uint32, afterID uint32) error {
 	// 更新数据库
 	err := src.dir.Save()
 	if err != nil {
-		return errors.Join(err, errors.New("save dir failed"))
+		return 0, errors.Join(err, errors.New("save dir failed"))
 	}
 
-	return nil
+	return src.dir.dbData.Index, nil
 }
 
-func (u *UserLogic) MoveGroup(parentDirID, groupID, trgDir uint32, afterID uint32) error {
+func (u *UserLogic) MoveGroup(parentDirID, groupID, trgDir, afterID uint32) (float32, error) {
 	// 校验目标节点是否存在
 	trg, ok := u.dirMap[trgDir]
 	if !ok {
-		return errors.New("target dir not exist")
+		return 0, errors.New("target dir not exist")
 	}
 	parent, ok := u.dirMap[parentDirID]
 	if !ok {
-		return errors.New("parent dir not exist")
+		return 0, errors.New("parent dir not exist")
 	}
 	var group *GroupLogic
 	for _, grp := range parent.groups {
@@ -293,17 +294,17 @@ func (u *UserLogic) MoveGroup(parentDirID, groupID, trgDir uint32, afterID uint3
 		}
 	}
 	if group == nil {
-		return errors.New("group not exist")
+		return 0, errors.New("group not exist")
 	}
 
 	// 更新内存
 	oldParentID := group.dbData.ParentDir
 	if oldParentID == 0 {
-		return errors.New("can't move root group")
+		return 0, errors.New("can't move root group")
 	}
 	oldParent, ok := u.dirMap[oldParentID]
 	if !ok {
-		return errors.New("old parent dir not exist")
+		return 0, errors.New("old parent dir not exist")
 	}
 	// 从原来的父节点中删除
 	for i, grp := range oldParent.groups {
@@ -344,10 +345,10 @@ func (u *UserLogic) MoveGroup(parentDirID, groupID, trgDir uint32, afterID uint3
 	// 更新数据库
 	err := group.Save()
 	if err != nil {
-		return errors.Join(err, errors.New("save group failed"))
+		return 0, errors.Join(err, errors.New("save group failed"))
 	}
 
-	return nil
+	return group.dbData.Index, nil
 }
 
 func (u *UserLogic) DelDir(dirID uint32) error {
@@ -391,15 +392,9 @@ func (u *UserLogic) DelDir(dirID uint32) error {
 	return nil
 }
 
-func (u *UserLogic) DelGroup(groupID uint32) error {
+func (u *UserLogic) DelGroup(parentDirID, groupID uint32) error {
 	// 判断是否存在
-	var group *GroupLogic
-	for _, grp := range u.dirTree.groups {
-		if grp.dbData.ID == groupID {
-			group = grp
-			break
-		}
-	}
+	group := u.GetGroupLogic(parentDirID, groupID)
 	if group == nil {
 		return errors.New("group not exist")
 	}

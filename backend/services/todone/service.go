@@ -7,6 +7,7 @@ import (
 	"github.com/intmian/platform/backend/services/todone/db"
 	"github.com/intmian/platform/backend/services/todone/logic"
 	backendshare "github.com/intmian/platform/backend/share"
+	"time"
 )
 
 // Service 业务
@@ -17,7 +18,8 @@ type Service struct {
 
 func (s *Service) Start(share backendshare.ServiceShare) error {
 	s.share = share
-
+	begin := time.Now()
+	s.share.Log.Info("TODONE", "启动服务")
 	// 注册配置
 	err1 := share.Cfg.AddParam(&xstorage.CfgParam{
 		Key:       xstorage.Join("todone", "db", "account_id"),
@@ -52,6 +54,8 @@ func (s *Service) Start(share backendshare.ServiceShare) error {
 	}
 
 	// 因为stop时会释放资源，所以这里不需要重新初始化
+
+	s.share.Log.Info("TODONE", "启动成功耗时 %.2fs", time.Since(begin).Seconds())
 
 	return nil
 }

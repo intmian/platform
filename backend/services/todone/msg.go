@@ -26,6 +26,7 @@ type MoveDirReq struct {
 }
 
 type MoveDirRet struct {
+	Index float32
 }
 
 const CmdMoveGroup share.Cmd = "moveGroup"
@@ -40,9 +41,7 @@ type MoveGroupReq struct {
 }
 
 type MoveGroupRet struct {
-}
-
-type MoveDirGroupAfterOtherRet struct {
+	Index float32
 }
 
 const CmdCreateDir share.Cmd = "createDir"
@@ -85,8 +84,9 @@ type DelDirRet struct {
 const CmdDelGroup share.Cmd = "delGroup"
 
 type DelGroupReq struct {
-	UserID  string
-	GroupID uint32
+	UserID    string
+	ParentDir uint32
+	GroupID   uint32
 }
 
 type DelGroupRet struct {
@@ -112,7 +112,7 @@ const CmdChangeGroup share.Cmd = "changeGroup"
 type ChangeGroupReq struct {
 	UserID      string
 	ParentDirID uint32
-	Group       protocol.PGroup
+	GroupID     uint32
 	Title       string
 	Note        string
 }

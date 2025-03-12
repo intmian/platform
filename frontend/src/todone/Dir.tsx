@@ -1,13 +1,36 @@
 import {useEffect, useState} from "react";
 import {PDir, PDirTree, PGroup} from "./net/protocal";
-import {Dropdown, Form, Input, MenuProps, message, Modal, Space, Spin, Switch, Tooltip, Tree, TreeDataNode} from "antd";
 import {
+    Button,
+    Dropdown,
+    Form,
+    Input,
+    MenuProps,
+    message,
+    Modal,
+    Space,
+    Spin,
+    Switch,
+    Tooltip,
+    Tree,
+    TreeDataNode
+} from "antd";
+import {
+    ChangeGroupReq,
     CreateDirReq,
     CreateGroupReq,
     GetDirTreeReq,
+    MoveDirReq,
+    MoveGroupReq,
+    sendChangeDir,
+    sendChangeGroup,
     sendCreateDir,
     sendCreateGroup,
-    sendGetDirTree
+    sendDelDir,
+    sendDelGroup,
+    sendGetDirTree,
+    sendMoveDir,
+    sendMoveGroup
 } from "./net/send_back";
 import {
     CopyOutlined,
@@ -15,18 +38,21 @@ import {
     EditOutlined,
     FileAddOutlined,
     FileOutlined,
-    FolderOutlined
+    FolderOutlined,
+    LoadingOutlined
 } from "@ant-design/icons";
-import {Addr} from "./addr";
+import {Addr, AddrUnitType} from "./addr";
 
+// 文件夹-任务组树的显示部分
 function DirTreeNodeTitle({
                               title,
                               isDir,
                               note,
                               onAddDir,
                               onAddGroup,
-                              onClickChange,
-                              onClickDel,
+                              onChange,
+                              onDelSelf,
+                              onMove,
                               addr
                           }: {
     title: string,
@@ -34,13 +60,16 @@ function DirTreeNodeTitle({
     note: string,
     onAddDir?: (dir: PDir) => void,
     onAddGroup?: (group: PGroup) => void,
-    onClickChange: () => void,
-    onClickDel: () => void,
+    onChange: (title: string, note: string) => void,
+    onMove: (parentDirID: number, newIndex: number) => void,
+    onDelSelf: () => void,
     addr: Addr,
 }) {
     const [startAdd, setStartAdd] = useState(false);
+    const [startChange, setStartChange] = useState(false);
+    const [operation, setOperation] = useState(false);
     // 提取本层ID
-    const dirID = addr.getLastUnit().ID;
+    const ID = addr.getLastUnit().ID;
     if (title === "") {
         title = "无标题";
     }
@@ -61,7 +90,9 @@ function DirTreeNodeTitle({
         {
             key: 'change',
             icon: <EditOutlined/>,
-            onClick: onClickChange,
+            onClick: () => {
+                setStartChange(true);
+            },
             label: "修改"
         },
         {
@@ -77,7 +108,32 @@ function DirTreeNodeTitle({
         },
         {
             key: 'del',
-            onClick: onClickDel,
+            onClick: () => {
+                setOperation(true);
+                if (isDir) {
+                    sendDelDir({UserID: addr.userID, DirID: ID}, (ret) => {
+                        if (ret.ok) {
+                            message.success("删除成功").then();
+                            onDelSelf();
+                        } else {
+                            message.error("删除失败").then();
+                        }
+                        setOperation(false);
+                    })
+                } else {
+                    const parentID = addr.getUnit(addr.getLength() - 2).ID;
+                    sendDelGroup({UserID: addr.userID, ParentDir: parentID, GroupID: ID}, (ret) => {
+                        if (ret.ok) {
+                            message.success("删除成功").then();
+                            onDelSelf();
+                        } else {
+                            message.error("删除失败").then();
+                        }
+                        setOperation(false);
+                    })
+                }
+            }
+            ,
             icon: <DeleteOutlined/>,
             danger: true,
             label: "删除"
@@ -85,7 +141,20 @@ function DirTreeNodeTitle({
     )
 
     return <Space>
-        <Tooltip title={dirID + " " + note}>
+        <Tooltip title={note}>
+            {startChange ? <DirChangePanel
+                addr={addr}
+                title={title}
+                note={note}
+                onCancel={function (): void {
+                    setStartChange(false);
+                }}
+                onChange={function (title: string, note: string): void {
+                    onChange(title, note);
+                    setStartChange(false);
+                }}
+                onMove={onMove}
+            /> : null}
             {isDir && onAddDir && onAddGroup ?
                 <DirAddPanel
                     onAddDir={
@@ -101,7 +170,7 @@ function DirTreeNodeTitle({
                         }
                     }
                     userID={addr.userID}
-                    DirID={dirID}
+                    DirID={ID}
                     startAdd={startAdd}
                     onCancel={() => {
                         setStartAdd(false)
@@ -110,11 +179,173 @@ function DirTreeNodeTitle({
             {isDir ? <FolderOutlined/> : <FileOutlined/>}
             {title}
         </Tooltip>
+        {operation ? <LoadingOutlined/> : null}
         <Dropdown menu={{items}}>
-            ...
+            <div>
+                ...
+            </div>
         </Dropdown>
     </Space>
 
+}
+
+interface DirChangePanelProps {
+    addr: Addr,
+    title: string,
+    note: string,
+    onCancel: () => void,
+    onChange: (title: string, note: string) => void,
+    onMove: (parentDirID: number, newIndex: number) => void,
+}
+
+function DirChangePanel(props: DirChangePanelProps) {
+    const [loading, setLoading] = useState(false);
+    const [form] = Form.useForm();
+    const isDir = props.addr.getLastUnit().Type === AddrUnitType.Dir;
+    return <Modal
+        title={props.addr.toString()}
+        okText={"修改"}
+        cancelText={"取消"}
+        onCancel={props.onCancel}
+        confirmLoading={loading}
+        onOk={() => {
+            const values = form.getFieldsValue();
+            setLoading(true);
+            if (isDir) {
+                const req = {
+                    UserID: props.addr.userID,
+                    DirID: props.addr.getLastUnit().ID,
+                    Title: values.title,
+                    Note: values.note,
+                }
+                sendChangeDir(req, (ret) => {
+                    setLoading(false);
+                    if (ret.ok) {
+                        props.onChange(values.title, values.note);
+                        message.success("修改成功").then();
+                    } else {
+                        props.onCancel();
+                        message.error("修改失败").then();
+                    }
+                })
+            } else {
+                const req: ChangeGroupReq = {
+                    UserID: props.addr.userID,
+                    ParentDirID: props.addr.getUnit(props.addr.getLength() - 2).ID,
+                    GroupID: props.addr.getLastUnit().ID,
+                    Title: values.title,
+                    Note: values.note,
+                }
+                sendChangeGroup(req, (ret) => {
+                    setLoading(false);
+                    if (ret.ok) {
+                        props.onChange(values.title, values.note);
+                        message.success("修改成功").then();
+                    } else {
+                        props.onCancel();
+                        message.error("修改失败").then();
+                    }
+                })
+            }
+        }}
+    >
+        <Form form={form}>
+            <Form.Item label={"标题"} name={"title"} initialValue={props.title}>
+                <Input/>
+            </Form.Item>
+            <Form.Item label={"备注"} name={"note"} initialValue={props.note}>
+                <Input/>
+            </Form.Item>
+            <Form.Item label={"地址"} name={"index"}>
+                <Input/>
+                <Button onClick={() => {
+                    // 从输入的地址解析出目标dirID
+                    const addr = new Addr(props.addr.userID);
+                    addr.bindAddr(props.addr.toString());
+                    const trgDirID = addr.getLastUnit().ID;
+                    if (trgDirID === 0 || addr.getLastUnit().Type !== AddrUnitType.Dir) {
+                        message.error("地址错误").then();
+                        return;
+                    }
+                    if (isDir) {
+                        const req: MoveDirReq = {
+                            UserID: props.addr.userID,
+                            DirID: props.addr.getLastUnit().ID,
+                            TrgDir: trgDirID,
+                            AfterID: 0,
+                        }
+                        sendMoveDir(req, (ret) => {
+                            if (ret.ok) {
+                                message.success("移动成功").then();
+                                props.onMove(trgDirID, ret.data.Index);
+                            } else {
+                                message.error("移动失败").then();
+                            }
+                        })
+                    } else {
+                        const req: MoveGroupReq = {
+                            UserID: props.addr.userID,
+                            GroupID: props.addr.getLastUnit().ID,
+                            ParentDirID: addr.getUnit(addr.getLength() - 2).ID,
+                            TrgDir: trgDirID,
+                            AfterID: 0,
+                        }
+                        sendMoveGroup(req, (ret) => {
+                            if (ret.ok) {
+                                message.success("移动成功").then();
+                                props.onMove(trgDirID, ret.data.Index);
+                            } else {
+                                message.error("移动失败").then();
+                            }
+                        })
+                    }
+                }}>移到到之中</Button>
+                <Button onClick={() => {
+                    // 解析出目标dirID
+                    const addr = new Addr(props.addr.userID);
+                    addr.bindAddr(props.addr.toString());
+                    const trgDirID = addr.getParentUnit().ID
+                    const afterID = addr.getLastUnit().ID;
+                    if (trgDirID === 0 || afterID || addr.getParentUnit().Type !== AddrUnitType.Dir) {
+                        message.error("地址错误").then();
+                        return;
+                    }
+                    if (isDir) {
+                        const req: MoveDirReq = {
+                            UserID: props.addr.userID,
+                            DirID: props.addr.getLastUnit().ID,
+                            TrgDir: trgDirID,
+                            AfterID: afterID,
+                        }
+                        sendMoveDir(req, (ret) => {
+                            if (ret.ok) {
+                                message.success("移动成功").then();
+                                props.onMove(trgDirID, ret.data.Index);
+                            } else {
+                                message.error("移动失败").then();
+                            }
+                        })
+                    } else {
+                        const req: MoveGroupReq = {
+                            UserID: props.addr.userID,
+                            GroupID: props.addr.getLastUnit().ID,
+                            ParentDirID: addr.getUnit(addr.getLength() - 2).ID,
+                            TrgDir: trgDirID,
+                            AfterID: afterID,
+                        }
+                        sendMoveGroup(req, (ret) => {
+                            if (ret.ok) {
+                                message.success("移动成功").then();
+                                props.onMove(trgDirID, ret.data.Index);
+                            } else {
+                                message.error("移动失败").then();
+                            }
+                        })
+                    }
+                }}>移到到后</Button>
+            </Form.Item>
+        </Form>
+    </Modal>
 }
 
 function DirAddPanel({DirID, onAddDir, onAddGroup, onCancel, userID, startAdd,}: {
@@ -138,7 +369,7 @@ function DirAddPanel({DirID, onAddDir, onAddGroup, onCancel, userID, startAdd,}:
             cancelText={"取消"}
             onOk={() => {
                 const values = form.getFieldsValue();
-                if (values.title === undefined || values.note === undefined) {
+                if (values.title === undefined) {
                     return;
                 }
                 setLoading(true);
@@ -200,7 +431,6 @@ function DirAddPanel({DirID, onAddDir, onAddGroup, onCancel, userID, startAdd,}:
                     <Input/>
                 </Form.Item>
                 <Form.Item label={"备注"} name={"note"}
-                           rules={[{required: true, message: "请输入备注"}]}
                 >
                     <Input/>
                 </Form.Item>
@@ -212,10 +442,13 @@ function DirAddPanel({DirID, onAddDir, onAddGroup, onCancel, userID, startAdd,}:
     </>
 }
 
-function PDir2TreeDataNode(pDir: PDirTree, addr: Addr, onRefresh: () => void): TreeDataNode {
+function PDir2TreeDataNode(pDir: PDirTree, addr: Addr, onRefresh: () => void, onMove: (srcDir: PDir | null, srcGroup: PGroup | null, parentDirID: number) => void): TreeDataNode | null {
     /*
     * 将PDirTree一层层展开，需要注意，对同一层级的group和dir需要进行排序。dir放在上面，group放在下面，根据Index排序。
     * */
+    if (pDir.Delete) {
+        return null;
+    }
     addr.addDir(pDir.RootDir.ID);
     // 排序本层级
     if (pDir.ChildrenDir === null) {
@@ -230,7 +463,10 @@ function PDir2TreeDataNode(pDir: PDirTree, addr: Addr, onRefresh: () => void): T
     const ret: TreeDataNode[] = [];
     for (const dir of pDir.ChildrenDir) {
         const dirAddr = addr.copy();
-        ret.push(PDir2TreeDataNode(dir, dirAddr, onRefresh));
+        const NextNode = PDir2TreeDataNode(dir, dirAddr, onRefresh, onMove);
+        if (NextNode !== null) {
+            ret.push(NextNode);
+        }
     }
     for (const grp of pDir.ChildrenGrp) {
         const groupAddr = addr.copy();
@@ -242,9 +478,15 @@ function PDir2TreeDataNode(pDir: PDirTree, addr: Addr, onRefresh: () => void): T
                 isDir={false}
                 title={grp.Title}
                 note={grp.Note}
-                onClickChange={() => {
+                onChange={() => {
                 }}
-                onClickDel={() => {
+                onDelSelf={() => {
+                    pDir.ChildrenGrp = pDir.ChildrenGrp.filter((value) => value.ID !== grp.ID);
+                    onRefresh();
+                }}
+                onMove={(parentDirID: number, newIndex: number) => {
+                    grp.Index = newIndex;
+                    onMove(null, grp, parentDirID);
                 }}
             />,
         });
@@ -262,6 +504,7 @@ function PDir2TreeDataNode(pDir: PDirTree, addr: Addr, onRefresh: () => void): T
                     RootDir: dir,
                     ChildrenDir: [],
                     ChildrenGrp: [],
+                    Delete: false,
                 });
                 onRefresh();
             }}
@@ -270,30 +513,44 @@ function PDir2TreeDataNode(pDir: PDirTree, addr: Addr, onRefresh: () => void): T
                 pDir.ChildrenGrp.push(group);
                 onRefresh();
             }}
-            onClickChange={() => {
+            onChange={() => {
             }}
-            onClickDel={() => {
+            onDelSelf={() => {
+                // 移除本dir并更新
+                pDir.Delete = true;
+                onRefresh();
+            }}
+            onMove={(parentDirID: number, newIndex: number) => {
+                pDir.RootDir.Index = newIndex;
+                onMove(pDir.RootDir, null, parentDirID);
             }}
         />,
         children: ret,
     };
 }
 
-export function Dir({userID, onSelectGroup}: { userID: string, onSelectGroup: (groupID: number) => void }) {
+interface DirProps {
+    userID: string
+    onSelectGroup: (groupID: number) => void
+    onSelectDir: (dirID: number) => void
+}
+
+
+export function Dir(props: DirProps) {
     // 状态
     const [dirTree, setDirTree] = useState<PDirTree | null>(null);
     const [loading, setLoading] = useState(true);
 
     // 加载数据
     useEffect(() => {
-        const req: GetDirTreeReq = {UserID: userID};
+        const req: GetDirTreeReq = {UserID: props.userID};
         sendGetDirTree(req, (ret) => {
             if (ret.ok) {
                 setDirTree(ret.data.DirTree);
             }
             setLoading(false);
         });
-    }, [userID]);
+    }, [props.userID]);
 
     // 显示加载中
     if (loading || dirTree === null) {
@@ -301,13 +558,68 @@ export function Dir({userID, onSelectGroup}: { userID: string, onSelectGroup: (g
     }
 
     // 显示树
-    const rootAddr = new Addr(userID);
+    const rootAddr = new Addr(props.userID);
+    const rootNode = PDir2TreeDataNode(dirTree, rootAddr, () => {
+        const newDirTree = {...dirTree};
+        setDirTree(newDirTree);
+    }, (srcDir: PDir | null, srcGroup: PGroup | null, parentDirID: number) => {
+        // 在dirtree中移动dir或group到parentDir，然后刷新
+
+        // 删除树中原有的dir或group，递归搜索
+        const delDirOrGroup = (tree: PDirTree) => {
+            if (tree.RootDir.ID === srcDir?.ID) {
+                tree.Delete = true;
+                return true;
+            }
+            for (const dir of tree.ChildrenDir) {
+                if (delDirOrGroup(dir)) {
+                    return true;
+                }
+            }
+            for (const group of tree.ChildrenGrp) {
+                if (group.ID === srcGroup?.ID) {
+                    tree.ChildrenGrp = tree.ChildrenGrp.filter((value) => value.ID !== group.ID);
+                    return true;
+                }
+            }
+            return false;
+        }
+        delDirOrGroup(dirTree);
+
+        // 在目标dir中添加dir或group
+        const addDirOrGroup = (tree: PDirTree) => {
+            if (tree.RootDir.ID === parentDirID) {
+                if (srcDir !== null) {
+                    tree.ChildrenDir.push({
+                        RootDir: srcDir,
+                        ChildrenDir: [],
+                        ChildrenGrp: [],
+                        Delete: false,
+                    });
+                } else if (srcGroup !== null) {
+                    tree.ChildrenGrp.push(srcGroup);
+                }
+                return true;
+            }
+            for (const dir of tree.ChildrenDir) {
+                if (addDirOrGroup(dir)) {
+                    return true;
+                }
+            }
+            return false;
+        }
+        addDirOrGroup(dirTree);
+        // 更新
+        const newDirTree = {...dirTree};
+        setDirTree(newDirTree);
+    })
+    if (rootNode === null) {
+        return <Spin>Loading...</Spin>
+    }
     return <Tree
-        treeData={[PDir2TreeDataNode(dirTree, rootAddr, () => {
-            const newDirTree = {...dirTree};
-            setDirTree(newDirTree);
-        })]}
+        treeData={[rootNode]}
         onSelect={(selectedKeys) => {
+            console.log(selectedKeys);
             if (selectedKeys.length === 0) {
                 return;
             }
@@ -317,7 +629,9 @@ export function Dir({userID, onSelectGroup}: { userID: string, onSelectGroup: (g
             }
             const [type, id] = key.split("-");
             if (type === "grp") {
-                onSelectGroup(parseInt(id));
+                props.onSelectGroup(parseInt(id));
+            } else {
+                props.onSelectDir(parseInt(id));
             }
         }}
     />

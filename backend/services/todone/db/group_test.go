@@ -29,11 +29,11 @@ func debugGetConnect(t *testing.T, conType ConnectType) *gorm.DB {
 func TestGroupDB(t *testing.T) {
 	conn := debugGetConnect(t, ConnectTypeGroup)
 
-	ID, err := CreateGroup(conn, "1", "debug", "title", 0)
+	group, err := CreateGroup(conn, "1", "debug", "title", 0)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if ID == 0 {
+	if group.ID == 0 {
 		t.Fatal("ID should not be 0")
 	}
 

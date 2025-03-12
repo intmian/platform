@@ -1,5 +1,5 @@
 import {UniPost, UniResult} from "../../common/newSendHttp";
-import {PDirTree, PGroup, PSubGroup, PTask} from "./protocal";
+import {PDirTree, PSubGroup, PTask} from "./protocal";
 import config from "../../config.json";
 
 export interface GetDirTreeReq {
@@ -18,7 +18,9 @@ export interface MoveDirReq {
     AfterID: number
 }
 
-export type MoveDirRet = object
+export interface MoveDirRet {
+    Index: number
+}
 
 
 export interface MoveGroupReq {
@@ -29,7 +31,9 @@ export interface MoveGroupReq {
     AfterID: number
 }
 
-export type MoveGroupRet = object
+export interface MoveGroupRet {
+    Index: number
+}
 
 
 export interface CreateDirReq {
@@ -66,6 +70,7 @@ export type DelDirRet = object
 
 export interface DelGroupReq {
     UserID: string
+    ParentDir: number
     GroupID: number
 }
 
@@ -89,7 +94,7 @@ export interface CreateGroupRet {
 export interface ChangeGroupReq {
     UserID: string
     ParentDirID: number
-    Group: PGroup
+    GroupID: number
     Title: string
     Note: string
 }

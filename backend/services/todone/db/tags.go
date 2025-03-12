@@ -3,16 +3,16 @@ package db
 import "gorm.io/gorm"
 
 type TagsDB struct {
-	userID string // 主要是为了筛选用户有哪些tag
-	taskID uint32
-	tag    string
+	UserID string // 主要是为了筛选用户有哪些tag
+	TaskID uint32
+	Tag    string
 }
 
 func AddTags(db *gorm.DB, userID string, taskID uint32, tag string) error {
 	tags := TagsDB{
-		userID: userID,
-		taskID: taskID,
-		tag:    tag,
+		UserID: userID,
+		TaskID: taskID,
+		Tag:    tag,
 	}
 	result := db.Create(&tags)
 	return result.Error
@@ -23,7 +23,7 @@ func GetTags(db *gorm.DB, userID, taskID uint32) []string {
 	db.Where("user_id = ? and task_id = ?", userID, taskID).Find(&tags)
 	var res []string
 	for _, tag := range tags {
-		res = append(res, tag.tag)
+		res = append(res, tag.Tag)
 	}
 	return res
 }
@@ -33,7 +33,7 @@ func GetTagsByTaskID(db *gorm.DB, taskID uint32) []string {
 	db.Where("task_id = ?", taskID).Find(&tags)
 	var res []string
 	for _, tag := range tags {
-		res = append(res, tag.tag)
+		res = append(res, tag.Tag)
 	}
 	return res
 }
