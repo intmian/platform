@@ -30,8 +30,11 @@ export function Todone() {
     return <>
         <Setting/>
         <Dir userID={loginCtr.loginInfo.usr}
-             onSelectGroup={(groupID) => {
-                 console.log(groupID);
+             onSelectGroup={(addr) => {
+                 console.log(addr.toString());
+             }}
+             onSelectDir={(addr) => {
+                 console.log(addr.toString());
              }}
         />
     </>

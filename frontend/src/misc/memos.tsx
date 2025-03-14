@@ -1,5 +1,5 @@
 import React, {useCallback, useContext, useEffect, useImperativeHandle, useRef, useState} from "react";
-import {Button, Input, Modal, notification, Space, Spin, Tooltip} from "antd";
+import {Button, Flex, Input, message, Modal, notification, Space, Spin, Tooltip} from "antd";
 import {CheckCircleTwoTone, CloseCircleTwoTone, SettingFilled, SyncOutlined} from "@ant-design/icons";
 import TagInput from "../common/TagInput";
 import {useLostFocus} from "../common/hook";
@@ -8,6 +8,7 @@ import {TextAreaRef} from "antd/es/input/TextArea";
 import {useIsMobile} from "../common/hooksv2";
 import User from "../common/User";
 import {LoginCtx} from "../common/loginCtx";
+import {sendGptRewrite} from "../common/newSendHttp";
 
 // TODO: 使用ios打开网页时，当浏览器切换到后台，立刻重新切回前台，网页并未被回收，但是浏览器会自动刷新一次，此时如果停止刷新，使用是完全正常的，似乎是底层问题后面看看
 
@@ -307,7 +308,6 @@ function Tags({TagsChange, setting, style, tags}: {
 // HideInput 用于输入并展示当前输入的内容，如果隐藏的模式下会对展示数据进行隐藏，ref用于清空，获得内容，触发隐藏逻辑等。
 function HideInput({
                        functionsRef,
-                       style,
                        onChange
                    }: {
     functionsRef: React.MutableRefObject<{
@@ -316,8 +316,8 @@ function HideInput({
         hide: () => void,
         show: () => void,
         focus: () => void,
+        gptReWrite: () => void
     }>,
-    style: React.CSSProperties,
     onChange: (text: string) => void
 }) {
     // 目前显示的内容，输入的内容也同步在这里
@@ -325,6 +325,9 @@ function HideInput({
     // 隐藏的内容
     const hideTextRef: React.MutableRefObject<string> = useRef('');
     const inputRef: React.RefObject<TextAreaRef> = useRef(null);
+    const [inAiRewrite, setInAiRewrite] = useState(false);
+    const [oldText, setOldText] = useState('');
+    const [waitAi, setWaitAi] = useState(false);
 
     // 从浏览器缓存加载数据
     useEffect(() => {
@@ -346,6 +349,8 @@ function HideInput({
         setShowText('');
         hideTextRef.current = '';
         localStorage.removeItem('note.lastInput'); // 清空缓存
+        setInAiRewrite(false);
+        setOldText('');
     }, []);
 
     const get = useCallback(() => {
@@ -384,28 +389,86 @@ function HideInput({
         }
     }, []);
 
+    const gptReWrite = useCallback(() => {
+        show();
+        setWaitAi(true);
+        sendGptRewrite(get()).then((ret) => {
+            if (ret === "") {
+                message.error("AI重写失败");
+                return;
+            }
+            setOldText(get());
+            setInAiRewrite(true);
+            setShowText(ret);
+            setWaitAi(false);
+        })
+
+    }, [get, show]);
+
     useImperativeHandle(functionsRef, () => ({
         clear,
         get,
         hide,
         show,
         focus,
-    }), [clear, focus, get, hide, show]);
+        gptReWrite
+    }), [clear, focus, get, hide, show, gptReWrite]);
 
     useEffect(() => {
         onChange(get());
     }, [get, onChange, showText]);
 
-    return (
-        <TextArea
+    const style = {
+        flexGrow: 1,
+        fontSize: '16px',
+    }
+    const style2 = {
+        flex: 1,
+        fontSize: '16px',
+    }
+
+    return <>
+        {inAiRewrite ? <Flex
+            vertical
+            gap={"small"}
+            style={{
+                marginBottom: '10px',
+                flexGrow: 1,
+                display: 'flex',
+            }}
+        >
+            <TextArea
+                value={oldText}
+                style={style2}
+                disabled={true}
+            />
+            {waitAi ? <SyncOutlined style={{color: 'orange'}} spin/> :
+                <TextArea
+                    disabled={!inAiRewrite}
+                    ref={inputRef}
+                    autoFocus
+                    style={style2}
+                    value={showText}
+                    onChange={(e) => setShowText(e.target.value)}
+                    placeholder={inAiRewrite ? "loading…" : 'Enter换行\nCtrl+Enter发送\ntab切换标签输入'}
+                />
+            }
+        </Flex> : <div
+            style={{
+                display: 'flex',
+                flexGrow: 1,
+                marginBottom: '10px',
+            }}
+        ><TextArea
             ref={inputRef}
             autoFocus
             style={style}
             value={showText}
             onChange={(e) => setShowText(e.target.value)}
             placeholder={'Enter换行\nCtrl+Enter发送\ntab切换标签输入'}
-        />
-    );
+        /></div>}
+    </>;
+
 }
 
 
@@ -466,6 +529,7 @@ function Memos() {
         hide: () => void;
         show: () => void;
         focus: () => void
+        gptReWrite: () => void
     }> = useRef({
         clear: () => {
         },
@@ -476,15 +540,11 @@ function Memos() {
         },
         focus: () => {
         },
+        gptReWrite: () => {
+        }
     });
     const [canSubmit, setCanSubmit] = useState(false);
     const input = <HideInput functionsRef={inputRef}
-                             style={{
-                                 marginBottom: '10px',
-                                 // 自动填充剩余空间
-                                 flexGrow: 1,
-                                 fontSize: '16px',
-                             }}
                              onChange={(text) => {
                                  // 当输入框内容发生变化时，检查是否可以发送，这样可以减少刷新次数
                                  setCanSubmit(NowSetting.url !== '' && NowSetting.key !== '' && text !== '');
@@ -503,7 +563,6 @@ function Memos() {
     // 生成一个随机数，从0开始也行，主要是内网调试的时候，避免出现重复的id
     const tempId = Math.floor(Math.random() * 1000000);
     const [lastReqId, setLastReqId] = useState<number>(tempId);
-
     const [reqHis, setReqHis] = useState<MemosReq[]>([]);
     const reqHisNow = useRef(reqHis);
     const AddHis = useCallback((content: string, tags: string[]) => {
@@ -668,6 +727,18 @@ function Memos() {
                     }}>{
                         hidden ? '显示' : '隐藏'
                     }</Button>
+                    <Button
+                        type="default"
+                        disabled={!canSubmit || loadingSetting}
+                        onClick={() => {
+                            const content = inputRef.current.get();
+                            if (content !== '') {
+                                inputRef.current.gptReWrite();
+                            }
+                        }}
+                    >
+                        AI
+                    </Button>
                     <Button
                         type="primary"
                         disabled={!canSubmit || loadingSetting}

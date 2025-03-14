@@ -16,4 +16,7 @@ func (m *webMgr) initSvrRoot(r *gin.Engine) {
 	r.POST("/cfg/plat/get", m.cfgPlatGet)
 	r.POST("/cfg/:svr/get", m.cfgServiceGet)
 	r.POST("/cfg/:svr/:user/get", m.cfgServiceUserGet)
+
+	// 未来可能迁移到misc
+	r.POST("/misc/gpt-rewrite", m.gptRewrite)
 }

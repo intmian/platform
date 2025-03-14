@@ -103,7 +103,8 @@ function useAutoCheckLogin(loginCtrRef) {
     }, [loginCtrRef]);
 }
 
-export const LoginCtx = createContext(LoginCtr);
+const loginCtr = new LoginCtr();
+export const LoginCtx = createContext(loginCtr);
 
 // LoginProvider 提供全局的用户信息和用户控制，建议放到根组件上，或者将逻辑抽离到别的全局provider中
 export function LoginProvider({children}) {

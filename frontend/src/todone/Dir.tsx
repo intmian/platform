@@ -548,8 +548,8 @@ function PDir2TreeDataNode(pDir: PDirTree, addr: Addr, onRefresh: () => void, on
 
 interface DirProps {
     userID: string
-    onSelectGroup: (groupID: number) => void
-    onSelectDir: (dirID: number) => void
+    onSelectGroup: (groupAddr: Addr) => void
+    onSelectDir: (dirAddr: Addr) => void
 }
 
 
@@ -636,7 +636,6 @@ export function Dir(props: DirProps) {
     return <Tree
         treeData={[rootNode]}
         onSelect={(selectedKeys) => {
-            console.log(selectedKeys);
             if (selectedKeys.length === 0) {
                 return;
             }
@@ -646,9 +645,52 @@ export function Dir(props: DirProps) {
             }
             const [type, id] = key.split("-");
             if (type === "grp") {
-                props.onSelectGroup(parseInt(id));
+                // 从tree中获取搜索到路径并组成Addr
+                const addr = new Addr(props.userID);
+                addr.addDir(dirTree.RootDir.ID);
+                const searchDir = (tree: PDirTree, addr: Addr): Addr | null => {
+                    for (const grp of tree.ChildrenGrp) {
+                        if (grp.ID === parseInt(id)) {
+                            addr.addGroup(grp.ID);
+                            return addr;
+                        }
+                    }
+                    for (const dir of tree.ChildrenDir) {
+                        const addr2 = addr.copy();
+                        addr2.addDir(dir.RootDir.ID);
+                        const ret = searchDir(dir, addr2);
+                        if (ret !== null) {
+                            return ret;
+                        }
+                    }
+                    return null;
+                }
+                const addrRet = searchDir(dirTree, addr);
+                if (addrRet !== null) {
+                    props.onSelectGroup(addrRet);
+                }
             } else {
-                props.onSelectDir(parseInt(id));
+                // 从tree中获取搜索到路径并组成Addr
+                const addr = new Addr(props.userID);
+                addr.addDir(dirTree.RootDir.ID);
+                const searchDir = (tree: PDirTree, addr: Addr): Addr | null => {
+                    if (tree.RootDir.ID === parseInt(id)) {
+                        return addr;
+                    }
+                    for (const dir of tree.ChildrenDir) {
+                        const addr2 = addr.copy();
+                        addr2.addDir(dir.RootDir.ID);
+                        const ret = searchDir(dir, addr2);
+                        if (ret !== null) {
+                            return ret;
+                        }
+                    }
+                    return null;
+                }
+                const addrRet = searchDir(dirTree, addr);
+                if (addrRet !== null) {
+                    props.onSelectDir(addrRet);
+                }
             }
         }}
     />

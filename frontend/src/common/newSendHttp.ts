@@ -601,3 +601,8 @@ export async function getWebPing(url: string, attempts: number = 10): Promise<{ 
         lossRate
     };
 }
+
+export async function sendGptRewrite(text: string): Promise<string> {
+    const res: UniResult = await UniPost(config.api_base_url + '/misc/gpt-rewrite', {content: text});
+    return res.ok ? (res.data as unknown as string) : '';
+}

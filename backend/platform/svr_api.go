@@ -3,8 +3,10 @@ package platform
 import (
 	"encoding/json"
 	"github.com/gin-gonic/gin"
+	"github.com/intmian/mian_go_lib/tool/ai"
 	"github.com/intmian/mian_go_lib/xstorage"
 	"github.com/intmian/platform/backend/share"
+	"strings"
 	"time"
 )
 
@@ -240,4 +242,59 @@ func (m *webMgr) cfgServiceUserGet(c *gin.Context) {
 		return
 	}
 	c.JSON(200, makeOkReturn(val))
+}
+
+// GptOptimization 获取gpt优化过的内容
+func (m *webMgr) gptRewrite(c *gin.Context) {
+	valid := m.getValid(c)
+	if !valid.HasOnePermission("gpt", "admin") {
+		c.JSON(200, makeErrReturn("no permission"))
+		return
+	}
+
+	// 从请求中获取内容
+	var req struct {
+		Content string `json:"content"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(400, gin.H{"error": "Invalid request"})
+		return
+	}
+
+	// 调用GPT优化函数
+	// 获取 base 配置
+	baseV, err := m.plat.storage.Get("openai.base")
+	if err != nil || baseV == nil {
+		c.JSON(200, makeErrReturn("svr error"))
+	}
+	base := xstorage.ToBase[string](baseV)
+	if base == "" || base == "need input" {
+		c.JSON(200, makeErrReturn("openai.base is empty"))
+	}
+
+	// 获取 token 配置
+	tokenV, err := m.plat.storage.Get("openai.token")
+	if err != nil || tokenV == nil {
+		c.JSON(200, makeErrReturn("svr error"))
+	}
+	token := xstorage.ToBase[string](tokenV)
+	if token == "" || token == "need input" {
+		c.JSON(200, makeErrReturn("openai.token is empty"))
+	}
+
+	bot := ai.NewOpenAI(base, token, false, ai.AiTypeChatGPT)
+	if bot == nil {
+		c.JSON(200, makeErrReturn("openai init error"))
+		return
+	}
+
+	ask := "以下是我的语音输入内容，其中可能包含口误、口语化表达或识别错误。请对其进行优化和重写，使其语法正确、逻辑清晰，去除重复和冗长的表述。确保不遗漏任何内容，对于不确定的部分，请使用括号标注。无需添加任何官话或套话:\n" + req.Content
+	newContent, err := bot.Chat(ask)
+	if err != nil {
+		c.JSON(200, makeErrReturn("svr error"))
+		return
+	}
+	// 将双换行替换为单换行
+	newContent = strings.ReplaceAll(newContent, "\n\n", "\n")
+	c.JSON(200, makeOkReturn(newContent))
 }
