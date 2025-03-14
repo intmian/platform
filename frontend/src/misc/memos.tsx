@@ -392,12 +392,12 @@ function HideInput({
     const gptReWrite = useCallback(() => {
         show();
         setWaitAi(true);
+        setOldText(get());
         sendGptRewrite(get()).then((ret) => {
             if (ret === "") {
                 message.error("AI重写失败");
                 return;
             }
-            setOldText(get());
             setInAiRewrite(true);
             setShowText(ret);
             setWaitAi(false);
@@ -426,9 +426,8 @@ function HideInput({
         flex: 1,
         fontSize: '16px',
     }
-
     return <>
-        {inAiRewrite ? <Flex
+        {inAiRewrite || waitAi ? <Flex
             vertical
             gap={"small"}
             style={{
@@ -442,7 +441,18 @@ function HideInput({
                 style={style2}
                 disabled={true}
             />
-            {waitAi ? <SyncOutlined style={{color: 'orange'}} spin/> :
+            {waitAi ? <Spin style={{flex: 1, display: 'flex',}}>
+                    <TextArea
+                        disabled={!inAiRewrite}
+                        ref={inputRef}
+                        autoFocus
+                        style={style2}
+                        value={"正在请求AI重写中，请稍等..."}
+                        onChange={(e) => setShowText(e.target.value)}
+                        placeholder={inAiRewrite ? "loading…" : 'Enter换行\nCtrl+Enter发送\ntab切换标签输入'}
+                    />
+                </Spin>
+                :
                 <TextArea
                     disabled={!inAiRewrite}
                     ref={inputRef}
