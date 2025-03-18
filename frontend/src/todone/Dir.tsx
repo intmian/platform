@@ -548,15 +548,21 @@ function PDir2TreeDataNode(pDir: PDirTree, addr: Addr, onRefresh: () => void, on
 
 interface DirProps {
     userID: string
-    onSelectGroup: (groupAddr: Addr) => void
+    onSelectGroup: (groupAddr: Addr, title: string) => void
     onSelectDir: (dirAddr: Addr) => void
 }
 
+const LOCAL_STORAGE_KEY = "todone:dir:expandedKeys";
 
 export function Dir(props: DirProps) {
     // 状态
     const [dirTree, setDirTree] = useState<PDirTree | null>(null);
     const [loading, setLoading] = useState(true);
+    // 读取本地存储的展开状态
+    const [expandedKeys, setExpandedKeys] = useState<string[]>(() => {
+        const storedKeys = localStorage.getItem(LOCAL_STORAGE_KEY);
+        return storedKeys ? JSON.parse(storedKeys) : [];
+    });
 
     // 加载数据
     useEffect(() => {
@@ -635,6 +641,16 @@ export function Dir(props: DirProps) {
     }
     return <Tree
         treeData={[rootNode]}
+        expandedKeys={expandedKeys}
+        onExpand={(keys) => {
+            setExpandedKeys(keys as string[]);
+            localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(keys));
+        }}
+        // 用这个方法屏蔽掉选中后的选中状态，完全自己处理选中逻辑，同时避免双击才能重新选中以取消展开。
+        selectedKeys={[]}
+        // 隐藏前面的打开标记
+        showLine={true}
+
         onSelect={(selectedKeys) => {
             if (selectedKeys.length === 0) {
                 return;
@@ -648,10 +664,12 @@ export function Dir(props: DirProps) {
                 // 从tree中获取搜索到路径并组成Addr
                 const addr = new Addr(props.userID);
                 addr.addDir(dirTree.RootDir.ID);
+                let title = "";
                 const searchDir = (tree: PDirTree, addr: Addr): Addr | null => {
                     for (const grp of tree.ChildrenGrp) {
                         if (grp.ID === parseInt(id)) {
                             addr.addGroup(grp.ID);
+                            title = grp.Title;
                             return addr;
                         }
                     }
@@ -667,7 +685,7 @@ export function Dir(props: DirProps) {
                 }
                 const addrRet = searchDir(dirTree, addr);
                 if (addrRet !== null) {
-                    props.onSelectGroup(addrRet);
+                    props.onSelectGroup(addrRet, title);
                 }
             } else {
                 // 从tree中获取搜索到路径并组成Addr
@@ -690,6 +708,18 @@ export function Dir(props: DirProps) {
                 const addrRet = searchDir(dirTree, addr);
                 if (addrRet !== null) {
                     props.onSelectDir(addrRet);
+                }
+                // 将文件夹展开，如果处于未展开状态
+                if (!expandedKeys.includes(key)) {
+                    const newExpandedKeys = [...expandedKeys];
+                    newExpandedKeys.push(key);
+                    setExpandedKeys(newExpandedKeys);
+                    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(newExpandedKeys));
+                } else {
+                    // 如果已经展开，则收起
+                    const newExpandedKeys = expandedKeys.filter((k) => k !== key);
+                    setExpandedKeys(newExpandedKeys);
+                    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(newExpandedKeys));
                 }
             }
         }}

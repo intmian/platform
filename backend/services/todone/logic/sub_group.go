@@ -11,6 +11,10 @@ type SubGroupLogic struct {
 	dbData *db.SubGroupDB
 }
 
+func (s *SubGroupLogic) GetID() uint32 {
+	return s.dbData.ID
+}
+
 func (s *SubGroupLogic) ToProtocol() protocol.PSubGroup {
 	return protocol.PSubGroup{
 		ID:    s.dbData.ID,

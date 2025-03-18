@@ -213,3 +213,19 @@ type DelTaskReq struct {
 
 type DelTaskRet struct {
 }
+
+const CmdCreateSubGroup share.Cmd = "createSubGroup"
+
+type CreateSubGroupReq struct {
+	UserID      string
+	ParentDirID uint32
+	GroupID     uint32
+	Title       string
+	Note        string
+	AfterID     uint32
+}
+
+type CreateSubGroupRet struct {
+	SubGroupID uint32
+	Index      float32
+}

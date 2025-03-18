@@ -525,6 +525,12 @@ func (u *UserLogic) CreateGroup(parentDirID uint32, title, note string, afterID 
 }
 
 func (u *UserLogic) GetGroupLogic(parentDirID, groupID uint32) *GroupLogic {
+	if u.dirTree == nil {
+		err := u.loadDirTree()
+		if err != nil {
+			return nil
+		}
+	}
 	dir, ok := u.dirMap[parentDirID]
 	if !ok {
 		return nil

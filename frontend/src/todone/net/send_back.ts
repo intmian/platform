@@ -340,3 +340,31 @@ export function sendDelTask(req: DelTaskReq, callback: (ret: { data: DelTaskRet,
     });
 }
 
+export interface CreateSubGroupReq {
+    UserID: string
+    ParentDirID: number
+    GroupID: number
+    Title: string
+    Note: string
+    AfterID: number
+}
+
+export interface CreateSubGroupRet {
+    SubGroupID: number
+    Index: number
+}
+
+
+export function sendCreateSubGroup(req: CreateSubGroupReq, callback: (ret: {
+    data: CreateSubGroupRet,
+    ok: boolean
+}) => void) {
+    UniPost(api_base_url + 'createSubGroup', req).then((res: UniResult) => {
+        const result: { data: CreateSubGroupRet, ok: boolean } = {
+            data: res.data as CreateSubGroupRet,
+            ok: res.ok
+        };
+
+        callback(result);
+    });
+}

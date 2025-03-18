@@ -295,3 +295,25 @@ func (s *Service) OnDelTask(valid backendshare.Valid, req DelTaskReq) (ret DelTa
 	})
 	return
 }
+
+func (s *Service) OnCreateSubGroup(valid backendshare.Valid, req CreateSubGroupReq) (ret CreateSubGroupRet, err error) {
+	f := func(user *logic.UserLogic) {
+		group := user.GetGroupLogic(req.ParentDirID, req.GroupID)
+		if group == nil {
+			err = errors.New("group not exist")
+			return
+		}
+		subGroup, err2 := group.CreateSubGroupLogic(req.Title, req.Note)
+		if err2 != nil {
+			err = errors.Join(err, err2)
+			return
+		}
+		protocolSubGroup := subGroup.ToProtocol()
+		ret.SubGroupID = protocolSubGroup.ID
+		ret.Index = protocolSubGroup.Index
+	}
+	s.userMgr.SafeUseUserLogic(req.UserID, f, func() {
+		err = errors.New("user not exist")
+	})
+	return
+}

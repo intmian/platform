@@ -1,9 +1,11 @@
-import {useContext} from "react";
+import {useContext, useState} from "react";
 import {LoginCtr, LoginCtx} from "../common/loginCtx";
 import {Dir} from "./Dir";
 import {ConfigsCtr, UniConfig} from "../common/UniConfig";
 import {ConfigsType, ConfigType} from "../common/UniConfigDef";
 import {message} from "antd";
+import {Addr} from "./addr";
+import Group from "./Group";
 
 const TodoneConfigs = new ConfigsCtr(ConfigsType.Server, 'todone')
 TodoneConfigs.addBaseConfig('db.account_id', '数据库账号ID', ConfigType.String, 'cloudflare')
@@ -27,15 +29,22 @@ function Setting() {
 export function Todone() {
     // 获得账户
     const loginCtr: LoginCtr = useContext<LoginCtr>(LoginCtx);
+    const [chooseAddr, setChooseAddr] = useState<Addr | null>(null);
+    const [chooseTitle, setChooseTitle] = useState<string>('')
     return <>
         <Setting/>
         <Dir userID={loginCtr.loginInfo.usr}
-             onSelectGroup={(addr) => {
-                 console.log(addr.toString());
+             onSelectGroup={(addr, title) => {
+                 setChooseAddr(addr);
+                 setChooseTitle(title);
              }}
              onSelectDir={(addr) => {
-                 console.log(addr.toString());
+                 // 暂无逻辑
              }}
+        />
+        <Group
+            addr={chooseAddr}
+            GroupTitle={chooseTitle}
         />
     </>
 }
