@@ -120,6 +120,8 @@ func (s *Service) HandleRpc(msg backendshare.Msg, valid backendshare.Valid) (int
 		return backendshare.HandleRpcTool("delTask", msg, valid, s.OnDelTask)
 	case CmdCreateSubGroup:
 		return backendshare.HandleRpcTool("createSubGroup", msg, valid, s.OnCreateSubGroup)
+	case CmdDelSubGroup:
+		return backendshare.HandleRpcTool("delSubGroup", msg, valid, s.OnDelSubGroup)
 	}
 
 	return nil, nil

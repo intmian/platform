@@ -66,7 +66,7 @@ func (t *TaskLogic) GetTags() ([]string, error) {
 	}
 
 	// 从数据库中获取数据
-	connect := db.GTodoneDBMgr.GetConnect(db.ConnectionTypeTags)
+	connect := db.GTodoneDBMgr.GetConnect(db.ConnectTypeTags)
 	tagsDB := db.GetTagsByTaskID(connect, t.id)
 	t.tagsDB = tagsDB
 	return tagsDB, nil
@@ -106,7 +106,7 @@ func (t *TaskLogic) AddTag(tag string) error {
 		}
 	}
 	t.tagsDB = append(t.tagsDB, tag)
-	tagsDB := db.GTodoneDBMgr.GetConnect(db.ConnectionTypeTags)
+	tagsDB := db.GTodoneDBMgr.GetConnect(db.ConnectTypeTags)
 	err = db.AddTags(tagsDB, t.dbData.UserID, t.id, tag)
 	return nil
 }
@@ -122,13 +122,13 @@ func (t *TaskLogic) RemoveTag(tag string) error {
 			break
 		}
 	}
-	tagsDB := db.GTodoneDBMgr.GetConnect(db.ConnectionTypeTags)
+	tagsDB := db.GTodoneDBMgr.GetConnect(db.ConnectTypeTags)
 	err = db.DeleteTag(tagsDB, t.id, tag)
 	return nil
 }
 
 func (t *TaskLogic) RemoveAllTags() error {
-	tagsDB := db.GTodoneDBMgr.GetConnect(db.ConnectionTypeTags)
+	tagsDB := db.GTodoneDBMgr.GetConnect(db.ConnectTypeTags)
 	err := db.DeleteTagByTaskID(tagsDB, t.id)
 	t.tagsDB = nil
 	return err

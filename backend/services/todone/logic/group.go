@@ -1,6 +1,7 @@
 package logic
 
 import (
+	"errors"
 	"github.com/intmian/platform/backend/services/todone/db"
 	"github.com/intmian/platform/backend/services/todone/protocol"
 	"math"
@@ -43,7 +44,7 @@ func (g *GroupLogic) GetSubGroups() ([]*SubGroupLogic, error) {
 	}
 
 	// 没有缓存，从数据库中获取，并缓存
-	connect := db.GTodoneDBMgr.GetConnect(db.ConnectionTypeSubGroup)
+	connect := db.GTodoneDBMgr.GetConnect(db.ConnectTypeSubGroup)
 	subGroupsDB := db.GetSubGroupByParentSortByIndex(connect, g.dbData.ID)
 	for _, subGroupDB := range subGroupsDB {
 		newSubGroupDB := subGroupDB
@@ -63,7 +64,7 @@ func (g *GroupLogic) GetSubGroupLogic(subGroupID uint32) *SubGroupLogic {
 }
 
 func (g *GroupLogic) GeneSubGroupIndex() float32 {
-	connect := db.GTodoneDBMgr.GetConnect(db.ConnectionTypeSubGroup)
+	connect := db.GTodoneDBMgr.GetConnect(db.ConnectTypeSubGroup)
 	maxIndex := db.GetParentGroupIDMaxIndex(connect, g.dbData.ID)
 	if math.Floor(float64(maxIndex)) == float64(maxIndex) {
 		return maxIndex + 1
@@ -73,7 +74,7 @@ func (g *GroupLogic) GeneSubGroupIndex() float32 {
 }
 
 func (g *GroupLogic) CreateSubGroupLogic(title, note string) (*SubGroupLogic, error) {
-	connect := db.GTodoneDBMgr.GetConnect(db.ConnectionTypeSubGroup)
+	connect := db.GTodoneDBMgr.GetConnect(db.ConnectTypeSubGroup)
 	index := g.GeneSubGroupIndex()
 	id, err := db.CreateSubGroup(connect, g.dbData.ID, title, note, index)
 	if err != nil {
@@ -125,4 +126,23 @@ func (g *GroupLogic) Save() error {
 func (g *GroupLogic) Delete() error {
 	connect := db.GTodoneDBMgr.GetConnect(db.ConnectTypeGroup)
 	return db.DeleteGroup(connect, g.dbData.ID)
+}
+
+func (g *GroupLogic) DeleteSubGroup(subGroupID uint32) error {
+	subGroup := g.GetSubGroupLogic(subGroupID)
+	if subGroup == nil {
+		return errors.New("sub group not exist")
+	}
+	err := subGroup.Delete()
+	if err != nil {
+		return errors.Join(err, errors.New("delete sub group failed"))
+	}
+	// 从内存中删除
+	for i, subGroup := range g.subGroups {
+		if subGroup.dbData.ID == subGroupID {
+			g.subGroups = append(g.subGroups[:i], g.subGroups[i+1:]...)
+			break
+		}
+	}
+	return nil
 }

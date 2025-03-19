@@ -78,3 +78,12 @@ func (s *SubGroupLogic) CreateTask(userID string, title, note string) (*TaskLogi
 	})
 	return task, nil
 }
+
+func (s *SubGroupLogic) Delete() error {
+	connect := db.GTodoneDBMgr.GetConnect(db.ConnectTypeSubGroup)
+	err := db.DeleteSubGroup(connect, s.dbData.ID)
+	if err != nil {
+		return err
+	}
+	return nil
+}

@@ -208,7 +208,7 @@ func (s *Service) OnGetTaskByPage(valid backendshare.Valid, req GetTaskByPageReq
 		}
 
 		connTask := db.GTodoneDBMgr.GetConnect(db.ConnectTypeTask)
-		connTag := db.GTodoneDBMgr.GetConnect(db.ConnectionTypeTags)
+		connTag := db.GTodoneDBMgr.GetConnect(db.ConnectTypeTags)
 
 		if connTag == nil || connTask == nil {
 			err = errors.New("connect db failed")
@@ -345,6 +345,25 @@ func (s *Service) OnCreateSubGroup(valid backendshare.Valid, req CreateSubGroupR
 		protocolSubGroup := subGroup.ToProtocol()
 		ret.SubGroupID = protocolSubGroup.ID
 		ret.Index = protocolSubGroup.Index
+	}
+	s.userMgr.SafeUseUserLogic(req.UserID, f, func() {
+		err = errors.New("user not exist")
+	})
+	return
+}
+
+func (s *Service) OnDelSubGroup(valid backendshare.Valid, req DelSubGroupReq) (ret DelSubGroupRet, err error) {
+	f := func(user *logic.UserLogic) {
+		group := user.GetGroupLogic(req.ParentDirID, req.GroupID)
+		if group == nil {
+			err = errors.New("group not exist")
+			return
+		}
+		err2 := group.DeleteSubGroup(req.SubGroupID)
+		if err2 != nil {
+			err = errors.Join(err, err2)
+			return
+		}
 	}
 	s.userMgr.SafeUseUserLogic(req.UserID, f, func() {
 		err = errors.New("user not exist")

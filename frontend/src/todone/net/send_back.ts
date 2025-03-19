@@ -368,3 +368,24 @@ export function sendCreateSubGroup(req: CreateSubGroupReq, callback: (ret: {
         callback(result);
     });
 }
+
+export interface DelSubGroupReq {
+    UserID: string
+    ParentDirID: number
+    GroupID: number
+    SubGroupID: number
+}
+
+export type DelSubGroupRet = object
+
+
+export function sendDelSubGroup(req: DelSubGroupReq, callback: (ret: { data: DelSubGroupRet, ok: boolean }) => void) {
+    UniPost(api_base_url + 'delSubGroup', req).then((res: UniResult) => {
+        const result: { data: DelSubGroupRet, ok: boolean } = {
+            data: res.data as DelSubGroupRet,
+            ok: res.ok
+        };
+
+        callback(result);
+    });
+}

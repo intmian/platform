@@ -6,6 +6,7 @@ import {
     GetSubGroupReq,
     sendCreateSubGroup,
     sendCreateTask,
+    sendDelSubGroup,
     sendGetSubGroup,
     sendGetTaskByPage
 } from "./net/send_back";
@@ -27,9 +28,9 @@ import {
 } from "antd";
 import {
     AppstoreAddOutlined,
-    BarsOutlined,
+    CaretDownOutlined,
+    CaretUpOutlined,
     CheckOutlined,
-    CompressOutlined,
     CopyOutlined,
     DeleteOutlined,
     EditOutlined,
@@ -191,7 +192,6 @@ function SubGroupAddPanel(props: SubGroupAddPanelProps) {
             </Form.Item>
         </Form>
     </Modal>
-
 }
 
 interface SubGroupProps {
@@ -346,7 +346,7 @@ function SubGroup(props: SubGroupProps) {
                         setShowTasks(!showTasks);
                     }}
                             type="text"
-                            icon={showTasks ? <CompressOutlined/> : <BarsOutlined/>}
+                            icon={showTasks ? <CaretUpOutlined/> : <CaretDownOutlined/>}
                     />
                     <Dropdown menu={{
                         items: [
@@ -363,7 +363,9 @@ function SubGroup(props: SubGroupProps) {
                                 icon: <CopyOutlined/>,
                                 label: '复制路径',
                                 onClick: () => {
-
+                                    navigator.clipboard.writeText(subGroupAddr.toString()).then(() => {
+                                        message.success("复制：" + subGroupAddr.toString()).then();
+                                    })
                                 }
                             },
                             {
@@ -380,6 +382,29 @@ function SubGroup(props: SubGroupProps) {
                                 label: '删除分组',
                                 danger: true,
                                 onClick: () => {
+                                    Modal.confirm({
+                                        title: "删除分组",
+                                        content: "确定删除分组吗？",
+                                        okText: "删除",
+                                        cancelText: "取消",
+                                        onOk: () => {
+                                            const req = {
+                                                UserID: props.groupAddr.userID,
+                                                ParentDirID: props.groupAddr.getParentUnit().ID,
+                                                GroupID: props.groupAddr.getLastUnit().ID,
+                                                SubGroupID: props.subGroup.ID,
+                                            }
+                                            sendDelSubGroup(req, (ret) => {
+                                                if (ret.ok) {
+                                                    message.success("删除分组成功").then();
+                                                    props.onDelete(props.subGroup);
+                                                } else {
+                                                    message.error("删除分组失败").then();
+                                                }
+                                            })
+                                            props.onDelete(props.subGroup);
+                                        }
+                                    })
                                 }
                             }
                         ],

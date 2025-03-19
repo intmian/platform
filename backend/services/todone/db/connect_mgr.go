@@ -47,11 +47,11 @@ func InitGMgr(setting Setting) error {
 		wait.Done()
 	}()
 	go func() {
-		err4 = GTodoneDBMgr.Connect(ConnectionTypeTags, &TagsDB{})
+		err4 = GTodoneDBMgr.Connect(ConnectTypeTags, &TagsDB{})
 		wait.Done()
 	}()
 	go func() {
-		err5 = GTodoneDBMgr.Connect(ConnectionTypeSubGroup, &SubGroupDB{})
+		err5 = GTodoneDBMgr.Connect(ConnectTypeSubGroup, &SubGroupDB{})
 		wait.Done()
 	}()
 	wait.Wait()
@@ -129,6 +129,6 @@ const (
 	ConnectTypeDir
 	ConnectTypeGroup
 	ConnectTypeTask
-	ConnectionTypeTags
-	ConnectionTypeSubGroup
+	ConnectTypeTags
+	ConnectTypeSubGroup
 )

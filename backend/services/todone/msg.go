@@ -148,15 +148,6 @@ type GetTaskByPageRet struct {
 	Tasks []protocol.PTask
 }
 
-type DelSubGroupReq struct {
-	UserID     string
-	GroupID    uint32
-	SubGroupID uint32
-}
-
-type DelSubGroupRet struct {
-}
-
 const CmdGetTask share.Cmd = "getTask"
 
 type GetTaskReq struct {
@@ -228,4 +219,16 @@ type CreateSubGroupReq struct {
 type CreateSubGroupRet struct {
 	SubGroupID uint32
 	Index      float32
+}
+
+const CmdDelSubGroup share.Cmd = "delSubGroup"
+
+type DelSubGroupReq struct {
+	UserID      string
+	ParentDirID uint32
+	GroupID     uint32
+	SubGroupID  uint32
+}
+
+type DelSubGroupRet struct {
 }
