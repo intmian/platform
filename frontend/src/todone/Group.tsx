@@ -275,7 +275,7 @@ function SubGroup(props: SubGroupProps) {
             if (ret.ok) {
                 const newTask = ret.data.Task;
                 tasksLast.current = tasksLast.current.concat(newTask);
-                const newTasks = tasksLast.current.concat(newTask);
+                const newTasks = tasksLast.current;
                 setTasks(newTasks); // 合并新任务
                 setNewTaskTitle(""); // 清空输入框
                 InputRef.current?.blur(); // 失去焦点
