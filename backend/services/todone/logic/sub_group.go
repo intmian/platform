@@ -11,6 +11,12 @@ type SubGroupLogic struct {
 	dbData *db.SubGroupDB
 }
 
+func NewSubGroupLogic(dbData *db.SubGroupDB) *SubGroupLogic {
+	return &SubGroupLogic{
+		dbData: dbData,
+	}
+}
+
 func (s *SubGroupLogic) GetID() uint32 {
 	return s.dbData.ID
 }
@@ -26,13 +32,18 @@ func (s *SubGroupLogic) ToProtocol() protocol.PSubGroup {
 
 func (s *SubGroupLogic) GetTasksByPage(page int, num int, containDone bool) ([]*TaskLogic, error) {
 	connect := db.GTodoneDBMgr.GetConnect(db.ConnectTypeTask)
-	tasksDB := db.GetTasksByParentSubGroupID(connect, s.dbData.ID, page, num, containDone)
+	tasksDB := db.GetTasksByParentSubGroupID(connect, s.dbData.ID, num, page*num, containDone)
 
 	var res []*TaskLogic
 	for _, taskDB := range tasksDB {
-		task := NewTaskLogic(taskDB.TaskID)
-		task.OnBindOutData(&taskDB)
+		newDB := taskDB
+		task := NewTaskLogic(newDB.TaskID)
+		task.OnBindOutData(&newDB)
+		res = append(res, task)
 	}
+
+	// 异步加载所有的tag、和子任务
+
 	return res, nil
 }
 

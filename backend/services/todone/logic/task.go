@@ -14,8 +14,10 @@ import (
 */
 
 type TaskLogic struct {
-	dbData *db.TaskDB
-	tagsDB []string
+	dbData      *db.TaskDB
+	hasChildren *bool
+	children    []*TaskLogic
+	tagsDB      []string
 
 	id uint32
 }
@@ -29,6 +31,18 @@ func NewTaskLogic(ID uint32) *TaskLogic {
 // OnBindOutData 外部创造时绑定就行
 func (t *TaskLogic) OnBindOutData(dbData *db.TaskDB) {
 	t.dbData = dbData
+}
+
+func (t *TaskLogic) BindOutTags(tags []string) {
+	t.tagsDB = tags
+}
+
+func (t *TaskLogic) BindOutChildren(children []*TaskLogic) {
+	t.children = children
+}
+
+func (t *TaskLogic) BindOutHasChildren(hasChildren bool) {
+	t.hasChildren = &hasChildren
 }
 
 func (t *TaskLogic) GetTaskData() (*db.TaskDB, error) {
@@ -58,14 +72,27 @@ func (t *TaskLogic) GetTags() ([]string, error) {
 	return tagsDB, nil
 }
 
-func (t *TaskLogic) GetChildIDs(limit int, offset int, done bool) ([]uint32, error) {
-	connect := db.GTodoneDBMgr.GetConnect(db.ConnectTypeTask)
-	tasksDB := db.GetTasksByParentTaskID(connect, t.id, limit, offset, done)
-	var res []uint32
-	for _, task := range tasksDB {
-		res = append(res, task.TaskID)
+func (t *TaskLogic) GetChildren() ([]*TaskLogic, error) {
+	if t.children != nil {
+		return t.children, nil
 	}
+
+	res := t.LoadChildren()
 	return res, nil
+}
+
+func (t *TaskLogic) LoadChildren() []*TaskLogic {
+	connect := db.GTodoneDBMgr.GetConnect(db.ConnectTypeTask)
+	tasksDB := db.GetTasksByParentTaskID(connect, t.id)
+	var res []*TaskLogic
+	for _, taskDB := range tasksDB {
+		newDB := taskDB
+		task := NewTaskLogic(newDB.TaskID)
+		task.OnBindOutData(&newDB)
+		res = append(res, task)
+	}
+	t.children = res
+	return res
 }
 
 func (t *TaskLogic) AddTag(tag string) error {
@@ -136,9 +163,19 @@ func (t *TaskLogic) GeneSubTaskIndex() float32 {
 }
 
 func (t *TaskLogic) HasSubTask() (bool, error) {
+	if t.hasChildren != nil {
+		return *t.hasChildren, nil
+	}
+
+	hasSubTask := t.LoadHasChildren()
+	return hasSubTask, nil
+}
+
+func (t *TaskLogic) LoadHasChildren() bool {
 	connect := db.GTodoneDBMgr.GetConnect(db.ConnectTypeTask)
-	tasksDB := db.GetTasksByParentTaskID(connect, t.id, 1, 0, false)
-	return len(tasksDB) > 0, nil
+	hasSubTask := db.GetHasSubTask(connect, t.id)
+	t.hasChildren = &hasSubTask
+	return hasSubTask
 }
 
 func (t *TaskLogic) ToProtocol() protocol.PTask {
@@ -150,7 +187,7 @@ func (t *TaskLogic) ToProtocol() protocol.PTask {
 		return pTask
 	}
 	pTask.ID = data.TaskID
-	pTask.Title = data.Note
+	pTask.Title = data.Title
 	pTask.Note = data.Note
 	pTask.Done = data.Done
 	pTask.Index = data.Index

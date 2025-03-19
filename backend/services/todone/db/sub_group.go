@@ -21,9 +21,10 @@ func CreateSubGroup(db *gorm.DB, parentGroupID uint32, title, note string, index
 	return subGroup.ID, result.Error
 }
 
-func GetSubGroupByParentSortByIndex(db *gorm.DB, parentGroupID uint32) []SubGroupDB {
-	var subGroups []SubGroupDB
-	db.Where("parent_group_id = ?", parentGroupID).Order("Index").Find(&subGroups)
+func GetSubGroupByParentSortByIndex(db *gorm.DB, parentGroupID uint32) []*SubGroupDB {
+	var subGroups []*SubGroupDB
+	subGroups = make([]*SubGroupDB, 0)
+	db.Where("parent_group_id = ?", parentGroupID).Order("`Index`").Find(&subGroups)
 	return subGroups
 }
 

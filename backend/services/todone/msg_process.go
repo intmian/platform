@@ -2,8 +2,10 @@ package todone
 
 import (
 	"errors"
+	"github.com/intmian/platform/backend/services/todone/db"
 	"github.com/intmian/platform/backend/services/todone/logic"
 	backendshare "github.com/intmian/platform/backend/share"
+	"sync"
 )
 
 func (s *Service) OnGetDirTree(valid backendshare.Valid, req GetDirTreeReq) (ret GetDirTreeRet, err error) {
@@ -200,6 +202,38 @@ func (s *Service) OnGetTaskByPage(valid backendshare.Valid, req GetTaskByPageReq
 			err = errors.Join(err, err2)
 			return
 		}
+		taskIds := make([]uint32, 0)
+		for _, task := range tasks {
+			taskIds = append(taskIds, task.GetID())
+		}
+
+		connTask := db.GTodoneDBMgr.GetConnect(db.ConnectTypeTask)
+		connTag := db.GTodoneDBMgr.GetConnect(db.ConnectionTypeTags)
+
+		if connTag == nil || connTask == nil {
+			err = errors.New("connect db failed")
+			return
+		}
+
+		wait := sync.WaitGroup{}
+		var tags map[uint32][]string
+		var subTasks map[uint32]bool
+		wait.Add(2)
+		go func() {
+			tags = db.GetTagsByMultipleTaskID(connTag, taskIds)
+			wait.Done()
+		}()
+		go func() {
+			subTasks = db.GetHasSubTaskByParentTaskIDMultiple(connTask, taskIds)
+			wait.Done()
+		}()
+		wait.Wait()
+
+		for _, task := range tasks {
+			task.BindOutHasChildren(subTasks[task.GetID()])
+			task.BindOutTags(tags[task.GetID()])
+		}
+
 		for _, task := range tasks {
 			ret.Tasks = append(ret.Tasks, task.ToProtocol())
 		}
@@ -256,7 +290,7 @@ func (s *Service) OnCreateTask(valid backendshare.Valid, req CreateTaskReq) (ret
 				err = errors.Join(errors.New("create task failed"), err2)
 				return
 			}
-			ret.TaskID = task.GetID()
+			ret.Task = task.ToProtocol()
 		} else {
 			task := user.GetTaskLogic(req.ParentTask)
 			if task == nil {
@@ -268,7 +302,7 @@ func (s *Service) OnCreateTask(valid backendshare.Valid, req CreateTaskReq) (ret
 				err = errors.Join(errors.New("create sub task failed"), err2)
 				return
 			}
-			ret.TaskID = subTask.GetID()
+			ret.Task = subTask.ToProtocol()
 		}
 	}
 	s.userMgr.SafeUseUserLogic(req.UserID, f, func() {

@@ -3,7 +3,7 @@ import {LoginCtr, LoginCtx} from "../common/loginCtx";
 import {Dir} from "./Dir";
 import {ConfigsCtr, UniConfig} from "../common/UniConfig";
 import {ConfigsType, ConfigType} from "../common/UniConfigDef";
-import {message} from "antd";
+import {Flex, message} from "antd";
 import {Addr} from "./addr";
 import Group from "./Group";
 
@@ -33,18 +33,44 @@ export function Todone() {
     const [chooseTitle, setChooseTitle] = useState<string>('')
     return <>
         <Setting/>
-        <Dir userID={loginCtr.loginInfo.usr}
-             onSelectGroup={(addr, title) => {
-                 setChooseAddr(addr);
-                 setChooseTitle(title);
-             }}
-             onSelectDir={(addr) => {
-                 // 暂无逻辑
-             }}
-        />
-        <Group
-            addr={chooseAddr}
-            GroupTitle={chooseTitle}
-        />
+        <Flex>
+            <div
+                style={{
+                    flex: 1,
+                }}
+            >
+                <Dir
+                    // TODO 手机端要收起来
+                    userID={loginCtr.loginInfo.usr}
+                    onSelectGroup={(addr, title) => {
+                        setChooseAddr(addr);
+                        setChooseTitle(title);
+                    }}
+                    onSelectDir={(addr) => {
+                        // 暂无逻辑
+                    }}
+                />
+            </div>
+            <div
+                style={{
+                    flex: 1,
+                }}
+            >
+                <Group
+                    addr={chooseAddr}
+                    GroupTitle={chooseTitle}
+                />
+            </div>
+
+            <div
+                style={{
+                    flex: 1,
+                }}
+            >
+                TODO:detail
+            </div>
+        </Flex>
+
+
     </>
 }

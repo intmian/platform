@@ -85,16 +85,16 @@ func (d *Mgr) Init(setting Setting) error {
 	if err != nil {
 		panic("failed to open log file")
 	}
-	defer file.Close()
+	//defer file.Close()
 
 	// 创建一个自定义的 logger 输出到文件
 	newLogger := logger.New(
-		log.New(file, "\r\n", log.LstdFlags), // 日志输出到 sql.log 文件
+		log.New(file, "SQL: ", log.LstdFlags), // 日志输出到 sql.log 文件
 		logger.Config{
-			LogLevel:                  logger.Info, // 控制日志级别，Info 会输出 SQL 语句
-			SlowThreshold:             time.Second, // 慢查询日志阈值
-			IgnoreRecordNotFoundError: true,        // 忽略 RecordNotFound 错误
-			Colorful:                  false,       // 禁用颜色输出
+			LogLevel:                  logger.Info,     // 控制日志级别，Info 会输出 SQL 语句
+			SlowThreshold:             5 * time.Second, // 慢查询日志阈值
+			IgnoreRecordNotFoundError: true,            // 忽略 RecordNotFound 错误
+			Colorful:                  false,           // 禁用颜色输出
 		},
 	)
 	d.logger = newLogger

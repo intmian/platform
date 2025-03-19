@@ -201,7 +201,7 @@ type CreateTaskReq struct {
 }
 
 type CreateTaskRet struct {
-	TaskID uint32
+	Task protocol.PTask
 }
 
 const CmdDelTask share.Cmd = "delTask"

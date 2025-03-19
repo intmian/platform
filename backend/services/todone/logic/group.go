@@ -42,13 +42,12 @@ func (g *GroupLogic) GetSubGroups() ([]*SubGroupLogic, error) {
 		return g.subGroups, nil
 	}
 
-	// 没有缓存，从数据库中获取
+	// 没有缓存，从数据库中获取，并缓存
 	connect := db.GTodoneDBMgr.GetConnect(db.ConnectionTypeSubGroup)
 	subGroupsDB := db.GetSubGroupByParentSortByIndex(connect, g.dbData.ID)
 	for _, subGroupDB := range subGroupsDB {
-		g.subGroups = append(g.subGroups, &SubGroupLogic{
-			dbData: &subGroupDB,
-		})
+		newSubGroupDB := subGroupDB
+		g.subGroups = append(g.subGroups, NewSubGroupLogic(newSubGroupDB))
 	}
 
 	return g.subGroups, nil
@@ -80,15 +79,14 @@ func (g *GroupLogic) CreateSubGroupLogic(title, note string) (*SubGroupLogic, er
 	if err != nil {
 		return nil, err
 	}
-	subGroupLogic := &SubGroupLogic{
-		dbData: &db.SubGroupDB{
-			ID:            id,
-			ParentGroupID: g.dbData.ID,
-			Title:         title,
-			Note:          note,
-			Index:         index,
-		},
+	dbData := &db.SubGroupDB{
+		ID:            id,
+		ParentGroupID: g.dbData.ID,
+		Title:         title,
+		Note:          note,
+		Index:         index,
 	}
+	subGroupLogic := NewSubGroupLogic(dbData)
 	g.subGroups = append(g.subGroups, subGroupLogic)
 	return subGroupLogic, nil
 }

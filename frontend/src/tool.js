@@ -12,7 +12,9 @@ function getItem(label, key, icon, children, theme) {
 
 const useDebugValue = (value) => {
     React.useDebugValue(value);
+    console.log("State updated:", value);
     console.trace("State updated by:");
+
 };
 
 export {getItem, useDebugValue};

@@ -124,7 +124,7 @@ export interface GetTaskByPageReq {
 }
 
 export interface GetTaskByPageRet {
-    Tasks: PTask[]
+    Tasks: PTask[] | null
 }
 
 
@@ -158,7 +158,7 @@ export interface CreateTaskReq {
 }
 
 export interface CreateTaskRet {
-    TaskID: number
+    Task: PTask
 }
 
 
