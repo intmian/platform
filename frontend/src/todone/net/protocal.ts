@@ -33,7 +33,7 @@ export interface PTask {
     Title: string;
     Note: string;
     Index: number;
-    Tags: string[];
+    Tags: string[] | null;
     Done: boolean;
     HaveSubTask: boolean;
 

@@ -12,8 +12,10 @@ export interface TaskProps {
 
 export function Task(props: TaskProps) {
     const tags: ReactNode[] = []
-    for (const tag of props.task.Tags) {
-        tags.push(<Tag key={tag} color="blue">{tag}</Tag>)
+    if (props.task.Tags) {
+        for (const tag of props.task.Tags) {
+            tags.push(<Tag key={tag} color="blue">{tag}</Tag>)
+        }
     }
     return <div
         style={{

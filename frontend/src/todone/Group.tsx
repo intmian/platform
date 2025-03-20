@@ -325,7 +325,11 @@ function SubGroup(props: SubGroupProps) {
             endMessage={<Divider plain>没有更多的了 🤐</Divider>}
             scrollableTarget="scrollableDiv"
         >
-            {tasksShow.length === 0 ? input :
+            {tasksShow.length === 0 ? <List
+                    header={input}
+                    dataSource={[]}
+                    locale={{emptyText: ' '}}
+                /> :
                 <List
                     header={input}
                     dataSource={tasksShow}
@@ -352,7 +356,10 @@ function SubGroup(props: SubGroupProps) {
             marginBottom: '10px',
         }}
     >
-        <Divider orientation="left">
+        <Divider orientation="left" style={{
+            margin: 0,
+            borderBottom: '1px solid #ccc',
+        }}>
             <Space>
                 <Tooltip title={props.subGroup.Note} key={props.subGroup.ID}>
                     <div>{props.subGroup.Title}</div>
