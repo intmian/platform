@@ -311,6 +311,7 @@ function SubGroup(props: SubGroupProps) {
     />
 
     // 渲染任务列表
+    const skeParaNum = pageRef.current === 0 ? 10 : 1;
     const tasksList = <div id="scrollableDiv"
                            style={{
                                height: 400, overflow: "auto",
@@ -321,8 +322,8 @@ function SubGroup(props: SubGroupProps) {
             dataLength={tasksShow.length}
             next={loadMoreData}
             hasMore={hasMore}
-            loader={<Skeleton paragraph={{rows: 1}} active/>}
-            endMessage={<Divider plain>没有更多的了 🤐</Divider>}
+            loader={<Skeleton paragraph={{rows: skeParaNum}} active/>}
+            endMessage={<Divider plain>没有更多🤐</Divider>}
             scrollableTarget="scrollableDiv"
         >
             {tasksShow.length === 0 ? <List
