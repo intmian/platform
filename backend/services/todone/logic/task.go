@@ -193,6 +193,12 @@ func (t *TaskLogic) ToProtocol() protocol.PTask {
 	pTask.Index = data.Index
 	pTask.Tags = tags
 	pTask.HaveSubTask = hasSubTask
+
+	pTask.TaskType = int(data.TaskType)
+	pTask.Started = data.Started
+	pTask.BeginTime = data.BeginTime
+	pTask.EndTime = data.EndTime
+
 	return pTask
 }
 

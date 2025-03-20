@@ -1,10 +1,10 @@
 import {useState} from "react";
-import {Button, Card, Col, InputNumber, Row, Slider, Space, Typography} from "antd";
+import {Button, Card, Col, Flex, InputNumber, Row, Slider, Space, Typography} from "antd";
 import {CustomDeviceSimulator, DeviceSimulator} from "./DeviceSim.jsx";
 import {MenuPlus} from "../common/MenuPlus.jsx";
 import {EditableProps} from "./EditableProps.jsx";
 import {ConfigsType, ConfigType} from "../common/UniConfigDef.js";
-import {ConfigsCtr, UniConfig} from "../common/UniConfig.jsx";
+import {ConfigsCtr} from "../common/UniConfig.jsx";
 
 const {Text} = Typography;
 
@@ -13,7 +13,18 @@ const config = new ConfigsCtr(ConfigsType.Plat)
 config.addBaseConfig('test', '测试', ConfigType.SliceString, 'test')
 config.addBaseConfig('realKey', '真实2', ConfigType.String, 'realKey')
 
-const debug = <UniConfig configCtr={config}/>
+const debug = <Flex
+    align="center" justify="space-between"
+>
+    <div>1</div>
+    <div style={{
+        flex: 1,
+        border: '1px solid black',
+    }}>123123
+    </div>
+    <div>1</div>
+
+</Flex>
 
 // const settings = {
 //     init: false,

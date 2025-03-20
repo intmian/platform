@@ -36,4 +36,12 @@ export interface PTask {
     Tags: string[];
     Done: boolean;
     HaveSubTask: boolean;
+
+    // 额外信息
+    TaskType: number
+    Started: boolean // 是否开始
+    // 开始时间
+    BeginTime: Date
+    // 结束时间或者截止时间
+    EndTime: Date
 }

@@ -5,6 +5,13 @@ import (
 	"time"
 )
 
+type TaskType int
+
+const (
+	TaskTypeNormal     TaskType = iota // 普通的可完成任务
+	TaskTypeContinuous                 // 连续的任务
+)
+
 type TaskDB struct {
 	UserID           string
 	TaskID           uint32 `gorm:"primaryKey"`
@@ -17,6 +24,14 @@ type TaskDB struct {
 	Done             bool
 	CreatedAt        time.Time
 	UpdatedAt        time.Time
+
+	// 额外信息
+	TaskType TaskType
+	Started  bool // 是否开始
+	// 开始时间
+	BeginTime time.Time
+	// 结束时间或者截止时间
+	EndTime time.Time
 }
 
 func CreateTask(db *gorm.DB, userID string, parentSubGroupID, parentTaskID uint32, title, note string, index float32) (uint32, error) {

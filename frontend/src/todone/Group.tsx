@@ -38,6 +38,8 @@ import {
     MoreOutlined
 } from "@ant-design/icons";
 import InfiniteScroll from "react-infinite-scroll-component";
+import {lowLeverShadow} from "../css/shadow";
+import {Task} from "./Task";
 
 class TaskTree {
     constructor(data: PTask) {
@@ -310,7 +312,11 @@ function SubGroup(props: SubGroupProps) {
 
     // 渲染任务列表
     const tasksList = <div id="scrollableDiv"
-                           style={{height: 400, overflow: "auto", border: "1px solid #ccc", padding: 10, margin: 10}}>
+                           style={{
+                               height: 400, overflow: "auto",
+                               scrollbarWidth: 'none'
+                               // border: "1px solid #ccc", padding: 10, margin: 10
+                           }}>
         <InfiniteScroll
             dataLength={tasksShow.length}
             next={loadMoreData}
@@ -325,14 +331,27 @@ function SubGroup(props: SubGroupProps) {
                     dataSource={tasksShow}
                     renderItem={(item) => (
                         <List.Item key={item.ID}>
-                            <div>{item.Title}</div>
+                            <Task
+                                subGroupAddr={subGroupAddr}
+                                task={item}
+                                onDelete={function (): void {
+                                    throw new Error("Function not implemented.");
+                                }}
+                            />
                         </List.Item>
                     )}
                 />}
         </InfiniteScroll>
     </div>
 
-    return <>
+    return <div
+        style={{
+            backgroundColor: 'white',
+            padding: '5px',
+            ...lowLeverShadow,
+            marginBottom: '10px',
+        }}
+    >
         <Divider orientation="left">
             <Space>
                 <Tooltip title={props.subGroup.Note} key={props.subGroup.ID}>
@@ -415,5 +434,5 @@ function SubGroup(props: SubGroupProps) {
             </Space>
         </Divider>
         {showTasks ? tasksList : null}
-    </>
+    </div>
 }
