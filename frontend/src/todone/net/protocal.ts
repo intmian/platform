@@ -44,4 +44,11 @@ export interface PTask {
     BeginTime: Date
     // 结束时间或者截止时间
     EndTime: Date
+
+    Wait4: string
+}
+
+export enum TaskType {
+    TODO = 0,
+    DOING = 1,
 }

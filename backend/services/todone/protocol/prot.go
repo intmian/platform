@@ -37,7 +37,7 @@ type PTask struct {
 	Tags        []string
 	Done        bool
 	HaveSubTask bool
-	
+
 	// 额外信息
 	TaskType int
 	Started  bool // 是否开始
@@ -45,4 +45,5 @@ type PTask struct {
 	BeginTime time.Time
 	// 结束时间或者截止时间
 	EndTime time.Time
+	Wait4   string
 }

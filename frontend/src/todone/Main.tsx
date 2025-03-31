@@ -6,6 +6,7 @@ import {ConfigsType, ConfigType} from "../common/UniConfigDef";
 import {Flex, message} from "antd";
 import {Addr} from "./addr";
 import Group from "./Group";
+import {useParams} from "react-router-dom";
 
 const TodoneConfigs = new ConfigsCtr(ConfigsType.Server, 'todone')
 TodoneConfigs.addBaseConfig('db.account_id', '数据库账号ID', ConfigType.String, 'cloudflare')
@@ -29,6 +30,15 @@ function Setting() {
 export function Todone() {
     // 获得账户
     const loginCtr: LoginCtr = useContext<LoginCtr>(LoginCtx);
+
+    // 获取参数
+    const params = useParams()
+    const {addrStr} = params
+    const urlAddr = new Addr(loginCtr.loginInfo.usr)
+    if (addrStr) {
+        urlAddr.bindAddr(addrStr)
+    }
+
     const [chooseAddr, setChooseAddr] = useState<Addr | null>(null);
     const [chooseTitle, setChooseTitle] = useState<string>('')
     return <>

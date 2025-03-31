@@ -577,7 +577,15 @@ export function Dir(props: DirProps) {
 
     // 显示加载中
     if (loading || dirTree === null) {
-        return <Spin>Loading...</Spin>
+        return <div
+            style={{
+                width: '100%',
+                height: '100%',
+                display: 'flex',
+                justifyContent: 'center',
+                alignItems: 'center',
+            }}
+        >加载中<LoadingOutlined spin/></div>
     }
 
     // 显示树

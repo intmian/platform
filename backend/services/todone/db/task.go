@@ -8,8 +8,8 @@ import (
 type TaskType int
 
 const (
-	TaskTypeNormal     TaskType = iota // 普通的可完成任务
-	TaskTypeContinuous                 // 连续的任务
+	TaskTypeTodo  TaskType = iota // 普通的可完成任务
+	TaskTypeDoing                 // 连续的任务
 )
 
 type TaskDB struct {
@@ -32,6 +32,7 @@ type TaskDB struct {
 	BeginTime time.Time
 	// 结束时间或者截止时间
 	EndTime time.Time
+	Wait4   string
 }
 
 func CreateTask(db *gorm.DB, userID string, parentSubGroupID, parentTaskID uint32, title, note string, index float32) (uint32, error) {

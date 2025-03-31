@@ -198,6 +198,7 @@ func (t *TaskLogic) ToProtocol() protocol.PTask {
 	pTask.Started = data.Started
 	pTask.BeginTime = data.BeginTime
 	pTask.EndTime = data.EndTime
+	pTask.Wait4 = data.Wait4
 
 	return pTask
 }
