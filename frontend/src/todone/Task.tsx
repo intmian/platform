@@ -28,13 +28,14 @@ export function Task(props: TaskProps) {
         // 以下状态为完成
         Finished,
     }
+
     let status: Status
     if (props.task.Done) {
         status = Status.Finished
     } else if (props.task.Started) {
         const hasEndTime = props.task.EndTime && props.task.EndTime.getTime() > 0
         const AfterEnd = props.task.EndTime && props.task.EndTime.getTime() < new Date().getTime()
-        if (!hasEndTime){
+        if (!hasEndTime) {
             if (props.task.TaskType === TaskType.TODO) {
                 status = Status.TODOUntilEnd
             } else {
@@ -86,7 +87,9 @@ export function Task(props: TaskProps) {
     const now = new Date()
     if (now < props.task.BeginTime) {
         timeWait.push(<div>
-            <Tag color="orange"
+            <Tag color="orange">
+                
+            </Tag>
         </div>)
     }
 
