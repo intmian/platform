@@ -41,9 +41,9 @@ export interface PTask {
     TaskType: number
     Started: boolean // 是否开始
     // 开始时间
-    BeginTime: Date
+    BeginTime: string
     // 结束时间或者截止时间
-    EndTime: Date
+    EndTime: string
 
     Wait4: string
 }
