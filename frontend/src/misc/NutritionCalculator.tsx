@@ -1,7 +1,7 @@
-import {useState} from 'react';
-import {Button, Col, Form, InputNumber, Row, Tooltip, Typography} from 'antd';
+import {useState, useEffect} from 'react';
+import {Button, Col, Form, InputNumber, Row, Tooltip, Typography, Table, Checkbox, Space, message} from 'antd';
 import {useIsMobile} from "../common/hooksv2";
-import {QuestionCircleOutlined} from '@ant-design/icons';
+import {QuestionCircleOutlined, DeleteOutlined, PlusOutlined, ClearOutlined} from '@ant-design/icons';
 
 const {Title} = Typography;
 
@@ -16,7 +16,6 @@ const mobileInputProps = {
     controls: false,
     style: {
         width: '100%',
-        // fontSize: '16px' // 解决iOS缩放问题
     },
     size: 'large'
 };
@@ -32,6 +31,17 @@ const useInputProps = () => {
     return isMobile ? mobileInputProps : desktopInputProps;
 }
 
+// 每日摄入项接口
+interface DailyIntakeItem {
+    id: string;
+    timestamp: number;
+    totalKcal: number;
+    totalKj: number;
+    malePercent: number;
+    femalePercent: number;
+    fat: number;
+}
+
 const NutritionCalculator = () => {
     const isMobile = useIsMobile();
     const [formData, setFormData] = useState({
@@ -45,6 +55,101 @@ const NutritionCalculator = () => {
         malePercent: 0,
         femalePercent: 0
     });
+    
+    // 每日摄入列表状态
+    const [dailyIntake, setDailyIntake] = useState<DailyIntakeItem[]>([]);
+    const [selectedRowKeys, setSelectedRowKeys] = useState<string[]>([]);
+
+    // 从本地存储加载数据
+    useEffect(() => {
+        const loadDailyIntake = () => {
+            try {
+                const storedData = localStorage.getItem('dailyIntake');
+                if (storedData) {
+                    const parsedData = JSON.parse(storedData);
+                    // 检查是否需要清除数据（凌晨3点后）
+                    const now = new Date();
+                    const lastSavedDate = new Date(Math.max(...parsedData.map((item: DailyIntakeItem) => item.timestamp)));
+                    const lastSavedDay = new Date(lastSavedDate.getFullYear(), lastSavedDate.getMonth(), lastSavedDate.getDate());
+                    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+                    
+                    // 如果最后保存日期是昨天或更早，且现在时间已经过了凌晨3点，则清除数据
+                    if (lastSavedDay < today && now.getHours() >= 3) {
+                        clearDailyIntake();
+                    } else {
+                        setDailyIntake(parsedData);
+                    }
+                }
+            } catch (error) {
+                console.error('Failed to load daily intake data:', error);
+            }
+        };
+        
+        loadDailyIntake();
+    }, []);
+
+    // 保存数据到本地存储
+    const saveDailyIntake = (data: DailyIntakeItem[]) => {
+        try {
+            localStorage.setItem('dailyIntake', JSON.stringify(data));
+        } catch (error) {
+            console.error('Failed to save daily intake data:', error);
+        }
+    };
+
+    // 清除每日摄入数据
+    const clearDailyIntake = () => {
+        setDailyIntake([]);
+        setSelectedRowKeys([]);
+        localStorage.removeItem('dailyIntake');
+        message.success('已清除所有记录');
+    };
+
+    // 添加当前数据到每日摄入
+    const addToDailyIntake = () => {
+        if (formData.totalKcal <= 0) {
+            message.warning('请先计算食品热量');
+            return;
+        }
+        
+        const newItem: DailyIntakeItem = {
+            id: Date.now().toString(),
+            timestamp: Date.now(),
+            totalKcal: formData.totalKcal,
+            totalKj: formData.totalKj,
+            malePercent: formData.malePercent,
+            femalePercent: formData.femalePercent,
+            fat: formData.fat
+        };
+        
+        const updatedIntake = [...dailyIntake, newItem];
+        setDailyIntake(updatedIntake);
+        saveDailyIntake(updatedIntake);
+        message.success('已添加到每日摄入');
+    };
+
+    // 删除单条每日摄入记录
+    const deleteIntakeItem = (id: string) => {
+        const updatedIntake = dailyIntake.filter(item => item.id !== id);
+        setDailyIntake(updatedIntake);
+        setSelectedRowKeys(selectedRowKeys.filter(key => key !== id));
+        saveDailyIntake(updatedIntake);
+    };
+
+    // 计算选中项或所有项的总和
+    const calculateTotal = () => {
+        const itemsToCalculate = selectedRowKeys.length > 0
+            ? dailyIntake.filter(item => selectedRowKeys.includes(item.id))
+            : dailyIntake;
+            
+        return {
+            totalKcal: itemsToCalculate.reduce((sum, item) => sum + item.totalKcal, 0),
+            totalKj: itemsToCalculate.reduce((sum, item) => sum + item.totalKj, 0),
+            malePercent: itemsToCalculate.reduce((sum, item) => sum + item.malePercent, 0),
+            femalePercent: itemsToCalculate.reduce((sum, item) => sum + item.femalePercent, 0),
+            fat: itemsToCalculate.reduce((sum, item) => sum + item.fat, 0)
+        };
+    };
 
     // 单位热量同步处理
     const handleUnitChange = (field: string, value: number) => {
@@ -103,6 +208,79 @@ const NutritionCalculator = () => {
             ? {value: fat / 1000, unit: 'kg'}
             : {value: fat, unit: 'g'};
     };
+
+    // 表格列定义
+    const columns = [
+        {
+            title: '时间',
+            dataIndex: 'timestamp',
+            key: 'timestamp',
+            render: (timestamp: number) => new Date(timestamp).toLocaleTimeString(),
+            width: isMobile ? 80 : 100
+        },
+        {
+            title: '大卡',
+            dataIndex: 'totalKcal',
+            key: 'totalKcal',
+            render: (kcal: number) => kcal.toFixed(1),
+            width: isMobile ? 60 : 80
+        },
+        {
+            title: '千焦',
+            dataIndex: 'totalKj',
+            key: 'totalKj',
+            render: (kj: number) => kj.toFixed(1),
+            width: isMobile ? 60 : 80
+        },
+        {
+            title: '男性%',
+            dataIndex: 'malePercent',
+            key: 'malePercent',
+            render: (percent: number) => `${percent.toFixed(1)}%`,
+            width: isMobile ? 60 : 80
+        },
+        {
+            title: '女性%',
+            dataIndex: 'femalePercent',
+            key: 'femalePercent',
+            render: (percent: number) => `${percent.toFixed(1)}%`,
+            width: isMobile ? 60 : 80
+        },
+        {
+            title: '脂肪',
+            dataIndex: 'fat',
+            key: 'fat',
+            render: (fat: number) => {
+                const formatted = formatFat(fat);
+                return `${formatted.value.toFixed(1)}${formatted.unit}`;
+            },
+            width: isMobile ? 60 : 80
+        },
+        {
+            title: '操作',
+            key: 'action',
+            render: (_: any, record: DailyIntakeItem) => (
+                <Button 
+                    type="text" 
+                    danger 
+                    icon={<DeleteOutlined />} 
+                    onClick={() => deleteIntakeItem(record.id)}
+                />
+            ),
+            width: isMobile ? 60 : 80
+        }
+    ];
+
+    // 表格行选择配置
+    const rowSelection = {
+        selectedRowKeys,
+        onChange: (newSelectedRowKeys: React.Key[]) => {
+            setSelectedRowKeys(newSelectedRowKeys as string[]);
+        }
+    };
+
+    // 计算总计
+    const totals = calculateTotal();
 
     return (
         <Form layout="vertical" style={{
@@ -203,7 +381,26 @@ const NutritionCalculator = () => {
             </Row>
 
             {/* 总热量部分 */}
-            <Title level={4} style={{marginBottom: 24, marginTop: 24}}>总热量</Title>
+            <Title level={4} style={{marginBottom: 24, marginTop: 24}}>总热量
+                <Space style={{marginLeft: 16}}>
+                    <Button 
+                        type="primary" 
+                        icon={<PlusOutlined />} 
+                        onClick={addToDailyIntake}
+                        size={isMobile ? "middle" : "small"}
+                    >
+                        计入每日
+                    </Button>
+                    <Button 
+                        danger 
+                        icon={<ClearOutlined />} 
+                        onClick={clearDailyIntake}
+                        size={isMobile ? "middle" : "small"}
+                    >
+                        清除
+                    </Button>
+                </Space>
+            </Title>
             <Row gutter={isMobile ? 8 : 16}>
                 <Col xs={12} sm={12}>
                     <Form.Item label="大卡">
@@ -291,6 +488,65 @@ const NutritionCalculator = () => {
                             {...useInputProps()}
                         />
                     </Form.Item>
+                </Col>
+            </Row>
+
+            {/* 每日摄入部分 */}
+            <Title level={4} style={{marginBottom: 24, marginTop: 24}}>每日摄入</Title>
+            <Row>
+                <Col xs={24}>
+                    {dailyIntake.length > 0 ? (
+                        <>
+                            <Table 
+                                rowSelection={rowSelection}
+                                columns={columns} 
+                                dataSource={dailyIntake} 
+                                rowKey="id"
+                                pagination={false}
+                                size="small"
+                                scroll={{ x: 'max-content' }}
+                                style={{ marginBottom: 16 }}
+                            />
+                            <div style={{ 
+                                background: '#f7f7f7', 
+                                padding: '12px 16px', 
+                                borderRadius: 4,
+                                marginTop: 16 
+                            }}>
+                                <Typography.Text strong>
+                                    {selectedRowKeys.length > 0 ? `已选择 ${selectedRowKeys.length} 项` : '总计'}：
+                                </Typography.Text>
+                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, marginTop: 8 }}>
+                                    <div>
+                                        <Typography.Text type="secondary">大卡：</Typography.Text>
+                                        <Typography.Text strong>{totals.totalKcal.toFixed(1)} kcal</Typography.Text>
+                                    </div>
+                                    <div>
+                                        <Typography.Text type="secondary">千焦：</Typography.Text>
+                                        <Typography.Text strong>{totals.totalKj.toFixed(1)} kJ</Typography.Text>
+                                    </div>
+                                    <div>
+                                        <Typography.Text type="secondary">男性：</Typography.Text>
+                                        <Typography.Text strong>{totals.malePercent.toFixed(1)}%</Typography.Text>
+                                    </div>
+                                    <div>
+                                        <Typography.Text type="secondary">女性：</Typography.Text>
+                                        <Typography.Text strong>{totals.femalePercent.toFixed(1)}%</Typography.Text>
+                                    </div>
+                                    <div>
+                                        <Typography.Text type="secondary">脂肪：</Typography.Text>
+                                        <Typography.Text strong>
+                                            {formatFat(totals.fat).value.toFixed(1)}{formatFat(totals.fat).unit}
+                                        </Typography.Text>
+                                    </div>
+                                </div>
+                            </div>
+                        </>
+                    ) : (
+                        <Typography.Text type="secondary">
+                            暂无数据，请使用"计入每日"按钮添加数据
+                        </Typography.Text>
+                    )}
                 </Col>
             </Row>
         </Form>
