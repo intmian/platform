@@ -37,6 +37,7 @@ import {
 import InfiniteScroll from "react-infinite-scroll-component";
 import {Task} from "./Task";
 import {lowLeverShadow} from "../css/shadow";
+import TaskTree from "./TaskTree";
 
 interface SubGroupAddPanelProps {
     userID: string
@@ -122,7 +123,8 @@ export function SubGroup(props: SubGroupProps) {
     const PAGE_SIZE = 10; // 每页任务数量
 
     // tasks根据Index排序
-    const tasksShow = tasks.sort((a, b) => b.Index - a.Index);
+    const [tree, setTree] = useState<TaskTree>(new TaskTree());
+    tree.addTasks(tasks);
 
     // 加载任务数据
     const loadMoreData = useCallback(() => {

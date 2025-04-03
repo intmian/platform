@@ -141,13 +141,18 @@ const NutritionCalculator = () => {
                             step={1}
                             {...useInputProps()}
                             addonAfter={<Button
-                                // 将刚好一份按钮
                                 onClick={
-                                    () => updateCalculations({...formData, unitTotal: 1, unitNum: 1})
+                                    () => {
+                                        if (formData.unitNum === 1) {
+                                            updateCalculations({...formData, unitTotal: formData.unitTotal + 1});
+                                        } else {
+                                            updateCalculations({...formData, unitTotal: 1, unitNum: 1});
+                                        }
+                                    }
                                 }
                                 type={"text"}
                             >
-                                刚好一份
+                                {formData.unitNum === 1 ? '加一份' : '以份计算'}
                             </Button>
                             }/>
                     </Form.Item>

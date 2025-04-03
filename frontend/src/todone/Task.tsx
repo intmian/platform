@@ -13,13 +13,6 @@ import {
 } from "@ant-design/icons";
 import {IsDateFromGoEmpty} from "../common/tool";
 
-export interface TaskProps {
-    onDelete: () => void
-    subGroupAddr: Addr
-    task: PTask
-    onChangeFinish: (finish: boolean) => void
-}
-
 enum Status {
     // 以下状态为未开始 started == false
     WaitForTime,  // 等待一个开始时间，
@@ -220,6 +213,13 @@ export function TaskWaitAndTime({status, task}: { status: Status, task: PTask })
     }
 
     return <>{timeWait}</>;
+}
+
+export interface TaskProps {
+    onDelete: () => void
+    subGroupAddr: Addr
+    task: PTask
+    onChangeFinish: (finish: boolean) => void
 }
 
 export function Task(props: TaskProps) {
