@@ -1,7 +1,7 @@
-import {useState, useEffect} from 'react';
-import {Button, Col, Form, InputNumber, Row, Tooltip, Typography, Table, Checkbox, Space, message} from 'antd';
+import {useEffect, useState} from 'react';
+import {Button, Col, Form, InputNumber, message, Row, Space, Table, Tooltip, Typography} from 'antd';
 import {useIsMobile} from "../common/hooksv2";
-import {QuestionCircleOutlined, DeleteOutlined, PlusOutlined, ClearOutlined} from '@ant-design/icons';
+import {ClearOutlined, DeleteOutlined, PlusOutlined, QuestionCircleOutlined} from '@ant-design/icons';
 
 const {Title} = Typography;
 
@@ -55,7 +55,7 @@ const NutritionCalculator = () => {
         malePercent: 0,
         femalePercent: 0
     });
-    
+
     // 每日摄入列表状态
     const [dailyIntake, setDailyIntake] = useState<DailyIntakeItem[]>([]);
     const [selectedRowKeys, setSelectedRowKeys] = useState<string[]>([]);
@@ -72,7 +72,7 @@ const NutritionCalculator = () => {
                     const lastSavedDate = new Date(Math.max(...parsedData.map((item: DailyIntakeItem) => item.timestamp)));
                     const lastSavedDay = new Date(lastSavedDate.getFullYear(), lastSavedDate.getMonth(), lastSavedDate.getDate());
                     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-                    
+
                     // 如果最后保存日期是昨天或更早，且现在时间已经过了凌晨3点，则清除数据
                     if (lastSavedDay < today && now.getHours() >= 3) {
                         clearDailyIntake();
@@ -84,7 +84,7 @@ const NutritionCalculator = () => {
                 console.error('Failed to load daily intake data:', error);
             }
         };
-        
+
         loadDailyIntake();
     }, []);
 
@@ -111,7 +111,7 @@ const NutritionCalculator = () => {
             message.warning('请先计算食品热量');
             return;
         }
-        
+
         const newItem: DailyIntakeItem = {
             id: Date.now().toString(),
             timestamp: Date.now(),
@@ -121,7 +121,7 @@ const NutritionCalculator = () => {
             femalePercent: formData.femalePercent,
             fat: formData.fat
         };
-        
+
         const updatedIntake = [...dailyIntake, newItem];
         setDailyIntake(updatedIntake);
         saveDailyIntake(updatedIntake);
@@ -141,7 +141,7 @@ const NutritionCalculator = () => {
         const itemsToCalculate = selectedRowKeys.length > 0
             ? dailyIntake.filter(item => selectedRowKeys.includes(item.id))
             : dailyIntake;
-            
+
         return {
             totalKcal: itemsToCalculate.reduce((sum, item) => sum + item.totalKcal, 0),
             totalKj: itemsToCalculate.reduce((sum, item) => sum + item.totalKj, 0),
@@ -233,20 +233,6 @@ const NutritionCalculator = () => {
             width: isMobile ? 60 : 80
         },
         {
-            title: '男性%',
-            dataIndex: 'malePercent',
-            key: 'malePercent',
-            render: (percent: number) => `${percent.toFixed(1)}%`,
-            width: isMobile ? 60 : 80
-        },
-        {
-            title: '女性%',
-            dataIndex: 'femalePercent',
-            key: 'femalePercent',
-            render: (percent: number) => `${percent.toFixed(1)}%`,
-            width: isMobile ? 60 : 80
-        },
-        {
             title: '脂肪',
             dataIndex: 'fat',
             key: 'fat',
@@ -260,10 +246,10 @@ const NutritionCalculator = () => {
             title: '操作',
             key: 'action',
             render: (_: any, record: DailyIntakeItem) => (
-                <Button 
-                    type="text" 
-                    danger 
-                    icon={<DeleteOutlined />} 
+                <Button
+                    type="text"
+                    danger
+                    icon={<DeleteOutlined/>}
                     onClick={() => deleteIntakeItem(record.id)}
                 />
             ),
@@ -383,17 +369,17 @@ const NutritionCalculator = () => {
             {/* 总热量部分 */}
             <Title level={4} style={{marginBottom: 24, marginTop: 24}}>总热量
                 <Space style={{marginLeft: 16}}>
-                    <Button 
-                        type="primary" 
-                        icon={<PlusOutlined />} 
+                    <Button
+                        type="primary"
+                        icon={<PlusOutlined/>}
                         onClick={addToDailyIntake}
                         size={isMobile ? "middle" : "small"}
                     >
                         计入每日
                     </Button>
-                    <Button 
-                        danger 
-                        icon={<ClearOutlined />} 
+                    <Button
+                        danger
+                        icon={<ClearOutlined/>}
                         onClick={clearDailyIntake}
                         size={isMobile ? "middle" : "small"}
                     >
@@ -497,26 +483,26 @@ const NutritionCalculator = () => {
                 <Col xs={24}>
                     {dailyIntake.length > 0 ? (
                         <>
-                            <Table 
+                            <Table
                                 rowSelection={rowSelection}
-                                columns={columns} 
-                                dataSource={dailyIntake} 
+                                columns={columns}
+                                dataSource={dailyIntake}
                                 rowKey="id"
                                 pagination={false}
                                 size="small"
-                                scroll={{ x: 'max-content' }}
-                                style={{ marginBottom: 16 }}
+                                scroll={{x: 'max-content'}}
+                                style={{marginBottom: 16}}
                             />
-                            <div style={{ 
-                                background: '#f7f7f7', 
-                                padding: '12px 16px', 
+                            <div style={{
+                                background: '#f7f7f7',
+                                padding: '12px 16px',
                                 borderRadius: 4,
-                                marginTop: 16 
+                                marginTop: 16
                             }}>
                                 <Typography.Text strong>
                                     {selectedRowKeys.length > 0 ? `已选择 ${selectedRowKeys.length} 项` : '总计'}：
                                 </Typography.Text>
-                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, marginTop: 8 }}>
+                                <div style={{display: 'flex', flexWrap: 'wrap', gap: 16, marginTop: 8}}>
                                     <div>
                                         <Typography.Text type="secondary">大卡：</Typography.Text>
                                         <Typography.Text strong>{totals.totalKcal.toFixed(1)} kcal</Typography.Text>
