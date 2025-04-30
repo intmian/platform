@@ -2,7 +2,7 @@ import {useEffect, useState} from "react";
 import {Button, Divider, Dropdown, Flex, Form, Input, message, Modal, Space, Tooltip} from "antd";
 import {CreateSubGroupReq, GetTasksReq, sendCreateSubGroup, sendDelSubGroup, sendGetTasks} from "./net/send_back";
 import {Addr} from "./addr";
-import {PSubGroup} from "./net/protocal";
+import {PSubGroup, PTask} from "./net/protocal";
 import {
     CaretDownOutlined,
     CaretUpOutlined,
@@ -86,6 +86,7 @@ interface SubGroupProps {
     groupAddr: Addr
     subGroup: PSubGroup
     onDelete: (subGroup: PSubGroup) => void;
+    onSelectTask: (addr: Addr, pTask: PTask, refreshApi: () => void) => void;
 }
 
 export function SubGroup(props: SubGroupProps) {
@@ -237,6 +238,7 @@ export function SubGroup(props: SubGroupProps) {
             refreshTree={() => {
                 setTaskTree(taskTree.copy());
             }}
+            onSelectTask={props.onSelectTask}
         /> : null}
     </div>
 }

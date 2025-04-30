@@ -7,17 +7,18 @@ import {AppstoreAddOutlined, LoadingOutlined} from "@ant-design/icons";
 import {SubGroup, SubGroupAddPanel} from "./SubGroups";
 
 class TaskTree {
+    public data: PTask;
+    public subTasks: TaskTree[] = [];
+
     constructor(data: PTask) {
         this.data = data;
     }
-
-    public data: PTask;
-    public subTasks: TaskTree[] = [];
 }
 
 interface GroupProps {
     addr: Addr | null
     GroupTitle: string
+    onSelectTask: (addr: Addr, pTask: PTask, refreshApi: () => void) => void
 }
 
 export default function Group(props: GroupProps) {
@@ -58,6 +59,7 @@ export default function Group(props: GroupProps) {
                 onDelete={(sg) => {
                     setSubGroups(subGroups.filter((g) => g.ID !== sg.ID));
                 }}
+                onSelectTask={(props.onSelectTask)}
             />)
     }
 

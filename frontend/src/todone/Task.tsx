@@ -240,6 +240,7 @@ export interface TaskProps {
     loadingTree: boolean
     refreshTree: () => void
     tree: TaskTree
+    onSelectTask: (addr: Addr, pTask: PTask, refreshApi: () => void) => void
 }
 
 export function Task(props: TaskProps) {
@@ -263,6 +264,9 @@ export function Task(props: TaskProps) {
                 columnGap: '10px',
                 // 子组件居中
                 alignItems: 'center',
+            }}
+            onClick={() => {
+                props.onSelectTask(thisAddr, props.task, props.refreshTree);
             }}
         >
             <TaskStatusOperate
@@ -314,6 +318,7 @@ export function Task(props: TaskProps) {
                 refreshTree={props.refreshTree}
                 tree={props.tree}
                 level={props.level}
+                onSelectTask={props.onSelectTask}
             />
         </Row>
         }

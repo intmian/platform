@@ -22,6 +22,7 @@ export function ExportTasks(nodes: TaskTreeNode[], smallFirst: boolean): PTask[]
     return tasks
 }
 
+// 前端暂存的数据，用于存储任务，变动数据时用服务器返回最新副本更新此处。
 export default class TaskTree {
     roots: TaskTreeNode[]
 

@@ -1,4 +1,4 @@
-import {useContext, useState} from "react";
+import {useContext, useRef, useState} from "react";
 import {LoginCtr, LoginCtx} from "../common/loginCtx";
 import {Dir} from "./Dir";
 import {ConfigsCtr, UniConfig} from "../common/UniConfig";
@@ -7,6 +7,8 @@ import {Flex, message} from "antd";
 import {Addr} from "./addr";
 import Group from "./Group";
 import {useParams} from "react-router-dom";
+import {PTask} from "./net/protocal";
+import {TaskDetail} from "./TaskDetail";
 
 const TodoneConfigs = new ConfigsCtr(ConfigsType.Server, 'todone')
 TodoneConfigs.addBaseConfig('db.account_id', '数据库账号ID', ConfigType.String, 'cloudflare')
@@ -41,11 +43,16 @@ export function Todone() {
 
     const [chooseAddr, setChooseAddr] = useState<Addr | null>(null);
     const [chooseTitle, setChooseTitle] = useState<string>('')
+
+    const selectTaskAddrRef = useRef<Addr>();
+    const selectTaskRef = useRef<PTask>();
+    const refreshApiRef = useRef<() => void>();
+
     return <>
         <Flex>
             <div
                 style={{
-                    flex: 1,
+                    width: 300,
                 }}
             >
                 <Dir
@@ -62,12 +69,18 @@ export function Todone() {
             </div>
             <div
                 style={{
-                    flex: 1,
+                    width: 650,
                 }}
             >
                 <Group
                     addr={chooseAddr}
                     GroupTitle={chooseTitle}
+                    onSelectTask={(addr, pTask, callback) => {
+                        console.log(addr, pTask, callback);
+                        selectTaskAddrRef.current = addr;
+                        selectTaskRef.current = pTask;
+                        refreshApiRef.current = callback;
+                    }}
                 />
             </div>
 
@@ -76,7 +89,10 @@ export function Todone() {
                     flex: 1,
                 }}
             >
-                TODO:detail
+                <TaskDetail addr={selectTaskAddrRef.current}
+                            task={selectTaskRef.current}
+                            refreshApi={refreshApiRef.current}
+                />
             </div>
         </Flex>
 

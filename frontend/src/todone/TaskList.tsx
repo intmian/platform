@@ -7,13 +7,14 @@ import {CreateTaskReq, sendCreateTask} from "./net/send_back";
 import {LoadingOutlined} from "@ant-design/icons";
 import {Task} from "./Task";
 
-export function TaskList({level, tree, addr, indexSmallFirst, loadingTree, refreshTree}: {
+export function TaskList({level, tree, addr, indexSmallFirst, loadingTree, refreshTree, onSelectTask}: {
     level: number
     tree: TaskTree
     addr: Addr
     indexSmallFirst: boolean
     loadingTree: boolean
     refreshTree: () => void
+    onSelectTask: (addr: Addr, pTask: PTask, refreshApi: () => void) => void
 }) {
     const [addingTask, setAddingTask] = useState(false); // 是否正在添加任务
 
@@ -124,8 +125,9 @@ export function TaskList({level, tree, addr, indexSmallFirst, loadingTree, refre
             renderItem={(item) => (
                 <List.Item key={item.ID}>
                     <Task
+                        onSelectTask={onSelectTask}
                         level={level + 1}
-                        addr={addr.copy().addTask(item.ID)}
+                        addr={addr.copy()}
                         task={item}
                         taskNode={tree.findTask(item.ID)!}
                         indexSmallFirst={indexSmallFirst}
