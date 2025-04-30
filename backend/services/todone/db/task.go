@@ -78,7 +78,7 @@ func GetTasksByParentSubGroupID(db *gorm.DB, parentSubGroupID uint32, limit int,
 		if limit > 0 {
 			db.Where("parent_sub_group_id = ? and done = ? and deleted = ?", parentSubGroupID, false, false).Limit(limit).Offset(offset).Find(&tasks)
 		} else {
-			db.Where("parent_sub_group_id = ? and deleted = ?", parentSubGroupID, false).Find(&tasks)
+			db.Where("parent_sub_group_id = ? and done = ? and deleted = ?", parentSubGroupID, false, false).Find(&tasks)
 		}
 	} else {
 		if limit > 0 {

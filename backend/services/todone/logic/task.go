@@ -211,17 +211,26 @@ func (t *TaskLogic) ChangeFromProtocol(pTask protocol.PTask) error {
 	if err != nil {
 		return errors.Join(err, ErrGetTaskDataFailed)
 	}
-	if pTask.Title != "" {
+	if pTask.Title != data.Title {
 		data.Note = pTask.Title
 	}
-	if pTask.Note != "" {
+	if pTask.Note != data.Note {
 		data.Note = pTask.Note
 	}
-	if pTask.Index != 0 {
+	if pTask.Index != data.Index {
 		data.Index = pTask.Index
 	}
 	if pTask.Done != data.Done {
 		data.Done = pTask.Done
+	}
+	if pTask.Started != data.Started {
+		data.Started = pTask.Started
+	}
+	if pTask.BeginTime != data.BeginTime {
+		data.BeginTime = pTask.BeginTime
+	}
+	if pTask.EndTime != data.EndTime {
+		data.EndTime = pTask.EndTime
 	}
 	connect := db.GTodoneDBMgr.GetConnect(db.ConnectTypeTask)
 	return db.UpdateTask(connect, data)
