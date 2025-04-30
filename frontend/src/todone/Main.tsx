@@ -21,7 +21,7 @@ TodoneConfigs.addCallback((isInit: boolean) => {
 // TodoneConfigs.init()
 
 
-function Setting() {
+export function TodoneSetting() {
     return <div>
         <UniConfig configCtr={TodoneConfigs}/>
     </div>
@@ -42,7 +42,6 @@ export function Todone() {
     const [chooseAddr, setChooseAddr] = useState<Addr | null>(null);
     const [chooseTitle, setChooseTitle] = useState<string>('')
     return <>
-        <Setting/>
         <Flex>
             <div
                 style={{

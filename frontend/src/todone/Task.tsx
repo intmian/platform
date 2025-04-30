@@ -5,6 +5,7 @@ import {ReactNode, useState} from "react";
 import {
     CaretRightOutlined,
     CheckOutlined,
+    LoadingOutlined,
     MinusCircleOutlined,
     PlusCircleOutlined,
     RedoOutlined,
@@ -12,6 +13,7 @@ import {
 import {IsDateFromGoEmpty} from "../common/tool";
 import TaskTree, {TaskTreeNode} from "./TaskTree";
 import {TaskList} from "./TaskList";
+import {ChangeTaskReq, sendChangeTask} from "./net/send_back";
 
 enum Status {
     // 以下状态为未开始 started == false
@@ -79,13 +81,15 @@ function GetTaskStatus(task: PTask): Status {
     return status
 }
 
-function TaskStatusOperate({status, onClick}: { status: Status, onClick: () => void }) {
+function TaskStatusOperate({status, onClick, operating}: { status: Status, onClick: () => void, operating: boolean }) {
     let icon: ReactNode = null
     let text: string | null = null
     if (status >= Status.StartedBegin && status < Status.FinishedBegin) {
         if (status >= Status.TODO) {
             icon = null
-            text = " "
+            if (!operating) {
+                text = " "
+            }
         } else {
             icon = <RedoOutlined/>
         }
@@ -96,12 +100,15 @@ function TaskStatusOperate({status, onClick}: { status: Status, onClick: () => v
         // 没有开始情况
         icon = <CaretRightOutlined/>
     }
+    if (operating) {
+        icon = <LoadingOutlined spin={true}/>
+    }
     return <Button
         icon={icon}
         onClick={onClick}
         style={{
             // 如果没有icon padding= 0
-            padding: icon ? undefined : '0px',
+            padding: (icon) ? undefined : '0px',
             // 和文字一样高
             height: '22px',
             width: '22px',
@@ -129,7 +136,7 @@ interface TaskTitleProps {
     isShowSon: boolean
 }
 
-export function TaskTitle({task, clickShowSubTask, isShowSon, clickShowSon}: TaskTitleProps) {
+export function TaskTitle({task, clickShowSubTask, isShowSon}: TaskTitleProps) {
     // 判断任务状态
     let color = undefined;
     let textDecoration = task.Done ? 'line-through' : 'none';
@@ -226,8 +233,6 @@ export function TaskWaitAndTime({status, task}: { status: Status, task: PTask })
 
 export interface TaskProps {
     level: number
-    onDelete: () => void
-    onMove: (newTask: PTask, trg: Addr) => void
     task: PTask
     taskNode: TaskTreeNode
     addr: Addr
@@ -245,6 +250,7 @@ export function Task(props: TaskProps) {
         hasSon = true;
     }
     const [showSubTask, setShowSubTask] = useState(hasSon); // 是否显示子任务
+    const [operate, setOperate] = useState(false); // 是否操作
     const thisAddr = props.addr.copy();
     thisAddr.addTask(props.task.ID);
     return <div
@@ -259,11 +265,35 @@ export function Task(props: TaskProps) {
                 alignItems: 'center',
             }}
         >
-            <TaskStatusOperate onClick={
-                () => {
-                    console.log("click task status")
-                }
-            } status={status}/>
+            <TaskStatusOperate
+                operating={operate}
+                onClick={
+                    () => {
+                        setOperate(true);
+                        const ptask = props.tree.findTask(props.task.ID);
+                        if (!ptask) {
+                            return;
+                        }
+                        if (!ptask.task.Started) {
+                            ptask.task.Started = true;
+                        } else if (!ptask.task.Done) {
+                            ptask.task.Done = true;
+                        } else {
+                            ptask.task.Done = false;
+                            ptask.task.Started = false;
+                        }
+                        const req: ChangeTaskReq = {Data: ptask.task, UserID: props.addr.userID}
+                        sendChangeTask(req, (ret) => {
+                            if (ret.ok) {
+                                props.refreshTree();
+                            } else {
+                                // 失败了
+                                console.log("修改任务失败")
+                            }
+                            setOperate(false);
+                        })
+                    }
+                } status={status}/>
             <TaskTitle
                 task={props.task}
                 clickShowSubTask={() => {

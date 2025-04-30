@@ -94,7 +94,7 @@ export function SubGroup(props: SubGroupProps) {
 
     const [open, setOpen] = useState(true); // 是否显示任务列表
     const [containDone, setContainDone] = useState(false); // 是否包含已完成任务
-    const [indexSmallFirst, setIndexSmallFirst] = useState(false); // 是否按Index升序排列
+    const [indexSmallFirst, setIndexSmallFirst] = useState(true); // 是否按Index升序排列
     const [loading, setLoading] = useState(false); // 是否正在加载数据
 
     // 目前先采用每个分组一个任务树的方式，方便移动等逻辑处理，一般来说加载出来的数据任务数量不会太多（不考虑已完成的情况下）,子任务也一起加载，跨分组移动可能会出现刷新问题，但是问题不大，不再采用懒加载。

@@ -76,7 +76,16 @@ export default class TaskTree {
             task: task,
             children: []
         }
-        this.roots.push(node)
+        // 如果是根节点，添加到根节点
+        if (task.ParentID === 0) {
+            this.roots.push(node)
+        } else {
+            // 否则添加到父节点
+            const parent = this.findTask(task.ParentID)
+            if (parent) {
+                parent.children.push(node)
+            }
+        }
     }
 
     isRoot(taskID: number): boolean {

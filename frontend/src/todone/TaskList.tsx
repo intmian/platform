@@ -127,15 +127,6 @@ export function TaskList({level, tree, addr, indexSmallFirst, loadingTree, refre
                         level={level + 1}
                         addr={addr.copy().addTask(item.ID)}
                         task={item}
-                        onDelete={function (): void {
-                            tree.deleteTask(item.ID);
-                            refreshTree();
-                        }}
-                        onMove={function (newTask: PTask, trg: Addr): void {
-                            const parentID = trg.getLastUnit().ID;
-                            tree.moveTask(item.ID, parentID);
-                            refreshTree();
-                        }}
                         taskNode={tree.findTask(item.ID)!}
                         indexSmallFirst={indexSmallFirst}
                         loadingTree={loadingTree}
