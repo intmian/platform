@@ -1,17 +1,17 @@
 import {Addr} from "./addr";
 import {PTask, TaskType} from "./net/protocal";
-import {Button, Checkbox, Dropdown, Flex, Tag} from "antd";
-import {ReactNode} from "react";
+import {Button, Flex, Row, Tag} from "antd";
+import {ReactNode, useState} from "react";
 import {
-    BorderOutlined,
-    CheckSquareOutlined,
-    ClockCircleOutlined,
-    FieldNumberOutlined,
-    FieldTimeOutlined,
-    MoreOutlined,
-    SyncOutlined
+    CaretRightOutlined,
+    CheckOutlined,
+    MinusCircleOutlined,
+    PlusCircleOutlined,
+    RedoOutlined,
 } from "@ant-design/icons";
 import {IsDateFromGoEmpty} from "../common/tool";
+import TaskTree, {TaskTreeNode} from "./TaskTree";
+import {TaskList} from "./TaskList";
 
 enum Status {
     // 以下状态为未开始 started == false
@@ -20,14 +20,16 @@ enum Status {
     WaitForHand, // 什么条件都没有，只是等待手动开始
     // 以下状态为started == true
     StartedBegin,
-    Running, // 进行中，持续进行 type == doing
-    RunningUntilEnd, // 进行中，直到结束时间 type == doing && end_time为空时间或者为nil
+
+    Running, // 进行中，持续进行 type == doing && end_time为空时间或者为nil
+    RunningUntilEnd, // 进行中，直到结束时间 type == doing && 结束时间还没到
     RunningAfterEnd, // 进行中，结束时间已经到了，需要手动完成下
-    TODO, // type == todoType
-    TODOUntilEnd, // type == todoType && end_time为空时间或者为nil
+    TODO, // type == todoType && end_time为空时间或者为nil
+    TODOUntilEnd, // type == todoType && end_time还没到
     TODOAfterEnd, // type == todoType && end_time已经到了
     // 以下状态为完成
     FinishedBegin,
+
     Finished,
 }
 
@@ -66,72 +68,47 @@ function GetTaskStatus(task: PTask): Status {
         const AfterBegin = task.BeginTime && beginTime.getTime() < new Date().getTime()
         if (hasBeginTime) {
             if (AfterBegin) {
-                status = Status.WaitForHand
+                status = Status.WaitForHandAfterTime
             } else {
                 status = Status.WaitForTime
             }
         } else {
-            status = Status.WaitForHandAfterTime
+            status = Status.WaitForHand
         }
     }
     return status
 }
 
 function TaskStatusOperate({status, onClick}: { status: Status, onClick: () => void }) {
-    switch (status) {
-        case Status.WaitForTime:
-            return <Button
-                icon={<ClockCircleOutlined color='grey'/>}
-                onClick={onClick}
-            />
-        case Status.WaitForHandAfterTime:
-            return <Button
-                icon={<FieldTimeOutlined color='grey'/>}
-                onClick={onClick}
-            />
-        case Status.WaitForHand:
-            return <Button
-                icon={<FieldNumberOutlined color='grey'/>}
-                onClick={onClick}
-            />
-        case Status.Running:
-            return <Button
-                icon={<SyncOutlined spin color='green'/>}
-                onClick={onClick}
-            />
-        case Status.RunningUntilEnd:
-            return <Button
-                icon={<SyncOutlined spin color='yellow'/>}
-                onClick={onClick}
-            />
-        case Status.RunningAfterEnd:
-            return <Button
-                icon={<SyncOutlined spin color='red'/>}
-                onClick={onClick}
-            />
-        case Status.TODO:
-            return <Button
-                icon={<BorderOutlined color='blue'/>}
-                onClick={onClick}
-            />
-        case Status.TODOUntilEnd:
-            return <Button
-                icon={<BorderOutlined color='yellow'/>}
-                onClick={onClick}
-            />
-        case Status.TODOAfterEnd:
-            return <Button
-                icon={<BorderOutlined color='red'/>}
-                onClick={onClick}
-            />
-        case Status.Finished:
-            return <Button
-                icon={<CheckSquareOutlined/>}
-                onClick={onClick}
-            />
-        default:
-            return null
+    let icon: ReactNode = null
+    let text: string | null = null
+    if (status >= Status.StartedBegin && status < Status.FinishedBegin) {
+        if (status >= Status.TODO) {
+            icon = null
+            text = " "
+        } else {
+            icon = <RedoOutlined/>
+        }
+    } else if (status >= Status.FinishedBegin) {
+        // 已经结束
+        icon = <CheckOutlined/>
+    } else {
+        // 没有开始情况
+        icon = <CaretRightOutlined/>
     }
+    return <Button
+        icon={icon}
+        onClick={onClick}
+        style={{
+            // 如果没有icon padding= 0
+            padding: icon ? undefined : '0px',
+            // 和文字一样高
+            height: '22px',
+            width: '22px',
+        }}
+    >
+        {text}
+    </Button>
 }
 
 export function TaskTags({task}: { task: PTask }) {
@@ -146,22 +123,54 @@ export function TaskTags({task}: { task: PTask }) {
     </>
 }
 
-export function TaskTitle({task, clickShowSubTask}: { task: PTask, clickShowSubTask: () => void }) {
-    return <>
-        <div
+interface TaskTitleProps {
+    task: PTask
+    clickShowSubTask: () => void
+    isShowSon: boolean
+}
+
+export function TaskTitle({task, clickShowSubTask, isShowSon, clickShowSon}: TaskTitleProps) {
+    // 判断任务状态
+    let color = undefined;
+    let textDecoration = task.Done ? 'line-through' : 'none';
+    if (!task.Started) {
+        color = '#bfbfbf'; // 灰色
+    }
+    if (task.Done) {
+        textDecoration = 'line-through';
+    }
+    return (
+        <Flex
             style={{
                 flex: 1,
-                // 如果任务完成了，显示划掉的线
-                textDecoration: task.Done ? 'line-through' : 'none',
             }}
         >
-            {task.Title}
-        </div>
-        {task.HaveSubTask ? <Button
-            icon={<MoreOutlined/>}
-            onClick={clickShowSubTask}
-        /> : null}
-    </>
+            <div
+                style={{
+                    flex: 1,
+                    color,
+                    textDecoration,
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                    width: '100px',
+                    // 居中显示
+                    display: 'flex',
+                    alignItems: 'center',
+                }}
+            >
+                {task.Title}
+            </div>
+            <Button
+                size="small"
+                type="text"
+                onClick={clickShowSubTask}
+                style={{marginLeft: 'auto'}}
+                icon={!isShowSon ? <PlusCircleOutlined/> : <MinusCircleOutlined/>}
+            >
+            </Button>
+        </Flex>
+    )
 }
 
 export function TaskWaitAndTime({status, task}: { status: Status, task: PTask }) {
@@ -216,87 +225,67 @@ export function TaskWaitAndTime({status, task}: { status: Status, task: PTask })
 }
 
 export interface TaskProps {
+    level: number
     onDelete: () => void
-    subGroupAddr: Addr
+    onMove: (newTask: PTask, trg: Addr) => void
     task: PTask
-    onChangeFinish: (finish: boolean) => void
+    taskNode: TaskTreeNode
+    addr: Addr
+    indexSmallFirst: boolean
+    loadingTree: boolean
+    refreshTree: () => void
+    tree: TaskTree
 }
 
 export function Task(props: TaskProps) {
     // 这里的时间只做显示，不会真正的自动开始或者完成（目前）
     const status = GetTaskStatus(props.task)
-
-    let line2: ReactNode
-    const tags: ReactNode[] = []
-    if (props.task.Tags) {
-        for (const tag of props.task.Tags) {
-            tags.push(<Tag key={tag} color="blue">{tag}</Tag>)
-        }
+    let hasSon: boolean = false;
+    if (props.taskNode.children && props.taskNode.children.length > 0) {
+        hasSon = true;
     }
-    const timeWait: ReactNode[] = []
-
-    if (props.task.Wait4 !== "") {
-        timeWait.push(<div>
-            <Tag color="green">{props.task.Wait4}</Tag>
-        </div>)
-    }
-    const now = new Date()
-    if (now < props.task.BeginTime) {
-        timeWait.push(<div>
-            <Tag color="orange">
-
-            </Tag>
-        </div>)
-    }
-
+    const [showSubTask, setShowSubTask] = useState(hasSon); // 是否显示子任务
+    const thisAddr = props.addr.copy();
+    thisAddr.addTask(props.task.ID);
     return <div
         style={{
             width: '100%',
         }}
     >
-        <Flex
+        <Row
             style={{
-                width: '100%',
+                columnGap: '10px',
+                // 子组件居中
+                alignItems: 'center',
             }}
-            align="center" justify="space-between"
-            // 间隔
-            gap={5}
         >
-            <Checkbox
-                checked={props.task.Done}
-                onClick={
-                    (e) => {
-                        console.log('click', e)
-                        props.onChangeFinish(!props.task.Done)
-                    }
+            <TaskStatusOperate onClick={
+                () => {
+                    console.log("click task status")
                 }
-            />
-            <div
-                style={{
-                    flex: 1,
-                    // 如果任务完成了，显示划掉的线
-                    textDecoration: props.task.Done ? 'line-through' : 'none',
+            } status={status}/>
+            <TaskTitle
+                task={props.task}
+                clickShowSubTask={() => {
+                    setShowSubTask(!showSubTask);
                 }}
-            >
-                {props.task.Title}
-            </div>
-            <Dropdown
-                menu={{
-                    items: [
-                        {
-                            key: 'delete',
-                            label: '删除',
-                            onClick: () => {
-                                props.onDelete()
-                            },
-                        },
-                    ],
-                }}>
-                <MoreOutlined/>
-            </Dropdown>
-        </Flex>
-        <div>
-            {line2}
-        </div>
+                isShowSon={showSubTask}
+            />
+        </Row>
+        <Row>
+            <TaskTags task={props.task}/>
+            <TaskWaitAndTime status={status} task={props.task}/>
+        </Row>
+        {showSubTask && <Row>
+            <TaskList
+                addr={thisAddr}
+                indexSmallFirst={props.indexSmallFirst}
+                loadingTree={props.loadingTree}
+                refreshTree={props.refreshTree}
+                tree={props.tree}
+                level={props.level}
+            />
+        </Row>
+        }
     </div>
 }

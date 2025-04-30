@@ -189,6 +189,7 @@ type CreateTaskReq struct {
 	Title      string
 	Note       string
 	AfterID    uint32
+	Started    bool
 }
 
 type CreateTaskRet struct {
@@ -231,4 +232,18 @@ type DelSubGroupReq struct {
 }
 
 type DelSubGroupRet struct {
+}
+
+const CmdGetTasks share.Cmd = "getTasks"
+
+type GetTasksReq struct {
+	UserID      string
+	ParentDirID uint32
+	GroupID     uint32
+	SubGroupID  uint32
+	ContainDone bool
+}
+
+type GetTasksRet struct {
+	Tasks []protocol.PTask
 }

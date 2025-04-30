@@ -280,30 +280,41 @@ func (s *Service) OnChangeTask(valid backendshare.Valid, req ChangeTaskReq) (ret
 
 func (s *Service) OnCreateTask(valid backendshare.Valid, req CreateTaskReq) (ret CreateTaskRet, err error) {
 	f := func(user *logic.UserLogic) {
+		var task *logic.TaskLogic
 		if req.ParentTask == 0 {
 			group := user.GetSubGroupLogic(req.DirID, req.GroupID, req.SubGroupID)
 			if group == nil {
 				err = errors.New("group not exist")
 			}
-			task, err2 := group.CreateTask(req.UserID, req.Title, req.Note)
+			var err2 error
+			task, err2 = group.CreateTask(req.UserID, req.Title, req.Note)
 			if err2 != nil {
 				err = errors.Join(errors.New("create task failed"), err2)
 				return
 			}
-			ret.Task = task.ToProtocol()
 		} else {
-			task := user.GetTaskLogic(req.ParentTask)
-			if task == nil {
-				err = errors.New("task not exist")
+			parent := user.GetTaskLogic(req.ParentTask)
+			data, _ := parent.GetTaskData()
+			if data == nil {
+				err = errors.New("parent task not exist")
 				return
 			}
-			subTask, err2 := task.CreateSubTask(req.UserID, req.Title, req.Note)
+			var err2 error
+			task, err2 = parent.CreateSubTask(req.UserID, req.Title, req.Note)
 			if err2 != nil {
-				err = errors.Join(errors.New("create sub task failed"), err2)
+				err = errors.Join(errors.New("create sub parent failed"), err2)
 				return
 			}
-			ret.Task = subTask.ToProtocol()
 		}
+		if req.Started {
+			err2 := task.StartTask()
+			if err2 != nil {
+				err = errors.Join(err, err2)
+				return
+			}
+		}
+		ret.Task = task.ToProtocol()
+
 	}
 	s.userMgr.SafeUseUserLogic(req.UserID, f, func() {
 		err = errors.New("user not exist")
@@ -363,6 +374,58 @@ func (s *Service) OnDelSubGroup(valid backendshare.Valid, req DelSubGroupReq) (r
 		if err2 != nil {
 			err = errors.Join(err, err2)
 			return
+		}
+	}
+	s.userMgr.SafeUseUserLogic(req.UserID, f, func() {
+		err = errors.New("user not exist")
+	})
+	return
+}
+
+func (s *Service) OnGetTasks(valid backendshare.Valid, req GetTasksReq) (ret GetTasksRet, err error) {
+	f := func(user *logic.UserLogic) {
+		group := user.GetGroupLogic(req.ParentDirID, req.GroupID)
+		if group == nil {
+			err = errors.New("group not exist")
+			return
+		}
+		subGroup := group.GetSubGroupLogic(req.SubGroupID)
+		if subGroup == nil {
+			err = errors.New("sub group not exist")
+			return
+		}
+		tasks, err2 := subGroup.GetTasks(req.ContainDone)
+		if err2 != nil {
+			err = errors.Join(err, err2)
+			return
+		}
+
+		// 异步加载所有的tag
+		taskIds := make([]uint32, 0)
+		for _, task := range tasks {
+			taskIds = append(taskIds, task.GetID())
+		}
+		connTag := db.GTodoneDBMgr.GetConnect(db.ConnectTypeTags)
+		if connTag == nil {
+			err = errors.New("connect db failed")
+			return
+		}
+
+		wait := sync.WaitGroup{}
+		var tags map[uint32][]string
+		wait.Add(1)
+		go func() {
+			tags = db.GetTagsByMultipleTaskID(connTag, taskIds)
+			wait.Done()
+		}()
+		wait.Wait()
+
+		for _, task := range tasks {
+			task.BindOutTags(tags[task.GetID()])
+		}
+
+		for _, task := range tasks {
+			ret.Tasks = append(ret.Tasks, task.ToProtocol())
 		}
 	}
 	s.userMgr.SafeUseUserLogic(req.UserID, f, func() {

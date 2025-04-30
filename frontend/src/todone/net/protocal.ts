@@ -35,7 +35,7 @@ export interface PTask {
     Index: number;
     Tags: string[] | null;
     Done: boolean;
-    HaveSubTask: boolean;
+    ParentID: number;
 
     // 额外信息
     TaskType: number

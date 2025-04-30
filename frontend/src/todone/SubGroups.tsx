@@ -1,29 +1,8 @@
-import {useCallback, useEffect, useRef, useState} from "react";
-import {
-    Button,
-    Divider,
-    Dropdown,
-    Flex,
-    Form,
-    Input,
-    InputRef,
-    List,
-    message,
-    Modal,
-    Skeleton,
-    Space,
-    Tooltip
-} from "antd";
-import {
-    CreateSubGroupReq,
-    CreateTaskReq,
-    sendCreateSubGroup,
-    sendCreateTask,
-    sendDelSubGroup,
-    sendGetTaskByPage
-} from "./net/send_back";
+import {useEffect, useState} from "react";
+import {Button, Divider, Dropdown, Flex, Form, Input, message, Modal, Space, Tooltip} from "antd";
+import {CreateSubGroupReq, GetTasksReq, sendCreateSubGroup, sendDelSubGroup, sendGetTasks} from "./net/send_back";
 import {Addr} from "./addr";
-import {PSubGroup, PTask} from "./net/protocal";
+import {PSubGroup} from "./net/protocal";
 import {
     CaretDownOutlined,
     CaretUpOutlined,
@@ -31,13 +10,13 @@ import {
     CopyOutlined,
     DeleteOutlined,
     EditOutlined,
-    LoadingOutlined,
-    MoreOutlined
+    MoreOutlined,
+    VerticalAlignBottomOutlined,
+    VerticalAlignTopOutlined
 } from "@ant-design/icons";
-import InfiniteScroll from "react-infinite-scroll-component";
-import {Task} from "./Task";
 import {lowLeverShadow} from "../css/shadow";
 import TaskTree from "./TaskTree";
+import {TaskList} from "./TaskList";
 
 interface SubGroupAddPanelProps {
     userID: string
@@ -113,152 +92,40 @@ export function SubGroup(props: SubGroupProps) {
     const subGroupAddr = props.groupAddr.copy();
     subGroupAddr.addSubGroup(props.subGroup.ID);
 
-    const [showTasks, setShowTasks] = useState(true); // 是否显示任务列表
-    const [tasks, setTasks] = useState<PTask[]>([]); // 任务列表
-    const pageRef = useRef(0); // 当前页码
-    const tasksLast = useRef<PTask[]>([]); // 上次加载的任务列表
-    const [hasMore, setHasMore] = useState(true); // 是否有更多数据
+    const [open, setOpen] = useState(true); // 是否显示任务列表
     const [containDone, setContainDone] = useState(false); // 是否包含已完成任务
-    const [addingTask, setAddingTask] = useState(false); // 是否正在添加任务
-    const PAGE_SIZE = 10; // 每页任务数量
+    const [indexSmallFirst, setIndexSmallFirst] = useState(false); // 是否按Index升序排列
+    const [loading, setLoading] = useState(false); // 是否正在加载数据
 
-    // tasks根据Index排序
-    const [tree, setTree] = useState<TaskTree>(new TaskTree());
-    tree.addTasks(tasks);
-
-    // 加载任务数据
-    const loadMoreData = useCallback(() => {
-        const req = {
+    // 目前先采用每个分组一个任务树的方式，方便移动等逻辑处理，一般来说加载出来的数据任务数量不会太多（不考虑已完成的情况下）,子任务也一起加载，跨分组移动可能会出现刷新问题，但是问题不大，不再采用懒加载。
+    const [taskTree, setTaskTree] = useState<TaskTree>(new TaskTree()); // 任务树
+    useEffect(() => {
+        const req: GetTasksReq = {
             UserID: props.groupAddr.userID,
             ParentDirID: props.groupAddr.getParentUnit().ID,
             GroupID: props.groupAddr.getLastUnit().ID,
             SubGroupID: props.subGroup.ID,
-            Page: pageRef.current, // 发送当前页码
-            PageNum: PAGE_SIZE,
             ContainDone: containDone,
-        };
-        sendGetTaskByPage(req, (ret) => {
-            if (ret.ok) {
-                const newTasks = ret.data.Tasks;
-                if (!newTasks) {
-                    setHasMore(false);
-                    return
-                }
-                if (req.Page < pageRef.current) {
-                    return; // 如果页码没有变化，直接返回，可能是内网的重复渲染的重复请求
-                }
-                tasksLast.current = tasksLast.current.concat(newTasks);
-                const task2 = tasksLast.current
-                setTasks(task2); // 合并新任务
-                setHasMore(newTasks.length >= PAGE_SIZE); // 判断是否还有更多数据
-                pageRef.current = req.Page + 1; // 页码加1
-            } else {
-                message.error("加载任务失败");
-            }
-        });
-    }, [containDone, props.subGroup.ID]);
-
-    // 如果筛选条件改变，重新加载数据
-    useEffect(() => {
-        setTasks([]); // 清空任务列表
-        pageRef.current = 0; // 重置页码
-        setHasMore(true); // 重置是否有更多数据
-        loadMoreData(); // 加载第一页数据
-    }, [containDone]);
-
-    const [newTaskTitle, setNewTaskTitle] = useState(""); // 新任务标题
-    const inputRef = useRef<InputRef | null>(null); // 输入框引用
-    const CreateTask = useCallback((title: string) => {
-        setAddingTask(true);
-        const req: CreateTaskReq = {
-            UserID: props.groupAddr.userID,
-            DirID: props.groupAddr.getParentUnit().ID,
-            GroupID: props.groupAddr.getLastUnit().ID,
-            SubGroupID: props.subGroup.ID,
-            ParentTask: 0,
-            Title: title,
-            Note: "",
-            AfterID: 0,
         }
-        sendCreateTask(req, (ret) => {
-            setAddingTask(false);
+        setLoading(true);
+        sendGetTasks(req, (ret) => {
             if (ret.ok) {
-                const newTask = ret.data.Task;
-                tasksLast.current = tasksLast.current.concat(newTask);
-                const newTasks = tasksLast.current;
-                setTasks(newTasks); // 合并新任务
-                setNewTaskTitle(""); // 清空输入框
-                inputRef.current?.blur(); // 失去焦点
+                taskTree.clear()
+                if (ret.data.Tasks) {
+                    const tasks = ret.data.Tasks;
+                    taskTree.addTasks(tasks);
+                }
+                setTaskTree(taskTree.copy());
             } else {
-                message.error("添加任务失败");
+                message.error("获取任务失败").then();
             }
+            setLoading(false);
         })
-    }, [])
-
-    // 新增按钮
-    const input = <Input variant={"filled"} placeholder="新增任务"
-                         ref={inputRef}
-                         value={newTaskTitle}
-                         onChange={(e) => {
-                             setNewTaskTitle(e.target.value);
-                         }}
-        // 离开输入框时，添加任务，或者按下回车键，并移除焦点清空
-                         onBlur={() => {
-                             if (!newTaskTitle) {
-                                 return;
-                             }
-                             CreateTask(newTaskTitle);
-                         }}
-                         onPressEnter={() => {
-                             if (!newTaskTitle) {
-                                 return;
-                             }
-                             CreateTask(newTaskTitle);
-                         }}
-                         addonAfter={addingTask ? <LoadingOutlined spin/> : null}
-    />
-
-    // 渲染任务列表
-    const skeParaNum = pageRef.current === 0 ? 10 : 1;
-    const tasksList = <div id="scrollableDiv"
-                           style={{
-                               height: 400, overflow: "auto",
-                               scrollbarWidth: 'none'
-                               // border: "1px solid #ccc", padding: 10, margin: 10
-                           }}>
-        <InfiniteScroll
-            dataLength={tasksShow.length}
-            next={loadMoreData}
-            hasMore={hasMore}
-            loader={<Skeleton paragraph={{rows: skeParaNum}} active/>}
-            endMessage={<Divider plain>没有更多🤐</Divider>}
-            scrollableTarget="scrollableDiv"
-        >
-            {tasksShow.length === 0 ? <List
-                    header={input}
-                    dataSource={[]}
-                    locale={{emptyText: ' '}}
-                /> :
-                <List
-                    header={input}
-                    dataSource={tasksShow}
-                    renderItem={(item) => (
-                        <List.Item key={item.ID}>
-                            <Task
-                                subGroupAddr={subGroupAddr}
-                                task={item}
-                                onDelete={function (): void {
-                                    throw new Error("Function not implemented.");
-                                }}
-                            />
-                        </List.Item>
-                    )}
-                />}
-        </InfiniteScroll>
-    </div>
+    }, [containDone]);
 
     return <div
         style={{
+            width: '600px',
             backgroundColor: 'white',
             padding: '5px',
             ...lowLeverShadow,
@@ -278,11 +145,23 @@ export function SubGroup(props: SubGroupProps) {
                     align={"center"}
                 >
                     <Button onClick={() => {
-                        setShowTasks(!showTasks);
+                        setOpen(!open);
                     }}
                             type="text"
-                            icon={showTasks ? <CaretUpOutlined/> : <CaretDownOutlined/>}
+                            icon={open ? <CaretUpOutlined/> : <CaretDownOutlined/>}
                     />
+                    <Tooltip title={indexSmallFirst ? "按Index升序排列" : "按Index降序排列"}>
+                        {indexSmallFirst ? <VerticalAlignBottomOutlined
+                            onClick={() => {
+                                setIndexSmallFirst(!indexSmallFirst);
+                            }}
+                        /> : < VerticalAlignTopOutlined
+                            onClick={() => {
+                                setIndexSmallFirst(!indexSmallFirst);
+                            }}
+                        />}
+
+                    </Tooltip>
                     <Dropdown menu={{
                         items: [
                             {
@@ -349,6 +228,15 @@ export function SubGroup(props: SubGroupProps) {
                 </Flex>
             </Space>
         </Divider>
-        {showTasks ? tasksList : null}
+        {open ? <TaskList
+            level={0}
+            tree={taskTree}
+            addr={subGroupAddr}
+            indexSmallFirst={indexSmallFirst}
+            loadingTree={loading}
+            refreshTree={() => {
+                setTaskTree(taskTree.copy());
+            }}
+        /> : null}
     </div>
 }

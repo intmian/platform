@@ -53,7 +53,7 @@ export default function Group(props: GroupProps) {
         nodes.push(
             <SubGroup
                 key={subGroup.ID}
-                groupAddr={props.addr}
+                groupAddr={props.addr.copy()}
                 subGroup={subGroup}
                 onDelete={(sg) => {
                     setSubGroups(subGroups.filter((g) => g.ID !== sg.ID));

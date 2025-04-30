@@ -52,6 +52,7 @@ export class Addr {
 
     public addTask(taskID: number) {
         this.units.push({Type: AddrUnitType.Task, ID: taskID})
+        return this
     }
 
     public toString() {
@@ -89,5 +90,32 @@ export class Addr {
         const addr = new Addr(this.userID)
         addr.units = this.units.slice()
         return addr
+    }
+
+    getLastGroupID(): number {
+        for (let i = this.units.length - 1; i >= 0; i--) {
+            if (this.units[i].Type === AddrUnitType.Group) {
+                return this.units[i].ID
+            }
+        }
+        return 0
+    }
+
+    getLastDirID(): number {
+        for (let i = this.units.length - 1; i >= 0; i--) {
+            if (this.units[i].Type === AddrUnitType.Dir) {
+                return this.units[i].ID
+            }
+        }
+        return 0
+    }
+
+    getLastSubGroupID(): number {
+        for (let i = this.units.length - 1; i >= 0; i--) {
+            if (this.units[i].Type === AddrUnitType.SubGroup) {
+                return this.units[i].ID
+            }
+        }
+        return 0
     }
 }

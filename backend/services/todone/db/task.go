@@ -15,23 +15,23 @@ const (
 type TaskDB struct {
 	UserID           string
 	TaskID           uint32 `gorm:"primaryKey"`
-	Title            string
+	Title            string ``
 	Note             string
 	ParentSubGroupID uint32
 	ParentTaskID     uint32
 	Index            float32
 	Deleted          bool
 	Done             bool
-	CreatedAt        time.Time
-	UpdatedAt        time.Time
+	CreatedAt        time.Time `gorm:"column:time_created_at"`
+	UpdatedAt        time.Time `gorm:"column:time_updated_at"`
 
 	// 额外信息
 	TaskType TaskType
 	Started  bool // 是否开始
 	// 开始时间
-	BeginTime time.Time
+	BeginTime time.Time `gorm:"column:time_begin_time"`
 	// 结束时间或者截止时间
-	EndTime time.Time
+	EndTime time.Time `gorm:"column:time_end_time"`
 	Wait4   string
 }
 
@@ -73,10 +73,19 @@ func GetTasksByParentSubGroupID(db *gorm.DB, parentSubGroupID uint32, limit int,
 	if containDone {
 		whereDB.Done = false
 	}
+
 	if !containDone {
-		db.Where("parent_sub_group_id = ? and done = ? and deleted = ?", parentSubGroupID, false, false).Limit(limit).Offset(offset).Order("`Index` DESC").Find(&tasks)
+		if limit > 0 {
+			db.Where("parent_sub_group_id = ? and done = ? and deleted = ?", parentSubGroupID, false, false).Limit(limit).Offset(offset).Find(&tasks)
+		} else {
+			db.Where("parent_sub_group_id = ? and deleted = ?", parentSubGroupID, false).Find(&tasks)
+		}
 	} else {
-		db.Where("parent_sub_group_id = ? and deleted = ?", parentSubGroupID, false).Limit(limit).Offset(offset).Order("`Index` DESC").Find(&tasks)
+		if limit > 0 {
+			db.Where("parent_sub_group_id = ? and deleted = ?", parentSubGroupID, false).Limit(limit).Offset(offset).Find(&tasks)
+		} else {
+			db.Where("parent_sub_group_id = ? and deleted = ?", parentSubGroupID, false).Find(&tasks)
+		}
 	}
 	return tasks
 }

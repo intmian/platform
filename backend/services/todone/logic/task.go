@@ -154,7 +154,7 @@ func (t *TaskLogic) ChangeDone(done bool) error {
 
 func (t *TaskLogic) GeneSubTaskIndex() float32 {
 	connect := db.GTodoneDBMgr.GetConnect(db.ConnectTypeTask)
-	maxIndex := db.GetSubTaskMaxIndex(connect, t.dbData.ParentTaskID)
+	maxIndex := db.GetSubTaskMaxIndex(connect, t.dbData.TaskID)
 	if math.Floor(float64(maxIndex)) == float64(maxIndex) {
 		return maxIndex + 1
 	} else {
@@ -181,7 +181,6 @@ func (t *TaskLogic) LoadHasChildren() bool {
 func (t *TaskLogic) ToProtocol() protocol.PTask {
 	data, _ := t.GetTaskData()
 	tags, _ := t.GetTags()
-	hasSubTask, _ := t.HasSubTask()
 	var pTask protocol.PTask
 	if data == nil {
 		return pTask
@@ -192,7 +191,7 @@ func (t *TaskLogic) ToProtocol() protocol.PTask {
 	pTask.Done = data.Done
 	pTask.Index = data.Index
 	pTask.Tags = tags
-	pTask.HaveSubTask = hasSubTask
+	pTask.ParentID = data.ParentTaskID
 
 	pTask.TaskType = int(data.TaskType)
 	pTask.Started = data.Started
@@ -231,21 +230,28 @@ func (t *TaskLogic) ChangeFromProtocol(pTask protocol.PTask) error {
 func (t *TaskLogic) CreateSubTask(userID string, title, note string) (*TaskLogic, error) {
 	nextIndex := t.GeneSubTaskIndex()
 	connect := db.GTodoneDBMgr.GetConnect(db.ConnectTypeTask)
-	ID, err := db.CreateTask(connect, userID, 0, t.id, title, note, nextIndex)
+	ID, err := db.CreateTask(connect, userID, t.dbData.ParentSubGroupID, t.id, title, note, nextIndex)
 	if err != nil {
 		return nil, err
 	}
 	task := NewTaskLogic(ID)
 	task.OnBindOutData(&db.TaskDB{
-		TaskID:       ID,
-		ParentTaskID: t.id,
-		Title:        title,
-		Note:         note,
-		Index:        nextIndex,
-		Deleted:      false,
-		Done:         false,
-		CreatedAt:    time.Now(),
-		UpdatedAt:    time.Now(),
+		TaskID:           ID,
+		ParentSubGroupID: t.dbData.ParentSubGroupID,
+		ParentTaskID:     t.id,
+		Title:            title,
+		Note:             note,
+		Index:            nextIndex,
+		Deleted:          false,
+		Done:             false,
+		CreatedAt:        time.Now(),
+		UpdatedAt:        time.Now(),
 	})
 	return task, nil
+}
+
+func (t *TaskLogic) StartTask() error {
+	connect := db.GTodoneDBMgr.GetConnect(db.ConnectTypeTask)
+	t.dbData.Started = true
+	return db.UpdateTask(connect, t.dbData)
 }

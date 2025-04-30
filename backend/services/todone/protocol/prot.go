@@ -30,13 +30,13 @@ type PSubGroup struct {
 }
 
 type PTask struct {
-	ID          uint32
-	Title       string
-	Note        string
-	Index       float32
-	Tags        []string
-	Done        bool
-	HaveSubTask bool
+	ID       uint32
+	Title    string
+	Note     string
+	Index    float32
+	Tags     []string
+	Done     bool
+	ParentID uint32
 
 	// 额外信息
 	TaskType int

@@ -155,6 +155,7 @@ export interface CreateTaskReq {
     Title: string
     Note: string
     AfterID: number
+    Started: boolean
 }
 
 export interface CreateTaskRet {
@@ -383,6 +384,30 @@ export function sendDelSubGroup(req: DelSubGroupReq, callback: (ret: { data: Del
     UniPost(api_base_url + 'delSubGroup', req).then((res: UniResult) => {
         const result: { data: DelSubGroupRet, ok: boolean } = {
             data: res.data as DelSubGroupRet,
+            ok: res.ok
+        };
+
+        callback(result);
+    });
+}
+
+export interface GetTasksReq {
+    UserID: string
+    ParentDirID: number
+    GroupID: number
+    SubGroupID: number
+    ContainDone: boolean
+}
+
+export interface GetTasksRet {
+    Tasks: PTask[] | null
+}
+
+
+export function sendGetTasks(req: GetTasksReq, callback: (ret: { data: GetTasksRet, ok: boolean }) => void) {
+    UniPost(api_base_url + 'getTasks', req).then((res: UniResult) => {
+        const result: { data: GetTasksRet, ok: boolean } = {
+            data: res.data as GetTasksRet,
             ok: res.ok
         };
 

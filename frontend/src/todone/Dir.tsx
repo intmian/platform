@@ -143,47 +143,58 @@ function DirTreeNodeTitle({
 
     return <Tooltip title={note}>
         <Space size={2}>
-            {startChange ? <DirChangePanel
-                addr={addr}
-                title={title}
-                note={note}
-                onCancel={function (): void {
-                    setStartChange(false);
-                }}
-                onChange={function (title: string, note: string): void {
-                    onChange(title, note);
-                    setStartChange(false);
-                }}
-                onMove={onMove}
-            /> : null}
-            {isDir && onAddDir && onAddGroup ?
-                <DirAddPanel
-                    onAddDir={
-                        (dir) => {
-                            onAddDir(dir);
-                            setStartAdd(false);
-                        }
-                    }
-                    onAddGroup={
-                        (group) => {
-                            onAddGroup(group);
-                            setStartAdd(false);
-                        }
-                    }
-                    userID={addr.userID}
-                    DirID={ID}
-                    startAdd={startAdd}
-                    onCancel={() => {
-                        setStartAdd(false)
-                    }}/>
-                : null}
             {isDir ? <FolderOutlined/> : <FileOutlined/>}
             {title}
-
-            {operation ? <LoadingOutlined/> : null}
-            <Dropdown menu={{items}}>
-                <MoreOutlined/>
-            </Dropdown>
+            <div
+                onClick={(e) => {
+                    // 阻止事件冒泡，避免触发 Tree 的 onSelect
+                    e.stopPropagation();
+                }}
+            >
+                {operation ? <LoadingOutlined spin/> : null}
+                {startChange ? <DirChangePanel
+                    addr={addr}
+                    title={title}
+                    note={note}
+                    onCancel={function (): void {
+                        setStartChange(false);
+                    }}
+                    onChange={function (title: string, note: string): void {
+                        onChange(title, note);
+                        setStartChange(false);
+                    }}
+                    onMove={onMove}
+                /> : null}
+                {isDir && onAddDir && onAddGroup ?
+                    <DirAddPanel
+                        onAddDir={
+                            (dir) => {
+                                onAddDir(dir);
+                                setStartAdd(false);
+                            }
+                        }
+                        onAddGroup={
+                            (group) => {
+                                onAddGroup(group);
+                                setStartAdd(false);
+                            }
+                        }
+                        userID={addr.userID}
+                        DirID={ID}
+                        startAdd={startAdd}
+                        onCancel={() => {
+                            setStartAdd(false)
+                        }}/>
+                    : null}
+                <Dropdown
+                    menu={{
+                        items,
+                    }}
+                    trigger={["click"]}
+                >
+                    <MoreOutlined/>
+                </Dropdown>
+            </div>
         </Space>
     </Tooltip>
 

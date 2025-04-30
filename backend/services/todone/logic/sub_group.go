@@ -30,6 +30,23 @@ func (s *SubGroupLogic) ToProtocol() protocol.PSubGroup {
 	}
 }
 
+func (s *SubGroupLogic) GetTasks(containDone bool) ([]*TaskLogic, error) {
+	connect := db.GTodoneDBMgr.GetConnect(db.ConnectTypeTask)
+	tasksDB := db.GetTasksByParentSubGroupID(connect, s.dbData.ID, 0, 0, containDone)
+
+	var res []*TaskLogic
+	for _, taskDB := range tasksDB {
+		newDB := taskDB
+		task := NewTaskLogic(newDB.TaskID)
+		task.OnBindOutData(&newDB)
+		res = append(res, task)
+	}
+
+	// 异步加载所有的tag
+
+	return res, nil
+}
+
 func (s *SubGroupLogic) GetTasksByPage(page int, num int, containDone bool) ([]*TaskLogic, error) {
 	connect := db.GTodoneDBMgr.GetConnect(db.ConnectTypeTask)
 	tasksDB := db.GetTasksByParentSubGroupID(connect, s.dbData.ID, num, page*num, containDone)
