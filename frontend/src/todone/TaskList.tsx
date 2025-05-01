@@ -89,6 +89,7 @@ export function TaskList({level, tree, addr, indexSmallFirst, loadingTree, refre
                     }
                     CreateTask(newTaskTitle, autoStart);
                 }}
+                disabled={addingTask}
                 addonAfter={addingTask ? <LoadingOutlined spin/> : <Tooltip title="是否自动启动">
                     <Checkbox
                         checked={autoStart}

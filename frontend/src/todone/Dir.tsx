@@ -142,9 +142,15 @@ function DirTreeNodeTitle({
     )
 
     return <Tooltip title={note}>
-        <Space size={2}>
+        <Space size={2} style={{
+            width: "100%",
+        }}>
             {isDir ? <FolderOutlined/> : <FileOutlined/>}
-            {title}
+            <div
+                style={{display: 'flex', whiteSpace: 'nowrap'}}
+            >
+                {title}
+            </div>
             <div
                 onClick={(e) => {
                     // 阻止事件冒泡，避免触发 Tree 的 onSelect
@@ -197,7 +203,6 @@ function DirTreeNodeTitle({
             </div>
         </Space>
     </Tooltip>
-
 }
 
 interface DirChangePanelProps {
@@ -456,7 +461,7 @@ function DirAddPanel({DirID, onAddDir, onAddGroup, onCancel, userID, startAdd,}:
                 >
                     <Input/>
                 </Form.Item>
-                <Form.Item label={"是否为任务组"} name={"isGroup"}>
+                <Form.Item label={"是否为任务组"} name={"isGroup"} initialValue={true}>
                     <Switch/>
                 </Form.Item>
             </Form>

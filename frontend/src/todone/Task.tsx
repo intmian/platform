@@ -190,7 +190,9 @@ export function TaskWaitAndTime({status, task}: { status: Status, task: PTask })
 
     if (task.Wait4 !== "") {
         timeWait.push(
-            <Tag>等待:{task.Wait4}</Tag>
+            <Tag
+                key="wait4"
+            >等待:{task.Wait4}</Tag>
         );
     }
 
@@ -202,13 +204,13 @@ export function TaskWaitAndTime({status, task}: { status: Status, task: PTask })
         if (!IsDateEmptyFromGoEmpty(task.BeginTime)) {
             if (beginTime.getTime() > now.getTime()) {
                 timeWait.push(
-                    <Tag color="orange">
+                    <Tag color="orange" key={"beginTime"}>
                         {task.BeginTime}
                     </Tag>
                 );
             } else {
                 timeWait.push(
-                    <Tag color="green">
+                    <Tag color="green" key={"beginTime2"}>
                         {task.BeginTime}
                     </Tag>
                 );
@@ -218,13 +220,13 @@ export function TaskWaitAndTime({status, task}: { status: Status, task: PTask })
         if (!IsDateEmptyFromGoEmpty(task.EndTime)) {
             if (endTime.getTime() < now.getTime()) {
                 timeWait.push(
-                    <Tag color="red">
+                    <Tag color="red" key="endtime">
                         {task.EndTime}
                     </Tag>
                 );
             } else {
                 timeWait.push(
-                    <Tag color="green">
+                    <Tag color="green" key="endtime2">
                         {task.EndTime}
                     </Tag>
                 );
