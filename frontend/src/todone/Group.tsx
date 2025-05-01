@@ -66,6 +66,9 @@ export default function Group(props: GroupProps) {
     return <div>
         <Flex
             align={"center"}
+            style={{
+                marginBottom: "10px",
+            }}
         >
             <div style={{
                 fontSize: 20,

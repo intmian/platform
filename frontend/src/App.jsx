@@ -10,6 +10,8 @@ import {lazy} from 'react';
 import ReportPanel from "./report/report";
 import {Todone} from "./todone/Main";
 import NutritionCalculator from "./misc/NutritionCalculator";
+import dayjs from 'dayjs';
+import 'dayjs/locale/zh-cn';
 
 const Memos = lazy(() => import('./misc/memos'));
 
@@ -78,6 +80,7 @@ const router = createBrowserRouter([
 ])
 
 const App = () => {
+    dayjs.locale('zh-cn');
     return <GlobalCtx>
         <RouterProvider router={router}/>
     </GlobalCtx>;

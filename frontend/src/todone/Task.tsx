@@ -5,12 +5,13 @@ import {ReactNode, useState} from "react";
 import {
     CaretRightOutlined,
     CheckOutlined,
+    DownOutlined,
     LoadingOutlined,
     MinusCircleOutlined,
     PlusCircleOutlined,
     RedoOutlined,
 } from "@ant-design/icons";
-import {IsDateFromGoEmpty} from "../common/tool";
+import {IsDateEmptyFromGoEmpty} from "../common/tool";
 import TaskTree, {TaskTreeNode} from "./TaskTree";
 import {TaskList} from "./TaskList";
 import {ChangeTaskReq, sendChangeTask} from "./net/send_back";
@@ -41,7 +42,7 @@ function GetTaskStatus(task: PTask): Status {
         status = Status.Finished
     } else if (task.Started) {
         const endTime = new Date(task.EndTime)
-        const hasEndTime = task.EndTime && !(IsDateFromGoEmpty(task.EndTime))
+        const hasEndTime = task.EndTime && !(IsDateEmptyFromGoEmpty(task.EndTime))
         const AfterEnd = task.EndTime && endTime.getTime() < new Date().getTime()
         if (!hasEndTime) {
             if (task.TaskType === TaskType.TODO) {
@@ -66,7 +67,7 @@ function GetTaskStatus(task: PTask): Status {
         }
     } else {
         const beginTime = new Date(task.BeginTime)
-        const hasBeginTime = task.BeginTime && !(IsDateFromGoEmpty(task.BeginTime))
+        const hasBeginTime = task.BeginTime && !(IsDateEmptyFromGoEmpty(task.BeginTime))
         const AfterBegin = task.BeginTime && beginTime.getTime() < new Date().getTime()
         if (hasBeginTime) {
             if (AfterBegin) {
@@ -134,9 +135,11 @@ interface TaskTitleProps {
     task: PTask
     clickShowSubTask: () => void
     isShowSon: boolean
+    onSelectTask: () => void
+    hasSon?: boolean
 }
 
-export function TaskTitle({task, clickShowSubTask, isShowSon}: TaskTitleProps) {
+export function TaskTitle({task, clickShowSubTask, isShowSon, onSelectTask, hasSon}: TaskTitleProps) {
     // 判断任务状态
     let color = undefined;
     let textDecoration = task.Done ? 'line-through' : 'none';
@@ -165,6 +168,7 @@ export function TaskTitle({task, clickShowSubTask, isShowSon}: TaskTitleProps) {
                     display: 'flex',
                     alignItems: 'center',
                 }}
+                onClick={onSelectTask}
             >
                 {task.Title}
             </div>
@@ -173,7 +177,7 @@ export function TaskTitle({task, clickShowSubTask, isShowSon}: TaskTitleProps) {
                 type="text"
                 onClick={clickShowSubTask}
                 style={{marginLeft: 'auto'}}
-                icon={!isShowSon ? <PlusCircleOutlined/> : <MinusCircleOutlined/>}
+                icon={!isShowSon ? hasSon ? <DownOutlined/> : <PlusCircleOutlined/> : <MinusCircleOutlined/>}
             >
             </Button>
         </Flex>
@@ -186,7 +190,7 @@ export function TaskWaitAndTime({status, task}: { status: Status, task: PTask })
 
     if (task.Wait4 !== "") {
         timeWait.push(
-            <Tag color="green">{task.Wait4}</Tag>
+            <Tag>等待:{task.Wait4}</Tag>
         );
     }
 
@@ -195,7 +199,7 @@ export function TaskWaitAndTime({status, task}: { status: Status, task: PTask })
     const endTime = new Date(task.EndTime);
 
     if (status < Status.StartedBegin) {
-        if (!IsDateFromGoEmpty(task.BeginTime)) {
+        if (!IsDateEmptyFromGoEmpty(task.BeginTime)) {
             if (beginTime.getTime() > now.getTime()) {
                 timeWait.push(
                     <Tag color="orange">
@@ -211,7 +215,7 @@ export function TaskWaitAndTime({status, task}: { status: Status, task: PTask })
             }
         }
     } else if (status < Status.FinishedBegin) {
-        if (!IsDateFromGoEmpty(task.EndTime)) {
+        if (!IsDateEmptyFromGoEmpty(task.EndTime)) {
             if (endTime.getTime() < now.getTime()) {
                 timeWait.push(
                     <Tag color="red">
@@ -264,9 +268,7 @@ export function Task(props: TaskProps) {
                 columnGap: '10px',
                 // 子组件居中
                 alignItems: 'center',
-            }}
-            onClick={() => {
-                props.onSelectTask(thisAddr, props.task, props.refreshTree);
+                marginBottom: '2px',
             }}
         >
             <TaskStatusOperate
@@ -299,11 +301,15 @@ export function Task(props: TaskProps) {
                     }
                 } status={status}/>
             <TaskTitle
+                onSelectTask={() => {
+                    props.onSelectTask(thisAddr, props.task, props.refreshTree);
+                }}
                 task={props.task}
                 clickShowSubTask={() => {
                     setShowSubTask(!showSubTask);
                 }}
                 isShowSon={showSubTask}
+                hasSon={hasSon}
             />
         </Row>
         <Row>

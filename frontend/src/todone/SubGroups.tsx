@@ -126,7 +126,7 @@ export function SubGroup(props: SubGroupProps) {
 
     return <div
         style={{
-            width: '600px',
+            width: '100%',
             backgroundColor: 'white',
             padding: '5px',
             ...lowLeverShadow,

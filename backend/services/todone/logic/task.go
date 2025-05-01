@@ -212,7 +212,7 @@ func (t *TaskLogic) ChangeFromProtocol(pTask protocol.PTask) error {
 		return errors.Join(err, ErrGetTaskDataFailed)
 	}
 	if pTask.Title != data.Title {
-		data.Note = pTask.Title
+		data.Title = pTask.Title
 	}
 	if pTask.Note != data.Note {
 		data.Note = pTask.Note
@@ -231,6 +231,9 @@ func (t *TaskLogic) ChangeFromProtocol(pTask protocol.PTask) error {
 	}
 	if pTask.EndTime != data.EndTime {
 		data.EndTime = pTask.EndTime
+	}
+	if pTask.Wait4 != data.Wait4 {
+		data.Wait4 = pTask.Wait4
 	}
 	connect := db.GTodoneDBMgr.GetConnect(db.ConnectTypeTask)
 	return db.UpdateTask(connect, data)

@@ -1,14 +1,16 @@
-import {useContext, useRef, useState} from "react";
+import {useContext, useEffect, useRef, useState} from "react";
 import {LoginCtr, LoginCtx} from "../common/loginCtx";
 import {Dir} from "./Dir";
 import {ConfigsCtr, UniConfig} from "../common/UniConfig";
 import {ConfigsType, ConfigType} from "../common/UniConfigDef";
-import {Flex, message} from "antd";
+import {Drawer, FloatButton, message} from "antd";
 import {Addr} from "./addr";
 import Group from "./Group";
-import {useParams} from "react-router-dom";
-import {PTask} from "./net/protocal";
 import {TaskDetail} from "./TaskDetail";
+import {PTask} from "./net/protocal";
+import {MenuOutlined} from "@ant-design/icons";
+import {useIsMobile} from "../common/hooksv2";
+import User from "../common/User";
 
 const TodoneConfigs = new ConfigsCtr(ConfigsType.Server, 'todone')
 TodoneConfigs.addBaseConfig('db.account_id', '数据库账号ID', ConfigType.String, 'cloudflare')
@@ -33,69 +35,109 @@ export function Todone() {
     // 获得账户
     const loginCtr: LoginCtr = useContext<LoginCtr>(LoginCtx);
 
-    // 获取参数
-    const params = useParams()
-    const {addrStr} = params
-    const urlAddr = new Addr(loginCtr.loginInfo.usr)
-    if (addrStr) {
-        urlAddr.bindAddr(addrStr)
-    }
 
     const [chooseAddr, setChooseAddr] = useState<Addr | null>(null);
     const [chooseTitle, setChooseTitle] = useState<string>('')
-
-    const selectTaskAddrRef = useRef<Addr>();
-    const selectTaskRef = useRef<PTask>();
+    const [selectTaskAddr, setSelectTaskAddr] = useState<Addr>();
+    const taskRef = useRef<PTask>();
     const refreshApiRef = useRef<() => void>();
+    const [showDir, setShowDir] = useState(false);
 
-    return <>
-        <Flex>
+    const isMobile = useIsMobile()
+
+    useEffect(() => {
+        const savedAddr = localStorage.getItem('selectedGroupAddr');
+        const savedTitle = localStorage.getItem('selectedGroupTitle');
+        if (savedAddr && savedTitle) {
+            const addr = new Addr(loginCtr.loginInfo.usr);
+            addr.bindAddr(savedAddr);
+            setChooseAddr(addr);
+            setChooseTitle(savedTitle);
+        } else {
+            setShowDir(true);
+        }
+    }, [loginCtr.loginInfo.usr]);
+
+    return <div
+        style={{
+            // 居中
+            display: 'flex',
+            justifyContent: 'center',
+        }}
+    >
+        {!showDir ?
+            <FloatButton
+                style={{
+                    // 左上角
+                    left: 10,
+                    top: 10,
+                }}
+                icon={<MenuOutlined/>}
+                tooltip={<div>目录</div>}
+                onClick={() => {
+                    setShowDir(true);
+                }}
+            /> : null}
+        <Drawer
+            title="目录"
+            placement="left"
+            closable={true}
+            onClose={() => {
+                setShowDir(false);
+            }}
+            open={showDir}
+            extra={<User/>}
+        >
             <div
                 style={{
-                    width: 300,
+                    width: isMobile ? '50%' : '30%',
                 }}
             >
                 <Dir
-                    // TODO 手机端要收起来
                     userID={loginCtr.loginInfo.usr}
                     onSelectGroup={(addr, title) => {
                         setChooseAddr(addr);
                         setChooseTitle(title);
+                        localStorage.setItem('selectedGroupAddr', addr.toString());
+                        localStorage.setItem('selectedGroupTitle', title);
                     }}
                     onSelectDir={(addr) => {
                         // 暂无逻辑
                     }}
                 />
             </div>
-            <div
-                style={{
-                    width: 650,
+        </Drawer>
+
+        <div
+            style={{
+                width: isMobile ? '80%' : '650px',
+                minHeight: '100%',
+            }}
+        >
+            <Group
+                addr={chooseAddr}
+                GroupTitle={chooseTitle}
+                onSelectTask={(addr, pTask, refreshApi) => {
+                    setSelectTaskAddr(addr);
+                    taskRef.current = pTask;
+                    refreshApiRef.current = refreshApi;
                 }}
-            >
-                <Group
-                    addr={chooseAddr}
-                    GroupTitle={chooseTitle}
-                    onSelectTask={(addr, pTask, callback) => {
-                        console.log(addr, pTask, callback);
-                        selectTaskAddrRef.current = addr;
-                        selectTaskRef.current = pTask;
-                        refreshApiRef.current = callback;
-                    }}
-                />
-            </div>
+            />
+        </div>
 
-            <div
-                style={{
-                    flex: 1,
-                }}
-            >
-                <TaskDetail addr={selectTaskAddrRef.current}
-                            task={selectTaskRef.current}
-                            refreshApi={refreshApiRef.current}
-                />
-            </div>
-        </Flex>
+        <Drawer
+            title="任务详情"
+            placement="right"
+            closable={true}
+            onClose={() => {
+                setSelectTaskAddr(undefined);
+            }}
+            open={selectTaskAddr !== undefined}
+            width={500}
+        >
+            <TaskDetail addr={selectTaskAddr} task={taskRef.current} refreshApi={refreshApiRef.current}/>
+        </Drawer>
 
 
-    </>
+    </div>
 }
