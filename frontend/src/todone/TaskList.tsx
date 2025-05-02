@@ -1,11 +1,112 @@
 import TaskTree, {ExportTasks} from "./TaskTree";
 import {Addr, AddrUnitType} from "./addr";
-import {ReactNode, useCallback, useRef, useState} from "react";
+import {ReactNode, useEffect, useRef, useState} from "react";
 import {PTask} from "./net/protocal";
 import {Checkbox, Flex, Input, InputRef, List, message, Tooltip} from "antd";
 import {CreateTaskReq, sendCreateTask} from "./net/send_back";
 import {LoadingOutlined} from "@ant-design/icons";
 import {Task} from "./Task";
+
+interface TaskCreateData {
+    title: string
+    started: boolean
+}
+
+function Histories({reqs, addr, tree, isSubTask, smallFirst, refreshApi}: {
+    reqs: TaskCreateData[]
+    addr: Addr
+    tree: TaskTree
+    isSubTask: boolean
+    smallFirst: boolean
+    refreshApi: () => void
+}) {
+    interface reqStatus {
+        doing: boolean
+        suc: boolean
+    }
+
+    const [flag, setFlag] = useState(false);
+    const reqMapRef = useRef<Map<TaskCreateData, reqStatus>>(new Map());
+
+    useEffect(() => {
+        let change = false;
+        reqs.forEach((req) => {
+            if (!reqMapRef.current.has(req)) {
+                reqMapRef.current.set(req, {doing: false, suc: false});
+                change = true;
+            }
+        })
+        if (change) {
+            setFlag(!flag);
+        }
+    }, [reqs, flag])
+
+    useEffect(() => {
+        // 发起请求
+        for (const [req, status] of reqMapRef.current.entries()) {
+            if (status.doing || status.suc) {
+                continue;
+            }
+            reqMapRef.current.set(req, {doing: true, suc: false});
+            const sendReq: CreateTaskReq = {
+                UserID: addr.userID,
+                DirID: addr.getLastDirID(),
+                GroupID: addr.getLastGroupID(),
+                SubGroupID: addr.getLastSubGroupID(),
+                ParentTask: isSubTask ? addr.getLastUnit().ID : 0,
+                Title: req.title,
+                Note: "",
+                AfterID: 0,
+                Started: req.started,
+            }
+            setFlag(false);
+            sendCreateTask(sendReq, (ret) => {
+                if (ret.ok) {
+                    reqMapRef.current.set(req, {doing: false, suc: true});
+                    tree.addTask(ret.data.Task)
+                    refreshApi();
+                } else {
+                    message.error("添加任务失败").then();
+                    reqMapRef.current.set(req, {doing: false, suc: false});
+                }
+                setFlag(!flag);
+            })
+        }
+    }, [flag])
+
+    // 渲染，仅渲染正在进行的
+    const doings: ReactNode[] = [];
+    console.log("render");
+    console.log(reqMapRef.current);
+    for (const [req, status] of reqMapRef.current.entries()) {
+        if (status.doing) {
+            doings.push(
+                <Flex align="center"
+                      style={{
+                          marginTop: smallFirst ? "0px" : "10px",
+                          marginBottom: smallFirst ? "10px" : "0px",
+                      }}
+                      key={req}
+                >
+                    <Input
+                        variant={"filled"}
+                        value={req.title}
+                        disabled={true}
+                        addonAfter={<LoadingOutlined spin/>}
+                    />
+                </Flex>
+            )
+        }
+    }
+
+    if (!smallFirst) {
+        doings.reverse();
+    }
+
+    return <div>
+        {doings}
+    </div>
+}
 
 export function TaskList({level, tree, addr, indexSmallFirst, loadingTree, refreshTree, onSelectTask}: {
     level: number
@@ -16,7 +117,6 @@ export function TaskList({level, tree, addr, indexSmallFirst, loadingTree, refre
     refreshTree: () => void
     onSelectTask: (addr: Addr, pTask: PTask, refreshApi: () => void) => void
 }) {
-    const [addingTask, setAddingTask] = useState(false); // 是否正在添加任务
 
     let taskShow: PTask[]
     // tasks根据Index排序
@@ -34,38 +134,20 @@ export function TaskList({level, tree, addr, indexSmallFirst, loadingTree, refre
     }
 
     const isSubTask: boolean = addr.getLastUnit().Type == AddrUnitType.Task
-
     const [newTaskTitle, setNewTaskTitle] = useState(""); // 新任务标题
     const inputRef = useRef<InputRef | null>(null); // 输入框引用
-    const CreateTask = useCallback((title: string, started: boolean) => {
-        setAddingTask(true);
-        const req: CreateTaskReq = {
-            UserID: addr.userID,
-            DirID: addr.getLastDirID(),
-            GroupID: addr.getLastGroupID(),
-            SubGroupID: addr.getLastSubGroupID(),
-            ParentTask: isSubTask ? addr.getLastUnit().ID : 0,
-            Title: title,
-            Note: "",
-            AfterID: 0,
-            Started: started,
-        }
-        sendCreateTask(req, (ret) => {
-            setAddingTask(false);
-            if (ret.ok) {
-                const newTask = ret.data.Task;
-                tree.addTask(newTask);
-                refreshTree();
-                setNewTaskTitle(""); // 清空输入框
-                inputRef.current?.blur(); // 失去焦点
-            } else {
-                message.error("添加任务失败");
-            }
-        })
-    }, [tree, addr, indexSmallFirst])
-
+    const [reqs, setReqs] = useState<TaskCreateData[]>([]); // 请求列表
     // 新增输入框
     const [autoStart, setAutoStart] = useState(true); // 是否自动启动
+    function onCreate() {
+        const newReq: TaskCreateData = {
+            title: newTaskTitle,
+            started: autoStart,
+        }
+        setReqs([...reqs, newReq]);
+        setNewTaskTitle("");
+    }
+
     const input = (
         <Flex align="center">
             <Input
@@ -78,19 +160,18 @@ export function TaskList({level, tree, addr, indexSmallFirst, loadingTree, refre
                 }}
                 // 离开输入框时，添加任务，或者按下回车键，并移除焦点清空
                 onBlur={() => {
-                    if (!newTaskTitle || addingTask) {
+                    if (newTaskTitle === "") {
                         return;
                     }
-                    CreateTask(newTaskTitle, autoStart);
+                    onCreate();
                 }}
                 onPressEnter={() => {
-                    if (!newTaskTitle || addingTask) {
+                    if (newTaskTitle === "") {
                         return;
                     }
-                    CreateTask(newTaskTitle, autoStart);
+                    onCreate();
                 }}
-                disabled={addingTask}
-                addonAfter={addingTask ? <LoadingOutlined spin/> : <Tooltip title="是否自动启动">
+                addonAfter={<Tooltip title="是否自动启动">
                     <Checkbox
                         checked={autoStart}
                         onChange={e => setAutoStart(e.target.checked)}
@@ -100,11 +181,31 @@ export function TaskList({level, tree, addr, indexSmallFirst, loadingTree, refre
             />
         </Flex>
     );
-
+    const inputArea: ReactNode = indexSmallFirst ? <div>
+        <Histories
+            reqs={reqs}
+            addr={addr}
+            tree={tree}
+            isSubTask={isSubTask}
+            smallFirst={indexSmallFirst}
+            refreshApi={refreshTree}
+        />
+        {input}
+    </div> : <div>
+        {input}
+        <Histories
+            reqs={reqs}
+            addr={addr}
+            tree={tree}
+            isSubTask={isSubTask}
+            smallFirst={indexSmallFirst}
+            refreshApi={refreshTree}
+        />
+    </div>
     let show: ReactNode;
     if (loadingTree) {
         show = <List
-            header={input}
+            header={inputArea}
             dataSource={taskShow}
             loading={loadingTree}
             locale={{emptyText: ' '}}
@@ -115,13 +216,13 @@ export function TaskList({level, tree, addr, indexSmallFirst, loadingTree, refre
                 marginTop: "10px",
             }}
         >
-            {input}
+            {inputArea}
         </div>
     } else {
         show = <List
             loading={loadingTree}
-            header={indexSmallFirst ? null : input}
-            footer={indexSmallFirst ? input : null}
+            header={indexSmallFirst ? null : inputArea}
+            footer={indexSmallFirst ? inputArea : null}
             dataSource={taskShow}
             renderItem={(item) => (
                 <List.Item key={item.ID}>
