@@ -27,8 +27,6 @@ function Histories({reqs, addr, tree, isSubTask, smallFirst, refreshApi}: {
     smallFirst: boolean
     refreshApi: () => void
 }) {
-
-
     const [flag, setFlag] = useState(false);
 
     useEffect(() => {
@@ -46,7 +44,12 @@ function Histories({reqs, addr, tree, isSubTask, smallFirst, refreshApi}: {
 
     useEffect(() => {
         // 发起请求
-        for (const [req, status] of reqMap.entries()) {
+        for (const reqKey of reqs) {
+            const req = reqKey;
+            const status = reqMap.get(req);
+            if (!status) {
+                continue;
+            }
             if (status.doing || status.suc) {
                 continue;
             }
@@ -81,7 +84,11 @@ function Histories({reqs, addr, tree, isSubTask, smallFirst, refreshApi}: {
     const doings: ReactNode[] = [];
     console.log("render");
     console.log(reqMap);
-    for (const [req, status] of reqMap.entries()) {
+    for (const req of reqs) {
+        const status = reqMap.get(req);
+        if (!status) {
+            continue;
+        }
         if (status.doing) {
             doings.push(
                 <Flex align="center"
