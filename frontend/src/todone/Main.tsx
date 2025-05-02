@@ -81,16 +81,18 @@ export function Todone() {
         <Drawer
             title="目录"
             placement="left"
+            size={"default"}
             closable={true}
             onClose={() => {
                 setShowDir(false);
             }}
             open={showDir}
             extra={<User/>}
+            width={isMobile ? '70%' : '30%'}
         >
             <div
                 style={{
-                    width: isMobile ? '50%' : '30%',
+                    width: "100%",
                 }}
             >
                 <Dir
@@ -133,7 +135,7 @@ export function Todone() {
                 setSelectTaskAddr(undefined);
             }}
             open={selectTaskAddr !== undefined}
-            width={500}
+            width={isMobile ? '80%' : '30%'}
         >
             <TaskDetail addr={selectTaskAddr} task={taskRef.current} refreshApi={refreshApiRef.current}/>
         </Drawer>

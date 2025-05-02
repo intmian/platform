@@ -71,7 +71,7 @@ export function TaskDetail(props: TaskDetailProps) {
         vertical={true}
         style={{
             height: "100%",
-            padding: 10,
+            // padding: 10,
         }}
         gap={10}
     >
