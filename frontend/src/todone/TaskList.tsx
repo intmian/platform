@@ -12,6 +12,13 @@ interface TaskCreateData {
     started: boolean
 }
 
+interface reqStatus {
+    doing: boolean
+    suc: boolean
+}
+
+const reqMap: Map<TaskCreateData, reqStatus> = new Map();
+
 function Histories({reqs, addr, tree, isSubTask, smallFirst, refreshApi}: {
     reqs: TaskCreateData[]
     addr: Addr
@@ -20,19 +27,15 @@ function Histories({reqs, addr, tree, isSubTask, smallFirst, refreshApi}: {
     smallFirst: boolean
     refreshApi: () => void
 }) {
-    interface reqStatus {
-        doing: boolean
-        suc: boolean
-    }
+
 
     const [flag, setFlag] = useState(false);
-    const reqMapRef = useRef<Map<TaskCreateData, reqStatus>>(new Map());
 
     useEffect(() => {
         let change = false;
         reqs.forEach((req) => {
-            if (!reqMapRef.current.has(req)) {
-                reqMapRef.current.set(req, {doing: false, suc: false});
+            if (!reqMap.has(req)) {
+                reqMap.set(req, {doing: false, suc: false});
                 change = true;
             }
         })
@@ -43,11 +46,11 @@ function Histories({reqs, addr, tree, isSubTask, smallFirst, refreshApi}: {
 
     useEffect(() => {
         // 发起请求
-        for (const [req, status] of reqMapRef.current.entries()) {
+        for (const [req, status] of reqMap.entries()) {
             if (status.doing || status.suc) {
                 continue;
             }
-            reqMapRef.current.set(req, {doing: true, suc: false});
+            reqMap.set(req, {doing: true, suc: false});
             const sendReq: CreateTaskReq = {
                 UserID: addr.userID,
                 DirID: addr.getLastDirID(),
@@ -62,12 +65,12 @@ function Histories({reqs, addr, tree, isSubTask, smallFirst, refreshApi}: {
             setFlag(false);
             sendCreateTask(sendReq, (ret) => {
                 if (ret.ok) {
-                    reqMapRef.current.set(req, {doing: false, suc: true});
+                    reqMap.set(req, {doing: false, suc: true});
                     tree.addTask(ret.data.Task)
                     refreshApi();
                 } else {
                     message.error("添加任务失败").then();
-                    reqMapRef.current.set(req, {doing: false, suc: false});
+                    reqMap.set(req, {doing: false, suc: false});
                 }
                 setFlag(!flag);
             })
@@ -77,8 +80,8 @@ function Histories({reqs, addr, tree, isSubTask, smallFirst, refreshApi}: {
     // 渲染，仅渲染正在进行的
     const doings: ReactNode[] = [];
     console.log("render");
-    console.log(reqMapRef.current);
-    for (const [req, status] of reqMapRef.current.entries()) {
+    console.log(reqMap);
+    for (const [req, status] of reqMap.entries()) {
         if (status.doing) {
             doings.push(
                 <Flex align="center"
@@ -117,7 +120,6 @@ export function TaskList({level, tree, addr, indexSmallFirst, loadingTree, refre
     refreshTree: () => void
     onSelectTask: (addr: Addr, pTask: PTask, refreshApi: () => void) => void
 }) {
-
     let taskShow: PTask[]
     // tasks根据Index排序
     if (addr.getLastUnit().Type == AddrUnitType.SubGroup) {
@@ -206,7 +208,7 @@ export function TaskList({level, tree, addr, indexSmallFirst, loadingTree, refre
     if (loadingTree) {
         show = <List
             header={inputArea}
-            dataSource={taskShow}
+            // dataSource={taskShow}
             loading={loadingTree}
             locale={{emptyText: ' '}}
         />
@@ -220,7 +222,7 @@ export function TaskList({level, tree, addr, indexSmallFirst, loadingTree, refre
         </div>
     } else {
         show = <List
-            loading={loadingTree}
+            // loading={loadingTree}
             header={indexSmallFirst ? null : inputArea}
             footer={indexSmallFirst ? inputArea : null}
             dataSource={taskShow}
