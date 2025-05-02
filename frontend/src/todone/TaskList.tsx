@@ -154,7 +154,7 @@ export function TaskList({level, tree, addr, indexSmallFirst, loadingTree, refre
         <Flex align="center">
             <Input
                 variant={"filled"}
-                placeholder="新增任务,回车或者离开输入框添加"
+                placeholder="新增任务,Ctrl+Enter 或 Command+Enter 添加"
                 ref={inputRef}
                 value={newTaskTitle}
                 onChange={(e) => {
@@ -167,11 +167,13 @@ export function TaskList({level, tree, addr, indexSmallFirst, loadingTree, refre
                     }
                     onCreate();
                 }}
-                onPressEnter={() => {
-                    if (newTaskTitle === "") {
-                        return;
+                onKeyDown={(e) => {
+                    if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
+                        if (newTaskTitle === "") {
+                            return;
+                        }
+                        onCreate();
                     }
-                    onCreate();
                 }}
                 addonAfter={<Tooltip title="是否自动启动">
                     <Checkbox
