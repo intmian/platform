@@ -190,6 +190,7 @@ type CreateTaskReq struct {
 	Note       string
 	AfterID    uint32
 	Started    bool
+	TaskType   int
 }
 
 type CreateTaskRet struct {
