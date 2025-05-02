@@ -9,7 +9,7 @@ import {
     LoadingOutlined,
     MinusCircleOutlined,
     PlusCircleOutlined,
-    RedoOutlined,
+    RetweetOutlined,
 } from "@ant-design/icons";
 import {IsDateEmptyFromGoEmpty} from "../common/tool";
 import TaskTree, {TaskTreeNode} from "./TaskTree";
@@ -92,7 +92,7 @@ function TaskStatusOperate({status, onClick, operating}: { status: Status, onCli
                 text = " "
             }
         } else {
-            icon = <RedoOutlined/>
+            icon = <RetweetOutlined/>
         }
     } else if (status >= Status.FinishedBegin) {
         // 已经结束

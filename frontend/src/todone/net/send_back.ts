@@ -156,6 +156,7 @@ export interface CreateTaskReq {
     Note: string
     AfterID: number
     Started: boolean
+    TaskType: number
 }
 
 export interface CreateTaskRet {

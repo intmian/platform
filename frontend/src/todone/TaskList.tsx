@@ -2,14 +2,15 @@ import TaskTree, {ExportTasks} from "./TaskTree";
 import {Addr, AddrUnitType} from "./addr";
 import {ReactNode, useEffect, useRef, useState} from "react";
 import {PTask} from "./net/protocal";
-import {Checkbox, Flex, Input, InputRef, List, message, Tooltip} from "antd";
+import {Checkbox, Flex, Input, InputRef, List, message, Select, Tooltip} from "antd";
 import {CreateTaskReq, sendCreateTask} from "./net/send_back";
 import {LoadingOutlined} from "@ant-design/icons";
 import {Task} from "./Task";
 
 interface TaskCreateData {
-    title: string
-    started: boolean
+    title: string;
+    started: boolean;
+    taskType: number; // 新增字段，表示任务类型
 }
 
 interface reqStatus {
@@ -64,6 +65,7 @@ function Histories({reqs, addr, tree, isSubTask, smallFirst, refreshApi}: {
                 Note: "",
                 AfterID: 0,
                 Started: req.started,
+                TaskType: req.taskType, // 传递任务类型
             }
             setFlag(false);
             sendCreateTask(sendReq, (ret) => {
@@ -148,11 +150,13 @@ export function TaskList({level, tree, addr, indexSmallFirst, loadingTree, refre
     const [reqs, setReqs] = useState<TaskCreateData[]>([]); // 请求列表
     // 新增输入框
     const [autoStart, setAutoStart] = useState(true); // 是否自动启动
+    const [taskType, setTaskType] = useState(0); // 任务类型
     function onCreate() {
         const newReq: TaskCreateData = {
             title: newTaskTitle,
             started: autoStart,
-        }
+            taskType: taskType, // 默认任务类型为 0
+        };
         setReqs([...reqs, newReq]);
         setNewTaskTitle("");
     }
@@ -182,12 +186,28 @@ export function TaskList({level, tree, addr, indexSmallFirst, loadingTree, refre
                         onCreate();
                     }
                 }}
-                addonAfter={<Tooltip title="是否自动启动">
-                    <Checkbox
-                        checked={autoStart}
-                        onChange={e => setAutoStart(e.target.checked)}
-                    />
-                </Tooltip>}
+                addonAfter={<>
+                    <Tooltip title="选择任务类型">
+                        <Select
+                            value={taskType}
+                            onChange={
+                                (value) => {
+                                    setTaskType(value);
+                                }
+                            }
+                            style={{marginRight: "1px"}}
+                        >
+                            <option value={0}>TODO</option>
+                            <option value={1}>DOING</option>
+                        </Select>
+                    </Tooltip>
+                    <Tooltip title="是否自动启动">
+                        <Checkbox
+                            checked={autoStart}
+                            onChange={e => setAutoStart(e.target.checked)}
+                        />
+                    </Tooltip>
+                </>}
                 style={{flex: 1}}
             />
         </Flex>
