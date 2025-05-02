@@ -184,6 +184,32 @@ export function TaskTitle({task, clickShowSubTask, isShowSon, onSelectTask, hasS
     )
 }
 
+function time2show(time: Date): string {
+    // 打印还有多少天多少小时
+    const now = new Date();
+    const diff = time.getTime() - now.getTime();
+    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+    const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+    const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+    let str = "";
+    if (days > 0) {
+        str += days + "天";
+    }
+    if (hours > 0) {
+        str += hours + "小时";
+    }
+    if (days <= 0) {
+        if (minutes > 0) {
+            str += minutes + "分钟";
+        }
+        if (seconds > 0) {
+            str += seconds + "秒";
+        }
+    }
+    return str;
+}
+
 export function TaskWaitAndTime({status, task}: { status: Status, task: PTask }) {
     // 有wait4就显示wait4，有time就显示time，没到开始时间显示为黄色，正在进行显示未绿色，超过时间显示为红色
     const timeWait: ReactNode[] = [];
@@ -205,13 +231,13 @@ export function TaskWaitAndTime({status, task}: { status: Status, task: PTask })
             if (beginTime.getTime() > now.getTime()) {
                 timeWait.push(
                     <Tag color="orange" key={"beginTime"}>
-                        {task.BeginTime}
+                        {time2show(beginTime)}
                     </Tag>
                 );
             } else {
                 timeWait.push(
                     <Tag color="green" key={"beginTime2"}>
-                        {task.BeginTime}
+                        {time2show(beginTime)}
                     </Tag>
                 );
             }
@@ -221,13 +247,13 @@ export function TaskWaitAndTime({status, task}: { status: Status, task: PTask })
             if (endTime.getTime() < now.getTime()) {
                 timeWait.push(
                     <Tag color="red" key="endtime">
-                        {task.EndTime}
+                        {time2show(endTime)}
                     </Tag>
                 );
             } else {
                 timeWait.push(
                     <Tag color="green" key="endtime2">
-                        {task.EndTime}
+                        {time2show(endTime)}
                     </Tag>
                 );
             }

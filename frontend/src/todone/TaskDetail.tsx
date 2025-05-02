@@ -1,9 +1,9 @@
 import {Addr} from "./addr";
 import {PTask} from "./net/protocal";
-import {Button, DatePicker, Flex, Input, Typography} from "antd";
+import {Button, DatePicker, Flex, Input, message, Typography} from "antd";
 import {useEffect, useState} from "react";
 import dayjs from "dayjs";
-import {IsDateEmptyFromGoEmpty} from "../common/tool";
+import {EmptyGoTimeStr, IsDateEmptyFromGoEmpty} from "../common/tool";
 import {ChangeTaskReq, sendChangeTask} from "./net/send_back";
 import {SaveOutlined} from "@ant-design/icons";
 
@@ -44,6 +44,7 @@ export function TaskDetail(props: TaskDetailProps) {
         needSave = true;
     }
     if (beginTime !== props.task.BeginTime) {
+        console.log("beginTime", beginTime, props.task.BeginTime);
         needSave = true;
     }
     if (endTime !== props.task.EndTime) {
@@ -112,7 +113,7 @@ export function TaskDetail(props: TaskDetailProps) {
                                 props.refreshApi();
                             } else {
                                 // 失败了
-                                console.log("修改任务失败")
+                                message.error("修改任务失败").then();
                             }
                         })
                     }}
@@ -126,8 +127,8 @@ export function TaskDetail(props: TaskDetailProps) {
         >
             <Button
                 onClick={() => {
-                    setBeginTime("");
-                    setEndTime("");
+                    setBeginTime(EmptyGoTimeStr);
+                    setEndTime(EmptyGoTimeStr);
                     setWait4("");
                 }}
             >
@@ -168,7 +169,7 @@ export function TaskDetail(props: TaskDetailProps) {
                         setEndTime("");
                     }
                 }}
-                showTime
+                // showTime
             />
         </Flex>
 
