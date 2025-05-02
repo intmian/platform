@@ -2,3 +2,13 @@ body {
     margin: 0;
     padding: 0;
 }
+
+/* 全局强制设置输入控件字体大小，防止 iOS 缩放 */
+input,
+textarea,
+select,
+.ant-input,
+.ant-select-selector,
+.ant-input-number-input {
+    font-size: 16px !important;
+}
