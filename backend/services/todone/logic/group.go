@@ -55,6 +55,14 @@ func (g *GroupLogic) GetSubGroups() ([]*SubGroupLogic, error) {
 }
 
 func (g *GroupLogic) GetSubGroupLogic(subGroupID uint32) *SubGroupLogic {
+	if g.subGroups == nil {
+		connect := db.GTodoneDBMgr.GetConnect(db.ConnectTypeSubGroup)
+		subGroupsDB := db.GetSubGroupByParentSortByIndex(connect, g.dbData.ID)
+		for _, subGroupDB := range subGroupsDB {
+			newSubGroupDB := subGroupDB
+			g.subGroups = append(g.subGroups, NewSubGroupLogic(newSubGroupDB))
+		}
+	}
 	for _, subGroup := range g.subGroups {
 		if subGroup.dbData.ID == subGroupID {
 			return subGroup

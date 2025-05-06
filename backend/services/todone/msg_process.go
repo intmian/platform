@@ -285,6 +285,7 @@ func (s *Service) OnCreateTask(valid backendshare.Valid, req CreateTaskReq) (ret
 			group := user.GetSubGroupLogic(req.DirID, req.GroupID, req.SubGroupID)
 			if group == nil {
 				err = errors.New("group not exist")
+				return
 			}
 			var err2 error
 			task, err2 = group.CreateTask(req.UserID, req.Title, req.Note, db.TaskType(req.TaskType), req.Started)

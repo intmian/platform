@@ -236,10 +236,10 @@ func (t *TaskLogic) ChangeFromProtocol(pTask protocol.PTask) error {
 	return db.UpdateTask(connect, data)
 }
 
-func (t *TaskLogic) CreateSubTask(userID string, title, note string, taskType db.TaskType, Started bool) (*TaskLogic, error) {
+func (t *TaskLogic) CreateSubTask(userID string, title, note string, taskType db.TaskType, started bool) (*TaskLogic, error) {
 	nextIndex := t.GeneSubTaskIndex()
 	connect := db.GTodoneDBMgr.GetConnect(db.ConnectTypeTask)
-	ID, err := db.CreateTask(connect, userID, t.dbData.ParentSubGroupID, t.id, title, note, nextIndex)
+	ID, err := db.CreateTask(connect, userID, t.dbData.ParentSubGroupID, t.id, title, note, nextIndex, started)
 	if err != nil {
 		return nil, err
 	}
@@ -253,7 +253,7 @@ func (t *TaskLogic) CreateSubTask(userID string, title, note string, taskType db
 		Index:            nextIndex,
 		Deleted:          false,
 		Done:             false,
-		Started:          Started,
+		Started:          started,
 		CreatedAt:        time.Now(),
 		UpdatedAt:        time.Now(),
 		TaskType:         taskType,

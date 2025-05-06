@@ -35,7 +35,7 @@ type TaskDB struct {
 	Wait4   string
 }
 
-func CreateTask(db *gorm.DB, userID string, parentSubGroupID, parentTaskID uint32, title, note string, index float32) (uint32, error) {
+func CreateTask(db *gorm.DB, userID string, parentSubGroupID, parentTaskID uint32, title, note string, index float32, started bool) (uint32, error) {
 	task := TaskDB{
 		UserID:           userID,
 		ParentSubGroupID: parentSubGroupID,
@@ -45,6 +45,7 @@ func CreateTask(db *gorm.DB, userID string, parentSubGroupID, parentTaskID uint3
 		Index:            index,
 		Deleted:          false,
 		Done:             false,
+		Started:          started,
 		CreatedAt:        time.Now(),
 		UpdatedAt:        time.Now(),
 	}
@@ -137,6 +138,9 @@ func GetSubTaskMaxIndex(db *gorm.DB, parentTaskID uint32) float32 {
 
 func GetParentSubGroupMaxIndex(db *gorm.DB, parentSubGroupID uint32) float32 {
 	var maxIndex float32
-	db.Model(&TaskDB{}).Where("parent_sub_group_id = ?", parentSubGroupID).Select("max(`index`)").Row().Scan(&maxIndex)
+	err := db.Model(&TaskDB{}).Where("parent_sub_group_id = ?", parentSubGroupID).Select("max(`index`)").Row().Scan(&maxIndex)
+	if err != nil {
+		println("GetParentSubGroupMaxIndex error:", err.Error())
+	}
 	return maxIndex
 }

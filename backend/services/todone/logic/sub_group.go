@@ -77,7 +77,7 @@ func (s *SubGroupLogic) GeneTaskIndex() float32 {
 func (s *SubGroupLogic) CreateTask(userID string, title, note string, taskType db.TaskType, Started bool) (*TaskLogic, error) {
 	nextIndex := s.GeneTaskIndex()
 	connect := db.GTodoneDBMgr.GetConnect(db.ConnectTypeTask)
-	ID, err := db.CreateTask(connect, userID, s.dbData.ID, 0, title, note, nextIndex)
+	ID, err := db.CreateTask(connect, userID, s.dbData.ID, 0, title, note, nextIndex, Started)
 	if err != nil {
 		return nil, err
 	}
