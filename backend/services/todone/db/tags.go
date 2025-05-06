@@ -3,8 +3,8 @@ package db
 import "gorm.io/gorm"
 
 type TagsDB struct {
-	UserID string // 主要是为了筛选用户有哪些tag
-	TaskID uint32
+	UserID string `gorm:"index"` // 主要是为了筛选用户有哪些tag
+	TaskID uint32 `gorm:"index"`
 	Tag    string
 }
 

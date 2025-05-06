@@ -4,12 +4,12 @@ import "gorm.io/gorm"
 
 type GroupDB struct {
 	ID        uint32 `gorm:"primaryKey"`
-	UserID    string
+	UserID    string `gorm:"index"`
 	Title     string
 	Note      string
 	ParentDir uint32
 	Deleted   bool
-	Index     float32
+	Index     float32 `gorm:"index"`
 }
 
 func CreateGroup(db *gorm.DB, userID string, title, note string, parentDirID uint32) (*GroupDB, error) {

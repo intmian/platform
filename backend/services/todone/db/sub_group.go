@@ -4,10 +4,10 @@ import "gorm.io/gorm"
 
 type SubGroupDB struct {
 	ID            uint32 `gorm:"primaryKey"`
-	ParentGroupID uint32
+	ParentGroupID uint32 `gorm:"index"`
 	Title         string
 	Note          string
-	Index         float32
+	Index         float32 `gorm:"index"`
 }
 
 func CreateSubGroup(db *gorm.DB, parentGroupID uint32, title, note string, index float32) (uint32, error) {

@@ -13,13 +13,13 @@ const (
 )
 
 type TaskDB struct {
-	UserID           string
+	UserID           string `gorm:"index"`
 	TaskID           uint32 `gorm:"primaryKey"`
-	Title            string ``
+	Title            string
 	Note             string
-	ParentSubGroupID uint32
+	ParentSubGroupID uint32 `gorm:"index"`
 	ParentTaskID     uint32
-	Index            float32
+	Index            float32 `gorm:"index"`
 	Deleted          bool
 	Done             bool
 	CreatedAt        time.Time `gorm:"column:time_created_at"`

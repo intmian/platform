@@ -3,12 +3,12 @@ package db
 import "gorm.io/gorm"
 
 type DirDB struct {
-	UserID   string
+	UserID   string `gorm:"index"`
 	ID       uint32 `gorm:"primaryKey"`
 	Title    string
 	Note     string
 	ParentID uint32
-	Index    float32
+	Index    float32 `gorm:"index"`
 }
 
 func CreateDir(db *gorm.DB, userID string, parentID uint32, title, note string) (*DirDB, error) {
