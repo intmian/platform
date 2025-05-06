@@ -27,19 +27,22 @@ export function useStateWithLocal<T>(localKey: string, initialValue: T): [T, (va
     const [state, setState] = useState<T>(() => {
         try {
             const item = window.localStorage.getItem(localKey);
+            // 如果值和初始值相同，就删除
+            if (item === JSON.stringify(initialValue)) {
+                window.localStorage.removeItem(localKey);
+            }
             return item !== null ? JSON.parse(item) : initialValue;
         } catch {
             return initialValue;
         }
     });
 
-    useEffect(() => {
+    return [state, (value: T) => {
+        setState(value);
         try {
-            window.localStorage.setItem(localKey, JSON.stringify(state));
-        } catch {
-            // 忽略本地存储错误
+            window.localStorage.setItem(localKey, JSON.stringify(value));
+        } catch (error) {
+            console.error("Error saving to localStorage", error);
         }
-    }, [localKey, state]);
-
-    return [state, setState];
+    }];
 }

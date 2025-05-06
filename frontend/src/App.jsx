@@ -66,7 +66,7 @@ const router = createBrowserRouter([
         element: <ReportPanel/>,
     },
     {
-        path: '/todone/:addrStr',
+        path: '/todone/:group',
         element: <Todone/>,
     },
     {

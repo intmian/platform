@@ -11,6 +11,7 @@ import {PTask} from "./net/protocal";
 import {MenuOutlined} from "@ant-design/icons";
 import {useIsMobile} from "../common/hooksv2";
 import User from "../common/User";
+import {useParams} from "react-router-dom";
 
 const TodoneConfigs = new ConfigsCtr(ConfigsType.Server, 'todone')
 TodoneConfigs.addBaseConfig('db.account_id', '数据库账号ID', ConfigType.String, 'cloudflare')
@@ -32,6 +33,10 @@ export function TodoneSetting() {
 }
 
 export function Todone() {
+    // 读取路由
+    const {group} = useParams();
+
+
     // 获得账户
     const loginCtr: LoginCtr = useContext<LoginCtr>(LoginCtx);
 
@@ -46,8 +51,20 @@ export function Todone() {
     const isMobile = useIsMobile()
 
     useEffect(() => {
-        const savedAddr = localStorage.getItem('selectedGroupAddr');
-        const savedTitle = localStorage.getItem('selectedGroupTitle');
+        // 使用竖线分隔group
+        if (!group) {
+            setShowDir(true);
+            return;
+        }
+        // url解码
+        const decodedGroup = decodeURIComponent(group);
+        const groupData = decodedGroup.split('|');
+        if (groupData.length < 2) {
+            setShowDir(true);
+            return;
+        }
+        const savedAddr = groupData[0];
+        const savedTitle = groupData[1];
         if (savedAddr && savedTitle) {
             const addr = new Addr(loginCtr.loginInfo.usr);
             addr.bindAddr(savedAddr);
@@ -56,7 +73,7 @@ export function Todone() {
         } else {
             setShowDir(true);
         }
-    }, [loginCtr.loginInfo.usr]);
+    }, [group, loginCtr.loginInfo.usr]);
 
     return <div
         style={{
@@ -100,8 +117,13 @@ export function Todone() {
                     onSelectGroup={(addr, title) => {
                         setChooseAddr(addr);
                         setChooseTitle(title);
-                        localStorage.setItem('selectedGroupAddr', addr.toString());
-                        localStorage.setItem('selectedGroupTitle', title);
+                        // 修改路由
+                        const newAddr = addr.toString();
+                        const newTitle = title;
+                        const newGroup = `${newAddr}|${newTitle}`;
+                        // 对group进行URL编码
+                        const encodedGroup = encodeURIComponent(newGroup);
+                        window.history.replaceState({}, '', `/todone/${encodedGroup}`);
                     }}
                     onSelectDir={(addr) => {
                         // 暂无逻辑
