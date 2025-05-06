@@ -7,6 +7,7 @@ import {CreateTaskReq, sendCreateTask} from "./net/send_back";
 import {LoadingOutlined} from "@ant-design/icons";
 import {Task} from "./Task";
 import {useIsMobile} from "../common/hooksv2";
+import "./custom.css"
 
 interface TaskCreateData {
     title: string;
@@ -255,13 +256,14 @@ export function TaskList({level, tree, addr, indexSmallFirst, loadingTree, refre
     } else if (taskShow.length === 0) {
         show = <div
             style={{
-                marginTop: "10px",
+                marginTop: "4px",
             }}
         >
             {inputArea}
         </div>
     } else {
         show = <List
+            className="task-list"
             // loading={loadingTree}
             header={indexSmallFirst ? null : inputArea}
             footer={indexSmallFirst ? inputArea : null}

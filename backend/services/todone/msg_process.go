@@ -427,3 +427,27 @@ func (s *Service) OnGetTasks(valid backendshare.Valid, req GetTasksReq) (ret Get
 	})
 	return
 }
+
+func (s *Service) OnSubGroup(valid backendshare.Valid, req ChangeSubGroupReq) (ret ChangeSubGroupRet, err error) {
+	f := func(user *logic.UserLogic) {
+		group := user.GetGroupLogic(req.ParentDirID, req.GroupID)
+		if group == nil {
+			err = errors.New("group not exist")
+			return
+		}
+		subGroup := group.GetSubGroupLogic(req.Data.ID)
+		if subGroup == nil {
+			err = errors.New("sub group not exist")
+			return
+		}
+		err2 := subGroup.ChangeFromProtocol(req.Data)
+		if err2 != nil {
+			err = errors.Join(err, err2)
+			return
+		}
+	}
+	s.userMgr.SafeUseUserLogic(req.UserID, f, func() {
+		err = errors.New("user not exist")
+	})
+	return
+}

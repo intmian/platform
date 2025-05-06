@@ -106,3 +106,14 @@ func (s *SubGroupLogic) Delete() error {
 	}
 	return nil
 }
+
+func (s *SubGroupLogic) ChangeFromProtocol(data protocol.PSubGroup) error {
+	if s.dbData.Title != data.Title {
+		s.dbData.Title = data.Title
+	}
+	if s.dbData.Note != data.Note {
+		s.dbData.Note = data.Note
+	}
+	connect := db.GTodoneDBMgr.GetConnect(db.ConnectTypeSubGroup)
+	return db.UpdateSubGroup(connect, s.dbData.ID, s.dbData.Title, s.dbData.Note, s.dbData.Index)
+}

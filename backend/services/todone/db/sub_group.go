@@ -41,3 +41,11 @@ func GetParentGroupIDMaxIndex(db *gorm.DB, parentGroupID uint32) float32 {
 	db.Model(&SubGroupDB{}).Where("parent_group_id = ?", parentGroupID).Select("max(index)").Scan(&maxIndex)
 	return maxIndex
 }
+
+func UpdateSubGroup(db *gorm.DB, subGroupID uint32, title, note string, index float32) error {
+	return db.Model(&SubGroupDB{}).Where("id = ?", subGroupID).Updates(SubGroupDB{
+		Title: title,
+		Note:  note,
+		Index: index,
+	}).Error
+}

@@ -248,3 +248,15 @@ type GetTasksReq struct {
 type GetTasksRet struct {
 	Tasks []protocol.PTask
 }
+
+const CmdChangeSubGroup share.Cmd = "changeSubGroup"
+
+type ChangeSubGroupReq struct {
+	UserID      string
+	ParentDirID uint32
+	GroupID     uint32
+	Data        protocol.PSubGroup
+}
+
+type ChangeSubGroupRet struct {
+}

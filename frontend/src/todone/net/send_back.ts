@@ -415,3 +415,27 @@ export function sendGetTasks(req: GetTasksReq, callback: (ret: { data: GetTasksR
         callback(result);
     });
 }
+
+export interface ChangeSubGroupReq {
+    UserID: string
+    ParentDirID: number
+    GroupID: number
+    Data: PSubGroup
+}
+
+export type ChangeSubGroupRet = object
+
+
+export function sendChangeSubGroup(req: ChangeSubGroupReq, callback: (ret: {
+    data: ChangeSubGroupRet,
+    ok: boolean
+}) => void) {
+    UniPost(api_base_url + 'subGroup', req).then((res: UniResult) => {
+        const result: { data: ChangeSubGroupRet, ok: boolean } = {
+            data: res.data as ChangeSubGroupRet,
+            ok: res.ok
+        };
+
+        callback(result);
+    });
+}

@@ -1,6 +1,14 @@
 import {useEffect, useState} from "react";
 import {Button, Divider, Dropdown, Flex, Form, Input, message, Modal, Space, Tooltip} from "antd";
-import {CreateSubGroupReq, GetTasksReq, sendCreateSubGroup, sendDelSubGroup, sendGetTasks} from "./net/send_back";
+import {
+    ChangeSubGroupReq,
+    CreateSubGroupReq,
+    GetTasksReq,
+    sendChangeSubGroup,
+    sendCreateSubGroup,
+    sendDelSubGroup,
+    sendGetTasks
+} from "./net/send_back";
 import {Addr} from "./addr";
 import {PSubGroup, PTask} from "./net/protocal";
 import {
@@ -82,6 +90,65 @@ export function SubGroupAddPanel(props: SubGroupAddPanelProps) {
     </Modal>
 }
 
+// 新增：分组修改弹窗组件
+interface SubGroupEditPanelProps {
+    userID: string
+    dirID: number
+    groupID: number
+    subGroupID: number
+    data: PSubGroup
+    onOk: (newTitle: string, newNote: string) => void
+    onCancel: () => void
+}
+
+function SubGroupEditPanel(props: SubGroupEditPanelProps) {
+    const [loading, setLoading] = useState(false);
+    const [form] = Form.useForm();
+    return <Modal
+        open={true}
+        title="修改分组"
+        okText="保存"
+        cancelText="取消"
+        onCancel={props.onCancel}
+        closeIcon={null}
+        confirmLoading={loading}
+        onOk={() => {
+            form.validateFields().then(values => {
+                setLoading(true);
+                const newData = props.data;
+                newData.Title = values.title;
+                newData.Note = values.note;
+                const req: ChangeSubGroupReq = {
+                    UserID: props.userID,
+                    ParentDirID: props.dirID,
+                    GroupID: props.groupID,
+                    Data: newData,
+                }
+                // 发送请求
+                sendChangeSubGroup(req, (ret) => {
+                    if (ret.ok) {
+                        message.success("修改分组成功").then();
+                        props.onOk(values.title, values.note);
+                    } else {
+                        message.error("修改分组失败").then();
+                    }
+                    setLoading(false);
+                })
+
+            });
+        }}
+    >
+        <Form form={form} initialValues={{title: props.data.Title, note: props.data.Note}}>
+            <Form.Item label={"标题"} name={"title"} rules={[{required: true, message: "请输入标题"}]}>
+                <Input/>
+            </Form.Item>
+            <Form.Item label={"备注"} name={"note"}>
+                <Input/>
+            </Form.Item>
+        </Form>
+    </Modal>
+}
+
 interface SubGroupProps {
     groupAddr: Addr
     subGroup: PSubGroup
@@ -97,6 +164,7 @@ export function SubGroup(props: SubGroupProps) {
     const [containDone, setContainDone] = useState(false); // 是否包含已完成任务
     const [indexSmallFirst, setIndexSmallFirst] = useState(true); // 是否按Index升序排列
     const [loading, setLoading] = useState(false); // 是否正在加载数据
+    const [editOpen, setEditOpen] = useState(false); // 是否显示修改弹窗
 
     // 目前先采用每个分组一个任务树的方式，方便移动等逻辑处理，一般来说加载出来的数据任务数量不会太多（不考虑已完成的情况下）,子任务也一起加载，跨分组移动可能会出现刷新问题，但是问题不大，不再采用懒加载。
     const [taskTree, setTaskTree] = useState<TaskTree>(new TaskTree()); // 任务树
@@ -188,7 +256,7 @@ export function SubGroup(props: SubGroupProps) {
                                 icon: <EditOutlined/>,
                                 label: '修改分组',
                                 onClick: () => {
-
+                                    setEditOpen(true);
                                 }
                             },
                             {
@@ -229,6 +297,22 @@ export function SubGroup(props: SubGroupProps) {
                 </Flex>
             </Space>
         </Divider>
+        {/* 新增：分组修改弹窗 */}
+        {editOpen &&
+            <SubGroupEditPanel
+                userID={props.groupAddr.userID}
+                dirID={props.groupAddr.getParentUnit().ID}
+                groupID={props.groupAddr.getLastUnit().ID}
+                subGroupID={props.subGroup.ID}
+                data={props.subGroup}
+                onOk={(newTitle, newNote) => {
+                    props.subGroup.Title = newTitle;
+                    props.subGroup.Note = newNote;
+                    setEditOpen(false);
+                }}
+                onCancel={() => setEditOpen(false)}
+            />
+        }
         {open ? <TaskList
             level={0}
             tree={taskTree}
