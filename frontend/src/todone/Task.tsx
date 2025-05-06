@@ -153,6 +153,8 @@ export function TaskTitle({task, clickShowSubTask, isShowSon, onSelectTask, hasS
         <Flex
             style={{
                 flex: 1,
+                overflow: 'hidden',
+                alignItems: 'center',
             }}
         >
             <div
@@ -163,10 +165,6 @@ export function TaskTitle({task, clickShowSubTask, isShowSon, onSelectTask, hasS
                     overflow: 'hidden',
                     textOverflow: 'ellipsis',
                     whiteSpace: 'nowrap',
-                    width: '100px',
-                    // 居中显示
-                    display: 'flex',
-                    alignItems: 'center',
                 }}
                 onClick={onSelectTask}
             >
@@ -176,7 +174,10 @@ export function TaskTitle({task, clickShowSubTask, isShowSon, onSelectTask, hasS
                 size="small"
                 type="text"
                 onClick={clickShowSubTask}
-                style={{marginLeft: 'auto'}}
+                style={{
+                    marginLeft: 'auto',
+                    flex: '0 0 auto'
+                }}
                 icon={!isShowSon ? hasSon ? <DownOutlined/> : <PlusCircleOutlined/> : <MinusCircleOutlined/>}
             >
             </Button>
@@ -291,12 +292,13 @@ export function Task(props: TaskProps) {
             width: '100%',
         }}
     >
-        <Row
+        <Flex
             style={{
                 columnGap: '10px',
                 // 子组件居中
                 alignItems: 'center',
                 marginBottom: '2px',
+                width: '100%',
             }}
         >
             <TaskStatusOperate
@@ -304,19 +306,19 @@ export function Task(props: TaskProps) {
                 onClick={
                     () => {
                         setOperate(true);
-                        const ptask = props.tree.findTask(props.task.ID);
-                        if (!ptask) {
+                        const pTask = props.tree.findTask(props.task.ID);
+                        if (!pTask) {
                             return;
                         }
-                        if (!ptask.task.Started) {
-                            ptask.task.Started = true;
-                        } else if (!ptask.task.Done) {
-                            ptask.task.Done = true;
+                        if (!pTask.task.Started) {
+                            pTask.task.Started = true;
+                        } else if (!pTask.task.Done) {
+                            pTask.task.Done = true;
                         } else {
-                            ptask.task.Done = false;
-                            ptask.task.Started = false;
+                            pTask.task.Done = false;
+                            pTask.task.Started = false;
                         }
-                        const req: ChangeTaskReq = {Data: ptask.task, UserID: props.addr.userID}
+                        const req: ChangeTaskReq = {Data: pTask.task, UserID: props.addr.userID}
                         sendChangeTask(req, (ret) => {
                             if (ret.ok) {
                                 props.refreshTree();
@@ -339,7 +341,7 @@ export function Task(props: TaskProps) {
                 isShowSon={showSubTask}
                 hasSon={hasSon}
             />
-        </Row>
+        </Flex>
         <Row>
             <TaskTags task={props.task}/>
             <TaskWaitAndTime status={status} task={props.task}/>

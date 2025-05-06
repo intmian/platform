@@ -84,8 +84,6 @@ function Histories({reqs, addr, tree, isSubTask, smallFirst, refreshApi}: {
 
     // 渲染，仅渲染正在进行的
     const doings: ReactNode[] = [];
-    console.log("render");
-    console.log(reqMap);
     for (const req of reqs) {
         const status = reqMap.get(req);
         if (!status) {
@@ -236,7 +234,8 @@ export function TaskList({level, tree, addr, indexSmallFirst, loadingTree, refre
     let show: ReactNode;
     if (loadingTree) {
         show = <List
-            header={inputArea}
+            header={indexSmallFirst ? null : inputArea}
+            footer={indexSmallFirst ? inputArea : null}
             // dataSource={taskShow}
             loading={loadingTree}
             locale={{emptyText: ' '}}
@@ -256,7 +255,9 @@ export function TaskList({level, tree, addr, indexSmallFirst, loadingTree, refre
             footer={indexSmallFirst ? inputArea : null}
             dataSource={taskShow}
             renderItem={(item) => (
-                <List.Item key={item.ID}>
+                <List.Item key={item.ID}
+                           style={{paddingTop: 4, paddingBottom: 4}}
+                >
                     <Task
                         onSelectTask={onSelectTask}
                         level={level + 1}
