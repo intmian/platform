@@ -91,6 +91,7 @@ function Histories({reqs, addr, tree, isSubTask, smallFirst, refreshApi}: {
         if (!status) {
             continue;
         }
+        const timestamp = new Date();
         if (status.doing) {
             doings.push(
                 <Flex align="center"
@@ -98,7 +99,7 @@ function Histories({reqs, addr, tree, isSubTask, smallFirst, refreshApi}: {
                           marginTop: smallFirst ? "0px" : "10px",
                           marginBottom: smallFirst ? "10px" : "0px",
                       }}
-                      key={req}
+                      key={req.title + timestamp.getTime()}
                 >
                     <Input
                         variant={"filled"}
@@ -253,21 +254,14 @@ export function TaskList({level, tree, addr, indexSmallFirst, loadingTree, refre
             loading={loadingTree}
             locale={{emptyText: ' '}}
         />
-    } else if (taskShow.length === 0) {
-        show = <div
-            style={{
-                marginTop: "4px",
-            }}
-        >
-            {inputArea}
-        </div>
     } else {
         show = <List
             className="task-list"
             // loading={loadingTree}
             header={indexSmallFirst ? null : inputArea}
             footer={indexSmallFirst ? inputArea : null}
-            dataSource={taskShow}
+            dataSource={taskShow.length > 0 ? taskShow : undefined}
+            locale={{emptyText: <div>---添加你的第一个任务吧🥰---</div>}} // 彻底隐藏空状态
             renderItem={(item) => (
                 <List.Item key={item.ID}
                            style={{paddingTop: 4, paddingBottom: 4}}

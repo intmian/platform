@@ -3,7 +3,6 @@ import {PTask, TaskType} from "./net/protocal";
 import {Button, Flex, Row, Tag} from "antd";
 import {ReactNode, useState} from "react";
 import {
-    CaretRightOutlined,
     CheckOutlined,
     DownOutlined,
     LoadingOutlined,
@@ -86,6 +85,7 @@ function GetTaskStatus(task: PTask): Status {
 function TaskStatusOperate({status, onClick, operating}: { status: Status, onClick: () => void, operating: boolean }) {
     let icon: ReactNode = null
     let text: string | null = null
+    let dashed = false
     if (status >= Status.StartedBegin && status < Status.FinishedBegin) {
         if (status >= Status.TODO) {
             icon = null
@@ -100,13 +100,18 @@ function TaskStatusOperate({status, onClick, operating}: { status: Status, onCli
         icon = <CheckOutlined/>
     } else {
         // 没有开始情况
-        icon = <CaretRightOutlined/>
+        icon = null
+        if (!operating) {
+            text = " "
+        }
+        dashed = true
     }
     if (operating) {
         icon = <LoadingOutlined spin={true}/>
     }
     return <Button
         icon={icon}
+        type={dashed ? "dashed" : undefined}
         onClick={onClick}
         style={{
             // 如果没有icon padding= 0
