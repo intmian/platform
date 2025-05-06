@@ -35,20 +35,33 @@ export function TodoneSetting() {
 export function Todone() {
     // 读取路由
     const {group} = useParams();
-
-
     // 获得账户
     const loginCtr: LoginCtr = useContext<LoginCtr>(LoginCtx);
-
-
     const [chooseAddr, setChooseAddr] = useState<Addr | null>(null);
     const [chooseTitle, setChooseTitle] = useState<string>('')
     const [selectTaskAddr, setSelectTaskAddr] = useState<Addr>();
     const taskRef = useRef<PTask>();
     const refreshApiRef = useRef<() => void>();
     const [showDir, setShowDir] = useState(false);
-
     const isMobile = useIsMobile()
+
+    // 更换Favicon为/todone-mini.png
+    useEffect(() => {
+        const existingFavicon = document.querySelector('link[rel="icon"], link[rel="shortcut icon"]');
+        if (existingFavicon) {
+            existingFavicon.remove();
+        }
+
+        const link = document.createElement('link');
+        link.type = 'image/x-icon';
+        link.rel = 'shortcut icon';
+        link.href = '/todone-mini.png';
+        document.getElementsByTagName('head')[0].appendChild(link);
+
+        document.title = "TODONE 任务板"
+
+    }, []);
+
 
     useEffect(() => {
         // 使用竖线分隔group
@@ -125,6 +138,8 @@ export function Todone() {
                         const encodedGroup = encodeURIComponent(newGroup);
                         window.history.replaceState({}, '', `/todone/${encodedGroup}`);
                         setShowDir(false);
+                        // 修改标题
+                        document.title = `TODONE 任务板: ${title}`;
                     }}
                     onSelectDir={(addr) => {
                         // 暂无逻辑
