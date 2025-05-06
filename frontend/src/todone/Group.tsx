@@ -63,7 +63,11 @@ export default function Group(props: GroupProps) {
             />)
     }
 
-    return <div>
+    return <div
+        style={{
+            marginBottom: "200px",
+        }}
+    >
         <Flex
             align={"center"}
             style={{
