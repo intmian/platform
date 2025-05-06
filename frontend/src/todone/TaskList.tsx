@@ -149,7 +149,7 @@ export function TaskList({level, tree, addr, indexSmallFirst, loadingTree, refre
     const inputRef = useRef<InputRef | null>(null); // 输入框引用
     const [reqs, setReqs] = useState<TaskCreateData[]>([]); // 请求列表
     // 新增输入框
-    const [autoStart, setAutoStart] = useStateWithLocal("taskListAutoStart" + addr.toString(), false); // 是否自动开启
+    const [autoStart, setAutoStart] = useStateWithLocal("taskListAutoStart" + addr.toString(), true); // 是否自动开启
     const [taskType, setTaskType] = useStateWithLocal("taskListTaskType" + addr.toString(), 0); // 任务类型
     const isMobile = useIsMobile();
 
