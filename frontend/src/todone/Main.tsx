@@ -124,6 +124,7 @@ export function Todone() {
                         // 对group进行URL编码
                         const encodedGroup = encodeURIComponent(newGroup);
                         window.history.replaceState({}, '', `/todone/${encodedGroup}`);
+                        setShowDir(false);
                     }}
                     onSelectDir={(addr) => {
                         // 暂无逻辑
