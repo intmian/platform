@@ -6,6 +6,7 @@ import {Checkbox, Flex, Input, InputRef, List, message, Select, Tooltip} from "a
 import {CreateTaskReq, sendCreateTask} from "./net/send_back";
 import {LoadingOutlined} from "@ant-design/icons";
 import {Task} from "./Task";
+import {useIsMobile} from "../common/hooksv2";
 
 interface TaskCreateData {
     title: string;
@@ -149,6 +150,8 @@ export function TaskList({level, tree, addr, indexSmallFirst, loadingTree, refre
     // 新增输入框
     const [autoStart, setAutoStart] = useState(true); // 是否自动启动
     const [taskType, setTaskType] = useState(0); // 任务类型
+    const isMobile = useIsMobile();
+
     function onCreate() {
         const newReq: TaskCreateData = {
             title: newTaskTitle,
@@ -163,7 +166,7 @@ export function TaskList({level, tree, addr, indexSmallFirst, loadingTree, refre
         <Flex align="center">
             <Input
                 variant={"filled"}
-                placeholder="新增任务,Ctrl+Enter 或 Command+Enter 添加"
+                placeholder={isMobile ? "新增任务，回车或移出焦点" : "新增任务,Ctrl+Enter 或 Command+Enter 添加"}
                 ref={inputRef}
                 value={newTaskTitle}
                 onChange={(e) => {
@@ -177,6 +180,15 @@ export function TaskList({level, tree, addr, indexSmallFirst, loadingTree, refre
                     onCreate();
                 }}
                 onKeyDown={(e) => {
+                    if (isMobile) {
+                        if (e.key === "Enter") {
+                            if (newTaskTitle === "") {
+                                return;
+                            }
+                            onCreate();
+                        }
+                        return;
+                    }
                     if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
                         if (newTaskTitle === "") {
                             return;
@@ -277,7 +289,7 @@ export function TaskList({level, tree, addr, indexSmallFirst, loadingTree, refre
     return <div
         id="scrollableDiv"
         style={{
-            paddingLeft: `${level * 24}px`,
+            paddingLeft: `${level * 12}px`,
             width: '100%',
         }}
     >
