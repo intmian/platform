@@ -25,6 +25,7 @@ import {
 import {lowLeverShadow} from "../css/shadow";
 import TaskTree from "./TaskTree";
 import {TaskList} from "./TaskList";
+import {useStateWithLocal} from "../common/hooksv2";
 
 interface SubGroupAddPanelProps {
     userID: string
@@ -160,9 +161,9 @@ export function SubGroup(props: SubGroupProps) {
     const subGroupAddr = props.groupAddr.copy();
     subGroupAddr.addSubGroup(props.subGroup.ID);
 
-    const [open, setOpen] = useState(true); // 是否显示任务列表
+    const [open, setOpen] = useStateWithLocal("todone:subgroup:open:" + subGroupAddr.toString(), true); // 是否展开
     const [containDone, setContainDone] = useState(false); // 是否包含已完成任务
-    const [indexSmallFirst, setIndexSmallFirst] = useState(true); // 是否按Index升序排列
+    const [indexSmallFirst, setIndexSmallFirst] = useStateWithLocal("todone:subgroup:indexsmallfirst:" + subGroupAddr.toString(), true); // 是否按Index升序排列
     const [loading, setLoading] = useState(false); // 是否正在加载数据
     const [editOpen, setEditOpen] = useState(false); // 是否显示修改弹窗
 

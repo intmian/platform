@@ -22,3 +22,24 @@ export function useIsMobile(): boolean {
 
     return isMobile;
 }
+
+export function useStateWithLocal<T>(localKey: string, initialValue: T): [T, (value: T) => void] {
+    const [state, setState] = useState<T>(() => {
+        try {
+            const item = window.localStorage.getItem(localKey);
+            return item !== null ? JSON.parse(item) : initialValue;
+        } catch {
+            return initialValue;
+        }
+    });
+
+    useEffect(() => {
+        try {
+            window.localStorage.setItem(localKey, JSON.stringify(state));
+        } catch {
+            // 忽略本地存储错误
+        }
+    }, [localKey, state]);
+
+    return [state, setState];
+}

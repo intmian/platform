@@ -15,6 +15,7 @@ import {IsDateEmptyFromGoEmpty} from "../common/tool";
 import TaskTree, {TaskTreeNode} from "./TaskTree";
 import {TaskList} from "./TaskList";
 import {ChangeTaskReq, sendChangeTask} from "./net/send_back";
+import {useStateWithLocal} from "../common/hooksv2";
 
 enum Status {
     // 以下状态为未开始 started == false
@@ -289,7 +290,7 @@ export function Task(props: TaskProps) {
     if (props.taskNode.children && props.taskNode.children.length > 0) {
         hasSon = true;
     }
-    const [showSubTask, setShowSubTask] = useState(hasSon); // 是否显示子任务
+    const [showSubTask, setShowSubTask] = useStateWithLocal("todone:task:showSubTask:" + props.task.ID, hasSon);
     const [operate, setOperate] = useState(false); // 是否操作
     const thisAddr = props.addr.copy();
     thisAddr.addTask(props.task.ID);

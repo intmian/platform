@@ -6,7 +6,7 @@ import {Checkbox, Flex, Input, InputRef, List, message, Select, Tooltip} from "a
 import {CreateTaskReq, sendCreateTask} from "./net/send_back";
 import {LoadingOutlined} from "@ant-design/icons";
 import {Task} from "./Task";
-import {useIsMobile} from "../common/hooksv2";
+import {useIsMobile, useStateWithLocal} from "../common/hooksv2";
 import "./custom.css"
 
 interface TaskCreateData {
@@ -149,8 +149,8 @@ export function TaskList({level, tree, addr, indexSmallFirst, loadingTree, refre
     const inputRef = useRef<InputRef | null>(null); // 输入框引用
     const [reqs, setReqs] = useState<TaskCreateData[]>([]); // 请求列表
     // 新增输入框
-    const [autoStart, setAutoStart] = useState(true); // 是否自动启动
-    const [taskType, setTaskType] = useState(0); // 任务类型
+    const [autoStart, setAutoStart] = useStateWithLocal("taskListAutoStart" + addr.toString(), false); // 是否自动开启
+    const [taskType, setTaskType] = useStateWithLocal("taskListTaskType" + addr.toString(), 0); // 任务类型
     const isMobile = useIsMobile();
 
     function onCreate() {
