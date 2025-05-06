@@ -121,6 +121,9 @@ function TaskStatusOperate({status, onClick, operating}: { status: Status, onCli
 
 export function TaskTags({task}: { task: PTask }) {
     const tags: ReactNode[] = []
+    if (task.Note !== "") {
+        tags.push(<Tag key={"note"} color="purple">有备注</Tag>)
+    }
     if (task.Tags) {
         for (const tag of task.Tags) {
             tags.push(<Tag key={tag} color="blue">{tag}</Tag>)
@@ -188,7 +191,10 @@ export function TaskTitle({task, clickShowSubTask, isShowSon, onSelectTask, hasS
 function time2show(time: Date): string {
     // 打印还有多少天多少小时
     const now = new Date();
-    const diff = time.getTime() - now.getTime();
+    let diff = time.getTime() - now.getTime();
+    if (diff < 0) {
+        diff = -diff;
+    }
     const days = Math.floor(diff / (1000 * 60 * 60 * 24));
     const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
     const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
@@ -204,7 +210,7 @@ function time2show(time: Date): string {
         if (minutes > 0) {
             str += minutes + "分钟";
         }
-        if (seconds > 0) {
+        if (seconds > 0 && hours <= 0) {
             str += seconds + "秒";
         }
     }
@@ -231,14 +237,14 @@ export function TaskWaitAndTime({status, task}: { status: Status, task: PTask })
         if (!IsDateEmptyFromGoEmpty(task.BeginTime)) {
             if (beginTime.getTime() > now.getTime()) {
                 timeWait.push(
-                    <Tag color="orange" key={"beginTime"}>
-                        {time2show(beginTime)}
+                    <Tag color="red" key={"beginTime"}>
+                        剩余 {time2show(beginTime)}
                     </Tag>
                 );
             } else {
                 timeWait.push(
                     <Tag color="green" key={"beginTime2"}>
-                        {time2show(beginTime)}
+                        过期 {time2show(beginTime)}
                     </Tag>
                 );
             }
@@ -248,13 +254,13 @@ export function TaskWaitAndTime({status, task}: { status: Status, task: PTask })
             if (endTime.getTime() < now.getTime()) {
                 timeWait.push(
                     <Tag color="red" key="endtime">
-                        {time2show(endTime)}
+                        剩余 {time2show(endTime)}
                     </Tag>
                 );
             } else {
                 timeWait.push(
                     <Tag color="green" key="endtime2">
-                        {time2show(endTime)}
+                        过期 {time2show(endTime)}
                     </Tag>
                 );
             }

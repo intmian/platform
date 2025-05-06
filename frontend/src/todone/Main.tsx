@@ -88,7 +88,7 @@ export function Todone() {
             }}
             open={showDir}
             extra={<User/>}
-            width={isMobile ? '70%' : '30%'}
+            width={isMobile ? '70%' : '400px'}
         >
             <div
                 style={{
@@ -135,7 +135,7 @@ export function Todone() {
                 setSelectTaskAddr(undefined);
             }}
             open={selectTaskAddr !== undefined}
-            width={isMobile ? '80%' : '30%'}
+            width={isMobile ? '80%' : '400px'}
         >
             <TaskDetail addr={selectTaskAddr} task={taskRef.current} refreshApi={refreshApiRef.current}/>
         </Drawer>

@@ -207,20 +207,27 @@ export function TaskDetail(props: TaskDetailProps) {
                 }}
                 placeholder="等待"
             />
-            <DatePicker.RangePicker
-                placeholder={['无开始时间', '无结束时间']}
-                allowEmpty={[true, true]}
-                value={[beginTimeJs, endTimeJs]}
+            <DatePicker
+                placeholder="无开始时间"
+                allowClear
+                value={beginTimeJs}
                 onChange={(date, dateString) => {
-                    if (dateString[0] !== "") {
-                        setBeginTime(dayjs(dateString[0]).toISOString());
+                    if (dateString !== "") {
+                        setBeginTime(dayjs(dateString).toISOString());
                     } else {
-                        setBeginTime("");
+                        setBeginTime(EmptyGoTimeStr);
                     }
-                    if (dateString[1] !== "") {
-                        setEndTime(dayjs(dateString[1]).toISOString());
+                }}
+            />
+            <DatePicker
+                placeholder="无结束时间"
+                allowClear
+                value={endTimeJs}
+                onChange={(date, dateString) => {
+                    if (dateString !== "") {
+                        setEndTime(dayjs(dateString + "23:59:59").toISOString());
                     } else {
-                        setEndTime("");
+                        setEndTime(EmptyGoTimeStr);
                     }
                 }}
             />
