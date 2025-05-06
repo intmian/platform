@@ -146,12 +146,6 @@ func (t *TaskLogic) Delete() error {
 	return db.UpdateTask(connect, t.dbData)
 }
 
-func (t *TaskLogic) ChangeDone(done bool) error {
-	t.dbData.Done = done
-	connect := db.GTodoneDBMgr.GetConnect(db.ConnectTypeTask)
-	return db.UpdateTask(connect, t.dbData)
-}
-
 func (t *TaskLogic) GeneSubTaskIndex() float32 {
 	connect := db.GTodoneDBMgr.GetConnect(db.ConnectTypeTask)
 	maxIndex := db.GetSubTaskMaxIndex(connect, t.dbData.TaskID)
@@ -235,11 +229,14 @@ func (t *TaskLogic) ChangeFromProtocol(pTask protocol.PTask) error {
 	if pTask.Wait4 != data.Wait4 {
 		data.Wait4 = pTask.Wait4
 	}
+	if pTask.TaskType != int(data.TaskType) {
+		data.TaskType = db.TaskType(pTask.TaskType)
+	}
 	connect := db.GTodoneDBMgr.GetConnect(db.ConnectTypeTask)
 	return db.UpdateTask(connect, data)
 }
 
-func (t *TaskLogic) CreateSubTask(userID string, title, note string, taskType db.TaskType) (*TaskLogic, error) {
+func (t *TaskLogic) CreateSubTask(userID string, title, note string, taskType db.TaskType, Started bool) (*TaskLogic, error) {
 	nextIndex := t.GeneSubTaskIndex()
 	connect := db.GTodoneDBMgr.GetConnect(db.ConnectTypeTask)
 	ID, err := db.CreateTask(connect, userID, t.dbData.ParentSubGroupID, t.id, title, note, nextIndex)
@@ -256,15 +253,10 @@ func (t *TaskLogic) CreateSubTask(userID string, title, note string, taskType db
 		Index:            nextIndex,
 		Deleted:          false,
 		Done:             false,
+		Started:          Started,
 		CreatedAt:        time.Now(),
 		UpdatedAt:        time.Now(),
 		TaskType:         taskType,
 	})
 	return task, nil
-}
-
-func (t *TaskLogic) StartTask() error {
-	connect := db.GTodoneDBMgr.GetConnect(db.ConnectTypeTask)
-	t.dbData.Started = true
-	return db.UpdateTask(connect, t.dbData)
 }

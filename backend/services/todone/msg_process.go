@@ -287,7 +287,7 @@ func (s *Service) OnCreateTask(valid backendshare.Valid, req CreateTaskReq) (ret
 				err = errors.New("group not exist")
 			}
 			var err2 error
-			task, err2 = group.CreateTask(req.UserID, req.Title, req.Note, db.TaskType(req.TaskType))
+			task, err2 = group.CreateTask(req.UserID, req.Title, req.Note, db.TaskType(req.TaskType), req.Started)
 			if err2 != nil {
 				err = errors.Join(errors.New("create task failed"), err2)
 				return
@@ -300,16 +300,9 @@ func (s *Service) OnCreateTask(valid backendshare.Valid, req CreateTaskReq) (ret
 				return
 			}
 			var err2 error
-			task, err2 = parent.CreateSubTask(req.UserID, req.Title, req.Note, db.TaskType(req.TaskType))
+			task, err2 = parent.CreateSubTask(req.UserID, req.Title, req.Note, db.TaskType(req.TaskType), req.Started)
 			if err2 != nil {
 				err = errors.Join(errors.New("create sub parent failed"), err2)
-				return
-			}
-		}
-		if req.Started {
-			err2 := task.StartTask()
-			if err2 != nil {
-				err = errors.Join(err, err2)
 				return
 			}
 		}
