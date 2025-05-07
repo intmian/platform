@@ -287,7 +287,7 @@ export function TaskList({level, tree, addr, indexSmallFirst, loadingTree, refre
     return <div
         id="scrollableDiv"
         style={{
-            paddingLeft: `${level * 22}px`,
+            paddingLeft: level == 0 ? undefined : "20px",
             width: '100%',
         }}
     >
