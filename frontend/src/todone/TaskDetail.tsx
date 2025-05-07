@@ -6,6 +6,7 @@ import dayjs from "dayjs";
 import {EmptyGoTimeStr, IsDateEmptyFromGoEmpty} from "../common/tool";
 import {ChangeTaskReq, sendChangeTask} from "./net/send_back";
 import {SaveOutlined} from "@ant-design/icons";
+import {useIsMobile} from "../common/hooksv2";
 
 interface TaskDetailProps {
     addr?: Addr
@@ -21,6 +22,7 @@ export function TaskDetail(props: TaskDetailProps) {
     const [wait4, setWait4] = useState("");
     const [taskType, setTaskType] = useState<number>(0);
     const [status, setStatus] = useState<"not_started" | "started" | "done">("not_started");
+    const isMobile = useIsMobile();
 
     useEffect(() => {
         if (!props.task) {
@@ -90,7 +92,53 @@ export function TaskDetail(props: TaskDetailProps) {
     const task = props.task;
     const addr = props.addr.copy();
 
+    function sendSave() {
+        setEditing(true);
+        task.Title = title;
+        task.Note = note;
+        task.BeginTime = beginTime;
+        task.EndTime = endTime;
+        task.Wait4 = wait4;
+        task.TaskType = taskType;
+        if (status === "done") {
+            task.Done = true;
+            task.Started = true;
+        } else if (status === "started") {
+            task.Done = false;
+            task.Started = true;
+        } else {
+            task.Done = false;
+            task.Started = false;
+        }
+        const req: ChangeTaskReq = {
+            UserID: props.addr.userID,
+            Data: task,
+        }
+        sendChangeTask(req, (ret) => {
+            setEditing(false);
+            if (ret.ok) {
+                props.refreshApi();
+            } else {
+                message.error("修改任务失败").then();
+            }
+        })
+    }
+
     return <Flex
+        // 如果手机端，输入回车后保存，如果pc端ctrl或cmd+enter保存
+        onKeyDown={(e) => {
+            if (isMobile) {
+                if (e.key === "Enter") {
+                    sendSave();
+                }
+            } else {
+                if (e.ctrlKey || e.metaKey) {
+                    if (e.key === "Enter") {
+                        sendSave();
+                    }
+                }
+            }
+        }}
         vertical={true}
         style={{
             height: "100%",
@@ -116,38 +164,9 @@ export function TaskDetail(props: TaskDetailProps) {
                 type={"primary"}
                 disabled={!needSave}
                 icon={<SaveOutlined/>}
-                onClick={
-                    () => {
-                        setEditing(true);
-                        task.Title = title;
-                        task.Note = note;
-                        task.BeginTime = beginTime;
-                        task.EndTime = endTime;
-                        task.Wait4 = wait4;
-                        task.TaskType = taskType;
-                        if (status === "done") {
-                            task.Done = true;
-                            task.Started = true;
-                        } else if (status === "started") {
-                            task.Done = false;
-                            task.Started = true;
-                        } else {
-                            task.Done = false;
-                            task.Started = false;
-                        }
-                        const req: ChangeTaskReq = {
-                            UserID: props.addr.userID,
-                            Data: task,
-                        }
-                        sendChangeTask(req, (ret) => {
-                            setEditing(false);
-                            if (ret.ok) {
-                                props.refreshApi();
-                            } else {
-                                message.error("修改任务失败").then();
-                            }
-                        })
-                    }}
+                onClick={() => {
+                    sendSave();
+                }}
             />
         </Flex>
         <Typography.Text type={"secondary"} copyable>
@@ -240,5 +259,8 @@ export function TaskDetail(props: TaskDetailProps) {
             }}
             placeholder="任务备注"
         />
+        <Typography.Text type={"secondary"}>
+            {isMobile ? "回车保存" : "Ctrl|Cmd+Enter保存"}
+        </Typography.Text>
     </Flex>
 }
