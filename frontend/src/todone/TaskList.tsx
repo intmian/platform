@@ -102,6 +102,7 @@ function Histories({reqs, addr, tree, isSubTask, smallFirst, refreshApi}: {
                       key={req.title + timestamp.getTime()}
                 >
                     <Input
+                        size="small"
                         variant={"filled"}
                         value={req.title}
                         disabled={true}
@@ -167,6 +168,7 @@ export function TaskList({level, tree, addr, indexSmallFirst, loadingTree, refre
     const input = (
         <Flex align="center">
             <Input
+                size="small"
                 variant={"filled"}
                 placeholder={isMobile ? "新增任务，回车或移出焦点" : "新增任务,Ctrl+Enter 或 Command+Enter 添加"}
                 ref={inputRef}
@@ -285,7 +287,7 @@ export function TaskList({level, tree, addr, indexSmallFirst, loadingTree, refre
     return <div
         id="scrollableDiv"
         style={{
-            paddingLeft: `${level * 12}px`,
+            paddingLeft: `${level * 22}px`,
             width: '100%',
         }}
     >
