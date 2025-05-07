@@ -58,10 +58,11 @@ export function Todone() {
         link.href = '/todone-mini.png';
         document.getElementsByTagName('head')[0].appendChild(link);
 
-        document.title = "TODONE 任务板"
-
     }, []);
 
+    useEffect(() => {
+        document.title = `TODONE 任务板: ${chooseTitle}`;
+    }, [chooseTitle]);
 
     useEffect(() => {
         // 使用竖线分隔group

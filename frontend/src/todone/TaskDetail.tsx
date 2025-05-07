@@ -179,8 +179,8 @@ export function TaskDetail(props: TaskDetailProps) {
                 onChange={setTaskType}
                 placeholder="任务类型"
                 options={[
-                    {label: "todo", value: 0},
-                    {label: "doing", value: 1},
+                    {label: "TODO", value: 0},
+                    {label: "DOING", value: 1},
                 ]}
             />
             <Select
