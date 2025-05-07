@@ -260,13 +260,13 @@ export function TaskWaitAndTime({status, task}: { status: Status, task: PTask })
             if (endTime.getTime() < now.getTime()) {
                 timeWait.push(
                     <Tag color="red" key="endtime">
-                        剩余 {time2show(endTime)}
+                        过期 {time2show(endTime)}
                     </Tag>
                 );
             } else {
                 timeWait.push(
                     <Tag color="green" key="endtime2">
-                        过期 {time2show(endTime)}
+                        剩余 {time2show(endTime)}
                     </Tag>
                 );
             }
