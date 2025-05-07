@@ -150,7 +150,7 @@ export function TaskDetail(props: TaskDetailProps) {
     >
         <Flex>
             <div style={{
-                width: "50%",
+                flex: 1,
                 marginRight: "10px",
             }}>
                 <Input
