@@ -51,8 +51,12 @@ function ServiceInfo({name, startTime, initStatus, type}) {
         case 'cmd':
             nameShow = '脚本管理';
             break;
+        case 'todone':
+            nameShow = 'TODONE';
+            break;
         default:
-
+            nameShow = name;
+            break;
     }
     let buttonStr = open ? '关闭' : '开启';
     let disabled = false;
