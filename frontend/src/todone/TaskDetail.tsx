@@ -7,6 +7,8 @@ import {EmptyGoTimeStr, IsDateEmptyFromGoEmpty} from "../common/tool";
 import {ChangeTaskReq, sendChangeTask} from "./net/send_back";
 import {SaveOutlined} from "@ant-design/icons";
 import {useIsMobile} from "../common/hooksv2";
+import ReactQuill from "react-quill";
+import "react-quill/dist/quill.snow.css";
 
 interface TaskDetailProps {
     addr?: Addr
@@ -251,14 +253,14 @@ export function TaskDetail(props: TaskDetailProps) {
                 }}
             />
         </Flex>
-        <Input.TextArea
-            style={{flex: 1}}
-            value={note}
-            onChange={(e) => {
-                setNote(e.target.value);
-            }}
-            placeholder="任务备注"
-        />
+        <div style={{flex: 1, width: "100%"}}>
+            <ReactQuill
+                theme="snow"
+                value={note}
+                onChange={setNote}
+                placeholder="任务备注"
+            />
+        </div>
         <Typography.Text type={"secondary"}>
             {isMobile ? "回车保存" : "Ctrl|Cmd+Enter保存"}
         </Typography.Text>
