@@ -117,3 +117,56 @@ func (s *SubGroupLogic) ChangeFromProtocol(data protocol.PSubGroup) error {
 	connect := db.GTodoneDBMgr.GetConnect(db.ConnectTypeSubGroup)
 	return db.UpdateSubGroup(connect, s.dbData.ID, s.dbData.Title, s.dbData.Note, s.dbData.Index)
 }
+
+func (s *SubGroupLogic) OnTasksPushBack(tasks []*TaskLogic) error {
+	newIndex := s.GeneTaskIndex()
+	connect := db.GTodoneDBMgr.GetConnect(db.ConnectTypeTask)
+	for _, task := range tasks {
+		taskData, err := task.GetTaskData()
+		if err != nil {
+			return err
+		}
+		taskData.ParentSubGroupID = s.dbData.ID
+		taskData.Index = newIndex
+		err = db.UpdateTask(connect, taskData)
+		if err != nil {
+			return err
+		}
+		newIndex++
+	}
+	return nil
+}
+
+func (s *SubGroupLogic) OnTasksPushAfterOther(tasks []*TaskLogic, afterID uint32) error {
+	connect := db.GTodoneDBMgr.GetConnect(db.ConnectTypeTask)
+	afterTask, err := db.GetTaskByID(connect, afterID)
+	if err != nil {
+		return err
+	}
+	newIndex := afterTask.Index + 1
+	for _, task := range tasks {
+		taskData, err := task.GetTaskData()
+		if err != nil {
+			return err
+		}
+		taskData.ParentSubGroupID = s.dbData.ID
+		taskData.Index = newIndex
+		err = db.UpdateTask(connect, taskData)
+		if err != nil {
+			return err
+		}
+		newIndex++
+	}
+	return nil
+}
+
+func (s *SubGroupLogic) OnDeleteTasks(taskIDs []uint32) error {
+	for _, taskID := range taskIDs {
+		task := NewTaskLogic(taskID)
+		err := task.Delete()
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}

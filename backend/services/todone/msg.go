@@ -200,8 +200,11 @@ type CreateTaskRet struct {
 const CmdDelTask share.Cmd = "delTask"
 
 type DelTaskReq struct {
-	UserID string
-	TaskID uint32
+	UserID     string
+	DirID      uint32
+	GroupID    uint32
+	SubGroupID uint32
+	TaskID     []uint32
 }
 
 type DelTaskRet struct {
@@ -259,4 +262,23 @@ type ChangeSubGroupReq struct {
 }
 
 type ChangeSubGroupRet struct {
+}
+
+const CmdTaskMove share.Cmd = "taskMove"
+
+type TaskMoveReq struct {
+	UserID  string
+	TaskIDs []uint32
+
+	TrgDir      uint32
+	TrgGroup    uint32
+	TrgSubGroup uint32
+
+	// 不填taskID,则表示移动到最后面
+	TrgTaskID uint32
+	After     bool
+	Before    bool
+}
+
+type TaskMoveRet struct {
 }

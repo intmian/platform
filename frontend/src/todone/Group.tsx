@@ -18,7 +18,7 @@ class TaskTree {
 interface GroupProps {
     addr: Addr | null
     GroupTitle: string
-    onSelectTask: (addr: Addr, pTask: PTask, refreshApi: () => void) => void
+    onSelectTask: (addr: Addr, pTask: PTask, refreshApi: () => void, tree: TaskTree) => void
 }
 
 export default function Group(props: GroupProps) {

@@ -12,6 +12,7 @@ import {MenuOutlined} from "@ant-design/icons";
 import {useIsMobile} from "../common/hooksv2";
 import User from "../common/User";
 import {useParams} from "react-router-dom";
+import TaskTree from "./TaskTree";
 
 const TodoneConfigs = new ConfigsCtr(ConfigsType.Server, 'todone')
 TodoneConfigs.addBaseConfig('db.account_id', '数据库账号ID', ConfigType.String, 'cloudflare')
@@ -42,6 +43,7 @@ export function Todone() {
     const [selectTaskAddr, setSelectTaskAddr] = useState<Addr>();
     const taskRef = useRef<PTask>();
     const refreshApiRef = useRef<() => void>();
+    const treeRef = useRef<TaskTree>();
     const [showDir, setShowDir] = useState(false);
     const isMobile = useIsMobile()
 
@@ -158,10 +160,11 @@ export function Todone() {
             <Group
                 addr={chooseAddr}
                 GroupTitle={chooseTitle}
-                onSelectTask={(addr, pTask, refreshApi) => {
+                onSelectTask={(addr, pTask, refreshApi, tree) => {
                     setSelectTaskAddr(addr);
                     taskRef.current = pTask;
                     refreshApiRef.current = refreshApi;
+                    treeRef.current = tree;
                 }}
             />
         </div>
@@ -176,7 +179,9 @@ export function Todone() {
             open={selectTaskAddr !== undefined}
             width={isMobile ? '80%' : '400px'}
         >
-            <TaskDetail addr={selectTaskAddr} task={taskRef.current} refreshApi={refreshApiRef.current}/>
+            <TaskDetail addr={selectTaskAddr} task={taskRef.current} refreshApi={refreshApiRef.current}
+                        tree={treeRef.current}
+            />
         </Drawer>
 
 

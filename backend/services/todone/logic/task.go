@@ -141,9 +141,19 @@ func (t *TaskLogic) BindParentTask(parentID uint32) error {
 }
 
 func (t *TaskLogic) Delete() error {
-	t.dbData.Deleted = true
+	data, err := t.GetTaskData()
+	if err != nil {
+		return errors.Join(err, ErrGetTaskDataFailed)
+	}
+	if data == nil {
+		return ErrGetTaskDataFailed
+	}
+	if data.Deleted {
+		return errors.New("task already deleted")
+	}
+	data.Deleted = true
 	connect := db.GTodoneDBMgr.GetConnect(db.ConnectTypeTask)
-	return db.UpdateTask(connect, t.dbData)
+	return db.UpdateTask(connect, data)
 }
 
 func (t *TaskLogic) GeneSubTaskIndex() float32 {

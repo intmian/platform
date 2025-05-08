@@ -154,7 +154,7 @@ interface SubGroupProps {
     groupAddr: Addr
     subGroup: PSubGroup
     onDelete: (subGroup: PSubGroup) => void;
-    onSelectTask: (addr: Addr, pTask: PTask, refreshApi: () => void) => void;
+    onSelectTask: (addr: Addr, pTask: PTask, refreshApi: () => void, tree: TaskTree) => void;
 }
 
 export function SubGroup(props: SubGroupProps) {

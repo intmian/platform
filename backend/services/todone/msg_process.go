@@ -318,12 +318,12 @@ func (s *Service) OnCreateTask(valid backendshare.Valid, req CreateTaskReq) (ret
 
 func (s *Service) OnDelTask(valid backendshare.Valid, req DelTaskReq) (ret DelTaskRet, err error) {
 	f := func(user *logic.UserLogic) {
-		task := user.GetTaskLogic(req.TaskID)
-		if task == nil {
-			err = errors.New("task not exist")
+		subGroup := user.GetSubGroupLogic(req.SubGroupID, req.GroupID, req.SubGroupID)
+		if subGroup == nil {
+			err = errors.New("sub group not exist")
 			return
 		}
-		err2 := task.Delete()
+		err2 := subGroup.OnDeleteTasks(req.TaskID)
 		if err2 != nil {
 			err = errors.Join(err, err2)
 			return
@@ -444,6 +444,78 @@ func (s *Service) OnSubGroup(valid backendshare.Valid, req ChangeSubGroupReq) (r
 		if err2 != nil {
 			err = errors.Join(err, err2)
 			return
+		}
+	}
+	s.userMgr.SafeUseUserLogic(req.UserID, f, func() {
+		err = errors.New("user not exist")
+	})
+	return
+}
+
+func (s *Service) OnTaskMove(valid backendshare.Valid, req TaskMoveReq) (ret TaskMoveRet, err error) {
+	f := func(user *logic.UserLogic) {
+		/*
+			type TaskMoveReq struct {
+				UserID  string
+				TaskIDs []uint32
+
+				TrgDir      uint32
+				TrgGroup    uint32
+				TrgSubGroup uint32
+
+				// 不填taskID,则表示移动到最后面
+				TrgTaskID uint32
+				After     bool
+				Before    bool
+			}
+
+		*/
+		group := user.GetGroupLogic(req.TrgDir, req.TrgGroup)
+		if group == nil {
+			err = errors.New("group not exist")
+			return
+		}
+		subGroup := group.GetSubGroupLogic(req.TrgSubGroup)
+		if subGroup == nil {
+			err = errors.New("sub group not exist")
+			return
+		}
+		connTask := db.GTodoneDBMgr.GetConnect(db.ConnectTypeTask)
+		taskDBS, err2 := db.GetTaskByIds(connTask, req.TaskIDs)
+		if err2 != nil {
+			err = errors.Join(err, err2)
+			return
+		}
+		if len(taskDBS) != len(req.TaskIDs) {
+			err = errors.New("task not exist")
+			return
+		}
+		var taskLogics []*logic.TaskLogic
+		for _, taskDB := range taskDBS {
+			task := user.GetTaskLogic(taskDB.TaskID)
+			if task == nil {
+				err = errors.New("task not exist")
+				return
+			}
+			newDB := taskDB
+			task.OnBindOutData(&newDB)
+			taskLogics = append(taskLogics, task)
+		}
+
+		if req.TrgTaskID == 0 {
+			err2 = subGroup.OnTasksPushBack(taskLogics)
+			if err2 != nil {
+				err = errors.Join(err, err2)
+				return
+			}
+			return
+
+		}
+		err2 = subGroup.OnTasksPushAfterOther(taskLogics, req.TrgTaskID, req.After, req.Before)
+		if err2 != nil {
+			err = errors.Join(err, err2)
+			return
+
 		}
 	}
 	s.userMgr.SafeUseUserLogic(req.UserID, f, func() {

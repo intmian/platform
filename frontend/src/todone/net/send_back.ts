@@ -165,8 +165,11 @@ export interface CreateTaskRet {
 
 
 export interface DelTaskReq {
+    DirID: number
+    GroupID: number
+    SubGroupID: number
     UserID: string
-    TaskID: number
+    TaskID: number[]
 }
 
 export type DelTaskRet = object

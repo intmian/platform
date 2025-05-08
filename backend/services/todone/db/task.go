@@ -64,6 +64,13 @@ func GetTaskByID(db *gorm.DB, taskID uint32) (*TaskDB, error) {
 	return &task, result.Error
 }
 
+func GetTaskByIds(db *gorm.DB, taskIDs []uint32) ([]TaskDB, error) {
+	var tasks []TaskDB
+	tasks = make([]TaskDB, 0)
+	result := db.Where("task_id in (?)", taskIDs).Find(&tasks)
+	return tasks, result.Error
+}
+
 func GetTasksByParentSubGroupID(db *gorm.DB, parentSubGroupID uint32, limit int, offset int, containDone bool) []TaskDB {
 	var tasks []TaskDB
 	tasks = make([]TaskDB, 0)
@@ -143,4 +150,40 @@ func GetParentSubGroupMaxIndex(db *gorm.DB, parentSubGroupID uint32) float32 {
 		println("GetParentSubGroupMaxIndex error:", err.Error())
 	}
 	return maxIndex
+}
+
+func GetTaskNearIndex(db *gorm.DB, parentSubGroupID uint32, taskID uint32) (left float32, right float32) {
+	var leftIndex, rightIndex float32
+
+	// 查询比当前task index小的最大index（左边）
+	db.Model(&TaskDB{}).
+		Where("parent_sub_group_id = ? AND deleted = ? AND `index` < (SELECT `index` FROM task_dbs WHERE task_id = ?)", parentSubGroupID, false, taskID).
+		Select("MAX(`index`)").
+		Row().Scan(&leftIndex)
+
+	// 查询比当前task index大的最小index（右边）
+	db.Model(&TaskDB{}).
+		Where("parent_sub_group_id = ? AND deleted = ? AND `index` > (SELECT `index` FROM task_dbs WHERE task_id = ?)", parentSubGroupID, false, taskID).
+		Select("MIN(`index`)").
+		Row().Scan(&rightIndex)
+
+	return leftIndex, rightIndex
+}
+
+func GetSubTaskNearIndex(db *gorm.DB, parentTaskID uint32, taskID uint32) (left float32, right float32) {
+	var leftIndex, rightIndex float32
+
+	// 查询比当前task index小的最大index（左边）
+	db.Model(&TaskDB{}).
+		Where("parent_task_id = ? AND deleted = ? AND `index` < (SELECT `index` FROM task_dbs WHERE task_id = ?)", parentTaskID, false, taskID).
+		Select("MAX(`index`)").
+		Row().Scan(&leftIndex)
+
+	// 查询比当前task index大的最小index（右边）
+	db.Model(&TaskDB{}).
+		Where("parent_task_id = ? AND deleted = ? AND `index` > (SELECT `index` FROM task_dbs WHERE task_id = ?)", parentTaskID, false, taskID).
+		Select("MIN(`index`)").
+		Row().Scan(&rightIndex)
+
+	return leftIndex, rightIndex
 }

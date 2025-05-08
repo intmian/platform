@@ -285,7 +285,7 @@ export interface TaskProps {
     loadingTree: boolean
     refreshTree: () => void
     tree: TaskTree
-    onSelectTask: (addr: Addr, pTask: PTask, refreshApi: () => void) => void
+    onSelectTask: (addr: Addr, pTask: PTask, refreshApi: () => void, tree: TaskTree) => void
 }
 
 export function Task(props: TaskProps) {
@@ -344,7 +344,7 @@ export function Task(props: TaskProps) {
                 } status={status}/>
             <TaskTitle
                 onSelectTask={() => {
-                    props.onSelectTask(thisAddr, props.task, props.refreshTree);
+                    props.onSelectTask(thisAddr, props.task, props.refreshTree, props.tree);
                 }}
                 task={props.task}
                 clickShowSubTask={() => {

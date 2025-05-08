@@ -129,7 +129,7 @@ export function TaskList({level, tree, addr, indexSmallFirst, loadingTree, refre
     indexSmallFirst: boolean
     loadingTree: boolean
     refreshTree: () => void
-    onSelectTask: (addr: Addr, pTask: PTask, refreshApi: () => void) => void
+    onSelectTask: (addr: Addr, pTask: PTask, refreshApi: () => void, tree: TaskTree) => void
 }) {
     let taskShow: PTask[]
     // tasks根据Index排序

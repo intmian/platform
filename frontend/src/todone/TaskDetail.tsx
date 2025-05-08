@@ -4,16 +4,18 @@ import {Button, DatePicker, Flex, Input, message, Select, Typography} from "antd
 import {useEffect, useRef, useState} from "react";
 import dayjs from "dayjs";
 import {EmptyGoTimeStr, IsDateEmptyFromGoEmpty} from "../common/tool";
-import {ChangeTaskReq, sendChangeTask} from "./net/send_back";
+import {ChangeTaskReq, sendChangeTask, sendDelTask} from "./net/send_back";
 import {SaveOutlined} from "@ant-design/icons";
 import {useIsMobile} from "../common/hooksv2";
 import ReactQuill from "react-quill-new";
 import "react-quill-new/dist/quill.snow.css";
+import TaskTree from "./TaskTree";
 
 interface TaskDetailProps {
-    addr?: Addr
-    task?: PTask
-    refreshApi?: () => void
+    addr: Addr
+    task: PTask
+    refreshApi: () => void
+    tree: TaskTree
 }
 
 function Editor(props: { value: string, onChange: (value: string) => void, onUpload: () => void }) {
@@ -333,30 +335,48 @@ export function TaskDetail(props: TaskDetailProps) {
                     setWait4("");
                 }}
             >
-                清除时间与等待
+                清除高级
             </Button>
             <Button
             >
                 移动
             </Button>
             <Button
+                onClick={() => {
+                    sendDelTask({
+                        DirID: props.addr.getLastDirID(),
+                        GroupID: props.addr.getLastGroupID(),
+                        SubGroupID: props.addr.getLastSubGroupID(),
+                        UserID: props.addr.userID,
+                        TaskID: [task.ID],
+                    }, (ret) => {
+                        if (ret.ok) {
+                            message.success("删除任务成功").then();
+                            props.tree.deleteTask(task.ID);
+                            props.refreshApi();
+                        } else {
+                            message.error("删除任务失败").then();
+                        }
+                    })
+                }}
                 danger={true}
             >
                 删除
             </Button>
         </Flex>
+        <Input
+            style={{width: "100%"}}
+            value={wait4}
+            onChange={(e) => {
+                setWait4(e.target.value);
+            }}
+            placeholder="等待"
+        />
         <Flex gap='10px'>
-            <Input
-                style={{width: "100px"}}
-                value={wait4}
-                onChange={(e) => {
-                    setWait4(e.target.value);
-                }}
-                placeholder="等待"
-            />
             <DatePicker
                 placeholder="无开始时间"
                 allowClear
+                style={{width: "45%"}}
                 value={beginTimeJs}
                 onChange={(date, dateString) => {
                     if (dateString !== "") {
@@ -370,6 +390,8 @@ export function TaskDetail(props: TaskDetailProps) {
                 placeholder="无结束时间"
                 allowClear
                 value={endTimeJs}
+                style={{width: "45%"}}
+
                 onChange={(date, dateString) => {
                     if (dateString !== "") {
                         setEndTime(dayjs(dateString + "23:59:59").toISOString());
