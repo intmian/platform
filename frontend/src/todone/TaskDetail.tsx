@@ -8,7 +8,7 @@ import {ChangeTaskReq, sendChangeTask} from "./net/send_back";
 import {SaveOutlined} from "@ant-design/icons";
 import {useIsMobile} from "../common/hooksv2";
 import ReactQuill from "react-quill-new";
-import "react-quill/dist/quill.snow.css";
+import "react-quill-new/dist/quill.snow.css";
 
 interface TaskDetailProps {
     addr?: Addr
