@@ -1,7 +1,7 @@
 import {Addr} from "./addr";
 import {PTask, TaskType} from "./net/protocal";
 import {Button, Flex, Row, Tag} from "antd";
-import {ReactNode, useState} from "react";
+import {ReactNode, useEffect, useState} from "react";
 import {
     CheckOutlined,
     DownOutlined,
@@ -194,7 +194,18 @@ export function TaskTitle({task, clickShowSubTask, isShowSon, onSelectTask, hasS
     )
 }
 
-function time2show(time: Date): string {
+function Time2show({time}: { time: Date }) {
+    const [refreshTime, setRefreshTime] = useState(1000 * 60);
+    const [flag, setFlag] = useState(false);
+    useEffect(() => {
+        const interval = setInterval(() => {
+            setFlag(!flag);
+        }, refreshTime);
+        return () => {
+            clearInterval(interval);
+        };
+    }, [flag, refreshTime]);
+
     // 打印还有多少天多少小时
     const now = new Date();
     let diff = time.getTime() - now.getTime();
@@ -206,6 +217,7 @@ function time2show(time: Date): string {
     const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
     const seconds = Math.floor((diff % (1000 * 60)) / 1000);
     let str = "";
+    let hasSec = false;
     if (days > 0) {
         str += days + "天";
     }
@@ -218,9 +230,16 @@ function time2show(time: Date): string {
         }
         if (seconds > 0 && hours <= 0) {
             str += seconds + "秒";
+            hasSec = true;
         }
     }
-    return str;
+    if (hasSec && refreshTime !== 1000) {
+        setRefreshTime(1000);
+    }
+    if (!hasSec && refreshTime !== 1000 * 30) {
+        setRefreshTime(1000 * 60);
+    }
+    return <>{str}</>
 }
 
 export function TaskWaitAndTime({status, task}: { status: Status, task: PTask }) {
@@ -244,13 +263,13 @@ export function TaskWaitAndTime({status, task}: { status: Status, task: PTask })
             if (beginTime.getTime() > now.getTime()) {
                 timeWait.push(
                     <Tag color="green" key={"beginTime"}>
-                        剩余 {time2show(beginTime)}
+                        剩余 <Time2show time={beginTime}/>
                     </Tag>
                 );
             } else {
                 timeWait.push(
                     <Tag color="red" key={"beginTime2"}>
-                        过期 {time2show(beginTime)}
+                        过期 <Time2show time={beginTime}/>
                     </Tag>
                 );
             }
@@ -260,13 +279,13 @@ export function TaskWaitAndTime({status, task}: { status: Status, task: PTask })
             if (endTime.getTime() < now.getTime()) {
                 timeWait.push(
                     <Tag color="red" key="endtime">
-                        过期 {time2show(endTime)}
+                        过期 <Time2show time={endTime}/>
                     </Tag>
                 );
             } else {
                 timeWait.push(
                     <Tag color="green" key="endtime2">
-                        剩余 {time2show(endTime)}
+                        剩余 <Time2show time={endTime}/>
                     </Tag>
                 );
             }

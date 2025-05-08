@@ -136,12 +136,6 @@ function Editor(props: { value: string, onChange: (value: string) => void, onUpl
                 height: isMobile ? "70%" : "80%",
             }}
         />
-        <div>
-            <Typography.Text type={"secondary"}>
-                {isMobile ? "回车保存" : "Ctrl|Cmd+Enter保存"}
-            </Typography.Text>
-        </div>
-
     </Flex>;
 }
 
@@ -402,5 +396,10 @@ export function TaskDetail(props: TaskDetailProps) {
             />
         </Flex>
         <Editor value={note} onChange={setNote} onUpload={sendSave}/>
+        <div>
+            <Typography.Text type={"secondary"}>
+                {isMobile ? "回车保存" : "Ctrl|Cmd+Enter保存"}
+            </Typography.Text>
+        </div>
     </Flex>
 }
