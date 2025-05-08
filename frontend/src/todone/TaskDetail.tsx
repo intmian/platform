@@ -1,19 +1,123 @@
 import {Addr} from "./addr";
 import {PTask} from "./net/protocal";
 import {Button, DatePicker, Flex, Input, message, Select, Typography} from "antd";
-import {useEffect, useState} from "react";
+import {useEffect, useRef, useState} from "react";
 import dayjs from "dayjs";
 import {EmptyGoTimeStr, IsDateEmptyFromGoEmpty} from "../common/tool";
 import {ChangeTaskReq, sendChangeTask} from "./net/send_back";
 import {SaveOutlined} from "@ant-design/icons";
 import {useIsMobile} from "../common/hooksv2";
-import ReactQuill from "react-quill";
+import ReactQuill from "react-quill-new";
 import "react-quill/dist/quill.snow.css";
 
 interface TaskDetailProps {
     addr?: Addr
     task?: PTask
     refreshApi?: () => void
+}
+
+function Editor(props: { value: string, onChange: (value: string) => void, onUpload: () => void }) {
+    const quillRef = useRef<any>(null);
+    const isMobile = useIsMobile();
+
+    const handleUpload = async (file: File, isImage: boolean) => {
+        const res = await fetch('/api/misc/r2-presigned-url', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                fileName: file.name,
+                fileType: file.type,
+            }),
+        });
+
+        if (!res.ok) {
+            message.error("获取上传地址失败").then();
+            return;
+        }
+        const {data} = await res.json();
+        const {UploadURL, PublicURL} = data;
+
+        if (!UploadURL || !PublicURL) {
+            message.error("上传失败").then();
+            return;
+        }
+
+        const res2 = await fetch(UploadURL, {
+            method: 'PUT',
+            headers: {'Content-Type': file.type},
+            body: file,
+        });
+        if (!res2.ok) {
+            message.error("上传文件失败").then();
+            return;
+        }
+
+        const editor = quillRef.current.getEditor();
+        const range = editor.getSelection(true);
+
+        if (isImage) {
+            editor.insertEmbed(range.index, 'image', PublicURL);
+        } else {
+            const displayName = file.name;
+            editor.insertText(range.index, displayName, 'link', PublicURL);
+        }
+        props.onUpload();
+    };
+
+    const imageHandler = () => {
+        const input = document.createElement('input');
+        input.setAttribute('type', 'file');
+        input.setAttribute('accept', 'image/*');
+        input.onchange = () => {
+            const file = input.files?.[0];
+            if (file) handleUpload(file, true);
+        };
+        input.click();
+    };
+
+    const attachmentHandler = () => {
+        const input = document.createElement('input');
+        input.setAttribute('type', 'file');
+        input.onchange = () => {
+            const file = input.files?.[0];
+            if (file) handleUpload(file, false);
+        };
+        input.click();
+    };
+
+    const modules = {
+        toolbar: {
+            container: [
+                [{header: [1, 2, 3, false]}],
+                [{list: 'ordered'}, {list: 'bullet'}],
+                ['bold', 'italic', 'underline'],
+                ['clean'],
+                ['image', 'link', 'upload'],
+            ],
+            handlers: {
+                image: imageHandler,
+                link: attachmentHandler,
+            },
+        },
+    };
+
+    const formats = ['bold', 'italic', 'underline', 'image', 'link', 'upload'];
+
+    return <div style={{flex: 1, width: "100%", height: "100%"}}>
+        <ReactQuill
+            ref={quillRef}
+            theme="snow"
+            value={props.value}
+            onChange={props.onChange}
+            placeholder="任务备注"
+            modules={modules}
+            formats={formats}
+            style={{
+                fontSize: isMobile ? "16px" : undefined,
+                height: isMobile ? "80%" : "90%",
+            }}
+        />
+    </div>;
 }
 
 export function TaskDetail(props: TaskDetailProps) {
@@ -253,14 +357,7 @@ export function TaskDetail(props: TaskDetailProps) {
                 }}
             />
         </Flex>
-        <div style={{flex: 1, width: "100%"}}>
-            <ReactQuill
-                theme="snow"
-                value={note}
-                onChange={setNote}
-                placeholder="任务备注"
-            />
-        </div>
+        <Editor value={note} onChange={setNote} onUpload={sendSave}/>
         <Typography.Text type={"secondary"}>
             {isMobile ? "回车保存" : "Ctrl|Cmd+Enter保存"}
         </Typography.Text>

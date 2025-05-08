@@ -1,8 +1,15 @@
 package platform
 
 import (
+	"context"
 	"encoding/json"
+	"fmt"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/credentials"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	"github.com/intmian/mian_go_lib/tool/ai"
 	"github.com/intmian/mian_go_lib/xstorage"
 	"github.com/intmian/platform/backend/share"
@@ -297,4 +304,106 @@ func (m *webMgr) gptRewrite(c *gin.Context) {
 	// 将双换行替换为单换行
 	newContent = strings.ReplaceAll(newContent, "\n\n", "\n")
 	c.JSON(200, makeOkReturn(newContent))
+}
+
+func InitR2Client(endpoint, accessKey, secretKey string) *s3.Client {
+	endpointResolver := aws.EndpointResolverWithOptionsFunc(
+		func(service, region string, options ...interface{}) (aws.Endpoint, error) {
+			return aws.Endpoint{
+				URL:           endpoint,
+				SigningRegion: "auto",
+			}, nil
+		},
+	)
+
+	cfg, err := config.LoadDefaultConfig(context.TODO(),
+		config.WithRegion("auto"),
+		config.WithCredentialsProvider(credentials.NewStaticCredentialsProvider(
+			accessKey, secretKey, "",
+		)),
+		config.WithEndpointResolverWithOptions(endpointResolver),
+	)
+	if err != nil {
+		return nil
+	}
+
+	return s3.NewFromConfig(cfg)
+}
+
+type R2Cfg struct {
+	Endpoint  string
+	AccessKey string
+	SecretKey string
+	Bucket    string
+	Web       string
+}
+
+func (m *webMgr) getR2Cfg() (R2Cfg, error) {
+	var r2 R2Cfg
+	Endpoint, err1 := m.plat.cfg.Get("PLAT.r2.endpoint")
+	AccessKey, err2 := m.plat.cfg.Get("PLAT.r2.accessKey")
+	SecretKey, err3 := m.plat.cfg.Get("PLAT.r2.secretKey")
+	Bucket, err4 := m.plat.cfg.Get("PLAT.r2.bucket")
+	Web, err5 := m.plat.cfg.Get("PLAT.r2.web")
+	if err1 != nil || err2 != nil || err3 != nil || err4 != nil || err5 != nil {
+		return r2, fmt.Errorf("r2 config error")
+	}
+	r2.Endpoint = xstorage.ToBase[string](Endpoint)
+	r2.AccessKey = xstorage.ToBase[string](AccessKey)
+	r2.SecretKey = xstorage.ToBase[string](SecretKey)
+	r2.Bucket = xstorage.ToBase[string](Bucket)
+	r2.Web = xstorage.ToBase[string](Web)
+	return r2, nil
+}
+
+// 获得cloudflare r2 Presigned URL
+func (m *webMgr) getR2PresignedURL(c *gin.Context) {
+	valid := m.getValid(c)
+	if !valid.HasOnePermission("file", "admin") {
+		c.JSON(200, makeErrReturn("no permission"))
+		return
+	}
+	// 从请求中获取内容
+	var req struct {
+		FileName string `json:"fileName"`
+		FileType string `json:"fileType"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(400, makeErrReturn("Invalid request"))
+		return
+	}
+	now := time.Now()
+	key := fmt.Sprintf("uploads/%d/%d/%d/%s/%s/%s", now.Year(), now.Month(), now.Day(), valid.User, uuid.New().String(), req.FileName)
+
+	var r2Endpoint, r2AccessKey, r2SecretKey, r2Bucket, outWeb string
+	cfg, err := m.getR2Cfg()
+	if err != nil {
+		c.JSON(200, makeErrReturn("r2 config error"))
+		return
+	}
+	r2Endpoint = cfg.Endpoint
+	r2AccessKey = cfg.AccessKey
+	r2SecretKey = cfg.SecretKey
+	r2Bucket = cfg.Bucket
+	outWeb = cfg.Web
+
+	r2Client := InitR2Client(r2Endpoint, r2AccessKey, r2SecretKey)
+	if r2Client == nil {
+		c.JSON(200, makeErrReturn("r2 params invalid"))
+		return
+	}
+
+	presignClient := s3.NewPresignClient(r2Client)
+	presigned, _ := presignClient.PresignPutObject(context.TODO(), &s3.PutObjectInput{
+		Bucket:      aws.String(r2Bucket),
+		Key:         aws.String(key),
+		ContentType: aws.String(req.FileType),
+	}, s3.WithPresignExpires(15*time.Minute))
+
+	publicURL := fmt.Sprintf("%s/%s", outWeb, key)
+
+	c.JSON(200, makeOkReturn(gin.H{
+		"UploadURL": presigned.URL,
+		"PublicURL": publicURL,
+	}))
 }

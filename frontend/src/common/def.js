@@ -81,6 +81,7 @@ export const AllPermission = [
     "auto.report",
     "note.cfg",
     "gpt",
-    "todone"
+    "todone",
+    "file"
     // 有什么新权限了，需要加在这里，然后在后端加上对应的权限
 ]

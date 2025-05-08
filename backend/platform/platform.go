@@ -198,6 +198,36 @@ func (p *PlatForm) InitCfg() error {
 			CanUser:   false,
 			RealKey:   "auto.news.keys",
 		},
+		{
+			Key:       "PLAT.r2.endpoint",
+			ValueType: xstorage.ValueTypeString,
+			CanUser:   false,
+			RealKey:   "PLAT.r2.endpoint",
+		},
+		{
+			Key:       "PLAT.r2.accessKey",
+			ValueType: xstorage.ValueTypeString,
+			CanUser:   false,
+			RealKey:   "PLAT.r2.accessKey",
+		},
+		{
+			Key:       "PLAT.r2.secretKey",
+			ValueType: xstorage.ValueTypeString,
+			CanUser:   false,
+			RealKey:   "PLAT.r2.secretKey",
+		},
+		{
+			Key:       "PLAT.r2.bucket",
+			ValueType: xstorage.ValueTypeString,
+			CanUser:   false,
+			RealKey:   "PLAT.r2.bucket",
+		},
+		{
+			Key:       "PLAT.r2.web",
+			ValueType: xstorage.ValueTypeString,
+			CanUser:   false,
+			RealKey:   "PLAT.r2.web",
+		},
 	}
 	for _, v := range params {
 		err := p.cfg.AddParam(v)
