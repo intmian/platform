@@ -1,7 +1,7 @@
 import {Addr} from "./addr";
 import {PTask} from "./net/protocal";
 import {Button, DatePicker, Flex, Input, message, Select, Typography} from "antd";
-import {useEffect, useRef, useState} from "react";
+import {useCallback, useEffect, useRef, useState} from "react";
 import dayjs from "dayjs";
 import {EmptyGoTimeStr, IsDateEmptyFromGoEmpty} from "../common/tool";
 import {ChangeTaskReq, sendChangeTask} from "./net/send_back";
@@ -34,7 +34,11 @@ function Editor(props: { value: string, onChange: (value: string) => void, onUpl
             message.error("获取上传地址失败").then();
             return;
         }
-        const {data} = await res.json();
+        const {code, data} = await res.json();
+        if (code !== 0) {
+            message.error("获取上传地址失败").then();
+            return;
+        }
         const {UploadURL, PublicURL} = data;
 
         if (!UploadURL || !PublicURL) {
@@ -85,6 +89,63 @@ function Editor(props: { value: string, onChange: (value: string) => void, onUpl
         input.click();
     };
 
+
+    const handlePaste = useCallback((e: React.ClipboardEvent) => {
+        const items = e.clipboardData.items;
+        for (let i = 0; i < items.length; i++) {
+            const item = items[i];
+            if (item.kind === 'file') {
+                const file = item.getAsFile();
+                if (file && file.type.startsWith('image/')) {
+                    e.preventDefault(); // 阻止默认粘贴行为（避免重复插入）
+                    // 上传图片后插入图片链接
+                    (async () => {
+                        const res = await fetch('/api/misc/r2-presigned-url', {
+                            method: 'POST',
+                            headers: {'Content-Type': 'application/json'},
+                            body: JSON.stringify({
+                                fileName: file.name,
+                                fileType: file.type,
+                            }),
+                        });
+                        if (!res.ok) {
+                            message.error("获取上传地址失败").then();
+                            return;
+                        }
+                        const {code, data} = await res.json();
+                        if (code !== 0) {
+                            message.error("获取上传地址失败").then();
+                            return;
+                        }
+                        const {UploadURL, PublicURL} = data;
+                        if (!UploadURL || !PublicURL) {
+                            message.error("上传失败").then();
+                            return;
+                        }
+                        const res2 = await fetch(UploadURL, {
+                            method: 'PUT',
+                            headers: {'Content-Type': file.type},
+                            body: file,
+                        });
+                        if (!res2.ok) {
+                            message.error("上传文件失败").then();
+                            return;
+                        }
+                        // 插入图片链接而不是图片本身
+                        const editor = quillRef.current.getEditor();
+                        const range = editor.getSelection(true);
+                        editor.insertText(range.index, PublicURL, 'link', PublicURL);
+                        props.onUpload();
+                    })();
+                }
+            }
+        }
+    }, []);
+
+    useEffect(() => {
+        
+    }, [handlePaste]);
+
     const modules = {
         toolbar: {
             container: [
@@ -92,7 +153,7 @@ function Editor(props: { value: string, onChange: (value: string) => void, onUpl
                 [{list: 'ordered'}, {list: 'bullet'}],
                 ['bold', 'italic', 'underline'],
                 ['clean'],
-                ['image', 'link', 'upload'],
+                ['image', 'link'],
             ],
             handlers: {
                 image: imageHandler,
@@ -100,10 +161,16 @@ function Editor(props: { value: string, onChange: (value: string) => void, onUpl
             },
         },
     };
+    const formats = [
+        'header',
+        'bold', 'italic', 'underline',
+        'list',
+        'image', 'link',
+    ];
 
-    const formats = ['bold', 'italic', 'underline', 'image', 'link', 'upload'];
-
-    return <div style={{flex: 1, width: "100%", height: "100%"}}>
+    return <Flex style={{flex: 1, width: "100%", height: "100%"}}
+                 vertical={true}
+    >
         <ReactQuill
             ref={quillRef}
             theme="snow"
@@ -113,11 +180,18 @@ function Editor(props: { value: string, onChange: (value: string) => void, onUpl
             modules={modules}
             formats={formats}
             style={{
+                flex: 1,
                 fontSize: isMobile ? "16px" : undefined,
-                height: isMobile ? "80%" : "90%",
+                height: isMobile ? "70%" : "80%",
             }}
         />
-    </div>;
+        <div>
+            <Typography.Text type={"secondary"}>
+                {isMobile ? "回车保存" : "Ctrl|Cmd+Enter保存"}
+            </Typography.Text>
+        </div>
+
+    </Flex>;
 }
 
 export function TaskDetail(props: TaskDetailProps) {
@@ -162,7 +236,6 @@ export function TaskDetail(props: TaskDetailProps) {
         needSave = true;
     }
     if (beginTime !== props.task.BeginTime) {
-        console.log("beginTime", beginTime, props.task.BeginTime);
         needSave = true;
     }
     if (endTime !== props.task.EndTime) {
@@ -358,8 +431,5 @@ export function TaskDetail(props: TaskDetailProps) {
             />
         </Flex>
         <Editor value={note} onChange={setNote} onUpload={sendSave}/>
-        <Typography.Text type={"secondary"}>
-            {isMobile ? "回车保存" : "Ctrl|Cmd+Enter保存"}
-        </Typography.Text>
     </Flex>
 }

@@ -353,6 +353,9 @@ func (m *webMgr) getR2Cfg() (R2Cfg, error) {
 	r2.SecretKey = xstorage.ToBase[string](SecretKey)
 	r2.Bucket = xstorage.ToBase[string](Bucket)
 	r2.Web = xstorage.ToBase[string](Web)
+	if r2.Endpoint == "" || r2.AccessKey == "" || r2.SecretKey == "" || r2.Bucket == "" || r2.Web == "" {
+		return r2, fmt.Errorf("r2 config error")
+	}
 	return r2, nil
 }
 
