@@ -118,7 +118,13 @@ function Editor(props: { value: string, onChange: (value: string) => void, onUpl
             ref={quillRef}
             theme="snow"
             value={props.value}
-            onChange={props.onChange}
+            onChange={() => {
+                if (quillRef.current.getText().trim() === "") {
+                    props.onChange("");
+                } else {
+                    props.onChange(quillRef.current.getEditor().getHTML());
+                }
+            }}
             placeholder="任务备注"
             modules={modules}
             formats={formats}
