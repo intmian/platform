@@ -243,13 +243,13 @@ export function TaskWaitAndTime({status, task}: { status: Status, task: PTask })
         if (!IsDateEmptyFromGoEmpty(task.BeginTime)) {
             if (beginTime.getTime() > now.getTime()) {
                 timeWait.push(
-                    <Tag color="red" key={"beginTime"}>
+                    <Tag color="green" key={"beginTime"}>
                         剩余 {time2show(beginTime)}
                     </Tag>
                 );
             } else {
                 timeWait.push(
-                    <Tag color="green" key={"beginTime2"}>
+                    <Tag color="red" key={"beginTime2"}>
                         过期 {time2show(beginTime)}
                     </Tag>
                 );
