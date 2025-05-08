@@ -119,7 +119,7 @@ function Editor(props: { value: string, onChange: (value: string) => void, onUpl
             theme="snow"
             value={props.value}
             onChange={() => {
-                if (quillRef.current.getText().trim() === "") {
+                if (quillRef.current.getEditor().getText().trim() === "") {
                     props.onChange("");
                 } else {
                     props.onChange(quillRef.current.getEditor().getHTML());
