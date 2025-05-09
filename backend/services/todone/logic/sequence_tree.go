@@ -52,6 +52,9 @@ func (m MapIdTree) JSON() (string, error) {
 }
 
 func (m MapIdTree) FromJSON(data string) error {
+	if data == "" {
+		return nil
+	}
 	type mapIdTreeJson struct {
 		Id  uint32   `json:"id"`
 		Ids []uint32 `json:"ids"`
