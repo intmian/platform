@@ -551,7 +551,14 @@ func (u *UserLogic) GetSubGroupLogic(parentDirID, groupID, subGroupID uint32) *S
 	return group.GetSubGroupLogic(subGroupID)
 }
 
-func (u *UserLogic) GetTaskLogic(taskID uint32) *TaskLogic {
-	t := NewTaskLogic(taskID)
-	return t
+func (u *UserLogic) GetTaskLogic(DirID uint32, GroupID uint32, SubgroupID uint32, TaskID uint32) *TaskLogic {
+	subGroup := u.GetSubGroupLogic(DirID, GroupID, SubgroupID)
+	if subGroup == nil {
+		return nil
+	}
+	task := subGroup.GetTaskLogic(TaskID)
+	if task == nil {
+		return nil
+	}
+	return task
 }

@@ -8,14 +8,16 @@ type SubGroupDB struct {
 	Title         string
 	Note          string
 	Index         float32 `gorm:"index"`
+	TaskSequence  string
 }
 
-func CreateSubGroup(db *gorm.DB, parentGroupID uint32, title, note string, index float32) (uint32, error) {
+func CreateSubGroup(db *gorm.DB, parentGroupID uint32, title, note string, index float32, TaskSequence string) (uint32, error) {
 	subGroup := SubGroupDB{
 		ParentGroupID: parentGroupID,
 		Title:         title,
 		Note:          note,
 		Index:         index,
+		TaskSequence:  TaskSequence,
 	}
 	result := db.Create(&subGroup)
 	return subGroup.ID, result.Error
@@ -42,10 +44,11 @@ func GetParentGroupIDMaxIndex(db *gorm.DB, parentGroupID uint32) float32 {
 	return maxIndex
 }
 
-func UpdateSubGroup(db *gorm.DB, subGroupID uint32, title, note string, index float32) error {
+func UpdateSubGroup(db *gorm.DB, subGroupID uint32, title, note string, index float32, taskSequence string) error {
 	return db.Model(&SubGroupDB{}).Where("id = ?", subGroupID).Updates(SubGroupDB{
-		Title: title,
-		Note:  note,
-		Index: index,
+		Title:        title,
+		Note:         note,
+		Index:        index,
+		TaskSequence: taskSequence,
 	}).Error
 }

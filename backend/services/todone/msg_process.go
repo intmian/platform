@@ -5,7 +5,6 @@ import (
 	"github.com/intmian/platform/backend/services/todone/db"
 	"github.com/intmian/platform/backend/services/todone/logic"
 	backendshare "github.com/intmian/platform/backend/share"
-	"sync"
 )
 
 func (s *Service) OnGetDirTree(valid backendshare.Valid, req GetDirTreeReq) (ret GetDirTreeRet, err error) {
@@ -185,9 +184,9 @@ func (s *Service) OnGetSubGroup(valid backendshare.Valid, req GetSubGroupReq) (r
 	return
 }
 
-func (s *Service) OnGetTaskByPage(valid backendshare.Valid, req GetTaskByPageReq) (ret GetTaskByPageRet, err error) {
+func (s *Service) OnGetTask(valid backendshare.Valid, req GetTaskReq) (ret GetTaskRet, err error) {
 	f := func(user *logic.UserLogic) {
-		group := user.GetGroupLogic(req.ParentDirID, req.GroupID)
+		group := user.GetGroupLogic(req.DirID, req.GroupID)
 		if group == nil {
 			err = errors.New("group not exist")
 			return
@@ -197,56 +196,7 @@ func (s *Service) OnGetTaskByPage(valid backendshare.Valid, req GetTaskByPageReq
 			err = errors.New("sub group not exist")
 			return
 		}
-		tasks, err2 := subGroup.GetTasksByPage(req.Page, req.PageNum, req.ContainDone)
-		if err2 != nil {
-			err = errors.Join(err, err2)
-			return
-		}
-		taskIds := make([]uint32, 0)
-		for _, task := range tasks {
-			taskIds = append(taskIds, task.GetID())
-		}
-
-		connTask := db.GTodoneDBMgr.GetConnect(db.ConnectTypeTask)
-		connTag := db.GTodoneDBMgr.GetConnect(db.ConnectTypeTags)
-
-		if connTag == nil || connTask == nil {
-			err = errors.New("connect db failed")
-			return
-		}
-
-		wait := sync.WaitGroup{}
-		var tags map[uint32][]string
-		var subTasks map[uint32]bool
-		wait.Add(2)
-		go func() {
-			tags = db.GetTagsByMultipleTaskID(connTag, taskIds)
-			wait.Done()
-		}()
-		go func() {
-			subTasks = db.GetHasSubTaskByParentTaskIDMultiple(connTask, taskIds)
-			wait.Done()
-		}()
-		wait.Wait()
-
-		for _, task := range tasks {
-			task.BindOutHasChildren(subTasks[task.GetID()])
-			task.BindOutTags(tags[task.GetID()])
-		}
-
-		for _, task := range tasks {
-			ret.Tasks = append(ret.Tasks, task.ToProtocol())
-		}
-	}
-	s.userMgr.SafeUseUserLogic(req.UserID, f, func() {
-		err = errors.New("user not exist")
-	})
-	return
-}
-
-func (s *Service) OnGetTask(valid backendshare.Valid, req GetTaskReq) (ret GetTaskRet, err error) {
-	f := func(user *logic.UserLogic) {
-		task := user.GetTaskLogic(req.TaskID)
+		task := subGroup.GetTaskLogic(req.TaskID)
 		if task == nil {
 			err = errors.New("task not exist")
 			return
@@ -261,11 +211,7 @@ func (s *Service) OnGetTask(valid backendshare.Valid, req GetTaskReq) (ret GetTa
 
 func (s *Service) OnChangeTask(valid backendshare.Valid, req ChangeTaskReq) (ret ChangeTaskRet, err error) {
 	f := func(user *logic.UserLogic) {
-		task := user.GetTaskLogic(req.Data.ID)
-		if task == nil {
-			err = errors.New("task not exist")
-			return
-		}
+		task := user.GetTaskLogic(req.DirID, req.GroupID, req.SubGroupID, req.Data.ID)
 		err2 := task.ChangeFromProtocol(req.Data)
 		if err2 != nil {
 			err = errors.Join(err, err2)
@@ -288,20 +234,25 @@ func (s *Service) OnCreateTask(valid backendshare.Valid, req CreateTaskReq) (ret
 				return
 			}
 			var err2 error
-			task, err2 = group.CreateTask(req.UserID, req.Title, req.Note, db.TaskType(req.TaskType), req.Started)
+			task, err2 = group.CreateTask(req.UserID, req.Title, req.Note, db.TaskType(req.TaskType), req.Started, 0)
 			if err2 != nil {
 				err = errors.Join(errors.New("create task failed"), err2)
 				return
 			}
 		} else {
-			parent := user.GetTaskLogic(req.ParentTask)
+			parent := user.GetTaskLogic(req.DirID, req.GroupID, req.SubGroupID, req.ParentTask)
 			data, _ := parent.GetTaskData()
 			if data == nil {
 				err = errors.New("parent task not exist")
 				return
 			}
 			var err2 error
-			task, err2 = parent.CreateSubTask(req.UserID, req.Title, req.Note, db.TaskType(req.TaskType), req.Started)
+			group := user.GetSubGroupLogic(data.ParentSubGroupID, req.GroupID, req.SubGroupID)
+			if group == nil {
+				err = errors.New("group not exist")
+				return
+			}
+			task, err2 = group.CreateTask(req.UserID, req.Title, req.Note, db.TaskType(req.TaskType), req.Started, req.ParentTask)
 			if err2 != nil {
 				err = errors.Join(errors.New("create sub parent failed"), err2)
 				return
@@ -318,7 +269,7 @@ func (s *Service) OnCreateTask(valid backendshare.Valid, req CreateTaskReq) (ret
 
 func (s *Service) OnDelTask(valid backendshare.Valid, req DelTaskReq) (ret DelTaskRet, err error) {
 	f := func(user *logic.UserLogic) {
-		subGroup := user.GetSubGroupLogic(req.SubGroupID, req.GroupID, req.SubGroupID)
+		subGroup := user.GetSubGroupLogic(req.DirID, req.GroupID, req.SubGroupID)
 		if subGroup == nil {
 			err = errors.New("sub group not exist")
 			return
@@ -394,30 +345,6 @@ func (s *Service) OnGetTasks(valid backendshare.Valid, req GetTasksReq) (ret Get
 			return
 		}
 
-		// 异步加载所有的tag
-		taskIds := make([]uint32, 0)
-		for _, task := range tasks {
-			taskIds = append(taskIds, task.GetID())
-		}
-		connTag := db.GTodoneDBMgr.GetConnect(db.ConnectTypeTags)
-		if connTag == nil {
-			err = errors.New("connect db failed")
-			return
-		}
-
-		wait := sync.WaitGroup{}
-		var tags map[uint32][]string
-		wait.Add(1)
-		go func() {
-			tags = db.GetTagsByMultipleTaskID(connTag, taskIds)
-			wait.Done()
-		}()
-		wait.Wait()
-
-		for _, task := range tasks {
-			task.BindOutTags(tags[task.GetID()])
-		}
-
 		for _, task := range tasks {
 			ret.Tasks = append(ret.Tasks, task.ToProtocol())
 		}
@@ -454,68 +381,17 @@ func (s *Service) OnSubGroup(valid backendshare.Valid, req ChangeSubGroupReq) (r
 
 func (s *Service) OnTaskMove(valid backendshare.Valid, req TaskMoveReq) (ret TaskMoveRet, err error) {
 	f := func(user *logic.UserLogic) {
-		/*
-			type TaskMoveReq struct {
-				UserID  string
-				TaskIDs []uint32
-
-				TrgDir      uint32
-				TrgGroup    uint32
-				TrgSubGroup uint32
-
-				// 不填taskID,则表示移动到最后面
-				TrgTaskID uint32
-				After     bool
-				Before    bool
-			}
-
-		*/
-		group := user.GetGroupLogic(req.TrgDir, req.TrgGroup)
-		if group == nil {
-			err = errors.New("group not exist")
-			return
-		}
-		subGroup := group.GetSubGroupLogic(req.TrgSubGroup)
-		if subGroup == nil {
+		oldSubGroup := user.GetSubGroupLogic(req.DirID, req.GroupID, req.SubGroupID)
+		newSubGroup := user.GetSubGroupLogic(req.TrgDir, req.TrgGroup, req.TrgSubGroup)
+		if oldSubGroup == nil || newSubGroup == nil {
 			err = errors.New("sub group not exist")
 			return
 		}
-		connTask := db.GTodoneDBMgr.GetConnect(db.ConnectTypeTask)
-		taskDBS, err2 := db.GetTaskByIds(connTask, req.TaskIDs)
+		newSeq, ids1, ids2 := oldSubGroup.BeforeTaskMove(req.TaskIDs, req.TrgParentID)
+		err2 := newSubGroup.AfterTaskMove(newSeq, ids1, ids2, req.TrgParentID, req.TrgTaskID, req.After)
 		if err2 != nil {
 			err = errors.Join(err, err2)
 			return
-		}
-		if len(taskDBS) != len(req.TaskIDs) {
-			err = errors.New("task not exist")
-			return
-		}
-		var taskLogics []*logic.TaskLogic
-		for _, taskDB := range taskDBS {
-			task := user.GetTaskLogic(taskDB.TaskID)
-			if task == nil {
-				err = errors.New("task not exist")
-				return
-			}
-			newDB := taskDB
-			task.OnBindOutData(&newDB)
-			taskLogics = append(taskLogics, task)
-		}
-
-		if req.TrgTaskID == 0 {
-			err2 = subGroup.OnTasksPushBack(taskLogics)
-			if err2 != nil {
-				err = errors.Join(err, err2)
-				return
-			}
-			return
-
-		}
-		err2 = subGroup.OnTasksPushAfterOther(taskLogics, req.TrgTaskID, req.After, req.Before)
-		if err2 != nil {
-			err = errors.Join(err, err2)
-			return
-
 		}
 	}
 	s.userMgr.SafeUseUserLogic(req.UserID, f, func() {

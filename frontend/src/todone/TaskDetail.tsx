@@ -235,6 +235,9 @@ export function TaskDetail(props: TaskDetailProps) {
             task.Started = false;
         }
         const req: ChangeTaskReq = {
+            DirID: addr.getLastDirID(),
+            GroupID: addr.getLastGroupID(),
+            SubGroupID: addr.getLastSubGroupID(),
             UserID: props.addr.userID,
             Data: task,
         }

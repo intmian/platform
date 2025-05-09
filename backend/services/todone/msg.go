@@ -132,27 +132,14 @@ type GetSubGroupRet struct {
 	SubGroups []protocol.PSubGroup
 }
 
-const CmdGetTaskByPage share.Cmd = "getTaskByPage"
-
-type GetTaskByPageReq struct {
-	UserID      string
-	ParentDirID uint32
-	GroupID     uint32
-	SubGroupID  uint32
-	Page        int
-	PageNum     int
-	ContainDone bool
-}
-
-type GetTaskByPageRet struct {
-	Tasks []protocol.PTask
-}
-
 const CmdGetTask share.Cmd = "getTask"
 
 type GetTaskReq struct {
-	UserID string
-	TaskID uint32
+	DirID      uint32
+	GroupID    uint32
+	SubGroupID uint32
+	UserID     string
+	TaskID     uint32
 }
 
 type GetTaskRet struct {
@@ -162,8 +149,11 @@ type GetTaskRet struct {
 const CmdChangeTask share.Cmd = "changeTask"
 
 type ChangeTaskReq struct {
-	UserID string
-	Data   protocol.PTask
+	DirID      uint32
+	GroupID    uint32
+	SubGroupID uint32
+	UserID     string
+	Data       protocol.PTask
 }
 
 type ChangeTaskRet struct {
@@ -264,20 +254,32 @@ type ChangeSubGroupReq struct {
 type ChangeSubGroupRet struct {
 }
 
+type TaskKey struct {
+	DirID      uint32
+	GroupID    uint32
+	SubGroupID uint32
+	TaskID     uint32
+}
+
 const CmdTaskMove share.Cmd = "taskMove"
 
 type TaskMoveReq struct {
-	UserID  string
-	TaskIDs []uint32
+	UserID     string
+	DirID      uint32
+	GroupID    uint32
+	SubGroupID uint32
+	TaskIDs    []uint32
 
 	TrgDir      uint32
 	TrgGroup    uint32
 	TrgSubGroup uint32
 
-	// 不填taskID,则表示移动到最后面
-	TrgTaskID uint32
-	After     bool
-	Before    bool
+	// 不填taskID,则表示移动到最后面或者前面
+	TrgParentID uint32
+	TrgTaskID   uint32
+
+	After  bool
+	Before bool
 }
 
 type TaskMoveRet struct {

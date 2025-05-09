@@ -5,12 +5,13 @@ import (
 	"github.com/intmian/platform/backend/services/todone/db"
 	"github.com/intmian/platform/backend/services/todone/protocol"
 	"math"
-	"time"
 )
 
 /*
 因为task一般都以筛选条件进行查询，子任务也是一级级展开的，所以不需要mgr进行缓存，子任务也不保存在父任务的逻辑中，因为存在加载的问题
 因为懒加载所以需要注意下加载问题
+---
+因为ServerLess数据库查询较慢，task的逻辑修改为有缓存，且因为移动需求，所有的task即子task顺序全部存放到subtask的tasksequnence字段.
 */
 
 type TaskLogic struct {
@@ -18,6 +19,9 @@ type TaskLogic struct {
 	hasChildren *bool
 	children    []*TaskLogic
 	tagsDB      []string
+
+	// 外部赋值
+	index int
 
 	id uint32
 }
@@ -43,6 +47,10 @@ func (t *TaskLogic) BindOutChildren(children []*TaskLogic) {
 
 func (t *TaskLogic) BindOutHasChildren(hasChildren bool) {
 	t.hasChildren = &hasChildren
+}
+
+func (t *TaskLogic) BindOutIndex(index int) {
+	t.index = index
 }
 
 func (t *TaskLogic) GetTaskData() (*db.TaskDB, error) {
@@ -193,7 +201,7 @@ func (t *TaskLogic) ToProtocol() protocol.PTask {
 	pTask.Title = data.Title
 	pTask.Note = data.Note
 	pTask.Done = data.Done
-	pTask.Index = data.Index
+	pTask.Index = float32(t.index)
 	pTask.Tags = tags
 	pTask.ParentID = data.ParentTaskID
 
@@ -221,9 +229,6 @@ func (t *TaskLogic) ChangeFromProtocol(pTask protocol.PTask) error {
 	if pTask.Note != data.Note {
 		data.Note = pTask.Note
 	}
-	if pTask.Index != data.Index {
-		data.Index = pTask.Index
-	}
 	if pTask.Done != data.Done {
 		data.Done = pTask.Done
 	}
@@ -244,29 +249,4 @@ func (t *TaskLogic) ChangeFromProtocol(pTask protocol.PTask) error {
 	}
 	connect := db.GTodoneDBMgr.GetConnect(db.ConnectTypeTask)
 	return db.UpdateTask(connect, data)
-}
-
-func (t *TaskLogic) CreateSubTask(userID string, title, note string, taskType db.TaskType, started bool) (*TaskLogic, error) {
-	nextIndex := t.GeneSubTaskIndex()
-	connect := db.GTodoneDBMgr.GetConnect(db.ConnectTypeTask)
-	ID, err := db.CreateTask(connect, userID, t.dbData.ParentSubGroupID, t.id, title, note, nextIndex, started)
-	if err != nil {
-		return nil, err
-	}
-	task := NewTaskLogic(ID)
-	task.OnBindOutData(&db.TaskDB{
-		TaskID:           ID,
-		ParentSubGroupID: t.dbData.ParentSubGroupID,
-		ParentTaskID:     t.id,
-		Title:            title,
-		Note:             note,
-		Index:            nextIndex,
-		Deleted:          false,
-		Done:             false,
-		Started:          started,
-		CreatedAt:        time.Now(),
-		UpdatedAt:        time.Now(),
-		TaskType:         taskType,
-	})
-	return task, nil
 }

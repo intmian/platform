@@ -113,22 +113,10 @@ export interface GetSubGroupRet {
 }
 
 
-export interface GetTaskByPageReq {
-    UserID: string
-    ParentDirID: number
+export interface GetTaskReq {
+    DirID: number
     GroupID: number
     SubGroupID: number
-    Page: number
-    PageNum: number
-    ContainDone: boolean
-}
-
-export interface GetTaskByPageRet {
-    Tasks: PTask[] | null
-}
-
-
-export interface GetTaskReq {
     UserID: string
     TaskID: number
 }
@@ -139,6 +127,9 @@ export interface GetTaskRet {
 
 
 export interface ChangeTaskReq {
+    DirID: number
+    GroupID: number
+    SubGroupID: number
     UserID: string
     Data: PTask
 }
@@ -287,20 +278,6 @@ export function sendGetSubGroup(req: GetSubGroupReq, callback: (ret: { data: Get
     });
 }
 
-export function sendGetTaskByPage(req: GetTaskByPageReq, callback: (ret: {
-    data: GetTaskByPageRet,
-    ok: boolean
-}) => void) {
-    UniPost(api_base_url + 'getTaskByPage', req).then((res: UniResult) => {
-        const result: { data: GetTaskByPageRet, ok: boolean } = {
-            data: res.data as GetTaskByPageRet,
-            ok: res.ok
-        };
-
-        callback(result);
-    });
-}
-
 export function sendGetTask(req: GetTaskReq, callback: (ret: { data: GetTaskRet, ok: boolean }) => void) {
     UniPost(api_base_url + 'getTask', req).then((res: UniResult) => {
         const result: { data: GetTaskRet, ok: boolean } = {
@@ -436,6 +413,35 @@ export function sendChangeSubGroup(req: ChangeSubGroupReq, callback: (ret: {
     UniPost(api_base_url + 'subGroup', req).then((res: UniResult) => {
         const result: { data: ChangeSubGroupRet, ok: boolean } = {
             data: res.data as ChangeSubGroupRet,
+            ok: res.ok
+        };
+
+        callback(result);
+    });
+}
+
+export interface TaskMoveReq {
+    UserID: string
+    DirID: number
+    GroupID: number
+    SubGroupID: number
+    TaskIDs: number[]
+    TrgDir: number
+    TrgGroup: number
+    TrgSubGroup: number// 不填taskID,则表示移动到最后面或者前面
+    TrgParent: number
+    TrgTaskID: number
+    After: boolean
+    Before: boolean
+}
+
+export type TaskMoveRet = object
+
+
+export function sendTaskMove(req: TaskMoveReq, callback: (ret: { data: TaskMoveRet, ok: boolean }) => void) {
+    UniPost(api_base_url + 'taskMove', req).then((res: UniResult) => {
+        const result: { data: TaskMoveRet, ok: boolean } = {
+            data: res.data as TaskMoveRet,
             ok: res.ok
         };
 

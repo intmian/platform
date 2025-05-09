@@ -349,7 +349,12 @@ export function Task(props: TaskProps) {
                             pTask.task.Done = false;
                             pTask.task.Started = false;
                         }
-                        const req: ChangeTaskReq = {Data: pTask.task, UserID: props.addr.userID}
+                        const req: ChangeTaskReq = {
+                            DirID: props.addr.getLastDirID(),
+                            GroupID: props.addr.getLastGroupID(),
+                            SubGroupID: props.addr.getLastSubGroupID(),
+                            Data: pTask.task, UserID: props.addr.userID
+                        }
                         sendChangeTask(req, (ret) => {
                             if (ret.ok) {
                                 props.refreshTree();

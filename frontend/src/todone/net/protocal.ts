@@ -52,3 +52,10 @@ export enum TaskType {
     TODO = 0,
     DOING = 1,
 }
+
+export interface TaskKey {
+    DirID: number
+    GroupID: number
+    SubGroupID: number
+    TaskID: number
+}

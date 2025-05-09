@@ -19,7 +19,6 @@ type TaskDB struct {
 	Note             string
 	ParentSubGroupID uint32 `gorm:"index"`
 	ParentTaskID     uint32
-	Index            float32 `gorm:"index"`
 	Deleted          bool
 	Done             bool
 	CreatedAt        time.Time `gorm:"column:time_created_at"`
@@ -35,14 +34,13 @@ type TaskDB struct {
 	Wait4   string
 }
 
-func CreateTask(db *gorm.DB, userID string, parentSubGroupID, parentTaskID uint32, title, note string, index float32, started bool) (uint32, error) {
+func CreateTask(db *gorm.DB, userID string, parentSubGroupID, parentTaskID uint32, title, note string, started bool) (uint32, error) {
 	task := TaskDB{
 		UserID:           userID,
 		ParentSubGroupID: parentSubGroupID,
 		ParentTaskID:     parentTaskID,
 		Title:            title,
 		Note:             note,
-		Index:            index,
 		Deleted:          false,
 		Done:             false,
 		Started:          started,
@@ -152,38 +150,14 @@ func GetParentSubGroupMaxIndex(db *gorm.DB, parentSubGroupID uint32) float32 {
 	return maxIndex
 }
 
-func GetTaskNearIndex(db *gorm.DB, parentSubGroupID uint32, taskID uint32) (left float32, right float32) {
-	var leftIndex, rightIndex float32
-
-	// 查询比当前task index小的最大index（左边）
-	db.Model(&TaskDB{}).
-		Where("parent_sub_group_id = ? AND deleted = ? AND `index` < (SELECT `index` FROM task_dbs WHERE task_id = ?)", parentSubGroupID, false, taskID).
-		Select("MAX(`index`)").
-		Row().Scan(&leftIndex)
-
-	// 查询比当前task index大的最小index（右边）
-	db.Model(&TaskDB{}).
-		Where("parent_sub_group_id = ? AND deleted = ? AND `index` > (SELECT `index` FROM task_dbs WHERE task_id = ?)", parentSubGroupID, false, taskID).
-		Select("MIN(`index`)").
-		Row().Scan(&rightIndex)
-
-	return leftIndex, rightIndex
+func UpdateTasksParentTaskID(db *gorm.DB, parentTaskID uint32, taskIDs []uint32) error {
+	return db.Model(&TaskDB{}).Where("task_id in (?)", taskIDs).Updates(TaskDB{
+		ParentTaskID: parentTaskID,
+	}).Error
 }
 
-func GetSubTaskNearIndex(db *gorm.DB, parentTaskID uint32, taskID uint32) (left float32, right float32) {
-	var leftIndex, rightIndex float32
-
-	// 查询比当前task index小的最大index（左边）
-	db.Model(&TaskDB{}).
-		Where("parent_task_id = ? AND deleted = ? AND `index` < (SELECT `index` FROM task_dbs WHERE task_id = ?)", parentTaskID, false, taskID).
-		Select("MAX(`index`)").
-		Row().Scan(&leftIndex)
-
-	// 查询比当前task index大的最小index（右边）
-	db.Model(&TaskDB{}).
-		Where("parent_task_id = ? AND deleted = ? AND `index` > (SELECT `index` FROM task_dbs WHERE task_id = ?)", parentTaskID, false, taskID).
-		Select("MIN(`index`)").
-		Row().Scan(&rightIndex)
-
-	return leftIndex, rightIndex
+func UpdateTasksSubGroupID(db *gorm.DB, subGroupID uint32, taskIDs []uint32) error {
+	return db.Model(&TaskDB{}).Where("task_id in (?)", taskIDs).Updates(TaskDB{
+		ParentSubGroupID: subGroupID,
+	}).Error
 }

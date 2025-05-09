@@ -84,7 +84,7 @@ func (g *GroupLogic) GeneSubGroupIndex() float32 {
 func (g *GroupLogic) CreateSubGroupLogic(title, note string) (*SubGroupLogic, error) {
 	connect := db.GTodoneDBMgr.GetConnect(db.ConnectTypeSubGroup)
 	index := g.GeneSubGroupIndex()
-	id, err := db.CreateSubGroup(connect, g.dbData.ID, title, note, index)
+	id, err := db.CreateSubGroup(connect, g.dbData.ID, title, note, index, "")
 	if err != nil {
 		return nil, err
 	}

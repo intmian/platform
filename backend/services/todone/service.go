@@ -108,8 +108,6 @@ func (s *Service) HandleRpc(msg backendshare.Msg, valid backendshare.Valid) (int
 		return backendshare.HandleRpcTool("changeGroup", msg, valid, s.OnChangeGroup)
 	case CmdGetSubGroup:
 		return backendshare.HandleRpcTool("getSubGroup", msg, valid, s.OnGetSubGroup)
-	case CmdGetTaskByPage:
-		return backendshare.HandleRpcTool("getTaskByPage", msg, valid, s.OnGetTaskByPage)
 	case CmdGetTask:
 		return backendshare.HandleRpcTool("getTask", msg, valid, s.OnGetTask)
 	case CmdChangeTask:
