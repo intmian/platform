@@ -48,7 +48,11 @@ func (g *GroupLogic) GetSubGroups() ([]*SubGroupLogic, error) {
 	subGroupsDB := db.GetSubGroupByParentSortByIndex(connect, g.dbData.ID)
 	for _, subGroupDB := range subGroupsDB {
 		newSubGroupDB := subGroupDB
-		g.subGroups = append(g.subGroups, NewSubGroupLogic(newSubGroupDB))
+		logic := NewSubGroupLogic(newSubGroupDB)
+		if logic == nil {
+			return nil, errors.New("create sub group logic failed")
+		}
+		g.subGroups = append(g.subGroups, logic)
 	}
 
 	return g.subGroups, nil
