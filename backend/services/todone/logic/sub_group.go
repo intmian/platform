@@ -486,12 +486,12 @@ func (s *SubGroupLogic) OnDeleteTasks(taskIDs []uint32) error {
 }
 
 func (s *SubGroupLogic) GetTaskLogic(id uint32) *TaskLogic {
-	if s.unFinTasksCache == nil {
-		s.unFinTasksCache = make(map[uint32]*TaskLogic)
+	if s.unFinTasksCache != nil {
+		if task, ok := s.unFinTasksCache[id]; ok {
+			return task
+		}
 	}
-	if task, ok := s.unFinTasksCache[id]; ok {
-		return task
-	}
+
 	connect := db.GTodoneDBMgr.GetConnect(db.ConnectTypeTask)
 	taskDB, err := db.GetTaskByID(connect, id)
 	if err != nil {
