@@ -197,14 +197,7 @@ export function TaskTitle({task, clickShowSubTask, isShowSon, onSelectTask, hasS
 function Time2show({time}: { time: Date }) {
     const [refreshTime, setRefreshTime] = useState(1000 * 60);
     const [flag, setFlag] = useState(false);
-    useEffect(() => {
-        const interval = setInterval(() => {
-            setFlag(!flag);
-        }, refreshTime);
-        return () => {
-            clearInterval(interval);
-        };
-    }, [flag, refreshTime]);
+
 
     // 打印还有多少天多少小时
     const now = new Date();
@@ -233,12 +226,21 @@ function Time2show({time}: { time: Date }) {
             hasSec = true;
         }
     }
-    if (hasSec && refreshTime !== 1000) {
-        setRefreshTime(1000);
-    }
-    if (!hasSec && refreshTime !== 1000 * 30) {
-        setRefreshTime(1000 * 60);
-    }
+
+    useEffect(() => {
+        const interval = setInterval(() => {
+            setFlag(!flag);
+        }, refreshTime);
+        if (hasSec && refreshTime !== 1000) {
+            setRefreshTime(1000);
+        }
+        if (!hasSec && refreshTime !== 1000 * 30) {
+            setRefreshTime(1000 * 60);
+        }
+        return () => {
+            clearInterval(interval);
+        };
+    }, [flag, hasSec, refreshTime]);
     return <>{str}</>
 }
 
