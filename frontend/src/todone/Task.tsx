@@ -347,7 +347,8 @@ export function Task(props: TaskProps) {
                             pTask.task.Done = true;
                         } else {
                             pTask.task.Done = false;
-                            pTask.task.Started = false;
+                            // 考虑使用频率，直接启动这些任务，如果希望回到未开始可以在detail改。
+                            pTask.task.Started = true;
                         }
                         const req: ChangeTaskReq = {
                             DirID: props.addr.getLastDirID(),

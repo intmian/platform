@@ -18,10 +18,15 @@ type SubGroupLogic struct {
 }
 
 func NewSubGroupLogic(dbData *db.SubGroupDB) *SubGroupLogic {
+	tree := make(MapIdTree)
+	err := tree.FromJSON(dbData.TaskSequence)
+	if err != nil {
+		return nil
+	}
 	return &SubGroupLogic{
 		dbData:          dbData,
 		unFinTasksCache: make(map[uint32]*TaskLogic),
-		taskSequence:    make(MapIdTree),
+		taskSequence:    tree,
 	}
 }
 
@@ -47,7 +52,8 @@ func (s *SubGroupLogic) GetTasks(containDone bool) ([]*TaskLogic, error) {
 					// 如果任务被完成不会刷新缓存，而且为了方便用户找回也只是在这里做下屏蔽，sequence也不刷新，等到下次大重启才会消失。
 					continue
 				}
-				task.BindOutIndex(s.taskSequence.GetSequenceOrAdd(task.dbData.ParentTaskID, task.dbData.TaskID))
+				_, index := s.taskSequence.GetSequence(task.dbData.ParentTaskID, task.dbData.TaskID)
+				task.BindOutIndex(index)
 				res = append(res, task)
 			}
 			return res, nil
@@ -85,13 +91,17 @@ func (s *SubGroupLogic) GetTasks(containDone bool) ([]*TaskLogic, error) {
 	}
 
 	if containDone {
-		err := s.buildTreeWithoutData()
-		if err != nil {
-			return nil, err
+		if s.taskSequence == nil {
+			err := s.buildSequenceWithoutData()
+			if err != nil {
+				return nil, err
+			}
 		}
+
 		for _, task := range res {
 			if !task.dbData.Done {
-				task.BindOutIndex(s.taskSequence.GetSequenceOrAdd(task.dbData.ParentTaskID, task.dbData.TaskID))
+				_, index := s.taskSequence.GetSequence(task.dbData.ParentTaskID, task.dbData.TaskID)
+				task.BindOutIndex(index)
 			} else {
 				task.BindOutIndex(int(task.id + 9999999))
 			}
@@ -229,7 +239,7 @@ func (s *SubGroupLogic) BeforeTaskMove(taskIDs []uint32, newParentID uint32) (Ma
 	if err != nil {
 		return nil, nil, nil
 	}
-	err = s.buildTreeWithoutData()
+	err = s.buildSequenceWithoutData()
 	if err != nil {
 		return nil, nil, nil
 	}
@@ -333,7 +343,7 @@ func (s *SubGroupLogic) BeforeTaskMove(taskIDs []uint32, newParentID uint32) (Ma
 }
 
 func (s *SubGroupLogic) AfterTaskMove(seq MapIdTree, needChangeParent, noNeedChangeParent []uint32, newParentID, newAfterID uint32, after bool) error {
-	err := s.buildTreeWithoutData()
+	err := s.buildSequenceWithoutData()
 	if err != nil {
 		return err
 	}
@@ -405,9 +415,9 @@ func (s *SubGroupLogic) AfterTaskMove(seq MapIdTree, needChangeParent, noNeedCha
 	}
 
 	// 重建缓存和序列
-	err = s.buildTreeWithoutData()
+	err = s.buildSequenceWithoutData()
 	if err != nil {
-		return errors.Join(err, errors.New("buildTreeWithoutData error"))
+		return errors.Join(err, errors.New("buildSequenceWithoutData error"))
 	}
 	//// 获取所有的任务
 	//res := make([]protocol.PTask, 0)
@@ -421,7 +431,7 @@ func (s *SubGroupLogic) AfterTaskMove(seq MapIdTree, needChangeParent, noNeedCha
 	return nil
 }
 
-func (s *SubGroupLogic) buildTreeWithoutData() error {
+func (s *SubGroupLogic) buildSequenceWithoutData() error {
 	tasks, err := s.GetTasks(false)
 	if err != nil {
 		return errors.Join(err, errors.New("GetTasks error"))
@@ -448,9 +458,9 @@ func (s *SubGroupLogic) OnDeleteTasks(taskIDs []uint32) error {
 	// 如果存在未完成的任务，则删除缓存并且删除序列
 	if hasUnFin {
 		if s.unFinTasksCache == nil {
-			err := s.buildTreeWithoutData()
+			err := s.buildSequenceWithoutData()
 			if err != nil {
-				return errors.Join(err, errors.New("buildTreeWithoutData error"))
+				return errors.Join(err, errors.New("buildSequenceWithoutData error"))
 			}
 		}
 
