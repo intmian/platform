@@ -46,17 +46,7 @@ func (s *SubGroupLogic) ToProtocol() protocol.PSubGroup {
 func (s *SubGroupLogic) GetTasks(containDone bool) ([]*TaskLogic, error) {
 	if !containDone {
 		if len(s.taskSequence) > 0 && len(s.unFinTasksCache) > 0 {
-			res := make([]*TaskLogic, 0)
-			for _, task := range s.unFinTasksCache {
-				if task.dbData.Done {
-					// 如果任务被完成不会刷新缓存，而且为了方便用户找回也只是在这里做下屏蔽，sequence也不刷新，等到下次大重启才会消失。
-					continue
-				}
-				_, index := s.taskSequence.GetSequence(task.dbData.ParentTaskID, task.dbData.TaskID)
-				task.BindOutIndex(index)
-				res = append(res, task)
-			}
-			return res, nil
+			return s.GetTasksByCheche()
 		}
 	}
 
@@ -119,7 +109,57 @@ func (s *SubGroupLogic) GetTasks(containDone bool) ([]*TaskLogic, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	// 从缓存中递归删除父任务不存在的子孙任务
+	s.clearFinishCache()
+
+	return s.GetTasksByCheche()
+}
+
+func (s *SubGroupLogic) GetTasksByCheche() ([]*TaskLogic, error) {
+	res := make([]*TaskLogic, 0)
+
+	for _, task := range s.unFinTasksCache {
+		if task.dbData.Done {
+			// 如果任务被完成不会刷新缓存，而且为了方便用户找回也只是在这里做下屏蔽，sequence也不刷新，等到下次大重启才会消失。
+			continue
+		}
+		_, index := s.taskSequence.GetSequence(task.dbData.ParentTaskID, task.dbData.TaskID)
+		task.BindOutIndex(index)
+		res = append(res, task)
+	}
 	return res, nil
+}
+
+func (s *SubGroupLogic) clearFinishCache() {
+	if s.unFinTasksCache == nil {
+		return
+	}
+	parentID2childrenID := make(map[uint32][]uint32)
+	for _, task := range s.unFinTasksCache {
+		parentID2childrenID[task.dbData.ParentTaskID] = append(parentID2childrenID[task.dbData.ParentTaskID], task.dbData.TaskID)
+	}
+	var deleteCache func(taskID uint32)
+	deleteCache = func(taskID uint32) {
+		if _, ok := s.unFinTasksCache[taskID]; ok {
+			delete(s.unFinTasksCache, taskID)
+		}
+		if children, ok := parentID2childrenID[taskID]; ok {
+			for _, childID := range children {
+				deleteCache(childID)
+			}
+		}
+	}
+	for taskID, task := range s.unFinTasksCache {
+		// 如果父节点不存在，则删除
+		parentID := task.dbData.ParentTaskID
+		if parentID == 0 {
+			continue
+		}
+		if _, ok := s.unFinTasksCache[parentID]; !ok {
+			deleteCache(taskID)
+		}
+	}
 }
 
 func (s *SubGroupLogic) NeedBuildSequence() bool {
