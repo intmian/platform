@@ -45,7 +45,7 @@ func (s *SubGroupLogic) ToProtocol() protocol.PSubGroup {
 
 func (s *SubGroupLogic) GetTasks(containDone bool) ([]*TaskLogic, error) {
 	if !containDone {
-		if s.unFinTasksCache != nil && len(s.unFinTasksCache) > 0 {
+		if len(s.taskSequence) > 0 && len(s.unFinTasksCache) > 0 {
 			res := make([]*TaskLogic, 0)
 			for _, task := range s.unFinTasksCache {
 				if task.dbData.Done {
@@ -181,7 +181,7 @@ func (s *SubGroupLogic) Save() error {
 
 func (s *SubGroupLogic) CreateTask(userID string, title, note string, taskType db.TaskType, Started bool, parentTaskID uint32) (*TaskLogic, error) {
 	connect := db.GTodoneDBMgr.GetConnect(db.ConnectTypeTask)
-	ID, err := db.CreateTask(connect, userID, s.dbData.ID, 0, title, note, Started)
+	ID, err := db.CreateTask(connect, userID, s.dbData.ID, parentTaskID, title, note, Started)
 	if err != nil {
 		return nil, err
 	}

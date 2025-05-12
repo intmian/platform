@@ -82,7 +82,7 @@ func (m MapIdTree) Remove(parent, id uint32) {
 	}
 }
 
-// RemoveNotExist 删除parent下不存在的id
+// RemoveNotExist 删除parent下不存在的id，并且删除id的所有子孙节点
 func (m MapIdTree) RemoveNotExist(parent uint32, ids []uint32) {
 	if _, ok := m[parent]; !ok {
 		return
@@ -98,7 +98,20 @@ func (m MapIdTree) RemoveNotExist(parent uint32, ids []uint32) {
 		}
 		if find {
 			newIds = append(newIds, v)
+		} else {
+			m.RemoveAsParent(v)
 		}
 	}
 	m[parent] = newIds
+}
+
+func (m MapIdTree) RemoveAsParent(id uint32) {
+	// 递归删除
+	if _, ok := m[id]; !ok {
+		return
+	}
+	for _, v := range m[id] {
+		m.RemoveAsParent(v)
+	}
+	delete(m, id)
 }
