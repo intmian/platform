@@ -278,8 +278,7 @@ type TaskMoveReq struct {
 	TrgParentID uint32
 	TrgTaskID   uint32
 
-	After  bool
-	Before bool
+	After bool
 }
 
 type TaskMoveRet struct {

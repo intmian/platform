@@ -1,10 +1,10 @@
-import {Addr} from "./addr";
+import {Addr, AddrUnitType} from "./addr";
 import {PTask} from "./net/protocal";
-import {Button, DatePicker, Flex, Input, message, Select, Typography} from "antd";
+import {Button, DatePicker, Flex, Form, Input, message, Modal, Select, Typography} from "antd";
 import {useEffect, useRef, useState} from "react";
 import dayjs from "dayjs";
 import {EmptyGoTimeStr, IsDateEmptyFromGoEmpty} from "../common/tool";
-import {ChangeTaskReq, sendChangeTask, sendDelTask} from "./net/send_back";
+import {ChangeTaskReq, sendChangeTask, sendDelTask, sendTaskMove, TaskMoveReq} from "./net/send_back";
 import {SaveOutlined} from "@ant-design/icons";
 import {useIsMobile} from "../common/hooksv2";
 import ReactQuill from "react-quill-new";
@@ -148,6 +148,7 @@ export function TaskDetail(props: TaskDetailProps) {
     const [taskType, setTaskType] = useState<number>(0);
     const [status, setStatus] = useState<"not_started" | "started" | "done">("not_started");
     const isMobile = useIsMobile();
+    const [showMove, setShowMove] = useState(false);
 
     useEffect(() => {
         if (!props.task) {
@@ -296,7 +297,10 @@ export function TaskDetail(props: TaskDetailProps) {
                 }}
             />
         </Flex>
-        <Typography.Text type={"secondary"} copyable>
+        <Typography.Text type={"secondary"} copyable={{
+            text: addr.toString(),
+            tooltips: ["复制", "复制成功"],
+        }}>
             {addr.toString()}
         </Typography.Text>
         <Flex gap='10px'>
@@ -335,6 +339,9 @@ export function TaskDetail(props: TaskDetailProps) {
                 清除高级
             </Button>
             <Button
+                onClick={() => {
+                    setShowMove(true);
+                }}
             >
                 移动
             </Button>
@@ -404,5 +411,115 @@ export function TaskDetail(props: TaskDetailProps) {
                 {isMobile ? "回车保存" : "Ctrl|Cmd+Enter保存"}
             </Typography.Text>
         </div>
+        {showMove ? <TaskMovePanel
+            subGroupAddr={addr}
+            movedTasks={[task.ID]}
+            refreshApi={props.refreshApi}
+            tree={props.tree}
+            onCancel={() => setShowMove(false)}
+            onFinish={() => {
+                setShowMove(false);
+                // 刷新浏览器标签页
+                document.location.reload();
+            }}
+        /> : null}
     </Flex>
+}
+
+
+interface TaskMoveProps {
+    subGroupAddr: Addr
+    movedTasks: number[]
+    refreshApi: () => void
+    tree: TaskTree
+    onCancel: () => void
+    onFinish: () => void
+}
+
+function TaskMovePanel(props: TaskMoveProps) {
+    const userID = props.subGroupAddr.userID;
+    const [loading, setLoading] = useState(false);
+    const [form] = Form.useForm();
+    const [trgAddrStr, setTrgAddrStr] = useState("");
+    let trgIsTask = false
+    const trgAddr = new Addr(userID);
+    let trgTaskID = 0;
+    let trgParent = 0;
+    if (trgAddrStr.length > 0) {
+        trgAddr.bindAddr(trgAddrStr);
+        if (trgAddr.getLastUnit().Type === AddrUnitType.Task) {
+            trgIsTask = true
+        }
+        if (trgIsTask) {
+            const last = trgAddr.getLastUnit();
+            const Parent = trgAddr.getParentUnit();
+            trgTaskID = last.ID;
+            if (Parent.Type === AddrUnitType.Task) {
+                trgParent = Parent.ID;
+            }
+        }
+    }
+
+    return <Modal
+        open={true}
+        title={props.movedTasks.length > 1 ? "批量移动任务" : "移动任务"}
+        okText="移动"
+        cancelText="取消"
+        onCancel={props.onCancel}
+        closeIcon={null}
+        confirmLoading={loading}
+        onOk={() => {
+            const values = form.getFieldsValue();
+            const req: TaskMoveReq = {
+                After: values.movePosition === "after",
+                DirID: props.subGroupAddr.getLastDirID(),
+                GroupID: props.subGroupAddr.getLastGroupID(),
+                SubGroupID: props.subGroupAddr.getLastSubGroupID(),
+                TaskIDs: props.movedTasks,
+
+                TrgDir: trgAddr.getLastDirID(),
+                TrgGroup: trgAddr.getLastGroupID(),
+                TrgSubGroup: trgAddr.getLastSubGroupID(),
+
+                TrgParentID: trgParent,
+                TrgTaskID: trgTaskID,
+
+                UserID: userID
+            }
+            setLoading(true);
+            sendTaskMove(req, (ret) => {
+                setLoading(false);
+                if (ret.ok) {
+                    message.success("移动任务成功").then();
+                    props.onFinish();
+                } else {
+                    message.error("移动任务失败").then();
+                }
+            })
+        }}
+    >
+        <Form form={form}>
+            <Form.Item label={"目标地址"} name={"trgAddr"}
+                       rules={[{required: true, message: "请输入目标地址"}]}
+            >
+                <Input
+                    value={trgAddrStr}
+                    onChange={(e) => {
+                        setTrgAddrStr(e.target.value);
+                    }}
+                />
+            </Form.Item>
+            <Form.Item label={"移动位置"} name={"movePosition"} initialValue={"after"}>
+                <Select
+                    onChange={(value) => {
+                        form.setFieldsValue({movePosition: value});
+                        console.log("movePosition", value);
+                    }}
+                >
+                    <Select.Option value="before">{trgIsTask ? "移到之前" : "移到最前"}</Select.Option>
+                    <Select.Option value="after">{trgIsTask ? "移到之后" : "移到最后"}</Select.Option>
+                </Select>
+            </Form.Item>
+        </Form>
+    </Modal>
 }

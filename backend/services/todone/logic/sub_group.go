@@ -2,7 +2,6 @@ package logic
 
 import (
 	"errors"
-	"github.com/intmian/mian_go_lib/tool/misc"
 	"sort"
 	"time"
 
@@ -82,7 +81,7 @@ func (s *SubGroupLogic) GetTasks(containDone bool) ([]*TaskLogic, error) {
 
 	if containDone {
 		if s.taskSequence == nil {
-			err := s.buildSequenceWithoutData()
+			err := s.buildSequenceWithLoadData()
 			if err != nil {
 				return nil, err
 			}
@@ -162,10 +161,6 @@ func (s *SubGroupLogic) clearFinishCache() {
 	}
 }
 
-func (s *SubGroupLogic) NeedBuildSequence() bool {
-	return len(s.taskSequence) == 0
-}
-
 func (s *SubGroupLogic) buildSequence(res []*TaskLogic) error {
 	// 重整任务序列，首先遍历所有Cache，根据parantID分组，以创建时间排序，为他们获取Index并添加进sequence。再遍历sequence，删除掉再Cache中不存在的部分。
 	// 最后落盘
@@ -197,6 +192,14 @@ func (s *SubGroupLogic) buildSequence(res []*TaskLogic) error {
 		s.taskSequence.RemoveNotExist(parentID, existIds)
 	}
 
+	err := s.SaveSequence()
+	if err != nil {
+		return errors.Join(err, errors.New("SaveSequence error"))
+	}
+	return nil
+}
+
+func (s *SubGroupLogic) SaveSequence() error {
 	// 最后落盘
 	newSequence, err := s.taskSequence.JSON()
 	if err != nil {
@@ -280,7 +283,7 @@ func (s *SubGroupLogic) BeforeTaskMove(taskIDs []uint32, newParentID uint32) (Ma
 	if err != nil {
 		return nil, nil, nil
 	}
-	err = s.buildSequenceWithoutData()
+	err = s.buildSequence(tasks)
 	if err != nil {
 		return nil, nil, nil
 	}
@@ -328,7 +331,7 @@ func (s *SubGroupLogic) BeforeTaskMove(taskIDs []uint32, newParentID uint32) (Ma
 			}
 		} else {
 			// 根任务
-			noNeedChangeParent = append(noNeedChangeParent, id)
+			needChangeParent = append(noNeedChangeParent, id)
 		}
 	}
 
@@ -348,7 +351,9 @@ func (s *SubGroupLogic) BeforeTaskMove(taskIDs []uint32, newParentID uint32) (Ma
 		return false
 	})
 	seq := make(MapIdTree)
-	for _, task := range noNeedChangeParent {
+
+	// 需要更改父节点的任务ID，直接添加到新的父节点下，按照客户端传入顺序
+	for _, task := range needChangeParent {
 		seq.Add(newParentID, task)
 	}
 	// 不需要更改父节点的任务ID，根据原来的顺序来排序，不管是否完成因为多加的会被删掉
@@ -357,7 +362,7 @@ func (s *SubGroupLogic) BeforeTaskMove(taskIDs []uint32, newParentID uint32) (Ma
 		if task == nil {
 			continue
 		}
-		if _, ok := seq[task.dbData.ParentTaskID]; ok {
+		if _, ok := s.taskSequence[task.dbData.ParentTaskID]; ok {
 			continue
 		}
 		seq[task.dbData.ParentTaskID] = s.taskSequence[task.dbData.ParentTaskID]
@@ -384,9 +389,11 @@ func (s *SubGroupLogic) BeforeTaskMove(taskIDs []uint32, newParentID uint32) (Ma
 }
 
 func (s *SubGroupLogic) AfterTaskMove(seq MapIdTree, needChangeParent, noNeedChangeParent []uint32, newParentID, newAfterID uint32, after bool) error {
-	err := s.buildSequenceWithoutData()
-	if err != nil {
-		return err
+	if s.unFinTasksCache == nil {
+		err := s.buildSequenceWithLoadData()
+		if err != nil {
+			return err
+		}
 	}
 
 	// 批量更改所有的任务的parentsubgroup和原生任务parentTaskIDs。
@@ -398,7 +405,7 @@ func (s *SubGroupLogic) AfterTaskMove(seq MapIdTree, needChangeParent, noNeedCha
 		allIDs = append(allIDs, taskID)
 	}
 	conn := db.GTodoneDBMgr.GetConnect(db.ConnectTypeTask)
-	err = db.UpdateTasksParentTaskID(conn, newParentID, needChangeParent)
+	err := db.UpdateTasksParentTaskID(conn, newParentID, needChangeParent)
 	if err != nil {
 		return errors.Join(err, errors.New("UpdateTasksParentTaskID error"))
 	}
@@ -408,33 +415,31 @@ func (s *SubGroupLogic) AfterTaskMove(seq MapIdTree, needChangeParent, noNeedCha
 	}
 
 	// 合并序列
-	rootSet := misc.NewSet[uint32]()
-	rootSet.FromSlice(noNeedChangeParent)
 	// 先插入子任务们
 	for parentID, tasks := range seq {
-		for _, taskID := range tasks {
-			if rootSet.Contains(taskID) {
-				continue
-			}
-			if _, ok := s.taskSequence[parentID]; !ok {
-				s.taskSequence[parentID] = make([]uint32, 0)
-			}
-			s.taskSequence[parentID] = append(s.taskSequence[parentID], taskID)
+		if parentID == newParentID {
+			continue
+		}
+		if _, ok := s.taskSequence[parentID]; !ok {
+			s.taskSequence[parentID] = tasks
+		} else {
+			// 原则上是不可能的
 		}
 	}
 	// 再插入父任务们，如果newAfterID =0，那就根据after，插入到0节点的最前面或者最后面。否则插入到newAfterID的前面或者后面
+	parentSec, hasParentSec := seq[newParentID]
+	if !hasParentSec {
+		return errors.New("newParentID not exist")
+	}
 	newSequence, ok := s.taskSequence[newParentID]
 	if !ok {
-		s.taskSequence[newParentID] = make([]uint32, 0)
-		for _, taskID := range noNeedChangeParent {
-			s.taskSequence[newParentID] = append(s.taskSequence[newParentID], taskID)
-		}
+		s.taskSequence[newParentID] = parentSec
 	} else {
 		if newAfterID == 0 {
 			if after {
-				s.taskSequence[newParentID] = append(s.taskSequence[newParentID], noNeedChangeParent...)
+				s.taskSequence[newParentID] = append(s.taskSequence[newParentID], parentSec...)
 			} else {
-				s.taskSequence[newParentID] = append(noNeedChangeParent, s.taskSequence[newParentID]...)
+				s.taskSequence[newParentID] = append(parentSec, s.taskSequence[newParentID]...)
 			}
 		} else {
 			newSeq := make([]uint32, 0)
@@ -442,9 +447,9 @@ func (s *SubGroupLogic) AfterTaskMove(seq MapIdTree, needChangeParent, noNeedCha
 				if taskID == newAfterID {
 					if after {
 						newSeq = append(newSeq, taskID)
-						newSeq = append(newSeq, noNeedChangeParent...)
+						newSeq = append(newSeq, parentSec...)
 					} else {
-						newSeq = append(newSeq, noNeedChangeParent...)
+						newSeq = append(newSeq, parentSec...)
 						newSeq = append(newSeq, taskID)
 					}
 				} else {
@@ -454,25 +459,23 @@ func (s *SubGroupLogic) AfterTaskMove(seq MapIdTree, needChangeParent, noNeedCha
 			s.taskSequence[newParentID] = newSeq
 		}
 	}
-
-	// 重建缓存和序列
-	err = s.buildSequenceWithoutData()
+	err = s.SaveSequence()
 	if err != nil {
-		return errors.Join(err, errors.New("buildSequenceWithoutData error"))
+		return errors.Join(err, errors.New("SaveSequence error"))
 	}
-	//// 获取所有的任务
-	//res := make([]protocol.PTask, 0)
-	//for _, allID := range allIDs {
-	//	task := s.GetTaskLogic(allID)
-	//	if task == nil {
-	//		continue
-	//	}
-	//	res = append(res, task.ToProtocol())
-	//}
+
+	// 插入缓存
+	for _, taskID := range needChangeParent {
+		s.unFinTasksCache[taskID] = s.GetTaskLogic(taskID)
+	}
+	for _, taskID := range noNeedChangeParent {
+		s.unFinTasksCache[taskID] = s.GetTaskLogic(taskID)
+	}
+
 	return nil
 }
 
-func (s *SubGroupLogic) buildSequenceWithoutData() error {
+func (s *SubGroupLogic) buildSequenceWithLoadData() error {
 	tasks, err := s.GetTasks(false)
 	if err != nil {
 		return errors.Join(err, errors.New("GetTasks error"))
@@ -499,9 +502,9 @@ func (s *SubGroupLogic) OnDeleteTasks(taskIDs []uint32) error {
 	// 如果存在未完成的任务，则删除缓存并且删除序列
 	if hasUnFin {
 		if s.unFinTasksCache == nil {
-			err := s.buildSequenceWithoutData()
+			err := s.buildSequenceWithLoadData()
 			if err != nil {
-				return errors.Join(err, errors.New("buildSequenceWithoutData error"))
+				return errors.Join(err, errors.New("buildSequenceWithLoadData error"))
 			}
 		}
 

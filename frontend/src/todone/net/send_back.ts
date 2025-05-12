@@ -429,10 +429,9 @@ export interface TaskMoveReq {
     TrgDir: number
     TrgGroup: number
     TrgSubGroup: number// 不填taskID,则表示移动到最后面或者前面
-    TrgParent: number
+    TrgParentID: number
     TrgTaskID: number
     After: boolean
-    Before: boolean
 }
 
 export type TaskMoveRet = object

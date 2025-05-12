@@ -118,4 +118,13 @@ export class Addr {
         }
         return 0
     }
+
+    getLastTaskID(): number {
+        for (let i = this.units.length - 1; i >= 0; i--) {
+            if (this.units[i].Type === AddrUnitType.Task) {
+                return this.units[i].ID
+            }
+        }
+        return 0
+    }
 }
