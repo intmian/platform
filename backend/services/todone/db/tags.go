@@ -35,6 +35,9 @@ func GetTagsByTaskID(db *gorm.DB, taskID uint32) []string {
 	for _, tag := range tags {
 		res = append(res, tag.Tag)
 	}
+	if res == nil {
+		return make([]string, 0)
+	}
 	return res
 }
 

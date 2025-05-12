@@ -199,6 +199,7 @@ func (s *SubGroupLogic) CreateTask(userID string, title, note string, taskType d
 		UpdatedAt:        time.Now(),
 		ParentTaskID:     parentTaskID,
 	})
+	task.BindOutTags(make([]string, 0))
 
 	// 更新缓存和序列
 	if s.unFinTasksCache != nil {
