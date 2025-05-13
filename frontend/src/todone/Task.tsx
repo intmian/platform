@@ -277,7 +277,18 @@ export function TaskWaitAndTime({status, task}: { status: Status, task: PTask })
             }
         }
     } else if (status < Status.FinishedBegin) {
-        if (!IsDateEmptyFromGoEmpty(task.EndTime)) {
+        let BeforeBegin = false;
+        if (!IsDateEmptyFromGoEmpty(task.BeginTime)) {
+            if (beginTime.getTime() > now.getTime()) {
+                BeforeBegin = true;
+                timeWait.push(
+                    <Tag color="gray" key={"beginTime"}>
+                        未开启 <Time2show time={beginTime}/>
+                    </Tag>
+                )
+            }
+        }
+        if (!BeforeBegin && !IsDateEmptyFromGoEmpty(task.EndTime)) {
             if (endTime.getTime() < now.getTime()) {
                 timeWait.push(
                     <Tag color="red" key="endtime">
