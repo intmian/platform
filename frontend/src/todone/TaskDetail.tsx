@@ -427,16 +427,15 @@ export function TaskDetail(props: TaskDetailProps) {
 }
 
 
-interface TaskMoveProps {
+export interface TaskMoveProps {
     subGroupAddr: Addr
     movedTasks: number[]
-    refreshApi: () => void
     tree: TaskTree
     onCancel: () => void
     onFinish: () => void
 }
 
-function TaskMovePanel(props: TaskMoveProps) {
+export function TaskMovePanel(props: TaskMoveProps) {
     const userID = props.subGroupAddr.userID;
     const [loading, setLoading] = useState(false);
     const [form] = Form.useForm();

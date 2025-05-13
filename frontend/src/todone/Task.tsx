@@ -1,6 +1,6 @@
 import {Addr} from "./addr";
 import {PTask, TaskType} from "./net/protocal";
-import {Button, Flex, Row, Tag} from "antd";
+import {Button, Checkbox, Flex, Row, Tag} from "antd";
 import {ReactNode, useEffect, useState} from "react";
 import {
     CheckOutlined,
@@ -307,6 +307,8 @@ export interface TaskProps {
     refreshTree: () => void
     tree: TaskTree
     onSelectTask: (addr: Addr, pTask: PTask, refreshApi: () => void, tree: TaskTree) => void
+    selectMode: boolean
+    onSelModeSelect: (addr: Addr) => void
 }
 
 export function Task(props: TaskProps) {
@@ -380,6 +382,11 @@ export function Task(props: TaskProps) {
                 isShowSon={showSubTask}
                 hasSon={hasSon}
             />
+            {props.selectMode && <Checkbox
+                onChange={() => {
+                    props.onSelModeSelect(thisAddr);
+                }}
+            />}
         </Flex>
         <Row>
             <TaskTags task={props.task}/>
@@ -394,6 +401,8 @@ export function Task(props: TaskProps) {
                 tree={props.tree}
                 level={props.level}
                 onSelectTask={props.onSelectTask}
+                selectMode={props.selectMode}
+                onSelModeSelect={props.onSelModeSelect}
             />
         </Row>
         }

@@ -1,4 +1,4 @@
-import {useEffect, useState} from "react";
+import {useEffect, useRef, useState} from "react";
 import {Button, Divider, Dropdown, Flex, Form, Input, message, Modal, Space, Tooltip} from "antd";
 import {
     ChangeSubGroupReq,
@@ -15,6 +15,8 @@ import {
     CaretDownOutlined,
     CaretUpOutlined,
     CheckOutlined,
+    CheckSquareOutlined,
+    CloseSquareOutlined,
     CopyOutlined,
     DeleteOutlined,
     EditOutlined,
@@ -26,6 +28,7 @@ import {lowLeverShadow} from "../css/shadow";
 import TaskTree from "./TaskTree";
 import {TaskList} from "./TaskList";
 import {useStateWithLocal} from "../common/hooksv2";
+import {TaskMovePanel} from "./TaskDetail";
 
 interface SubGroupAddPanelProps {
     userID: string
@@ -167,6 +170,10 @@ export function SubGroup(props: SubGroupProps) {
     const [loading, setLoading] = useState(false); // 是否正在加载数据
     const [editOpen, setEditOpen] = useState(false); // 是否显示修改弹窗
 
+    const [selectMode, setSelectMode] = useState(false); // 是否选择模式
+    const [selectModeMove, setSelectModeMove] = useState(false); // 是否选择模式移动
+    const selectedRef = useRef<Set<number>>(new Set()); // 选中的任务ID集合
+
     // 目前先采用每个分组一个任务树的方式，方便移动等逻辑处理，一般来说加载出来的数据任务数量不会太多（不考虑已完成的情况下）,子任务也一起加载，跨分组移动可能会出现刷新问题，但是问题不大，不再采用懒加载。
     const [taskTree, setTaskTree] = useState<TaskTree>(new TaskTree()); // 任务树
     useEffect(() => {
@@ -217,21 +224,52 @@ export function SubGroup(props: SubGroupProps) {
                     <Button onClick={() => {
                         setOpen(!open);
                     }}
+                            size="small"
                             type="text"
                             icon={open ? <CaretUpOutlined/> : <CaretDownOutlined/>}
                     />
                     <Tooltip title={indexSmallFirst ? "按Index升序排列" : "按Index降序排列"}>
-                        {indexSmallFirst ? <VerticalAlignBottomOutlined
+                        <Button
+                            size="small"
+                            type="text"
+                            icon={indexSmallFirst ? <VerticalAlignBottomOutlined/> : < VerticalAlignTopOutlined/>}
                             onClick={() => {
                                 setIndexSmallFirst(!indexSmallFirst);
                             }}
-                        /> : < VerticalAlignTopOutlined
-                            onClick={() => {
-                                setIndexSmallFirst(!indexSmallFirst);
-                            }}
-                        />}
-
+                        />
                     </Tooltip>
+                    <Button
+                        type="text"
+                        size="small"
+                        icon={selectMode ? <CloseSquareOutlined/> : <CheckSquareOutlined/>}
+                        onClick={() => {
+                            setSelectMode(!selectMode);
+                        }}
+                    />
+                    {selectMode ?
+                        <Button
+                            type="text"
+                            size="small"
+                            onClick={() => {
+                                setSelectModeMove(true);
+                            }}
+                        >移动</Button>
+                        : null}
+                    {
+                        selectModeMove ? <TaskMovePanel
+                            subGroupAddr={subGroupAddr}
+                            movedTasks={Array.from(selectedRef.current)}
+
+                            tree={taskTree}
+                            onCancel={() => {
+                                setSelectModeMove(false)
+                            }}
+                            onFinish={() => {
+                                setSelectModeMove(false)
+                                document.location.reload()
+                            }}
+                        /> : null
+                    }
                     <Dropdown menu={{
                         items: [
                             {
@@ -324,6 +362,14 @@ export function SubGroup(props: SubGroupProps) {
                 setTaskTree(taskTree.copy());
             }}
             onSelectTask={props.onSelectTask}
+            selectMode={selectMode}
+            onSelModeSelect={(addr: Addr) => {
+                if (selectedRef.current.has(addr.getLastUnit().ID)) {
+                    selectedRef.current.delete(addr.getLastUnit().ID);
+                } else {
+                    selectedRef.current.add(addr.getLastUnit().ID);
+                }
+            }}
         /> : null}
     </div>
 }

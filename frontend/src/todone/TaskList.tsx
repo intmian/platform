@@ -122,7 +122,17 @@ function Histories({reqs, addr, tree, isSubTask, smallFirst, refreshApi}: {
     </div>
 }
 
-export function TaskList({level, tree, addr, indexSmallFirst, loadingTree, refreshTree, onSelectTask}: {
+export function TaskList({
+                             level,
+                             tree,
+                             addr,
+                             indexSmallFirst,
+                             loadingTree,
+                             refreshTree,
+                             onSelectTask,
+                             selectMode,
+                             onSelModeSelect
+                         }: {
     level: number
     tree: TaskTree
     addr: Addr
@@ -130,6 +140,8 @@ export function TaskList({level, tree, addr, indexSmallFirst, loadingTree, refre
     loadingTree: boolean
     refreshTree: () => void
     onSelectTask: (addr: Addr, pTask: PTask, refreshApi: () => void, tree: TaskTree) => void
+    selectMode: boolean
+    onSelModeSelect: (addr: Addr) => void
 }) {
     let taskShow: PTask[]
     // tasks根据Index排序
@@ -278,6 +290,8 @@ export function TaskList({level, tree, addr, indexSmallFirst, loadingTree, refre
                         loadingTree={loadingTree}
                         refreshTree={refreshTree}
                         tree={tree}
+                        selectMode={selectMode}
+                        onSelModeSelect={onSelModeSelect}
                     />
                 </List.Item>
             )}

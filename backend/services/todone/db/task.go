@@ -151,13 +151,9 @@ func GetParentSubGroupMaxIndex(db *gorm.DB, parentSubGroupID uint32) float32 {
 }
 
 func UpdateTasksParentTaskID(db *gorm.DB, parentTaskID uint32, taskIDs []uint32) error {
-	return db.Model(&TaskDB{}).Where("task_id in (?)", taskIDs).Updates(TaskDB{
-		ParentTaskID: parentTaskID,
-	}).Error
+	return db.Model(&TaskDB{}).Where("task_id in (?)", taskIDs).Update("parent_task_id", parentTaskID).Error
 }
 
 func UpdateTasksSubGroupID(db *gorm.DB, subGroupID uint32, taskIDs []uint32) error {
-	return db.Model(&TaskDB{}).Where("task_id in (?)", taskIDs).Updates(TaskDB{
-		ParentSubGroupID: subGroupID,
-	}).Error
+	return db.Model(&TaskDB{}).Where("task_id in (?)", taskIDs).Update("parent_sub_group_id", subGroupID).Error
 }

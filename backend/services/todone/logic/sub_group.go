@@ -2,6 +2,7 @@ package logic
 
 import (
 	"errors"
+	"github.com/intmian/mian_go_lib/tool/misc"
 	"sort"
 	"time"
 
@@ -45,7 +46,7 @@ func (s *SubGroupLogic) ToProtocol() protocol.PSubGroup {
 func (s *SubGroupLogic) GetTasks(containDone bool) ([]*TaskLogic, error) {
 	if !containDone {
 		if len(s.taskSequence) > 0 && len(s.unFinTasksCache) > 0 {
-			return s.GetTasksByCheche()
+			return s.GetTasksByCache()
 		}
 	}
 
@@ -112,10 +113,10 @@ func (s *SubGroupLogic) GetTasks(containDone bool) ([]*TaskLogic, error) {
 	// 从缓存中递归删除父任务不存在的子孙任务
 	s.clearFinishCache()
 
-	return s.GetTasksByCheche()
+	return s.GetTasksByCache()
 }
 
-func (s *SubGroupLogic) GetTasksByCheche() ([]*TaskLogic, error) {
+func (s *SubGroupLogic) GetTasksByCache() ([]*TaskLogic, error) {
 	res := make([]*TaskLogic, 0)
 
 	for _, task := range s.unFinTasksCache {
@@ -296,14 +297,13 @@ func (s *SubGroupLogic) BeforeTaskMove(taskIDs []uint32, newParentID uint32) (Ma
 	}
 
 	// 递归收集所有要移动的任务及其子任务
-	moveSet := make(map[uint32]struct{})
+	moveSet := misc.NewSet[uint32]()
 	var collect func(ids []uint32)
 	collect = func(ids []uint32) {
 		for _, id := range ids {
-			if _, ok := moveSet[id]; ok {
-				continue
+			if !moveSet.Contains(id) {
+				moveSet.Add(id)
 			}
-			moveSet[id] = struct{}{}
 			for _, t := range tasks {
 				taskData, _ := t.GetTaskData()
 				if taskData.ParentTaskID == id {
@@ -331,18 +331,18 @@ func (s *SubGroupLogic) BeforeTaskMove(taskIDs []uint32, newParentID uint32) (Ma
 			}
 		} else {
 			// 根任务
-			needChangeParent = append(noNeedChangeParent, id)
+			needChangeParent = append(needChangeParent, id)
 		}
 	}
 
 	// 生成新的任务序列，保证移动后顺序不变，如果需要修改。
-	// noNeedChangeParent 根据传入的 taskIDs中的顺序来排序
+	// NeedChangeParent 根据传入的 taskIDs中的顺序来排序
 	oldOrder := make(map[uint32]int)
 	for i, taskID := range taskIDs {
 		oldOrder[taskID] = i
 	}
-	sort.Slice(noNeedChangeParent, func(i, j int) bool {
-		id1, id2 := noNeedChangeParent[i], noNeedChangeParent[j]
+	sort.Slice(needChangeParent, func(i, j int) bool {
+		id1, id2 := needChangeParent[i], needChangeParent[j]
 		index1, ok1 := oldOrder[id1]
 		index2, ok2 := oldOrder[id2]
 		if ok1 && ok2 {
@@ -369,20 +369,20 @@ func (s *SubGroupLogic) BeforeTaskMove(taskIDs []uint32, newParentID uint32) (Ma
 	}
 
 	// 从缓存中删除已经移动的任务
-	for _, taskID := range taskIDs {
+	for taskID := range moveSet {
 		if _, ok := s.unFinTasksCache[taskID]; ok {
 			delete(s.unFinTasksCache, taskID)
 		}
 	}
-	// 更新序列
-	newTasks, err := s.GetTasks(false)
-	if err != nil {
-		return nil, nil, nil
-	}
-	err = s.buildSequence(newTasks)
-	if err != nil {
-		return nil, nil, nil
-	}
+	// 更新序列 不执行，序列中的值还是保留，seq下载下载时自然会删除。
+	//newTasks, err := s.GetTasks(false)
+	//if err != nil {
+	//	return nil, nil, nil
+	//}
+	//err = s.buildSequence(newTasks)
+	//if err != nil {
+	//	return nil, nil, nil
+	//}
 
 	// 返回：新的序列、需要更改父节点的任务ID、无需更改父节点的任务ID
 	return seq, needChangeParent, noNeedChangeParent
@@ -465,13 +465,30 @@ func (s *SubGroupLogic) AfterTaskMove(seq MapIdTree, needChangeParent, noNeedCha
 	}
 
 	// 插入缓存
-	for _, taskID := range needChangeParent {
-		s.unFinTasksCache[taskID] = s.GetTaskLogic(taskID)
+	conn = db.GTodoneDBMgr.GetConnect(db.ConnectTypeTask)
+	dbs, err := db.GetTaskByIds(conn, allIDs)
+	if err != nil {
+		return errors.Join(err, errors.New("GetTaskByIds error"))
 	}
-	for _, taskID := range noNeedChangeParent {
-		s.unFinTasksCache[taskID] = s.GetTaskLogic(taskID)
+	for _, taskDB := range dbs {
+		task := NewTaskLogic(taskDB.TaskID)
+		task.OnBindOutData(&taskDB)
+		if taskDB.Deleted {
+			continue
+		}
+		s.unFinTasksCache[task.dbData.TaskID] = task
+		task.BindOutIndex(s.taskSequence.GetSequenceOrAdd(task.dbData.ParentTaskID, task.dbData.TaskID))
 	}
-
+	conn = db.GTodoneDBMgr.GetConnect(db.ConnectTypeTags)
+	if conn == nil {
+		return errors.New("connTag is nil")
+	}
+	tagsMap := db.GetTagsByMultipleTaskID(conn, allIDs)
+	for taskID, tags := range tagsMap {
+		if task, ok := s.unFinTasksCache[taskID]; ok {
+			task.BindOutTags(tags)
+		}
+	}
 	return nil
 }
 
