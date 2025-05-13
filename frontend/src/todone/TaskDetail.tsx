@@ -67,7 +67,7 @@ function Editor(props: { value: string, onChange: (value: string) => void, onUpl
             const displayName = file.name;
             editor.insertText(range.index, displayName, 'link', PublicURL);
         }
-        props.onUpload();
+        // props.onUpload();
     };
 
     const imageHandler = () => {
@@ -122,7 +122,8 @@ function Editor(props: { value: string, onChange: (value: string) => void, onUpl
             value={props.value}
             onChange={(value) => {
                 const editor = quillRef.current.getEditor();
-                if (editor.getText().trim() === "") {
+                const delta = editor.getContents();
+                if (delta.ops.length === 1 && delta.ops[0].insert === '\n') {
                     props.onChange("");
                 } else {
                     props.onChange(value);
