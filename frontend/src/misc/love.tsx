@@ -114,11 +114,8 @@ const LovePanel = () => {
         <div style={parentStyle}>
             <div style={childStyle}><CenterHeart>❤️</CenterHeart></div>
             <div style={childStyle}><LargeText>爱你宝宝</LargeText></div>
-            <div style={childStyle}><Calendar fullscreen={false} defaultValue={anniversaryDate} locale={zhLocale}
-                                              disabledDate={(date) => {
-                                                  // 只能选择纪念日
-                                                  return date.format('YYYY-MM-DD') !== anniversaryDate.format('YYYY-MM-DD');
-                                              }}
+            <div style={childStyle}><Calendar fullscreen={false} value={anniversaryDate} locale={zhLocale}
+
             />
             </div>
             <div style={childStyle}><LargeText>我们已经在一起 {daysTogether} 天了！</LargeText></div>
