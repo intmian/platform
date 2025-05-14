@@ -28,7 +28,7 @@ export default function Group(props: GroupProps) {
     // 加载数据
     useEffect(() => {
         setSubGroups([]);
-        if (!props.addr) {
+        if (!props.addr || (props.addr.userID === "")) {
             return;
         }
         const req: GetSubGroupReq = {
