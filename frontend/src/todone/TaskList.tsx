@@ -301,6 +301,7 @@ export function TaskList({
     return <div
         id="scrollableDiv"
         style={{
+            boxSizing: "border-box",
             paddingLeft: level == 0 ? undefined : "20px",
             width: '100%',
         }}
