@@ -265,7 +265,10 @@ export function TaskList({
             header={indexSmallFirst ? null : inputArea}
             footer={indexSmallFirst ? inputArea : null}
             // dataSource={taskShow}
-            loading={loadingTree}
+            loading={{
+                spinning: loadingTree,
+                indicator: <LoadingOutlined style={{color: "black", fontSize: 25}} spin/>
+            }}
             locale={{emptyText: ' '}}
         />
     } else {
