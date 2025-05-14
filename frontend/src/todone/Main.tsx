@@ -112,6 +112,7 @@ export function Todone() {
                 }}
             /> : null}
         <Drawer
+            autoFocus={false}
             title="目录"
             placement="left"
             size={"default"}
