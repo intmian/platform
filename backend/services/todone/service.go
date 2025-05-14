@@ -128,7 +128,7 @@ func (s *Service) HandleRpc(msg backendshare.Msg, valid backendshare.Valid) (int
 		return backendshare.HandleRpcTool("taskMove", msg, valid, s.OnTaskMove)
 	}
 
-	return nil, nil
+	return nil, errors.New("cmd not found")
 }
 
 func (s *Service) GetProp() backendshare.ServiceProp {

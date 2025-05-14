@@ -410,7 +410,7 @@ export function sendChangeSubGroup(req: ChangeSubGroupReq, callback: (ret: {
     data: ChangeSubGroupRet,
     ok: boolean
 }) => void) {
-    UniPost(api_base_url + 'subGroup', req).then((res: UniResult) => {
+    UniPost(api_base_url + 'changeSubGroup', req).then((res: UniResult) => {
         const result: { data: ChangeSubGroupRet, ok: boolean } = {
             data: res.data as ChangeSubGroupRet,
             ok: res.ok
