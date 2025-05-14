@@ -222,6 +222,7 @@ func (u *UserLogic) MoveDir(dirID, trgDir uint32, afterID uint32) (float32, erro
 
 	// 更新内存
 	oldParentID := src.dir.dbData.ParentID
+	src.dir.dbData.ParentID = trgDir
 	if oldParentID == 0 {
 		return 0, errors.New("can't move root dir")
 	}
@@ -308,6 +309,7 @@ func (u *UserLogic) MoveGroup(parentDirID, groupID, trgDir, afterID uint32) (flo
 
 	// 更新内存
 	oldParentID := group.dbData.ParentDir
+	group.dbData.ParentDir = trgDir
 	if oldParentID == 0 {
 		return 0, errors.New("can't move root group")
 	}
