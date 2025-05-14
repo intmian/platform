@@ -128,7 +128,7 @@ function TaskStatusOperate({status, onClick, operating}: { status: Status, onCli
 export function TaskTags({task}: { task: PTask }) {
     const tags: ReactNode[] = []
     if (task.Note !== "") {
-        tags.push(<Tag key={"note"} color="purple">有备注</Tag>)
+        tags.push(<Tag key={"note"} color="gray">有备注</Tag>)
     }
     if (task.Tags) {
         for (const tag of task.Tags) {
@@ -150,9 +150,17 @@ interface TaskTitleProps {
 
 export function TaskTitle({task, clickShowSubTask, isShowSon, onSelectTask, hasSon}: TaskTitleProps) {
     // 判断任务状态
+    let BeforeBegin = false;
+    const beginTime = new Date(task.BeginTime);
+    const now = new Date();
+    if (!IsDateEmptyFromGoEmpty(task.BeginTime)) {
+        if (beginTime.getTime() > now.getTime()) {
+            BeforeBegin = true;
+        }
+    }
     let color = undefined;
     let textDecoration = task.Done ? 'line-through' : 'none';
-    if (!task.Started) {
+    if (!task.Started || BeforeBegin) {
         color = '#bfbfbf'; // 灰色
     }
     if (task.Done) {
@@ -264,14 +272,14 @@ export function TaskWaitAndTime({status, task}: { status: Status, task: PTask })
         if (!IsDateEmptyFromGoEmpty(task.BeginTime)) {
             if (beginTime.getTime() > now.getTime()) {
                 timeWait.push(
-                    <Tag color="green" key={"beginTime"}>
-                        剩余 <Time2show time={beginTime}/>
+                    <Tag key={"beginTime"}>
+                        剩余:<Time2show time={beginTime}/>
                     </Tag>
                 );
             } else {
                 timeWait.push(
                     <Tag color="red" key={"beginTime2"}>
-                        过期 <Time2show time={beginTime}/>
+                        延期:<Time2show time={beginTime}/>
                     </Tag>
                 );
             }
@@ -282,8 +290,8 @@ export function TaskWaitAndTime({status, task}: { status: Status, task: PTask })
             if (beginTime.getTime() > now.getTime()) {
                 BeforeBegin = true;
                 timeWait.push(
-                    <Tag color="gray" key={"beginTime"}>
-                        未开启 <Time2show time={beginTime}/>
+                    <Tag key={"beginTime"}>
+                        等待:<Time2show time={beginTime}/>
                     </Tag>
                 )
             }
@@ -292,7 +300,7 @@ export function TaskWaitAndTime({status, task}: { status: Status, task: PTask })
             if (endTime.getTime() < now.getTime()) {
                 timeWait.push(
                     <Tag color="red" key="endtime">
-                        过期 <Time2show time={endTime}/>
+                        过期:<Time2show time={endTime}/>
                     </Tag>
                 );
             } else {
