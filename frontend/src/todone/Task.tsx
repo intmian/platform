@@ -306,7 +306,7 @@ export function TaskWaitAndTime({status, task}: { status: Status, task: PTask })
             } else {
                 timeWait.push(
                     <Tag color="green" key="endtime2">
-                        剩余 <Time2show time={endTime}/>
+                        剩余:<Time2show time={endTime}/>
                     </Tag>
                 );
             }
