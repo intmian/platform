@@ -285,6 +285,10 @@ func (s *SubGroupLogic) buildSequence(res []*TaskLogic) error {
 		if !set.Contains(parentID) {
 			s.taskSequence.RemoveAsParent(parentID)
 		}
+		// 如果子任务都被完成了也不用存这个了
+		if _, ok := parent2Task[parentID]; !ok {
+			s.taskSequence.RemoveAsParent(parentID)
+		}
 	}
 
 	err := s.OnChangeSeq()
@@ -452,7 +456,7 @@ func (s *SubGroupLogic) BeforeTaskMove(taskIDs []uint32, newParentID uint32) (Ma
 			s.taskSequence.RemoveAsParent(parentID)
 			continue
 		}
-		
+
 		newChildren := make([]uint32, 0)
 		for _, childID := range children {
 			if !moveSet.Contains(childID) {
