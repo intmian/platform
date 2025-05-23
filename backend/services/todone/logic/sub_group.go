@@ -1,13 +1,13 @@
 package logic
 
 import (
+	"context"
 	"errors"
 	"github.com/intmian/mian_go_lib/tool/misc"
-	"sort"
-	"time"
-
 	"github.com/intmian/platform/backend/services/todone/db"
 	"github.com/intmian/platform/backend/services/todone/protocol"
+	"sort"
+	"time"
 )
 
 type SubGroupLogic struct {
@@ -17,12 +17,80 @@ type SubGroupLogic struct {
 	taskSequence    MapIdTree
 }
 
+type AutoSave struct {
+	LastSave db.SubGroupDB
+	SaveTime time.Time
+	realData *db.SubGroupDB
+	ctx      context.Context
+}
+
+func (a *AutoSave) Init(data *db.SubGroupDB, ctx context.Context) {
+	a.LastSave = *data
+	a.SaveTime = time.Now()
+	a.realData = data
+	a.ctx = ctx
+
+	go func() {
+		for {
+			select {
+			case <-a.ctx.Done():
+				if a.NeedSave() {
+					a.Save()
+				}
+				return
+			default:
+				// do nothing
+			}
+			time.Sleep(5 * time.Second)
+			if a.NeedSave() {
+				a.Save()
+			}
+		}
+	}()
+}
+
+func NewAutoSave(data *db.SubGroupDB, ctx context.Context) *AutoSave {
+	autoSave := &AutoSave{}
+	autoSave.Init(data, ctx)
+	return autoSave
+}
+
+func (a *AutoSave) NeedSave() bool {
+	if a.realData == nil {
+		return false
+	}
+	if a.LastSave.Title != a.realData.Title ||
+		a.LastSave.Note != a.realData.Note ||
+		a.LastSave.Index != a.realData.Index ||
+		a.LastSave.TaskSequence != a.realData.TaskSequence ||
+		a.LastSave.ParentGroupID != a.realData.ParentGroupID {
+		return true
+	}
+	return false
+}
+
+func (a *AutoSave) Save() {
+	if a.realData == nil {
+		return
+	}
+	connect := db.GTodoneDBMgr.GetConnect(db.ConnectTypeSubGroup)
+	err := db.UpdateSubGroup(connect, a.realData.ID, a.realData.Title, a.realData.Note, a.realData.Index, a.realData.TaskSequence)
+	if err != nil {
+		GTodoneShare.Log.ErrorErr("todone.subgtoup.auto", errors.Join(err, errors.New("AutoSave Save error")))
+		return
+	}
+	GTodoneShare.Log.Info("todone.subgtoup.auto", "AutoSave Save success %v", a.realData)
+	a.LastSave = *a.realData
+	a.SaveTime = time.Now()
+}
+
 func NewSubGroupLogic(dbData *db.SubGroupDB) *SubGroupLogic {
 	tree := make(MapIdTree)
 	err := tree.FromJSON(dbData.TaskSequence)
 	if err != nil {
 		return nil
 	}
+	NewAutoSave(dbData, GTodoneCtx)
 	return &SubGroupLogic{
 		dbData:          dbData,
 		unFinTasksCache: make(map[uint32]*TaskLogic),
@@ -119,14 +187,25 @@ func (s *SubGroupLogic) GetTasks(containDone bool) ([]*TaskLogic, error) {
 func (s *SubGroupLogic) GetTasksByCache() ([]*TaskLogic, error) {
 	res := make([]*TaskLogic, 0)
 
+	needSave := false
 	for _, task := range s.unFinTasksCache {
 		if task.dbData.Done {
 			// 如果任务被完成不会刷新缓存，而且为了方便用户找回也只是在这里做下屏蔽，sequence也不刷新，等到下次大重启才会消失。
 			continue
 		}
-		_, index := s.taskSequence.GetSequence(task.dbData.ParentTaskID, task.dbData.TaskID)
+		ok, index := s.taskSequence.GetSequence(task.dbData.ParentTaskID, task.dbData.TaskID)
+		if !ok {
+			index = s.taskSequence.GetSequenceOrAdd(task.dbData.ParentTaskID, task.dbData.TaskID)
+			needSave = true
+		}
 		task.BindOutIndex(index)
 		res = append(res, task)
+	}
+	if needSave {
+		err := s.OnChangeSeq()
+		if err != nil {
+			return nil, errors.Join(err, errors.New("OnChangeSeq error"))
+		}
 	}
 	return res, nil
 }
@@ -193,63 +272,63 @@ func (s *SubGroupLogic) buildSequence(res []*TaskLogic) error {
 		s.taskSequence.RemoveNotExist(parentID, existIds)
 	}
 
-	err := s.SaveSequence()
+	set := misc.NewSet[uint32]()
+	for _, task := range res {
+		if task.dbData.Done {
+			continue
+		}
+		set.Add(task.dbData.TaskID)
+	}
+	set.Add(0)
+
+	for parentID, _ := range s.taskSequence {
+		if !set.Contains(parentID) {
+			s.taskSequence.RemoveAsParent(parentID)
+		}
+	}
+
+	err := s.OnChangeSeq()
 	if err != nil {
-		return errors.Join(err, errors.New("SaveSequence error"))
+		return errors.Join(err, errors.New("OnChangeSeq error"))
 	}
 	return nil
 }
 
-func (s *SubGroupLogic) SaveSequence() error {
+func (s *SubGroupLogic) OnChangeSeq() error {
 	// 最后落盘
 	newSequence, err := s.taskSequence.JSON()
 	if err != nil {
 		return errors.Join(err, errors.New("taskSequence JSON error"))
 	}
-	connect := db.GTodoneDBMgr.GetConnect(db.ConnectTypeSubGroup)
-	err = db.UpdateSubGroup(connect, s.dbData.ID, s.dbData.Title, s.dbData.Note, s.dbData.Index, newSequence)
-	if err != nil {
-		return errors.Join(err, errors.New("UpdateSubGroup error"))
-	}
-	return nil
+	s.dbData.TaskSequence = newSequence
+	return s.Save()
 }
 
 func (s *SubGroupLogic) Save() error {
-	connect := db.GTodoneDBMgr.GetConnect(db.ConnectTypeSubGroup)
-	err := db.UpdateSubGroup(connect, s.dbData.ID, s.dbData.Title, s.dbData.Note, s.dbData.Index, s.dbData.TaskSequence)
-	if err != nil {
-		return err
-	}
+	// DO NOTHING，尝试下自动保存
+	//connect := db.GTodoneDBMgr.GetConnect(db.ConnectTypeSubGroup)
+	//err := db.UpdateSubGroup(connect, s.dbData.ID, s.dbData.Title, s.dbData.Note, s.dbData.Index, s.dbData.TaskSequence)
+	//if err != nil {
+	//	return err
+	//}
 	return nil
 }
 
 func (s *SubGroupLogic) CreateTask(userID string, title, note string, taskType db.TaskType, Started bool, parentTaskID uint32) (*TaskLogic, error) {
 	connect := db.GTodoneDBMgr.GetConnect(db.ConnectTypeTask)
-	ID, err := db.CreateTask(connect, userID, s.dbData.ID, parentTaskID, title, note, Started)
-	if err != nil {
+	taskDB, err := db.CreateTask(connect, userID, s.dbData.ID, parentTaskID, title, note, Started)
+	if taskDB == nil || err != nil {
 		return nil, err
 	}
-	task := NewTaskLogic(ID)
-	task.OnBindOutData(&db.TaskDB{
-		TaskID:           ID,
-		ParentSubGroupID: s.dbData.ID,
-		Title:            title,
-		Note:             note,
-		TaskType:         taskType,
-		Deleted:          false,
-		Done:             false,
-		Started:          Started,
-		CreatedAt:        time.Now(),
-		UpdatedAt:        time.Now(),
-		ParentTaskID:     parentTaskID,
-	})
+	task := NewTaskLogic(taskDB.TaskID)
+	task.OnBindOutData(taskDB)
 	task.BindOutTags(make([]string, 0))
 
 	// 更新缓存和序列
 	if s.unFinTasksCache != nil {
 		s.unFinTasksCache[task.dbData.TaskID] = task
 		task.BindOutIndex(s.taskSequence.GetSequenceOrAdd(parentTaskID, task.dbData.TaskID))
-		err = s.Save()
+		err = s.OnChangeSeq()
 		if err != nil {
 			return nil, err
 		}
@@ -368,21 +447,36 @@ func (s *SubGroupLogic) BeforeTaskMove(taskIDs []uint32, newParentID uint32) (Ma
 		seq[task.dbData.ParentTaskID] = s.taskSequence[task.dbData.ParentTaskID]
 	}
 
+	for parentID, children := range s.taskSequence {
+		if moveSet.Contains(parentID) {
+			s.taskSequence.RemoveAsParent(parentID)
+			continue
+		}
+		
+		newChildren := make([]uint32, 0)
+		for _, childID := range children {
+			if !moveSet.Contains(childID) {
+				newChildren = append(newChildren, childID)
+			}
+		}
+		if len(newChildren) > 0 {
+			s.taskSequence[parentID] = newChildren
+		} else {
+			s.taskSequence.RemoveAsParent(parentID)
+		}
+	}
+	err = s.OnChangeSeq()
+	if err != nil {
+		GTodoneShare.Log.ErrorErr("todone.subgtoup.auto", errors.Join(err, errors.New("OnChangeSeq error")))
+		return nil, nil, nil
+	}
+
 	// 从缓存中删除已经移动的任务
 	for taskID := range moveSet {
 		if _, ok := s.unFinTasksCache[taskID]; ok {
 			delete(s.unFinTasksCache, taskID)
 		}
 	}
-	// 更新序列 不执行，序列中的值还是保留，seq下载下载时自然会删除。
-	//newTasks, err := s.GetTasks(false)
-	//if err != nil {
-	//	return nil, nil, nil
-	//}
-	//err = s.buildSequence(newTasks)
-	//if err != nil {
-	//	return nil, nil, nil
-	//}
 
 	// 返回：新的序列、需要更改父节点的任务ID、无需更改父节点的任务ID
 	return seq, needChangeParent, noNeedChangeParent
@@ -459,9 +553,9 @@ func (s *SubGroupLogic) AfterTaskMove(seq MapIdTree, needChangeParent, noNeedCha
 			s.taskSequence[newParentID] = newSeq
 		}
 	}
-	err = s.SaveSequence()
+	err = s.OnChangeSeq()
 	if err != nil {
-		return errors.Join(err, errors.New("SaveSequence error"))
+		return errors.Join(err, errors.New("OnChangeSeq error"))
 	}
 
 	// 插入缓存
@@ -566,4 +660,21 @@ func (s *SubGroupLogic) GetTaskLogic(id uint32) *TaskLogic {
 
 	task.BindOutIndex(s.taskSequence.GetSequenceOrAdd(taskDB.ParentTaskID, taskDB.TaskID))
 	return task
+}
+
+func (s *SubGroupLogic) RefreshCache(task *TaskLogic) error {
+	// 如果缓存中没有数据，就将其加入缓存，并在下次请求时（加入seq）。
+	if s.unFinTasksCache == nil {
+		// 没有缓存就不用处理
+		return nil
+	}
+	if task == nil || task.dbData == nil || task.dbData.Done {
+		return nil
+	}
+	if _, ok := s.unFinTasksCache[task.dbData.TaskID]; !ok {
+		s.unFinTasksCache[task.dbData.TaskID] = task
+	} else {
+		return nil
+	}
+	return nil
 }

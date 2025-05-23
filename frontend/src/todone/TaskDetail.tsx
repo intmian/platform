@@ -121,6 +121,9 @@ function Editor(props: { value: string, onChange: (value: string) => void, onUpl
             theme="snow"
             value={props.value}
             onChange={(value) => {
+                if (quillRef.current === null) {
+                    return;
+                }
                 const editor = quillRef.current.getEditor();
                 const delta = editor.getContents();
                 if (delta.ops.length === 1 && delta.ops[0].insert === '\n') {
@@ -470,8 +473,17 @@ export function TaskMovePanel(props: TaskMoveProps) {
         confirmLoading={loading}
         onOk={() => {
             const values = form.getFieldsValue();
+            let after = true
+            if (values.movePosition === "before") {
+                after = false
+            }
+            if (values.movePosition === "inside") {
+                trgParent = trgTaskID
+                trgTaskID = 0;
+            }
+
             const req: TaskMoveReq = {
-                After: values.movePosition === "after",
+                After: after,
                 DirID: props.subGroupAddr.getLastDirID(),
                 GroupID: props.subGroupAddr.getLastGroupID(),
                 SubGroupID: props.subGroupAddr.getLastSubGroupID(),
@@ -518,6 +530,7 @@ export function TaskMovePanel(props: TaskMoveProps) {
                 >
                     <Select.Option value="before">{trgIsTask ? "移到之前" : "移到最前"}</Select.Option>
                     <Select.Option value="after">{trgIsTask ? "移到之后" : "移到最后"}</Select.Option>
+                    {trgIsTask ? <Select.Option value="inside">移到子任务</Select.Option> : null}
                 </Select>
             </Form.Item>
         </Form>

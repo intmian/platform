@@ -212,11 +212,34 @@ func (s *Service) OnGetTask(valid backendshare.Valid, req GetTaskReq) (ret GetTa
 func (s *Service) OnChangeTask(valid backendshare.Valid, req ChangeTaskReq) (ret ChangeTaskRet, err error) {
 	f := func(user *logic.UserLogic) {
 		task := user.GetTaskLogic(req.DirID, req.GroupID, req.SubGroupID, req.Data.ID)
-		err2 := task.ChangeFromProtocol(req.Data)
+		data, err2 := task.GetTaskData()
 		if err2 != nil {
 			err = errors.Join(err, err2)
 			return
 		}
+		if data == nil {
+			err = errors.New("task not exist")
+			return
+		}
+		needRefreshCache := false
+		// 由于缓存限制，如果曾经的任务是未完成的，修改为完成的，缓存需要刷新
+		if data.Done != req.Data.Done && data.Done {
+			needRefreshCache = true
+		}
+		err2 = task.ChangeFromProtocol(req.Data)
+		if err2 != nil {
+			err = errors.Join(err, err2)
+			return
+		}
+		if needRefreshCache {
+			subGroup := user.GetSubGroupLogic(req.DirID, req.GroupID, req.SubGroupID)
+			err = subGroup.RefreshCache(task)
+			if err != nil {
+				err = errors.Join(err, err2)
+				return
+			}
+		}
+
 	}
 	s.userMgr.SafeUseUserLogic(req.UserID, f, func() {
 		err = errors.New("user not exist")

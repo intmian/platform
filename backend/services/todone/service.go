@@ -1,6 +1,7 @@
 package todone
 
 import (
+	"context"
 	"errors"
 	"github.com/intmian/mian_go_lib/tool/misc"
 	"github.com/intmian/mian_go_lib/xstorage"
@@ -14,10 +15,13 @@ import (
 type Service struct {
 	share   backendshare.ServiceShare
 	userMgr logic.UserMgr
+	cancel  context.CancelFunc
 }
 
 func (s *Service) Start(share backendshare.ServiceShare) error {
 	s.share = share
+	logic.GTodoneShare = &s.share
+	logic.GTodoneCtx, s.cancel = context.WithCancel(s.share.Ctx)
 	begin := time.Now()
 	s.share.Log.Info("TODONE", "启动服务")
 	// 注册配置
@@ -63,7 +67,9 @@ func (s *Service) Start(share backendshare.ServiceShare) error {
 func (s *Service) Stop() error {
 	// 释放管理器以释放资源
 	s.userMgr = logic.UserMgr{}
-
+	logic.GTodoneShare = nil
+	s.cancel()
+	logic.GTodoneCtx = nil
 	return nil
 }
 
