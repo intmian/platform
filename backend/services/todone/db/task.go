@@ -34,7 +34,7 @@ type TaskDB struct {
 	Wait4   string
 }
 
-func CreateTask(db *gorm.DB, userID string, parentSubGroupID, parentTaskID uint32, title, note string, started bool) (*TaskDB, error) {
+func CreateTask(db *gorm.DB, userID string, parentSubGroupID, parentTaskID uint32, title, note string, started bool, taskType TaskType) (*TaskDB, error) {
 	task := TaskDB{
 		UserID:           userID,
 		ParentSubGroupID: parentSubGroupID,
@@ -44,6 +44,7 @@ func CreateTask(db *gorm.DB, userID string, parentSubGroupID, parentTaskID uint3
 		Deleted:          false,
 		Done:             false,
 		Started:          started,
+		TaskType:         taskType,
 		CreatedAt:        time.Now(),
 		UpdatedAt:        time.Now(),
 	}

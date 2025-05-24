@@ -320,7 +320,7 @@ func (s *SubGroupLogic) Save() error {
 
 func (s *SubGroupLogic) CreateTask(userID string, title, note string, taskType db.TaskType, Started bool, parentTaskID uint32) (*TaskLogic, error) {
 	connect := db.GTodoneDBMgr.GetConnect(db.ConnectTypeTask)
-	taskDB, err := db.CreateTask(connect, userID, s.dbData.ID, parentTaskID, title, note, Started)
+	taskDB, err := db.CreateTask(connect, userID, s.dbData.ID, parentTaskID, title, note, Started, taskType)
 	if taskDB == nil || err != nil {
 		return nil, err
 	}
