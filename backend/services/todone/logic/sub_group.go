@@ -15,6 +15,8 @@ type SubGroupLogic struct {
 
 	unFinTasksCache map[uint32]*TaskLogic
 	taskSequence    MapIdTree
+
+	closeGo func()
 }
 
 type AutoSave struct {
@@ -90,11 +92,13 @@ func NewSubGroupLogic(dbData *db.SubGroupDB) *SubGroupLogic {
 	if err != nil {
 		return nil
 	}
-	NewAutoSave(dbData, GTodoneCtx)
+	ctx, f := context.WithCancel(GTodoneCtx)
+	NewAutoSave(dbData, ctx)
 	return &SubGroupLogic{
 		dbData:          dbData,
 		unFinTasksCache: make(map[uint32]*TaskLogic),
 		taskSequence:    tree,
+		closeGo:         f,
 	}
 }
 
@@ -341,12 +345,13 @@ func (s *SubGroupLogic) CreateTask(userID string, title, note string, taskType d
 	return task, nil
 }
 
-func (s *SubGroupLogic) Delete() error {
+func (s *SubGroupLogic) OnDelete() error {
 	connect := db.GTodoneDBMgr.GetConnect(db.ConnectTypeSubGroup)
 	err := db.DeleteSubGroup(connect, s.dbData.ID)
 	if err != nil {
 		return err
 	}
+	s.closeGo()
 	return nil
 }
 

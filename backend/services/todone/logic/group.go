@@ -145,7 +145,7 @@ func (g *GroupLogic) DeleteSubGroup(subGroupID uint32) error {
 	if subGroup == nil {
 		return errors.New("sub group not exist")
 	}
-	err := subGroup.Delete()
+	err := subGroup.OnDelete()
 	if err != nil {
 		return errors.Join(err, errors.New("delete sub group failed"))
 	}
