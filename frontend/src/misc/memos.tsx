@@ -413,11 +413,11 @@ function HideInput({
         }
         if (file.isImage) {
             // 插入图片
-            const imgTag = `\n![${file.name}](${file.publishUrl})`;
+            const imgTag = `![${file.name}](${file.publishUrl})`;
             setShowText((prev) => prev + (needenter ? '\n' : '') + imgTag);
         } else {
             // 插入链接
-            const linkTag = `\n[${file.name}](${file.publishUrl})`;
+            const linkTag = `[${file.name}](${file.publishUrl})`;
             setShowText((prev) => prev + (needenter ? '\n' : '') + linkTag);
         }
     }, []);
@@ -804,7 +804,7 @@ function Memos() {
                         onClick={() => {
                             // 如果剪切板里面有图片，则询问是否上传剪切板图片，否则
                             // 弹出上传文件的对话框
-                            if (navigator.clipboard && navigator.clipboard.read) {
+                            if (!isMobile && navigator.clipboard && navigator.clipboard.read) {
                                 navigator.clipboard.read().then((items) => {
                                     for (const item of items) {
                                         for (const type of item.types) {
