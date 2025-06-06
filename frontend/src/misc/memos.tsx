@@ -1,6 +1,6 @@
 import React, {useCallback, useContext, useEffect, useImperativeHandle, useRef, useState} from "react";
 import {Button, Flex, Input, message, Modal, notification, Space, Spin, Tooltip} from "antd";
-import {CheckCircleTwoTone, CloseCircleTwoTone, SettingFilled, SyncOutlined} from "@ant-design/icons";
+import {CheckCircleTwoTone, CloseCircleTwoTone, FileAddOutlined, SettingFilled, SyncOutlined} from "@ant-design/icons";
 import TagInput from "../common/TagInput";
 import {useLostFocus} from "../common/hook";
 import {sendCfgServiceGet, sendCfgServiceSet} from "../common/sendhttp";
@@ -8,7 +8,7 @@ import {TextAreaRef} from "antd/es/input/TextArea";
 import {useIsMobile} from "../common/hooksv2";
 import User from "../common/User";
 import {LoginCtx} from "../common/loginCtx";
-import {sendGptRewrite} from "../common/newSendHttp";
+import {FileShow, sendGptRewrite, UploadFile} from "../common/newSendHttp";
 
 // TODO: 使用ios打开网页时，当浏览器切换到后台，立刻重新切回前台，网页并未被回收，但是浏览器会自动刷新一次，此时如果停止刷新，使用是完全正常的，似乎是底层问题后面看看
 
@@ -317,6 +317,7 @@ function HideInput({
         show: () => void,
         focus: () => void,
         gptReWrite: () => void
+        addFile: (file: FileShow) => void
     }>,
     onChange: (text: string) => void
 }) {
@@ -405,14 +406,31 @@ function HideInput({
 
     }, [get, show]);
 
+    const addFile = useCallback((file: FileShow) => {
+        let needenter = false;
+        if (showText.length > 0 && !showText.endsWith('\n')) {
+            needenter = true;
+        }
+        if (file.isImage) {
+            // 插入图片
+            const imgTag = `\n![${file.name}](${file.publishUrl})`;
+            setShowText((prev) => prev + (needenter ? '\n' : '') + imgTag);
+        } else {
+            // 插入链接
+            const linkTag = `\n[${file.name}](${file.publishUrl})`;
+            setShowText((prev) => prev + (needenter ? '\n' : '') + linkTag);
+        }
+    }, []);
+
     useImperativeHandle(functionsRef, () => ({
         clear,
         get,
         hide,
         show,
         focus,
-        gptReWrite
-    }), [clear, focus, get, hide, show, gptReWrite]);
+        gptReWrite,
+        addFile
+    }), [clear, focus, get, hide, show, gptReWrite, addFile]);
 
     useEffect(() => {
         onChange(get());
@@ -481,13 +499,14 @@ function HideInput({
 
 }
 
-
 function Memos() {
     const [loadingUser, setLoadingUser] = useState(true);
     const [loadingSetting, setLoadingSetting] = useState(true);
     const [openSetting, setOpenSetting] = useState(false);
     const [hidden, setHidden] = useState(false);
     const isMobile = useIsMobile();
+    const [uploading, setUploading] = useState(false);
+
     // 更换Favicon为/newslogo.webp
     useEffect(() => {
         const existingFavicon = document.querySelector('link[rel="icon"], link[rel="shortcut icon"]');
@@ -538,8 +557,9 @@ function Memos() {
         get: () => string;
         hide: () => void;
         show: () => void;
-        focus: () => void
-        gptReWrite: () => void
+        focus: () => void;
+        gptReWrite: () => void;
+        addFile: (file: FileShow) => void;
     }> = useRef({
         clear: () => {
         },
@@ -551,8 +571,31 @@ function Memos() {
         focus: () => {
         },
         gptReWrite: () => {
+        },
+        addFile: (file: FileShow) => {
         }
     });
+
+    function onUpload(file: File) {
+        setUploading(true);
+        UploadFile(file).then((fileShow) => {
+            setUploading(false);
+            if (fileShow) {
+                // 上传成功，显示通��
+                notification.success({
+                    message: '上传成功',
+                    description: `文件 ${fileShow.name} 已上传`,
+                });
+                inputRef.current.addFile(fileShow);
+            } else {
+                notification.error({
+                    message: '上传失败',
+                    description: '请重试或联系管理员',
+                });
+            }
+        })
+    }
+
     const [canSubmit, setCanSubmit] = useState(false);
     const input = <HideInput functionsRef={inputRef}
                              onChange={(text) => {
@@ -734,7 +777,9 @@ function Memos() {
                             inputRef.current.show();
                         }
                         setHidden(!hidden)
-                    }}>{
+                    }}
+                            size={"small"}
+                    >{
                         hidden ? '显示' : '隐藏'
                     }</Button>
                     <Button
@@ -746,9 +791,80 @@ function Memos() {
                                 inputRef.current.gptReWrite();
                             }
                         }}
+                        size={"small"}
                     >
                         AI
                     </Button>
+                    <Button
+                        // 上传按钮
+                        icon={<FileAddOutlined/>}
+                        // type={"text"}
+                        size={"small"}
+                        loading={uploading}
+                        onClick={() => {
+                            // 如果剪切板里面有图片，则询问是否上传剪切板图片，否则
+                            // 弹出上传文件的对话框
+                            if (navigator.clipboard && navigator.clipboard.read) {
+                                navigator.clipboard.read().then((items) => {
+                                    for (const item of items) {
+                                        for (const type of item.types) {
+                                            if (type.startsWith('image/')) {
+                                                // 有图片
+                                                Modal.confirm({
+                                                    title: '上传剪切板图片',
+                                                    content: '是否上传剪切板中的图片？',
+                                                    onOk: () => {
+                                                        item.getType(type).then((blob) => {
+                                                            const file = new File([blob], `clipboard-image.${type.split('/')[1]}`, {type});
+                                                            onUpload(file);
+                                                        });
+                                                    },
+                                                    onCancel: () => {
+                                                        const input = document.createElement('input');
+                                                        input.type = 'file';
+                                                        input.multiple = false;
+                                                        input.onchange = (e: any) => {
+                                                            const file = e.target.files[0];
+                                                            if (file) {
+                                                                onUpload(file);
+                                                            }
+                                                        };
+                                                        input.click();
+                                                    },
+                                                });
+                                                return;
+                                            }
+                                        }
+                                    }
+                                    // 没有图片，直接上传文件
+                                    message.info('剪切板没有图片，直接上传文件');
+                                    const input = document.createElement('input');
+                                    input.type = 'file';
+                                    input.multiple = false;
+                                    input.onchange = (e: any) => {
+                                        const file = e.target.files[0];
+                                        if (file) {
+                                            onUpload(file);
+                                        }
+                                    };
+                                    input.click();
+                                }).catch((err) => {
+                                    console.error('Failed to read clipboard contents: ', err);
+                                });
+                            } else {
+                                const input = document.createElement('input');
+                                input.type = 'file';
+                                input.multiple = false;
+                                input.onchange = (e: any) => {
+                                    const file = e.target.files[0];
+                                    if (file) {
+                                        onUpload(file);
+                                    }
+                                };
+                                input.click();
+                            }
+                        }}
+                    />
                     <Button
                         type="primary"
                         disabled={!canSubmit || loadingSetting}

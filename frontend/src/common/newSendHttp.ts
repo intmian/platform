@@ -1,5 +1,6 @@
 import {EnvData, TaskIO, TaskStatus, ToolData} from "./backHttpDefine";
 import config from "../config.json";
+import {message} from "antd";
 
 export interface UniReturn {
     code: number
@@ -605,4 +606,55 @@ export async function getWebPing(url: string, attempts: number = 10): Promise<{ 
 export async function sendGptRewrite(text: string): Promise<string> {
     const res: UniResult = await UniPost(config.api_base_url + '/misc/gpt-rewrite', {content: text});
     return res.ok ? (res.data as unknown as string) : '';
+}
+
+export interface FileShow {
+    isImage: boolean;
+    name: string;
+    publishUrl: string;
+}
+
+export async function UploadFile(file: File): Promise<FileShow | null> {
+    const res = await fetch('/api/misc/r2-presigned-url', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+            fileName: file.name,
+            fileType: file.type,
+        }),
+    });
+
+    if (!res.ok) {
+        message.error("获取上传地址失败").then();
+        return null;
+    }
+    const {code, data} = await res.json();
+    if (code !== 0) {
+        message.error("获取上传地址失败").then();
+        return null;
+    }
+    const {UploadURL, PublicURL} = data;
+
+    if (!UploadURL || !PublicURL) {
+        message.error("上传失败").then();
+        return null;
+    }
+
+    const res2 = await fetch(UploadURL, {
+        method: 'PUT',
+        headers: {'Content-Type': file.type},
+        body: file,
+    });
+    if (!res2.ok) {
+        message.error("上传文件失败").then();
+        return null;
+    }
+
+    const isImage = file.type.startsWith('image/');
+
+    return {
+        isImage: isImage,
+        name: file.name,
+        publishUrl: PublicURL
+    };
 }
