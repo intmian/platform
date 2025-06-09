@@ -227,16 +227,18 @@ function NewsCard({title, articles}: { title: string, articles?: NewsArticle[] }
     </Card>
 }
 
-
 function GoogleNewsCard({title, articles}: { title: string, articles?: NewsArticle[] }) {
     const isMobile = useIsMobile();
+    const fakeNews = ["- 风闻", "- 观察者网", "- 环球网", "- 环球时报"];
+    const boughtNews = ["- 汽车之家", "- 车家号"];
+
     if (!articles) {
         return <Card title={title} style={{
             marginBottom: '16px',
-            borderRadius: '10px',               /* 圆角 */
-            boxShadow: '0 4px 10px rgba(0, 0, 0, 0.15)', /* 阴影效果 */
-            backgroundColor: '#fff',           /* 背景色 */
-            padding: '16px',                     /* 内边距 */
+            borderRadius: '10px',
+            boxShadow: '0 4px 10px rgba(0, 0, 0, 0.15)',
+            backgroundColor: '#fff',
+            padding: '16px',
         }}>
             <Text type="secondary">暂无新闻</Text>
         </Card>;
@@ -244,30 +246,42 @@ function GoogleNewsCard({title, articles}: { title: string, articles?: NewsArtic
     return (
         <Card title={title} style={{
             marginBottom: '16px',
-            borderRadius: '10px',               /* 圆角 */
-            boxShadow: '0 4px 10px rgba(0, 0, 0, 0.15)', /* 阴影效果 */
-            backgroundColor: '#fff',           /* 背景色 */
-            padding: '16px',                     /* 内边距 */
+            borderRadius: '10px',
+            boxShadow: '0 4px 10px rgba(0, 0, 0, 0.15)',
+            backgroundColor: '#fff',
+            padding: '16px',
         }}>
             <List
                 itemLayout="horizontal"
                 dataSource={articles}
-                renderItem={item => (
-                    <List.Item key={item.title} style={{
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
-                    }}>
-                        <Link to={item.link} target="_blank" rel="noopener noreferrer">{item.title}</Link>
-                        <Text type="secondary" style={{
-                            width: "20ch",
-                            // 靠右
-                            textAlign: 'right',
+                renderItem={item => {
+                    let tag: React.ReactNode = null;
+                    if (fakeNews.some(domain => item.title.includes(domain))) {
+                        tag = <Tag color="red" style={{marginRight: 4}}>谣媒</Tag>;
+                    } else if (boughtNews.some(domain => item.title.includes(domain))) {
+                        tag = <Tag color="orange" style={{marginRight: 4}}>枪媒</Tag>;
+                    }
+                    return (
+                        <List.Item key={item.title} style={{
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
                         }}>
-                            {isMobile ? new Date(item.pubDate).toLocaleDateString('zh-CN', {timeZone: 'Asia/Shanghai'}) : new Date(item.pubDate).toLocaleString('zh-CN', {timeZone: 'Asia/Shanghai'})}
-                        </Text>
-                    </List.Item>
-                )}
+                            <div style={{display: 'flex', alignItems: 'center'}}>
+                                {tag}
+                                <Link to={item.link} target="_blank" rel="noopener noreferrer">{item.title}</Link>
+                            </div>
+                            <Text type="secondary" style={{
+                                width: "20ch",
+                                textAlign: 'right',
+                            }}>
+                                {isMobile
+                                    ? new Date(item.pubDate).toLocaleDateString('zh-CN', {timeZone: 'Asia/Shanghai'})
+                                    : new Date(item.pubDate).toLocaleString('zh-CN', {timeZone: 'Asia/Shanghai'})}
+                            </Text>
+                        </List.Item>
+                    );
+                }}
             />
         </Card>
     );
