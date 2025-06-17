@@ -34,7 +34,7 @@ function ReportPanel() {
     }, [selected]);
 
     // 不合法的日期，自动导入今日日期
-    if (date && date !== "" && date != "last" && date !== "whole" && !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    if (date && date !== "" && date != "last" && date !== "whole" && !/^(\d{4}-\d{2}-\d{2})(_\d{4}-\d{2}-\d{2})*$/.test(date)) {
         // 获取今日日期
         const today = new Date();
         setSelected(`${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`);

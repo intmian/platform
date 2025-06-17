@@ -18,6 +18,52 @@ function ReportShow({selected}: {
         if (selected === "") {
             return;
         }
+        // 多天聚合
+        if (selected.includes("_")) {
+            const days = selected.split("_");
+            let reports: DayReport[] = [];
+            let loaded = 0;
+            let summary = "";
+            let weather: any = null;
+            let weatherIndex: any = null;
+            let bbcNews: any[] = [];
+            let nytNews: any[] = [];
+            let googleNews: any[] = [];
+            // 并发请求
+            days.forEach(day => {
+                sendGetReport({DayString: day}, (ret) => {
+                    if (ret.ok) {
+                        reports.push(ret.data.Report);
+                    }
+                    loaded++;
+                    if (loaded === days.length) {
+                        // 聚合
+                        let dayI = 0;
+                        for (const rep of reports) {
+                            if (rep.Summary) {
+                                // 日期 内容 日期 内容
+                                summary += days[dayI] + '\n' + rep.Summary + "\n";
+                            }
+                            // if (rep.Weather && !weather) weather = rep.Weather;
+                            // if (rep.WeatherIndex && !weatherIndex) weatherIndex = rep.WeatherIndex;
+                            if (rep.BbcNews) bbcNews = bbcNews.concat(rep.BbcNews || []);
+                            if (rep.NytNews) nytNews = nytNews.concat(rep.NytNews || []);
+                            if (rep.GoogleNews) googleNews = googleNews.concat(rep.GoogleNews || []);
+                            dayI++;
+                        }
+                        setData({
+                            Summary: summary,
+                            Weather: weather,
+                            WeatherIndex: weatherIndex,
+                            BbcNews: bbcNews,
+                            NytNews: nytNews,
+                            GoogleNews: googleNews,
+                        });
+                    }
+                });
+            });
+            return;
+        }
         if (selected === "whole") {
             sendGetWholeReport({}, (ret) => {
                 if (ret.ok) {
@@ -40,7 +86,10 @@ function ReportShow({selected}: {
             justifyContent: 'center',
             marginBottom: '2px',
         }}>
-            <Title level={2}>{selected === "whole" ? "新闻汇总" : selected + "日报"} </Title>
+            <Title level={2}>
+                {selected === "whole" ? "新闻汇总" :
+                    selected.includes("_") ? selected.replace(/_/g, " ~ ") + " 区间日报" : selected + " 日报"}
+            </Title>
         </Row>
         <Dashboard data={data}/>
     </div>;
