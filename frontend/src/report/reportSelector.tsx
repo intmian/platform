@@ -1,7 +1,7 @@
 import {sendGenerateReport, sendGetReportList} from "../common/newSendHttp";
 import {useEffect, useState} from "react";
 import {Button, Col, DatePicker, Divider, message, Popconfirm, Row} from "antd";
-import {useIsMobile} from "../common/hooksv2";
+import {ScreenType, useScreenType} from "../common/hooksv2";
 import User from "../common/User";
 import dayjs, {Dayjs} from "dayjs";
 
@@ -12,7 +12,7 @@ function ReportSelector({onSelect}: {
 }) {
     const [reportList, setReportList] = useState<string[]>([]);
     // 响应式
-    const isMobile = useIsMobile();
+    const screenType = useScreenType();
 
     useEffect(() => {
         sendGetReportList({}, (ret) => {
@@ -39,23 +39,6 @@ function ReportSelector({onSelect}: {
                 handleRefresh();
             }
         });
-    };
-
-    // 日历高亮
-    const dateCellRender = (current: Dayjs) => {
-        const dateStr = current.format("YYYY-MM-DD");
-        // if (reportList.includes(dateStr)) {
-        //     return <div style={{
-        //         width: 24,
-        //         height: 24,
-        //         borderRadius: 12,
-        //         background: "#1890ff",
-        //         color: "#fff",
-        //         textAlign: "center",
-        //         lineHeight: "24px"
-        //     }}>{current.date()}</div>;
-        // }
-        return <div>{current.date()}</div>;
     };
 
     // 只允许选择有日报的日期
@@ -100,7 +83,7 @@ function ReportSelector({onSelect}: {
         <Col span={24}>
             <DatePicker
                 style={{width: "100%"}}
-                placeholder="选择日期"
+                placeholder={screenType == ScreenType.SmallDesktop ? "" : "选择日期"}
                 disabledDate={disabledDate}
                 // dateRender={dateCellRender}
                 onChange={(date, dateStr) => {
@@ -112,44 +95,45 @@ function ReportSelector({onSelect}: {
         <Col span={24}>
             <RangePicker
                 style={{width: "100%"}}
-                placeholder={["开始日期", "结束日期"]}
+                placeholder={screenType == ScreenType.SmallDesktop ? ["", ""] : ["开始日期", "结束日期"]}
                 disabledDate={disabledDate}
                 // dateRender={dateCellRender}
                 onChange={onCalendarChange}
                 allowClear={false}
             />
         </Col>
-        <Col span={12}>
+        <Col span={screenType == ScreenType.SmallDesktop ? 24 : 12}>
             <Button style={{width: "100%"}} onClick={() => {
                 if (window.confirm("确定要生成新闻汇总吗？")) {
                     onSelect("whole");
                 }
-            }} danger>{isMobile ? "新闻汇总" : "生成新闻汇总"}</Button>
+            }} danger>{screenType != ScreenType.Desktop ? "新闻汇总" : "生成新闻汇总"}</Button>
         </Col>
-        <Col span={12}>
+        <Col span={screenType == ScreenType.SmallDesktop ? 24 : 12}>
             <Popconfirm
                 title="确定要生成今日报告吗？"
                 onConfirm={() => generateReport()}
                 okText="确定"
                 cancelText="取消"
             >
-                <Button style={{width: "100%"}}>{isMobile ? "今日报告" : "生成今日报告"}</Button>
+                <Button
+                    style={{width: "100%"}}>{screenType != ScreenType.Desktop ? "今日报告" : "生成今日报告"}</Button>
             </Popconfirm>
         </Col>
-        <Col span={12}>
+        <Col span={screenType == ScreenType.SmallDesktop ? 24 : 12}>
             <Button style={{width: "100%"}} onClick={() => {
                 const today = dayjs();
                 onSelect(today.format("YYYY-MM-DD"));
             }}>选择今日</Button>
         </Col>
-        <Col span={12}>
+        <Col span={screenType == ScreenType.SmallDesktop ? 24 : 12}>
             <Button style={{width: "100%"}} onClick={handleRefresh}>刷新列表</Button>
         </Col>
     </Row>
 
     return <div
         style={{
-            padding: isMobile ? "0px" : "20px",
+            padding: screenType == ScreenType.Mobile ? "0px" : "20px",
         }}
     >
         <Row
