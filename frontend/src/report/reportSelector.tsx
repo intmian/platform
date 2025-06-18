@@ -75,7 +75,7 @@ function ReportSelector({onSelect}: {
                 const end = dates[1].endOf('day');
                 const selectedDays = reportList.filter(d => {
                     const djs = dayjs(d);
-                    return djs.isAfter(start) || djs.isSame(start) && (djs.isBefore(end) || djs.isSame(end));
+                    return (djs.isSame(start) || djs.isAfter(start)) && (djs.isSame(end) || djs.isBefore(end));
                 });
                 if (selectedDays.length > 0) {
                     onSelect(selectedDays.join("_"));
