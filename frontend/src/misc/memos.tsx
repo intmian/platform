@@ -695,8 +695,7 @@ function Memos() {
                                     input.type = 'file';
                                     input.multiple = false;
                                     input.onchange = (e: any) => {
-                                        const file = e.target.files[0];
-                                        if (file) {
+                                        for (const file of e.target.files) {
                                             onUpload(file);
                                         }
                                     };
@@ -728,10 +727,13 @@ function Memos() {
         } else {
             const input = document.createElement('input');
             input.type = 'file';
-            input.multiple = false;
+            input.multiple = true;
             input.onchange = (e: any) => {
-                const file = e.target.files[0];
-                if (file) {
+                // const file = e.target.files[0];
+                // if (file) {
+                //     onUpload(file);
+                // }
+                for (const file of e.target.files) {
                     onUpload(file);
                 }
             };
