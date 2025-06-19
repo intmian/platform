@@ -1,146 +1,21 @@
 import {Addr, AddrUnitType} from "./addr";
 import {PTask} from "./net/protocal";
 import {Button, DatePicker, Flex, Form, Input, message, Modal, Select, Typography} from "antd";
-import {useEffect, useRef, useState} from "react";
+import {useEffect, useState} from "react";
 import dayjs from "dayjs";
 import {EmptyGoTimeStr, IsDateEmptyFromGoEmpty} from "../common/tool";
 import {ChangeTaskReq, sendChangeTask, sendDelTask, sendTaskMove, TaskMoveReq} from "./net/send_back";
 import {SaveOutlined} from "@ant-design/icons";
 import {useIsMobile} from "../common/hooksv2";
-import ReactQuill from "react-quill-new";
 import "react-quill-new/dist/quill.snow.css";
 import TaskTree from "./TaskTree";
+import {Editor} from "./TaskDetailEditor";
 
 interface TaskDetailProps {
     addr: Addr
     task: PTask
     refreshApi: () => void
     tree: TaskTree
-}
-
-function Editor(props: { value: string, onChange: (value: string) => void, onUpload: () => void }) {
-    const quillRef = useRef<any>(null);
-    const isMobile = useIsMobile();
-
-    const handleUpload = async (file: File, isImage: boolean) => {
-        const res = await fetch('/api/misc/r2-presigned-url', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({
-                fileName: file.name,
-                fileType: file.type,
-            }),
-        });
-
-        if (!res.ok) {
-            message.error("获取上传地址失败").then();
-            return;
-        }
-        const {code, data} = await res.json();
-        if (code !== 0) {
-            message.error("获取上传地址失败").then();
-            return;
-        }
-        const {UploadURL, PublicURL} = data;
-
-        if (!UploadURL || !PublicURL) {
-            message.error("上传失败").then();
-            return;
-        }
-
-        const res2 = await fetch(UploadURL, {
-            method: 'PUT',
-            headers: {'Content-Type': file.type},
-            body: file,
-        });
-        if (!res2.ok) {
-            message.error("上传文件失败").then();
-            return;
-        }
-
-        const editor = quillRef.current.getEditor();
-        const range = editor.getSelection(true);
-
-        if (isImage) {
-            editor.insertEmbed(range.index, 'image', PublicURL);
-        } else {
-            const displayName = file.name;
-            editor.insertText(range.index, displayName, 'link', PublicURL);
-        }
-        // props.onUpload();
-    };
-
-    const imageHandler = () => {
-        const input = document.createElement('input');
-        input.setAttribute('type', 'file');
-        input.setAttribute('accept', 'image/*');
-        input.onchange = () => {
-            const file = input.files?.[0];
-            if (file) handleUpload(file, true);
-        };
-        input.click();
-    };
-
-    const attachmentHandler = () => {
-        const input = document.createElement('input');
-        input.setAttribute('type', 'file');
-        input.onchange = () => {
-            const file = input.files?.[0];
-            if (file) handleUpload(file, false);
-        };
-        input.click();
-    };
-
-    const modules = {
-        toolbar: {
-            container: [
-                [{header: [1, 2, 3, false]}],
-                [{list: 'ordered'}, {list: 'bullet'}],
-                ['bold', 'italic', 'underline'],
-                ['clean'],
-                ['image', 'link'],
-            ],
-            handlers: {
-                image: imageHandler,
-                link: attachmentHandler,
-            },
-        },
-    };
-    const formats = [
-        'header',
-        'bold', 'italic', 'underline',
-        'list',
-        'image', 'link',
-    ];
-
-    return <Flex style={{flex: 1, width: "100%", height: "100%"}}
-                 vertical={true}
-    >
-        <ReactQuill
-            ref={quillRef}
-            theme="snow"
-            value={props.value}
-            onChange={(value) => {
-                if (quillRef.current === null) {
-                    return;
-                }
-                const editor = quillRef.current.getEditor();
-                const delta = editor.getContents();
-                if (delta.ops.length === 1 && delta.ops[0].insert === '\n') {
-                    props.onChange("");
-                } else {
-                    props.onChange(value);
-                }
-            }}
-            placeholder="任务备注"
-            modules={modules}
-            formats={formats}
-            style={{
-                fontSize: isMobile ? "16px" : undefined,
-                height: isMobile ? "70%" : "80%",
-            }}
-        />
-    </Flex>;
 }
 
 export function TaskDetail(props: TaskDetailProps) {

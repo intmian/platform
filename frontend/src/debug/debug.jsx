@@ -1,10 +1,11 @@
 import {useState} from "react";
-import {Button, Card, Col, InputNumber, List, Row, Slider, Space, Typography} from "antd";
+import {Button, Card, Col, InputNumber, Row, Slider, Space, Typography} from "antd";
 import {CustomDeviceSimulator, DeviceSimulator} from "./DeviceSim.jsx";
 import {MenuPlus} from "../common/MenuPlus.jsx";
 import {EditableProps} from "./EditableProps.jsx";
 import {ConfigsType, ConfigType} from "../common/UniConfigDef.js";
 import {ConfigsCtr} from "../common/UniConfig.jsx";
+import {Editor} from "../todone/TaskDetailEditor";
 
 const {Text} = Typography;
 
@@ -13,11 +14,14 @@ const config = new ConfigsCtr(ConfigsType.Plat)
 config.addBaseConfig('test', '测试', ConfigType.SliceString, 'test')
 config.addBaseConfig('realKey', '真实2', ConfigType.String, 'realKey')
 
-const debug = <List
-    dataSource={[]}
-    renderItem={(item) => <List.Item>{item}</List.Item>}
-    locale={{emptyText: ' '}}
-    pagination={false}
+const debug = <Editor
+    onChange={(str) => {
+        console.log('编辑器内容变化:', str);
+    }}
+    // value={'23333'}
+    onUpload={(file) => {
+        console.log('上传文件:', file);
+    }}
 />
 
 // const settings = {
