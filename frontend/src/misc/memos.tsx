@@ -308,7 +308,7 @@ function Tags({TagsChange, setting, style, tags}: {
 // HideInput 用于输入并展示当前输入的内容，如果隐藏的模式下会对展示数据进行隐藏，ref用于清空，获得内容，触发隐藏逻辑等。
 function HideInput({
                        functionsRef,
-                       onChange
+                       onChange,
                    }: {
     functionsRef: React.MutableRefObject<{
         clear: () => void,
@@ -319,7 +319,7 @@ function HideInput({
         gptReWrite: () => void
         addFile: (file: FileShow) => void
     }>,
-    onChange: (text: string) => void
+    onChange: (text: string) => void,
 }) {
     // 目前显示的内容，输入的内容也同步在这里
     const [showText, setShowText] = useState('');
@@ -420,7 +420,7 @@ function HideInput({
             const linkTag = `[${file.name}](${file.publishUrl})`;
             setShowText((prev) => prev + (needenter ? '\n' : '') + linkTag);
         }
-    }, []);
+    }, [showText]);
 
     useImperativeHandle(functionsRef, () => ({
         clear,
@@ -672,6 +672,73 @@ function Memos() {
         />;
     }
 
+    function UpdateFileWith() {
+        // 如果剪切板里面有图片，则询问是否上传剪切板图片，否则
+        // 弹出上传文件的对话框
+        if (!isMobile && navigator.clipboard && navigator.clipboard.read) {
+            navigator.clipboard.read().then((items) => {
+                for (const item of items) {
+                    for (const type of item.types) {
+                        if (type.startsWith('image/')) {
+                            // 有图片
+                            Modal.confirm({
+                                title: '上传剪切板图片',
+                                content: '是否上传剪切板中的图片？',
+                                onOk: () => {
+                                    item.getType(type).then((blob) => {
+                                        const file = new File([blob], `clipboard-image.${type.split('/')[1]}`, {type});
+                                        onUpload(file);
+                                    });
+                                },
+                                onCancel: () => {
+                                    const input = document.createElement('input');
+                                    input.type = 'file';
+                                    input.multiple = false;
+                                    input.onchange = (e: any) => {
+                                        const file = e.target.files[0];
+                                        if (file) {
+                                            onUpload(file);
+                                        }
+                                    };
+                                    input.click();
+                                },
+                            });
+                            return;
+                        }
+                    }
+                }
+                // 没有图片，直接上传文件
+                message.info('剪切板没有图片，直接上传文件');
+                const input = document.createElement('input');
+                input.type = 'file';
+                input.multiple = true;
+                input.onchange = (e: any) => {
+                    // const file = e.target.files[0];
+                    // if (file) {
+                    //     onUpload(file);
+                    // }
+                    for (const file of e.target.files) {
+                        onUpload(file);
+                    }
+                };
+                input.click();
+            }).catch((err) => {
+                console.error('Failed to read clipboard contents: ', err);
+            });
+        } else {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.multiple = false;
+            input.onchange = (e: any) => {
+                const file = e.target.files[0];
+                if (file) {
+                    onUpload(file);
+                }
+            };
+            input.click();
+        }
+    }
+
     return <div
         style={{
             // 绝对定位
@@ -801,69 +868,7 @@ function Memos() {
                         // type={"text"}
                         size={"small"}
                         loading={uploading}
-                        onClick={() => {
-                            // 如果剪切板里面有图片，则询问是否上传剪切板图片，否则
-                            // 弹出上传文件的对话框
-                            if (!isMobile && navigator.clipboard && navigator.clipboard.read) {
-                                navigator.clipboard.read().then((items) => {
-                                    for (const item of items) {
-                                        for (const type of item.types) {
-                                            if (type.startsWith('image/')) {
-                                                // 有图片
-                                                Modal.confirm({
-                                                    title: '上传剪切板图片',
-                                                    content: '是否上传剪切板中的图片？',
-                                                    onOk: () => {
-                                                        item.getType(type).then((blob) => {
-                                                            const file = new File([blob], `clipboard-image.${type.split('/')[1]}`, {type});
-                                                            onUpload(file);
-                                                        });
-                                                    },
-                                                    onCancel: () => {
-                                                        const input = document.createElement('input');
-                                                        input.type = 'file';
-                                                        input.multiple = false;
-                                                        input.onchange = (e: any) => {
-                                                            const file = e.target.files[0];
-                                                            if (file) {
-                                                                onUpload(file);
-                                                            }
-                                                        };
-                                                        input.click();
-                                                    },
-                                                });
-                                                return;
-                                            }
-                                        }
-                                    }
-                                    // 没有图片，直接上传文件
-                                    message.info('剪切板没有图片，直接上传文件');
-                                    const input = document.createElement('input');
-                                    input.type = 'file';
-                                    input.multiple = false;
-                                    input.onchange = (e: any) => {
-                                        const file = e.target.files[0];
-                                        if (file) {
-                                            onUpload(file);
-                                        }
-                                    };
-                                    input.click();
-                                }).catch((err) => {
-                                    console.error('Failed to read clipboard contents: ', err);
-                                });
-                            } else {
-                                const input = document.createElement('input');
-                                input.type = 'file';
-                                input.multiple = false;
-                                input.onchange = (e: any) => {
-                                    const file = e.target.files[0];
-                                    if (file) {
-                                        onUpload(file);
-                                    }
-                                };
-                                input.click();
-                            }
-                        }}
+                        onClick={UpdateFileWith}
                     />
                     <Button
                         type="primary"
