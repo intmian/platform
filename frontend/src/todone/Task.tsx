@@ -346,11 +346,9 @@ export function Task(props: TaskProps) {
     // 菜单相关
     const [menuVisible, setMenuVisible] = useState(false);
     const [menuPosition, setMenuPosition] = useState<{ x: number, y: number } | null>(null);
-
-    // 新增：移动和删除弹窗控制
+    // 移动和删除弹窗控制
     const [showMove, setShowMove] = useState(false);
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-
     // 右键事件
     const handleContextMenu = (e: React.MouseEvent) => {
         e.preventDefault();
@@ -376,13 +374,11 @@ export function Task(props: TaskProps) {
             message.error("复制失败");
         }
     };
-
-    // 新增：移动
+    // 移动
     const handleMove = () => {
         setShowMove(true);
     };
-
-    // 新增：删除
+    // 删除
     const handleDelete = () => {
         setShowDeleteConfirm(true);
     };
@@ -425,7 +421,7 @@ export function Task(props: TaskProps) {
     const thisAddr = props.addr.copy();
     thisAddr.addTask(props.task.ID);
 
-    // 新增：删除确认弹窗
+    // 删除确认弹窗
     const handleDeleteConfirm = () => {
         sendDelTask({
             DirID: props.addr.getLastDirID(),
@@ -478,7 +474,7 @@ export function Task(props: TaskProps) {
                 </Dropdown>
             </div>
         }
-        {/* 新增：移动弹窗 */}
+        {/*移动弹窗 */}
         {showMove && (
             <TaskMovePanel
                 subGroupAddr={props.addr}
@@ -493,7 +489,7 @@ export function Task(props: TaskProps) {
                 }}
             />
         )}
-        {/* 新增：删除确认弹窗 */}
+        {/*删除确认弹窗 */}
         <Modal
             open={showDeleteConfirm}
             title="确认删除"
