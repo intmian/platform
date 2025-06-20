@@ -1,6 +1,6 @@
 import {Addr} from "./addr";
 import {PTask, TaskType} from "./net/protocal";
-import {Button, Checkbox, Flex, Row, Tag} from "antd";
+import {Button, Checkbox, Dropdown, Flex, MenuProps, message, Modal, Row, Tag} from "antd";
 import {ReactNode, useEffect, useState} from "react";
 import {
     CheckOutlined,
@@ -13,8 +13,9 @@ import {
 import {IsDateEmptyFromGoEmpty} from "../common/tool";
 import TaskTree, {TaskTreeNode} from "./TaskTree";
 import {TaskList} from "./TaskList";
-import {ChangeTaskReq, sendChangeTask} from "./net/send_back";
+import {ChangeTaskReq, sendChangeTask, sendDelTask} from "./net/send_back";
 import {useStateWithLocal} from "../common/hooksv2";
+import {TaskMovePanel} from "./TaskDetail";
 
 enum Status {
     // 以下状态为未开始 started == false
@@ -146,9 +147,10 @@ interface TaskTitleProps {
     isShowSon: boolean
     onSelectTask: () => void
     hasSon?: boolean
+    onContextMenu: (e: React.MouseEvent<HTMLDivElement>) => void
 }
 
-export function TaskTitle({task, clickShowSubTask, isShowSon, onSelectTask, hasSon}: TaskTitleProps) {
+export function TaskTitle({task, clickShowSubTask, isShowSon, onSelectTask, hasSon, onContextMenu}: TaskTitleProps) {
     // 判断任务状态
     let BeforeBegin = false;
     const beginTime = new Date(task.BeginTime);
@@ -175,6 +177,7 @@ export function TaskTitle({task, clickShowSubTask, isShowSon, onSelectTask, hasS
             }}
         >
             <div
+                onContextMenu={onContextMenu}
                 style={{
                     flex: 1,
                     color,
@@ -339,13 +342,169 @@ export function Task(props: TaskProps) {
     }
     const [showSubTask, setShowSubTask] = useStateWithLocal("todone:task:showSubTask:" + props.task.ID, hasSon);
     const [operate, setOperate] = useState(false); // 是否操作
+
+    // 菜单相关
+    const [menuVisible, setMenuVisible] = useState(false);
+    const [menuPosition, setMenuPosition] = useState<{ x: number, y: number } | null>(null);
+
+    // 新增：移动和删除弹窗控制
+    const [showMove, setShowMove] = useState(false);
+    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
+    // 右键事件
+    const handleContextMenu = (e: React.MouseEvent) => {
+        e.preventDefault();
+        setMenuPosition({x: e.clientX, y: e.clientY});
+        setMenuVisible(true);
+    };
+
+    // 复制内容
+    const handleCopyContent = async () => {
+        try {
+            await navigator.clipboard.writeText(props.task.Title || "");
+            message.success("内容已复制" + (props.task.Title || ""));
+        } catch {
+            message.error("复制失败");
+        }
+    };
+    // 复制路径
+    const handleCopyPath = async () => {
+        try {
+            await navigator.clipboard.writeText(thisAddr.toString());
+            message.success("路径已复制" + thisAddr.toString());
+        } catch {
+            message.error("复制失败");
+        }
+    };
+
+    // 新增：移动
+    const handleMove = () => {
+        setShowMove(true);
+    };
+
+    // 新增：删除
+    const handleDelete = () => {
+        setShowDeleteConfirm(true);
+    };
+
+    const dropdownItems: MenuProps['items'] = [
+        {
+            label: "复制内容",
+            key: "copyContent",
+        },
+        {
+            label: "复制路径",
+            key: "copyPath",
+        },
+        {
+            type: "divider"
+        },
+        {
+            label: "移动",
+            key: "move",
+        },
+        {
+            label: <span style={{color: "red"}}>删除</span>,
+            key: "delete",
+        },
+    ];
+
+    const dropdownMenuClickHandler = ({key}: { key: string }) => {
+        setMenuVisible(false);
+        if (key === "copyContent") {
+            handleCopyContent();
+        } else if (key === "copyPath") {
+            handleCopyPath();
+        } else if (key === "move") {
+            handleMove();
+        } else if (key === "delete") {
+            handleDelete();
+        }
+    }
+
     const thisAddr = props.addr.copy();
     thisAddr.addTask(props.task.ID);
+
+    // 新增：删除确认弹窗
+    const handleDeleteConfirm = () => {
+        sendDelTask({
+            DirID: props.addr.getLastDirID(),
+            GroupID: props.addr.getLastGroupID(),
+            SubGroupID: props.addr.getLastSubGroupID(),
+            UserID: props.addr.userID,
+            TaskID: [props.task.ID],
+        }, (ret) => {
+            if (ret.ok) {
+                message.success("删除任务成功").then();
+                props.tree.deleteTask(props.task.ID);
+                props.refreshTree();
+            } else {
+                message.error("删除任务失败").then();
+            }
+            setShowDeleteConfirm(false);
+        });
+    };
+
     return <div
         style={{
             width: '100%',
         }}
+        onMouseLeave={() => {
+            setMenuVisible(false);
+        }}
     >
+        {/* 右键菜单 */}
+        {menuVisible && menuPosition &&
+            <div
+                style={{
+                    position: "fixed",
+                    top: menuPosition.y,
+                    left: menuPosition.x,
+                    zIndex: 1000,
+                }}
+                onContextMenu={e => e.preventDefault()}
+                onMouseLeave={() => setMenuVisible(false)}
+            >
+                <Dropdown
+                    menu={{
+                        items: dropdownItems,
+                        onClick: dropdownMenuClickHandler,
+                    }}
+                    open={menuVisible}
+                    trigger={[]}
+                    placement="bottomLeft"
+                >
+                    <div/>
+                </Dropdown>
+            </div>
+        }
+        {/* 新增：移动弹窗 */}
+        {showMove && (
+            <TaskMovePanel
+                subGroupAddr={props.addr}
+                movedTasks={[props.task.ID]}
+                refreshApi={props.refreshTree}
+                tree={props.tree}
+                onCancel={() => setShowMove(false)}
+                onFinish={() => {
+                    setShowMove(false);
+                    // 刷新浏览器标签页
+                    document.location.reload();
+                }}
+            />
+        )}
+        {/* 新增：删除确认弹窗 */}
+        <Modal
+            open={showDeleteConfirm}
+            title="确认删除"
+            okText="删除"
+            okButtonProps={{danger: true}}
+            cancelText="取消"
+            onCancel={() => setShowDeleteConfirm(false)}
+            onOk={handleDeleteConfirm}
+        >
+            确认要删除该任务吗？此操作不可恢复。
+        </Modal>
         <Flex
             style={{
                 columnGap: '10px',
@@ -400,6 +559,7 @@ export function Task(props: TaskProps) {
                 }}
                 isShowSon={showSubTask}
                 hasSon={hasSon}
+                onContextMenu={handleContextMenu}
             />
             {props.selectMode && <Checkbox
                 onChange={() => {
