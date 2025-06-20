@@ -362,7 +362,7 @@ export function Task(props: TaskProps) {
     const handleCopyContent = async () => {
         try {
             await navigator.clipboard.writeText(props.task.Title || "");
-            message.success("内容已复制" + (props.task.Title || ""));
+            message.success("内容已复制");
         } catch {
             message.error("复制失败");
         }
@@ -371,7 +371,7 @@ export function Task(props: TaskProps) {
     const handleCopyPath = async () => {
         try {
             await navigator.clipboard.writeText(thisAddr.toString());
-            message.success("路径已复制" + thisAddr.toString());
+            message.success("路径已复制");
         } catch {
             message.error("复制失败");
         }
