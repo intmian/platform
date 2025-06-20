@@ -5,7 +5,7 @@ import {MenuPlus} from "../common/MenuPlus.jsx";
 import {EditableProps} from "./EditableProps.jsx";
 import {ConfigsType, ConfigType} from "../common/UniConfigDef.js";
 import {ConfigsCtr} from "../common/UniConfig.jsx";
-import {Editor} from "../todone/TaskDetailEditor";
+import ContextMenu from "../common/ContextMenu";
 
 const {Text} = Typography;
 
@@ -14,15 +14,40 @@ const config = new ConfigsCtr(ConfigsType.Plat)
 config.addBaseConfig('test', '测试', ConfigType.SliceString, 'test')
 config.addBaseConfig('realKey', '真实2', ConfigType.String, 'realKey')
 
-const debug = <Editor
-    onChange={(str) => {
-        console.log('编辑器内容变化:', str);
-    }}
-    // value={'23333'}
-    onUpload={(file) => {
-        console.log('上传文件:', file);
-    }}
-/>
+const dropdownItems = [
+    {
+        label: "复制内容",
+        key: "copyContent",
+    },
+    {
+        label: "复制路径",
+        key: "copyPath",
+    },
+    {
+        type: "divider"
+    },
+    {
+        label: "移动",
+        key: "move",
+    },
+    {
+        label: <span style={{color: "red"}}>删除</span>,
+        key: "delete",
+    },
+];
+
+const dropdownMenuClickHandler = ({key}) => {
+    console.log("点击了菜单项:", key);
+}
+
+const debug = <ContextMenu menu={{
+    items: dropdownItems,
+    onClick: dropdownMenuClickHandler,
+}}>
+    <div>
+        2333333
+    </div>
+</ContextMenu>
 
 // const settings = {
 //     init: false,
