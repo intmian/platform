@@ -61,6 +61,8 @@ function ReportSelector({onSelect}: {
                     return (djs.isSame(start) || djs.isAfter(start)) && (djs.isSame(end) || djs.isBefore(end));
                 });
                 if (selectedDays.length > 0) {
+                    // 倒序
+                    selectedDays.sort((a, b) => dayjs(a).diff(dayjs(b)));
                     onSelect(selectedDays.join("_"));
                 } else {
                     message.warning("所选区间无日报");

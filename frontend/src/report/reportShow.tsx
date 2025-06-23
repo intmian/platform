@@ -48,7 +48,17 @@ function ReportShow({selected}: {
                             // if (rep.WeatherIndex && !weatherIndex) weatherIndex = rep.WeatherIndex;
                             if (rep.BbcNews) bbcNews = bbcNews.concat(rep.BbcNews || []);
                             if (rep.NytNews) nytNews = nytNews.concat(rep.NytNews || []);
-                            if (rep.GoogleNews) googleNews = googleNews.concat(rep.GoogleNews || []);
+                            if (rep.GoogleNews) {
+                                rep.GoogleNews.forEach((group: GoogleNewsGroup) => {
+                                    // 查找是否已存在该关键词的新闻组
+                                    const existing = googleNews.find(g => g.KeyWord === group.KeyWord);
+                                    if (existing) {
+                                        existing.News = existing.News.concat(group.News || []);
+                                    } else {
+                                        googleNews.push({...group, News: group.News || []});
+                                    }
+                                });
+                            }
                             dayI++;
                         }
                         setData({
