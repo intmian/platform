@@ -354,7 +354,7 @@ function DirChangePanel(props: DirChangePanelProps) {
                             const req: MoveGroupReq = {
                                 UserID: props.addr.userID,
                                 GroupID: props.addr.getLastUnit().ID,
-                                ParentDirID: addr.getUnit(addr.getLength() - 2).ID,
+                                ParentDirID: props.addr.getUnit(props.addr.getLength() - 2).ID,
                                 TrgDir: trgDirID,
                                 AfterID: 0,
                             }
