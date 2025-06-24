@@ -309,6 +309,7 @@ function Tags({TagsChange, setting, style, tags}: {
 function HideInput({
                        functionsRef,
                        onChange,
+                       onPasteFile,
                    }: {
     functionsRef: React.MutableRefObject<{
         clear: () => void,
@@ -320,6 +321,7 @@ function HideInput({
         addFile: (file: FileShow) => void
     }>,
     onChange: (text: string) => void,
+    onPasteFile: (file: File) => void,
 }) {
     // 目前显示的内容，输入的内容也同步在这里
     const [showText, setShowText] = useState('');
@@ -494,9 +496,14 @@ function HideInput({
             value={showText}
             onChange={(e) => setShowText(e.target.value)}
             placeholder={'Enter换行\nCtrl+Enter发送\ntab切换标签输入'}
+            onPaste={e => {
+                if (onPasteFile && e.clipboardData && e.clipboardData.files && e.clipboardData.files.length > 0) {
+                    e.preventDefault();
+                    onPasteFile(e.clipboardData.files[0]);
+                }
+            }}
         /></div>}
-    </>;
-
+    </>
 }
 
 function Memos() {
@@ -601,6 +608,11 @@ function Memos() {
                              onChange={(text) => {
                                  // 当输入框内容发生变化时，检查是否可以发送，这样可以减少刷新次数
                                  setCanSubmit(NowSetting.url !== '' && NowSetting.key !== '' && text !== '');
+                             }}
+                             onPasteFile={(file) => {
+                                 if (file) {
+                                     onUpload(file);
+                                 }
                              }}
     />
 
