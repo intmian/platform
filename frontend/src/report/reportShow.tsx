@@ -378,10 +378,11 @@ function Dashboard({data}: DashboardProps) {
     // 按时间升序排序
     BbcNews = [...BbcNews].sort((a, b) => new Date(a.pubDate).getTime() - new Date(b.pubDate).getTime());
     NytNews = [...NytNews].sort((a, b) => new Date(a.pubDate).getTime() - new Date(b.pubDate).getTime());
-    GoogleNews = GoogleNews.map(group => ({
-        ...group,
-        News: [...group.News].sort((a, b) => new Date(a.pubDate).getTime() - new Date(b.pubDate).getTime())
-    }));
+    for (const group of GoogleNews) {
+        if (group.News && group.News.length > 0) {
+            group.News = [...group.News].sort((a, b) => new Date(a.pubDate).getTime() - new Date(b.pubDate).getTime());
+        }
+    }
 
     // 生成谷歌新闻组件，有数据的放在前面，没有数据的放在后面
     const GoogleNewsCards: React.ReactNode[] = [];
