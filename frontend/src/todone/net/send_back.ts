@@ -447,3 +447,49 @@ export function sendTaskMove(req: TaskMoveReq, callback: (ret: { data: TaskMoveR
         callback(result);
     });
 }
+
+export interface TaskAddTagReq {
+    UserID: string
+    DirID: number
+    GroupID: number
+    SubGroupID: number
+    TaskID: number
+    Tag: string
+}
+
+export type TaskAddTagRet = object
+
+
+export interface TaskDelTagReq {
+    UserID: string
+    DirID: number
+    GroupID: number
+    SubGroupID: number
+    TaskID: number
+    Tag: string
+}
+
+export type TaskDelTagRet = object
+
+export function sendTaskAddTag(req: TaskAddTagReq, callback: (ret: { data: TaskAddTagRet, ok: boolean }) => void) {
+    UniPost(api_base_url + 'taskAddTag', req).then((res: UniResult) => {
+        const result: { data: TaskAddTagRet, ok: boolean } = {
+            data: res.data as TaskAddTagRet,
+            ok: res.ok
+        };
+
+        callback(result);
+    });
+}
+
+export function sendTaskDelTag(req: TaskDelTagReq, callback: (ret: { data: TaskDelTagRet, ok: boolean }) => void) {
+    UniPost(api_base_url + 'taskDelTag', req).then((res: UniResult) => {
+        const result: { data: TaskDelTagRet, ok: boolean } = {
+            data: res.data as TaskDelTagRet,
+            ok: res.ok
+        };
+
+        callback(result);
+    });
+}
+

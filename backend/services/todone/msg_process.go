@@ -422,3 +422,41 @@ func (s *Service) OnTaskMove(valid backendshare.Valid, req TaskMoveReq) (ret Tas
 	})
 	return
 }
+
+func (s *Service) OnTaskAddTag(valid backendshare.Valid, req TaskAddTagReq) (ret TaskAddTagRet, err error) {
+	f := func(user *logic.UserLogic) {
+		task := user.GetTaskLogic(req.DirID, req.GroupID, req.SubGroupID, req.TaskID)
+		if task == nil {
+			err = errors.New("task not exist")
+			return
+		}
+		err2 := task.AddTag(req.Tag)
+		if err2 != nil {
+			err = errors.Join(err, err2)
+			return
+		}
+	}
+	s.userMgr.SafeUseUserLogic(req.UserID, f, func() {
+		err = errors.New("user not exist")
+	})
+	return
+}
+
+func (s *Service) OnTaskDelTag(valid backendshare.Valid, req TaskDelTagReq) (ret TaskDelTagRet, err error) {
+	f := func(user *logic.UserLogic) {
+		task := user.GetTaskLogic(req.DirID, req.GroupID, req.SubGroupID, req.TaskID)
+		if task == nil {
+			err = errors.New("task not exist")
+			return
+		}
+		err2 := task.RemoveTag(req.Tag)
+		if err2 != nil {
+			err = errors.Join(err, err2)
+			return
+		}
+	}
+	s.userMgr.SafeUseUserLogic(req.UserID, f, func() {
+		err = errors.New("user not exist")
+	})
+	return
+}

@@ -13,7 +13,7 @@ import {
 import {IsDateEmptyFromGoEmpty} from "../common/tool";
 import TaskTree, {TaskTreeNode} from "./TaskTree";
 import {TaskList} from "./TaskList";
-import {ChangeTaskReq, sendChangeTask, sendDelTask} from "./net/send_back";
+import {ChangeTaskReq, sendChangeTask, sendDelTask, sendTaskAddTag, sendTaskDelTag} from "./net/send_back";
 import {useStateWithLocal} from "../common/hooksv2";
 import {TaskMovePanel} from "./TaskDetail";
 
@@ -133,6 +133,10 @@ export function TaskTags({task}: { task: PTask }) {
     }
     if (task.Tags) {
         for (const tag of task.Tags) {
+            // 如果是[system]开头的标签，特殊处理
+            if (tag.startsWith("[system]")) {
+                continue;
+            }
             tags.push(<Tag key={tag} color="blue">{tag}</Tag>)
         }
     }
@@ -168,6 +172,7 @@ export function TaskTitle({task, clickShowSubTask, isShowSon, onSelectTask, hasS
     if (task.Done) {
         textDecoration = 'line-through';
     }
+    const isFlag = task.Tags && task.Tags.includes("[system]flag");
     return (
         <Flex
             style={{
@@ -188,6 +193,7 @@ export function TaskTitle({task, clickShowSubTask, isShowSon, onSelectTask, hasS
                 }}
                 onClick={onSelectTask}
             >
+                {isFlag && <span style={{color: 'red'}}>★ </span>}
                 {task.Title}
             </div>
             <Button
@@ -346,6 +352,8 @@ export function Task(props: TaskProps) {
     // 菜单相关
     const [menuVisible, setMenuVisible] = useState(false);
     const [menuPosition, setMenuPosition] = useState<{ x: number, y: number } | null>(null);
+    // 新增：菜单loading key
+    const [menuLoadingKey, setMenuLoadingKey] = useState<string | null>(null);
     // 移动和删除弹窗控制
     const [showMove, setShowMove] = useState(false);
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -383,38 +391,142 @@ export function Task(props: TaskProps) {
         setShowDeleteConfirm(true);
     };
 
+    const hasFlag = props.task.Tags && props.task.Tags.includes("[system]flag");
+
+    // 修改：handleFlag 支持回调
+    const handleFlag = (cb?: () => void) => {
+        if (hasFlag) {
+            const req = {
+                DirID: props.addr.getLastDirID(),
+                GroupID: props.addr.getLastGroupID(),
+                SubGroupID: props.addr.getLastSubGroupID(),
+                UserID: props.addr.userID,
+                TaskID: props.task.ID,
+                Tag: "[system]flag",
+            }
+            sendTaskDelTag(req, (ret) => {
+                if (ret.ok) {
+                    message.success("取消标记任务成功").then();
+                    props.task.Tags = props.task.Tags.filter(tag => tag !== "[system]flag");
+                    props.refreshTree();
+                } else {
+                    message.error("取消标记任务失败").then();
+                }
+                if (cb) cb();
+            })
+            return
+        }
+        const req = {
+            DirID: props.addr.getLastDirID(),
+            GroupID: props.addr.getLastGroupID(),
+            SubGroupID: props.addr.getLastSubGroupID(),
+            UserID: props.addr.userID,
+            TaskID: props.task.ID,
+            Tag: "[system]flag",
+        }
+        sendTaskAddTag(req, (ret) => {
+            if (ret.ok) {
+                message.success("标记任务成功").then();
+                if (!props.task.Tags) {
+                    props.task.Tags = [];
+                }
+                props.task.Tags.push("[system]flag");
+                props.refreshTree();
+            } else {
+                message.error("标记任务失败").then();
+            }
+            if (cb) cb();
+        })
+    }
+
+    // 下方dropdownItems改为动态生成，支持loading
     const dropdownItems: MenuProps['items'] = [
         {
-            label: "复制内容",
+            label: (
+                <span>
+                    复制内容
+                    {menuLoadingKey === "copyContent" && <LoadingOutlined style={{marginLeft: 8}} spin />}
+                </span>
+            ),
             key: "copyContent",
+            disabled: menuLoadingKey !== null,
         },
         {
-            label: "复制路径",
+            label: (
+                <span>
+                    复制路径
+                    {menuLoadingKey === "copyPath" && <LoadingOutlined style={{marginLeft: 8}} spin />}
+                </span>
+            ),
             key: "copyPath",
+            disabled: menuLoadingKey !== null,
+        },
+        {
+            label: (
+                <span>
+                    {hasFlag ? "取消标记" : "标记任务"}
+                    {menuLoadingKey === "flag" && <LoadingOutlined style={{marginLeft: 8}} spin />}
+                </span>
+            ),
+            key: "flag",
+            disabled: menuLoadingKey !== null,
         },
         {
             type: "divider"
         },
         {
-            label: "移动",
+            label: (
+                <span>
+                    移动
+                </span>
+            ),
             key: "move",
+            disabled: menuLoadingKey !== null,
         },
         {
-            label: <span style={{color: "red"}}>删除</span>,
+            label: (
+                <span style={{color: "red"}}>
+                    删除
+                </span>
+            ),
             key: "delete",
+            disabled: menuLoadingKey !== null,
         },
     ];
 
-    const dropdownMenuClickHandler = ({key}: { key: string }) => {
-        setMenuVisible(false);
-        if (key === "copyContent") {
-            handleCopyContent();
-        } else if (key === "copyPath") {
-            handleCopyPath();
-        } else if (key === "move") {
+    // 修改菜单点击处理，删除和移动直接关闭菜单，不显示loading
+    const dropdownMenuClickHandler = async ({key}: { key: string }) => {
+        if (menuLoadingKey) return;
+        if (key === "move") {
             handleMove();
-        } else if (key === "delete") {
+            setMenuVisible(false);
+            return;
+        }
+        if (key === "delete") {
             handleDelete();
+            setMenuVisible(false);
+            return;
+        }
+        setMenuLoadingKey(key);
+        let finish = () => {
+            setMenuLoadingKey(null);
+            setMenuVisible(false);
+        };
+        try {
+            if (key === "copyContent") {
+                await handleCopyContent();
+                finish();
+            } else if (key === "copyPath") {
+                await handleCopyPath();
+                finish();
+            } else if (key === "flag") {
+                // 标记/取消标记为异步，回调后关闭菜单
+                handleFlag(finish);
+            } else {
+                finish();
+            }
+        } catch {
+            finish();
         }
     }
 

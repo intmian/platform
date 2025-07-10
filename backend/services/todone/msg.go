@@ -283,3 +283,31 @@ type TaskMoveReq struct {
 
 type TaskMoveRet struct {
 }
+
+const CmdTaskAddTag share.Cmd = "taskAddTag"
+
+type TaskAddTagReq struct {
+	UserID     string
+	DirID      uint32
+	GroupID    uint32
+	SubGroupID uint32
+	TaskID     uint32
+	Tag        string
+}
+
+type TaskAddTagRet struct {
+}
+
+const CmdTaskDelTag share.Cmd = "taskDelTag"
+
+type TaskDelTagReq struct {
+	UserID     string
+	DirID      uint32
+	GroupID    uint32
+	SubGroupID uint32
+	TaskID     uint32
+	Tag        string
+}
+
+type TaskDelTagRet struct {
+}

@@ -132,6 +132,10 @@ func (s *Service) HandleRpc(msg backendshare.Msg, valid backendshare.Valid) (int
 		return backendshare.HandleRpcTool("subGroup", msg, valid, s.OnSubGroup)
 	case CmdTaskMove:
 		return backendshare.HandleRpcTool("taskMove", msg, valid, s.OnTaskMove)
+	case CmdTaskAddTag:
+		return backendshare.HandleRpcTool("taskAddTag", msg, valid, s.OnTaskAddTag)
+	case CmdTaskDelTag:
+		return backendshare.HandleRpcTool("taskDelTag", msg, valid, s.OnTaskDelTag)
 	}
 
 	return nil, errors.New("cmd not found")
