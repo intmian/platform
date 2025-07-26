@@ -11,10 +11,10 @@ export function TagInput({
                              disabled,
                              style,
                              tips = '选择或新增标签',
-
                              maxTagCount,
                              maxTagTextLength,
                              maxTagPlaceholder,
+                             onCtrlEnter,
                          }) {
     const [loadding, setLoadding] = useState(true);
     const pinyinLib = useRef(null);
@@ -82,6 +82,15 @@ export function TagInput({
             searchValue={inputValue}
             onSearch={handleSearch}
             onSelect={handleSelect}
+            onInputKeyDown={(e) => {
+                if (e.ctrlKey && e.key === 'Enter') {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (onCtrlEnter) {
+                        onCtrlEnter();
+                    }
+                }
+            }}
             filterOption={
                 (input, option) => {
                     // 支持拼音搜索 使用pinyin库，如果不是纯字母不会开启拼音搜索，为了避免太多候选项，仅搜索开头。

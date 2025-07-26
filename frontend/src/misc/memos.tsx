@@ -270,11 +270,12 @@ function MemosQueue({reqs, url, apiKey}: { reqs: MemosReq[], url: string, apiKey
     </Space>;
 }
 
-function Tags({TagsChange, setting, style, tags}: {
+function Tags({TagsChange, setting, style, tags, onCtrlEnter}: {
     TagsChange: (tags: string[]) => void,
     setting: MemosSetting,
     style: React.CSSProperties | undefined,
-    tags: string[]
+    tags: string[],
+    onCtrlEnter: () => void
 }) {
     // 从localStorage中获取之前缓存的tags
     const tagsOprDisk = JSON.parse(localStorage.getItem('memosTags') || '[]');
@@ -294,6 +295,7 @@ function Tags({TagsChange, setting, style, tags}: {
         });
     }, [setting.url, setting.key, TagsChange]);
     return <TagInput
+        onCtrlEnter={onCtrlEnter}
         onChange={(tags: string[]) => {
             TagsChange(tags);
         }}
@@ -836,6 +838,11 @@ function Memos() {
                 }}
             >
                 <Tags
+                    onCtrlEnter={() => {
+                        if (canSubmit && !loadingSetting) {
+                            submit();
+                        }
+                    }}
                     TagsChange={tagsChange}
                     tags={tagsSelected}
                     setting={NowSetting}
