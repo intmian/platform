@@ -376,6 +376,8 @@ function Dashboard({data}: DashboardProps) {
     let {Weather, WeatherIndex, BbcNews, NytNews, GoogleNews} = data;
 
     // 按时间升序排序
+    if (!BbcNews) BbcNews = [];
+    if (!NytNews) NytNews = [];
     BbcNews = [...BbcNews].sort((a, b) => new Date(a.pubDate).getTime() - new Date(b.pubDate).getTime());
     NytNews = [...NytNews].sort((a, b) => new Date(a.pubDate).getTime() - new Date(b.pubDate).getTime());
     for (const group of GoogleNews) {
