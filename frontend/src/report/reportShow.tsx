@@ -239,7 +239,7 @@ function SummaryCard({summary}: { summary: string }) {
 function NewsCard({title, articles}: { title: string, articles?: NewsArticle[] }) {
     const isMobile = useIsMobile();
 
-    if (!articles) {
+    if (!articles || articles.length === 0) {
         return <Card title={title} style={{
             marginBottom: '16px',
             borderRadius: '10px',               /* 圆角 */
