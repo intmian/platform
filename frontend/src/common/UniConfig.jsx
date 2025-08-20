@@ -346,7 +346,7 @@ export class ConfigsCtr {
     onDataChanged = []
     server = ''
     user = ''
-    inInit = true
+    needInit = true
 
     constructor(cfgMode, server, user) {
         this.configs = [];
@@ -428,7 +428,7 @@ export class ConfigsCtr {
             for (let key in ret.data) {
                 this.setByDB(key, ret.data[key].Data);
             }
-            this.inInit = false;
+            this.needInit = false;
             this.callBack(true)
         }
         if (this.cfgMode === ConfigsType.Plat) {
@@ -449,7 +449,7 @@ export function UniConfig({configCtr}) {
     // 初始化
     useEffect(() => {
         // 初始化过了就用ctr的数据初始化，否则请求数据
-        if (!configCtr.inInit) {
+        if (!configCtr.needInit) {
             setLoading(false);
             return;
         }

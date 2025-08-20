@@ -81,7 +81,7 @@ interface PerformanceData {
 }
 
 type PerformanceSettingData = {
-    init: boolean;
+    hasInit: boolean;
     outUrl: string;
     realUrl: string;
     baseUrl: string;
@@ -91,7 +91,6 @@ const PerformanceConfigs = new ConfigsCtr(ConfigsType.Plat)
 PerformanceConfigs.addBaseConfig('realUrl', '后端真实地址', ConfigType.String, '')
 PerformanceConfigs.addBaseConfig('outUrl', 'CDN地址', ConfigType.String, '')
 PerformanceConfigs.addBaseConfig('baseUrl', '对比地址', ConfigType.String, '')
-PerformanceConfigs.init()
 
 
 export function Ping({setting}: { setting: PerformanceSettingData }) {
@@ -139,7 +138,7 @@ export function Ping({setting}: { setting: PerformanceSettingData }) {
 
     // 是否完全加载完成
     const isLoaded = !pingData.base.loading && !pingData.real.loading && !pingData.out.loading
-    const isSettingEnough = setting.init && setting.baseUrl && setting.realUrl && setting.outUrl
+    const isSettingEnough = setting.hasInit && setting.baseUrl && setting.realUrl && setting.outUrl
 
     return <Flex justify={
         'space-between'
@@ -283,18 +282,27 @@ const Performance = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(false);
     const [showSetting, setShowSetting] = useState(false)
-    const [setting, setSetting] = useState<PerformanceSettingData>({init: false, outUrl: '', realUrl: '', baseUrl: ''})
+    const [setting, setSetting] = useState<PerformanceSettingData>({
+        hasInit: false,
+        outUrl: '',
+        realUrl: '',
+        baseUrl: ''
+    })
+    const [LoaddingSetting, setLoaddingSetting] = useState(true);
 
     useEffect(() => {
+        if (PerformanceConfigs.needInit) {
+            PerformanceConfigs.init()
+        }
         setSetting({
-            init: !PerformanceConfigs.inInit,
+            hasInit: !PerformanceConfigs.needInit,
             outUrl: PerformanceConfigs.get('outUrl'),
             realUrl: PerformanceConfigs.get('realUrl'),
             baseUrl: PerformanceConfigs.get('baseUrl')
         })
         PerformanceConfigs.addCallback(() => {
             setSetting({
-                init: true,
+                hasInit: true,
                 outUrl: PerformanceConfigs.get('outUrl'),
                 realUrl: PerformanceConfigs.get('realUrl'),
                 baseUrl: PerformanceConfigs.get('baseUrl')
