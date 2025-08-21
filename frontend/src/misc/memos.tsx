@@ -333,6 +333,8 @@ function HideInput({
     const [inAiRewrite, setInAiRewrite] = useState(false);
     const [oldText, setOldText] = useState('');
     const [waitAi, setWaitAi] = useState(false);
+    const [hideMode, setHideMode] = useState(false);
+    const lastInputTime = useRef<Date | null>(null);
 
     // 从浏览器缓存加载数据
     useEffect(() => {
@@ -374,6 +376,7 @@ function HideInput({
     const hide = useCallback(() => {
         hideTextRef.current = showText;
         setShowText('*'.repeat(showText.length));
+        setHideMode(true);
     }, [showText]);
 
     const show = useCallback(() => {
@@ -386,6 +389,21 @@ function HideInput({
             }
         }
         setShowText(hideTextRef.current.slice(0, starCount) + showText.slice(starCount));
+        setHideMode(false);
+    }, [showText]);
+
+    const moreHide = useCallback(() => {
+        // 将星星后的内容隐藏起来
+        let starCount = 0;
+        for (let i = 0; i < showText.length; i++) {
+            if (showText[i] === '*') {
+                starCount++;
+            } else {
+                break;
+            }
+        }
+        hideTextRef.current = hideTextRef.current.slice(0, starCount) + showText.slice(starCount);
+        setShowText('*'.repeat(hideTextRef.current.length));
     }, [showText]);
 
     const focus = useCallback(() => {
@@ -481,7 +499,26 @@ function HideInput({
                     autoFocus
                     style={style2}
                     value={showText}
-                    onChange={(e) => setShowText(e.target.value)}
+                    onChange={(e) => {
+                        setShowText(e.target.value)
+                        // 如果showText出现中文超过两个字则再调用一次hide
+                        if (hideMode) {
+                            let chinineseCount = 0;
+                            for (let i = 0; i < e.target.value.length; i++) {
+                                if (e.target.value.charCodeAt(i) > 255) {
+                                    chinineseCount++;
+                                }
+                            }
+                            if (chinineseCount > 1) {
+                                // 一秒后如果之间没有输入，则调用moreHide
+                                setTimeout(() => {
+                                    if (lastInputTime.current && new Date().getTime() - lastInputTime.current.getTime() > 1000) {
+                                        moreHide();
+                                    }
+                                }, 1000);
+                            }
+                        }
+                    }}
                     placeholder={inAiRewrite ? "loading…" : 'Enter换行\nCtrl+Enter发送\ntab切换标签输入'}
                 />
             }
@@ -496,7 +533,27 @@ function HideInput({
             autoFocus
             style={style}
             value={showText}
-            onChange={(e) => setShowText(e.target.value)}
+            onChange={(e) => {
+                setShowText(e.target.value)
+                lastInputTime.current = new Date();
+                // 如果showText出现中文超过两个字则再调用一次hide
+                if (hideMode) {
+                    let chinineseCount = 0;
+                    for (let i = 0; i < e.target.value.length; i++) {
+                        if (e.target.value.charCodeAt(i) > 255) {
+                            chinineseCount++;
+                        }
+                    }
+                    if (chinineseCount > 1) {
+                        // 一秒后如果之间没有输入，则调用moreHide
+                        setTimeout(() => {
+                            if (lastInputTime.current && new Date().getTime() - lastInputTime.current.getTime() > 1000) {
+                                moreHide();
+                            }
+                        }, 1000);
+                    }
+                }
+            }}
             placeholder={'Enter换行\nCtrl+Enter发送\ntab切换标签输入'}
             onPaste={e => {
                 if (onPasteFile && e.clipboardData && e.clipboardData.files && e.clipboardData.files.length > 0) {
