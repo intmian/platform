@@ -2,6 +2,7 @@ package todone
 
 import (
 	"errors"
+
 	"github.com/intmian/platform/backend/services/todone/db"
 	"github.com/intmian/platform/backend/services/todone/logic"
 	backendshare "github.com/intmian/platform/backend/share"
@@ -136,7 +137,7 @@ func (s *Service) OnDelDir(valid backendshare.Valid, req DelDirReq) (ret DelDirR
 
 func (s *Service) OnCreateGroup(valid backendshare.Valid, req CreateGroupReq) (ret CreateGroupRet, err error) {
 	s.userMgr.SafeUseUserLogic(req.UserID, func(user *logic.UserLogic) {
-		ID, err2, index := user.CreateGroup(req.ParentDir, req.Title, req.Note, req.AfterID)
+		ID, err2, index := user.CreateGroup(req.ParentDir, req.Title, req.Note, req.AfterID, db.GroupType(req.GroupType))
 		if err2 != nil {
 			err = errors.Join(err, err2)
 			return
@@ -420,6 +421,10 @@ func (s *Service) OnTaskMove(valid backendshare.Valid, req TaskMoveReq) (ret Tas
 	s.userMgr.SafeUseUserLogic(req.UserID, f, func() {
 		err = errors.New("user not exist")
 	})
+	if err != nil {
+		// 有一个奇怪的问题，有时出现移动失败，打个日志看看
+		s.share.Log.Info("TODONE", "OnTaskMove err %v %v", req, err)
+	}
 	return
 }
 
