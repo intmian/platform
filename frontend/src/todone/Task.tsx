@@ -303,6 +303,12 @@ export function TaskWaitAndTime({status, task}: { status: Status, task: PTask })
                         等待:<Time2show time={beginTime}/>
                     </Tag>
                 )
+            } else {
+                timeWait.push(
+                    <Tag key={"beginTime2"}>
+                        开始:<Time2show time={beginTime}/>
+                    </Tag>
+                );
             }
         }
         if (!BeforeBegin && !IsDateEmptyFromGoEmpty(task.EndTime)) {
@@ -445,7 +451,7 @@ export function Task(props: TaskProps) {
             label: (
                 <span>
                     复制内容
-                    {menuLoadingKey === "copyContent" && <LoadingOutlined style={{marginLeft: 8}} spin />}
+                    {menuLoadingKey === "copyContent" && <LoadingOutlined style={{marginLeft: 8}} spin/>}
                 </span>
             ),
             key: "copyContent",
@@ -455,7 +461,7 @@ export function Task(props: TaskProps) {
             label: (
                 <span>
                     复制路径
-                    {menuLoadingKey === "copyPath" && <LoadingOutlined style={{marginLeft: 8}} spin />}
+                    {menuLoadingKey === "copyPath" && <LoadingOutlined style={{marginLeft: 8}} spin/>}
                 </span>
             ),
             key: "copyPath",
@@ -465,7 +471,7 @@ export function Task(props: TaskProps) {
             label: (
                 <span>
                     {hasFlag ? "取消标记" : "标记任务"}
-                    {menuLoadingKey === "flag" && <LoadingOutlined style={{marginLeft: 8}} spin />}
+                    {menuLoadingKey === "flag" && <LoadingOutlined style={{marginLeft: 8}} spin/>}
                 </span>
             ),
             key: "flag",
