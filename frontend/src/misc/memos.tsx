@@ -358,6 +358,7 @@ function HideInput({
         localStorage.removeItem('note.lastInput'); // 清空缓存
         setInAiRewrite(false);
         setOldText('');
+        setHideMode(false);
     }, []);
 
     const get = useCallback(() => {
