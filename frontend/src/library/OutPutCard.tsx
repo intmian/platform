@@ -8,7 +8,7 @@ import Paragraphs from "../common/Paragraphs";
 const {Title, Text, Paragraph} = Typography;
 
 // 各评分维度的文字序列
-const SEQ_OBJ = ["垃圾", "劣品", "普通", "优品", "传奇"];
+const SEQ_OBJ = ["垃圾", "低劣", "普通", "优秀", "传奇"];
 const SEQ_SUBJ = ["折磨", "负面", "消磨", "享受", "极致"];
 const SEQ_INNO = ["抄袭", "模仿", "沿袭", "创新", "革命"];
 const SEQ_MAIN = ["零", "差", "合", "优", "满"];
@@ -132,22 +132,26 @@ const OutPutCard: React.FC<OutPutCardProps> = ({data, editable = true, onChange}
                 <Row>
                     <div
                         style={{
-
+                            width: "100%",
                             overflow: "hidden",
                             borderRadius: 6,
-                            border: "1px solid #f0f0f0",
                             display: "flex",
                             alignItems: "center",
                             justifyContent: "center",
-                            background: "#fafafa",
                         }}
                     >
                         <Image
                             src={local.mainPic}
                             alt={local.name}
-
-                            preview={false}
-                            style={{objectFit: "cover"}}
+                            preview={true}
+                            style={{
+                                display: "block",
+                                maxWidth: "100%",    // 超出容器宽度时缩小以适应
+                                maxHeight: 360,      // 可根据需要调整最大高度
+                                width: "auto",       // 小图不放大，保持原始宽度
+                                height: "auto",
+                                objectFit: "contain" // 保持完整图片，不裁切
+                            }}
                         />
                     </div>
                 </Row>

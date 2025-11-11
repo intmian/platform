@@ -5,7 +5,7 @@ import {useEffect} from "react";
 export function JianXing() {
     const data: OutPutData = {
         name: "剑星",
-        mainPic: "https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/3489700/header.jpg?t=1760065361",
+        mainPic: "https://file.plat.intmian.com/uploads/2025/11/11/fjy/5709a4fa-fcce-4aba-bbf6-67642741c615/image.png",
         note: "2024 韩国",
         objScore: {
             value: 4, plus: false, sub: false, comment:
@@ -47,7 +47,7 @@ export function JianXing() {
 
     // 更改标题为 name+mainScore
     useEffect(() => {
-        document.title = `${data.name}评分分享 - ${data.mainScore.value >= 0 ? data.mainScore.value + (data.mainScore.plus ? "+" : data.mainScore.sub ? "-" : "") : ""}`;
+        document.title = `《${data.name}》鉴赏 - ${data.mainScore.value >= 0 ? data.mainScore.value + (data.mainScore.plus ? "+" : data.mainScore.sub ? "-" : "") : ""}/5分`;
     }, [data.name, data.mainScore]);
 
     return <OutPutCard data={data} editable={false}/>;
