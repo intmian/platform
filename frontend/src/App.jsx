@@ -12,6 +12,7 @@ import {Todone} from "./todone/Main";
 import NutritionCalculator from "./misc/NutritionCalculator";
 import dayjs from 'dayjs';
 import 'dayjs/locale/zh-cn';
+import {JianXing} from "./library/JianXingTemp.tsx";
 
 const Memos = lazy(() => import('./misc/memos'));
 
@@ -76,6 +77,10 @@ const router = createBrowserRouter([
     {
         path: '/loss-fat',
         element: <NutritionCalculator/>,
+    },
+    {
+        path: '/rate/jianxing',
+        element: <JianXing/>
     }
 ])
 
