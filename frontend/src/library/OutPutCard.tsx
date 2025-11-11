@@ -141,6 +141,7 @@ const OutPutCard: React.FC<OutPutCardProps> = ({data, editable = true, onChange}
                         }}
                     >
                         <Image
+                            placeholder
                             src={local.mainPic}
                             alt={local.name}
                             preview={true}
