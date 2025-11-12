@@ -1,6 +1,5 @@
 import {OutPutData} from "./OutPutData";
 import OutPutCard from "./OutPutCard";
-import {useEffect} from "react";
 
 export function JianXing() {
     const data: OutPutData = {
@@ -44,11 +43,6 @@ export function JianXing() {
             "人物刻画也不错，角色都有始有终，在揭开阴谋的过程中不断成长，但不会改变本质。比如主角，就是一个意志极其坚定的战士，不会像某些小女孩主角那样因为恐惧而退缩，她为了目标牺牲生命也毫不犹豫。  \n" +
             "总的来说，《剑星》是一款制作精良、玩法丰富且剧情引人入胜的动作游戏。虽然是韩国的作品可能引发一些人的不信任，但是我觉得这其实是最为理想形态的日式3a：）。虽然有一些小瑕疵，但整体体验非常出色，值得推荐给喜欢动作游戏和科幻题材的玩家们。"
     };
-
-    // 更改标题为 name+mainScore
-    useEffect(() => {
-        document.title = `《${data.name}》鉴赏 - ${data.mainScore.value >= 0 ? data.mainScore.value + (data.mainScore.plus ? "+" : data.mainScore.sub ? "-" : "") : ""}/5分`;
-    }, [data.name, data.mainScore]);
 
     return <OutPutCard data={data} editable={false}/>;
 }

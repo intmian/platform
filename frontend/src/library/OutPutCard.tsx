@@ -1,4 +1,4 @@
-import React, {useMemo, useState} from "react";
+import React, {useEffect, useMemo, useState} from "react";
 import {Card, Col, Divider, Image, Row, Space, Typography} from "antd";
 import TextRate from "./TextRate";
 import {OutPutData, ScoreData} from "./OutPutData";
@@ -58,6 +58,11 @@ const OutPutCard: React.FC<OutPutCardProps> = ({data, editable = true, onChange}
     const initInno = useMemo(() => scoreDataToText(SEQ_INNO, local.innovateScore), [local.innovateScore]);
     const initMain = useMemo(() => scoreDataToText(SEQ_MAIN, local.mainScore), [local.mainScore]);
 
+    // 更改标题为 name+mainScore
+    useEffect(() => {
+        document.title = `《${data.name}》鉴赏 - ${data.mainScore.value >= 0 ? data.mainScore.value + (data.mainScore.plus ? "+" : data.mainScore.sub ? "-" : "") : ""}/5分`;
+    }, [data.name, data.mainScore]);
+
     // 更新工具：更新某个评分字段并上抛
     const updateScore = (key: keyof Pick<OutPutData, "objScore" | "score" | "innovateScore" | "mainScore">,
                          seq: string[],
@@ -70,8 +75,9 @@ const OutPutCard: React.FC<OutPutCardProps> = ({data, editable = true, onChange}
     };
 
     // 小卡片（第二、三、四栏）渲染函数，避免重复布局
-    const fontSizeSub1 = mobile ? 14 : 20
+    const fontSizeSub1 = mobile ? 15 : 20
     const fontSizeSub2 = mobile ? 10 : 16
+    
     const renderScoreCard = (
         titleLeft: string,
         seq: string[],
@@ -105,7 +111,7 @@ const OutPutCard: React.FC<OutPutCardProps> = ({data, editable = true, onChange}
         );
     };
 
-    const fontSizeMain1 = mobile ? 20 : 28
+    const fontSizeMain1 = mobile ? 20 : 26
     const fontSizeMain2 = mobile ? 16 : 22
 
     return (

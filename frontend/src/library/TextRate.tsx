@@ -56,11 +56,13 @@ const TextRate: React.FC<TextRateProps> = ({
         return sequence[index];
     };
 
+    const gap = fontSize2 / 2
+
     return (
         <div
             style={{
                 display: "flex",
-                gap: "10px",
+                gap: gap,
                 alignItems: "center",
                 userSelect: "none",
             }}

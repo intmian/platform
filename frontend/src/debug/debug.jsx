@@ -5,7 +5,7 @@ import {MenuPlus} from "../common/MenuPlus.jsx";
 import {EditableProps} from "./EditableProps.jsx";
 import {ConfigsType, ConfigType} from "../common/UniConfigDef.js";
 import {ConfigsCtr} from "../common/UniConfig.jsx";
-import {JianXing} from "../library/JianXingTemp.tsx";
+import TextRate from "../library/TextRate.tsx";
 
 const {Text} = Typography;
 
@@ -14,7 +14,11 @@ const config = new ConfigsCtr(ConfigsType.Plat)
 config.addBaseConfig('test', '测试', ConfigType.SliceString, 'test')
 config.addBaseConfig('realKey', '真实2', ConfigType.String, 'realKey')
 
-const debug = <JianXing
+const debug = <TextRate
+    sequence={["11", "22", "33", "44", "55"]}
+    initialValue={"33+"}
+    fontSize={12}
+    fontSize2={8}
 />
 
 // const settings = {
