@@ -149,7 +149,7 @@ function GetMemosTags(url: string, key: string, sucCallback: (data: {
     tags: string[]
 }) => void, failCallback: () => void) {
     // 这个项目相当的神奇，tags没有单独存储，而是加载所有的笔记，从笔记中读取关联的tags…tags只计算在这里，两万条大概800k
-    fetch(url + '/api/v1/users/1/stats', {
+    fetch(url + '/api/v1/users/1:getStats', {
         method: 'GET',
         headers: {
             'Content-Type': 'application/json',
