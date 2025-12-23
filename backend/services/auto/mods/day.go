@@ -4,18 +4,19 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/intmian/mian_go_lib/tool/ai"
-	"github.com/intmian/mian_go_lib/tool/misc"
-	"github.com/intmian/mian_go_lib/tool/spider"
-	"github.com/intmian/mian_go_lib/xstorage"
-	"github.com/intmian/platform/backend/services/auto/setting"
-	"github.com/intmian/platform/backend/services/auto/tool"
 	"math/rand"
 	"net/http"
 	"net/url"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/intmian/mian_go_lib/tool/ai"
+	"github.com/intmian/mian_go_lib/tool/misc"
+	"github.com/intmian/mian_go_lib/tool/spider"
+	"github.com/intmian/mian_go_lib/xstorage"
+	"github.com/intmian/platform/backend/services/auto/setting"
+	"github.com/intmian/platform/backend/services/auto/tool"
 )
 
 // TODO: 细化权限，并发控制
@@ -453,7 +454,7 @@ func summary(report *DayReport) error {
 	if err != nil {
 		return errors.Join(errors.New("func summary() json.Marshal error"), err)
 	}
-	prompt := "请作为新闻整合器，阅读以下提供的新闻（包含热点新闻），新闻将以json格式给出。\n请写一个300字左右的每日新闻汇报，输出为一段话（不要使用markdown语法，不要输出额外的段落和标题），语言凝练，不产生废话或套话，不做评价。允许对相关或类似新闻进行整合，但每条新闻都必须被提及，且不丢失任何信息。"
+	prompt := "请作为每日新闻整合器，阅读以下以 JSON 形式提供的新闻。请撰写一份约 300 字的每日新闻汇报，允许分为若干自然段，但不使用 Markdown、不添加标题、不使用项目符号。\n要求：\n所有重要新闻必须被覆盖，不得遗漏任何新闻内的事实信息；\n允许对相关或相似新闻进行整合，但需保留各自的关键信息点；\n按新闻主题进行自然分段，使读者能够快速区分不同领域的重要动态；\n各段内部应突出信息主次，避免机械罗列；\n语言克制、准确，不做评价、不使用套话；\n目标读者为每天快速了解世界动态的中国普通读者，优先考虑可读性。"
 	ans, err := chat.Chat(prompt + "\n" + string(queryJson))
 	if err != nil {
 		return err
