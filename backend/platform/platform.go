@@ -2,6 +2,13 @@ package platform
 
 import (
 	"context"
+	"net/http"
+	_ "net/http/pprof"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
+
 	"github.com/intmian/mian_go_lib/tool/misc"
 	"github.com/intmian/mian_go_lib/xlog"
 	"github.com/intmian/mian_go_lib/xnews"
@@ -10,12 +17,6 @@ import (
 	"github.com/intmian/mian_go_lib/xstorage"
 	"github.com/intmian/platform/backend/share"
 	"github.com/pkg/errors"
-	"net/http"
-	_ "net/http/pprof"
-	"os"
-	"os/signal"
-	"syscall"
-	"time"
 )
 
 type PlatForm struct {
@@ -66,12 +67,12 @@ func (p *PlatForm) Init(c context.Context) error {
 		Secret:            s.DingDingSecret,
 		SendInterval:      60,
 		IntervalSendCount: 20,
-		Ctx:               context.WithoutCancel(p.ctx),
+		Ctx:               p.ctx,
 	})
 	if err != nil {
 		return err
 	}
-	p.news, err = xnews.NewXNews(context.WithoutCancel(p.ctx))
+	p.news, err = xnews.NewXNews(p.ctx)
 	if err != nil {
 		return errors.WithMessage(err, "Init xnews err")
 	}
@@ -239,7 +240,7 @@ func (p *PlatForm) InitCfg() error {
 }
 
 func (p *PlatForm) Run() {
-	p.core.Update()
+	<-p.ctx.Done()
 }
 
 func (p *PlatForm) getFlag(name share.SvrName) share.SvrFlag {

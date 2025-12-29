@@ -3,14 +3,15 @@ package run
 import (
 	"context"
 	"errors"
+	"os"
+	"path"
+	"strconv"
+
 	"github.com/intmian/mian_go_lib/tool/misc"
 	"github.com/intmian/mian_go_lib/tool/multi"
 	"github.com/intmian/mian_go_lib/xlog"
 	"github.com/intmian/mian_go_lib/xstorage"
 	"github.com/intmian/platform/backend/services/cmd/tool"
-	"os"
-	"path"
-	"strconv"
 )
 
 type EnvInit struct {
@@ -149,7 +150,7 @@ func (e *Env) RunTask(t *tool.Tool, param []string) error {
 		tool:  t,
 		param: param,
 		env:   e,
-		ctx:   context.WithoutCancel(e.ctx),
+		ctx:   e.ctx,
 	})
 	e.tasks.Append(task)
 	err := task.Run()

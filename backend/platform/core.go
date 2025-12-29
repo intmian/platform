@@ -3,6 +3,8 @@ package platform
 import (
 	"context"
 	"fmt"
+	"time"
+
 	"github.com/intmian/mian_go_lib/tool/misc"
 	"github.com/intmian/mian_go_lib/xstorage"
 	"github.com/intmian/platform/backend/services/account"
@@ -11,7 +13,6 @@ import (
 	"github.com/intmian/platform/backend/services/todone"
 	coreShare "github.com/intmian/platform/backend/share"
 	"github.com/pkg/errors"
-	"time"
 )
 
 // core 提供共用的核心共享服务，并负责启动关闭各项服务
@@ -30,7 +31,7 @@ func (c *core) Init(plat *PlatForm) error {
 		return errors.New("plat is nil")
 	}
 	c.plat = plat
-	c.ctx = context.WithoutCancel(c.plat.ctx)
+	c.ctx = c.plat.ctx
 	c.service = make(map[coreShare.SvrFlag]coreShare.IService)
 	c.serviceMeta = make(map[coreShare.SvrFlag]*coreShare.ServiceMeta)
 	c.startTime = time.Now()
@@ -41,10 +42,6 @@ func (c *core) Init(plat *PlatForm) error {
 	}
 	c.plat.log.Info("PLAT", "初始化完成")
 	return nil
-}
-
-func (c *core) Update() {
-	<-c.ctx.Done()
 }
 
 func (c *core) startService(flag coreShare.SvrFlag) error {
@@ -69,7 +66,7 @@ func (c *core) startService(flag coreShare.SvrFlag) error {
 			return c.onRecRpc(to, msg, coreShare.Valid{FromSys: true})
 		},
 		BaseSetting: c.plat.baseSetting.Copy(),
-		Ctx:         context.WithoutCancel(c.ctx),
+		Ctx:         c.ctx,
 	})
 	if err != nil {
 		c.plat.log.ErrorErr("PLAT", errors.WithMessagef(err, "startService %d err", flag))
