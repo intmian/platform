@@ -3,13 +3,14 @@ package db
 import (
 	"errors"
 	"fmt"
-	"github.com/intmian/mian_go_lib/fork/d1_gorm_adapter/gormd1"
-	"gorm.io/gorm"
-	"gorm.io/gorm/logger"
 	"log"
-	"os"
 	"sync"
 	"time"
+
+	"github.com/intmian/mian_go_lib/fork/d1_gorm_adapter/gormd1"
+	"github.com/intmian/platform/backend/share/utils"
+	"gorm.io/gorm"
+	"gorm.io/gorm/logger"
 )
 
 type Setting struct {
@@ -88,21 +89,7 @@ func (d *Mgr) Init(setting Setting) error {
 	d.Setting = setting
 	d.type2connect = make(map[ConnectType]*gorm.DB)
 
-	// 打开 sql.log 文件（如果没有则创建）
-	// 确保 dblog 目录存在
-	if _, err := os.Stat("./dblog"); os.IsNotExist(err) {
-		err = os.Mkdir("./dblog", 0755)
-		if err != nil {
-			panic("failed to create dblog directory")
-		}
-	}
-	// 按日期和表名区分日志文件
-	dateStr := time.Now().Format("2006-01-02")
-	logPath := fmt.Sprintf("./dblog/%s.log", dateStr)
-	file, err := os.OpenFile(logPath, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0666)
-	if err != nil {
-		panic("failed to open log file")
-	}
+	file := utils.GetSqlLog("todone")
 	//defer file.Close()
 
 	// 创建一个自定义的 logger 输出到文件

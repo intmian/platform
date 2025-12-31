@@ -2,6 +2,8 @@ package platform
 
 import (
 	"context"
+	"fmt"
+	"log"
 	"net/http"
 	_ "net/http/pprof"
 	"os"
@@ -9,14 +11,19 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/intmian/mian_go_lib/fork/d1_gorm_adapter/gormd1"
 	"github.com/intmian/mian_go_lib/tool/misc"
+	"github.com/intmian/mian_go_lib/xbi"
 	"github.com/intmian/mian_go_lib/xlog"
 	"github.com/intmian/mian_go_lib/xnews"
 	"github.com/intmian/mian_go_lib/xpush"
 	"github.com/intmian/mian_go_lib/xpush/pushmod"
 	"github.com/intmian/mian_go_lib/xstorage"
 	"github.com/intmian/platform/backend/share"
+	"github.com/intmian/platform/backend/share/utils"
 	"github.com/pkg/errors"
+	"gorm.io/gorm"
+	"gorm.io/gorm/logger"
 )
 
 type PlatForm struct {
@@ -29,6 +36,7 @@ type PlatForm struct {
 	news        *xnews.XNews // 用来保存最近的日志 方便查询
 	baseSetting *misc.FileUnit[share.BaseSetting]
 	cfg         *xstorage.CfgExt
+	bi          *xbi.XBi
 	tool        tool
 
 	// 子模块
@@ -86,18 +94,49 @@ func (p *PlatForm) Init(c context.Context) error {
 	logS.LogAddr = s.LogAddr
 	logS.IfPush = true
 	logS.PushMgr = push
+	logS.Ctx = p.ctx
 	logS.OnLog = func(content string) {
 		_ = p.news.AddMessage("PLAT", content)
 	}
-	log, err := xlog.NewXLog(logS)
+	xLog, err := xlog.NewXLog(logS)
 	if err != nil {
 		return err
 	}
+
+	biS := xbi.GetDefaultSetting()
+	bisErrorChan := xLog.GetLogChan("PLAT.XBI")
+	biS.Ctx = p.ctx
+	biS.ErrorChan = bisErrorChan
+	// 考虑到日志不需要时延所以不用本地数据库
+	file := utils.GetSqlLog("plat")
+	//defer file.Close()
+	newLogger := logger.New(
+		log.New(file, "SQL: ", log.LstdFlags), // 日志输出到 sql.log 文件
+		logger.Config{
+			LogLevel:                  logger.Info,     // 控制日志级别，Info 会输出 SQL 语句
+			SlowThreshold:             5 * time.Second, // 慢查询日志阈值
+			IgnoreRecordNotFoundError: true,            // 忽略 RecordNotFound 错误
+			Colorful:                  false,           // 禁用颜色输出
+		})
+	d1str := fmt.Sprintf("d1://%s:%s@%s", s.D1LogAccountID, s.D1LogApiToken, s.D1LogDBID)
+	db, err := gorm.Open(gormd1.Open(d1str), &gorm.Config{
+		Logger: newLogger,
+	})
+	if err != nil {
+		return errors.WithMessage(err, "Init xlog error err")
+	}
+	biS.Db = db
+	xBi, err := xbi.NewXBi(biS)
+	if err != nil {
+		return errors.WithMessage(err, "Init xbi err")
+	}
+	p.bi = xBi
+
 	p.storage = storage
 	p.stoWebPack, err = xstorage.NewWebPack(
 		xstorage.WebPackSetting{
 			LogFrom: "plat",
-			Log:     log,
+			Log:     xLog,
 		},
 		storage,
 	)
@@ -110,7 +149,7 @@ func (p *PlatForm) Init(c context.Context) error {
 	}
 	p.cfg = cfg
 	p.push = push
-	p.log = log
+	p.log = xLog
 
 	// 初始化工具
 	p.tool.flag2name = make(map[share.SvrFlag]share.SvrName)
