@@ -2,9 +2,10 @@ package logic
 
 import (
 	"errors"
+	"sync"
+
 	"github.com/intmian/platform/backend/services/todone/db"
 	"github.com/intmian/platform/backend/services/todone/protocol"
-	"sync"
 )
 
 // dirTreeNode 目录树节点，因为是全量展开所以直接全部加载到内存，。
@@ -521,6 +522,11 @@ func (u *UserLogic) CreateGroup(parentDirID uint32, title, note string, afterID 
 	err = group.Save()
 	if err != nil {
 		return 0, errors.Join(err, errors.New("save group failed")), 0
+	}
+
+	_, err = group.CreateSubGroupLogic("默认", "默认子任务组")
+	if err != nil {
+		return 0, errors.Join(err, errors.New("create default subgroup failed")), 0
 	}
 
 	return groupDB.ID, nil, group.dbData.Index
