@@ -41,9 +41,6 @@ jobs:
         working-directory: backend
         run: |
           go build -o ./main/platform_back ./main/main.go
-          ls -l ../
-          ls -l ./
-          ls -l ./main/
 
       # 4. 组织发布目录
       - name: Prepare release package
