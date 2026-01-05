@@ -1,4 +1,4 @@
-name: 自动部署
+name: 构建并部署 platform
 
 on:
   push:
@@ -6,15 +6,65 @@ on:
       - master
 
 jobs:
-  deploy:
+  build-and-deploy:
     runs-on: ubuntu-latest
 
+    env:
+      NODE_OPTIONS: --max-old-space-size=4096
+
     steps:
-      - name: SSH登录
+      # 1. 拉代码
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      # 2. 前端构建
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+          cache: yarn
+          cache-dependency-path: frontend/yarn.lock
+
+      - name: Build frontend
+        working-directory: frontend
+        run: |
+          yarn install --frozen-lockfile
+          yarn build
+
+      # 3. 后端构建
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.22"
+          cache: true
+
+      - name: Build backend
+        run: |
+          mkdir -p pack
+          go build -o pack/platform_back ./backend/main/main.go
+
+      # 4. 组织发布目录
+      - name: Prepare release package
+        run: |
+          mkdir -p release/front
+          cp -r frontend/dist/* release/front/
+          cp pack/platform_back release/
+          tar czf release.tar.gz release
+
+      # 5. SSH key
+      - name: Setup SSH
         uses: webfactory/ssh-agent@v0.5.3
         with:
           ssh-private-key: ${{ secrets.SSH_KEY }}
 
-      - name: 执行更新脚本
+      # 6. 上传并部署
+      - name: Upload & deploy
         run: |
-          ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} 'source ~/.zshrc && zsh /root/data/plat/update.sh'
+          scp -o StrictHostKeyChecking=no release.tar.gz \
+            ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:/root/data/plat/pack/
+
+          ssh -o StrictHostKeyChecking=no \
+            ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} \
+            "bash /root/data/plat/updateAfterGA.sh"
