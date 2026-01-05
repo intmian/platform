@@ -9,9 +9,6 @@ jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
 
-    env:
-      NODE_OPTIONS: --max-old-space-size=4096
-
     steps:
       # 1. 拉代码
       - name: Checkout code
@@ -41,16 +38,16 @@ jobs:
           cache: true
 
       - name: Build backend
+        working-directory: backend
         run: |
-          mkdir -p pack
-          go build -o pack/platform_back ./backend/main/main.go
+          go build -o ./main/platform_back ./main/main.go
 
       # 4. 组织发布目录
       - name: Prepare release package
         run: |
           mkdir -p release/front
           cp -r frontend/dist/* release/front/
-          cp pack/platform_back release/
+          cp backend/main/platform_back release/
           tar czf release.tar.gz release
 
       # 5. SSH key
