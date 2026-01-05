@@ -51,6 +51,8 @@ jobs:
           mkdir -p release/front
           cp -r frontend/dist/* release/front/
           cp backend/main/platform_back release/
+          ls -l ./
+          ls -l release/
           tar czf release.tar.gz release
 
       # 5. SSH key
