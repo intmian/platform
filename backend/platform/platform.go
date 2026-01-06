@@ -123,12 +123,12 @@ func (p *PlatForm) Init(c context.Context) error {
 		Logger: newLogger,
 	})
 	if err != nil {
-		return errors.WithMessage(err, "Init xlog error err")
+		return errors.WithMessage(err, "gorm.Open err")
 	}
 	biS.Db = db
 	xBi, err := xbi.NewXBi(biS)
 	if err != nil {
-		return errors.WithMessage(err, "Init xbi err")
+		return errors.WithMessage(err, "xbi.NewXBi err")
 	}
 	p.bi = xBi
 
