@@ -6,7 +6,8 @@ on:
       - master
 
 jobs:
-  build-and-deploy:
+  build-frontend:
+    name: Build Frontend
     runs-on: ubuntu-latest
 
     steps:
@@ -16,7 +17,7 @@ jobs:
         with:
           submodules: recursive
 
-      # 2. 前端构建
+      # 2. Node 环境
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
@@ -24,39 +25,87 @@ jobs:
           cache: yarn
           cache-dependency-path: frontend/yarn.lock
 
+      # 3. 前端构建
       - name: Build frontend
         working-directory: frontend
         run: |
           yarn install --frozen-lockfile
           yarn build
 
-      # 3. 后端构建
+      # 4. 上传前端构建产物
+      - name: Upload frontend dist
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-dist
+          path: frontend/dist
+
+
+  build-backend:
+    name: Build Backend
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. 拉代码
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      # 2. Go 环境
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
           go-version: "1.22"
           cache: true
 
+      # 3. 后端构建（完全保持你原来的命令）
       - name: Build backend
         working-directory: backend
         run: |
           go build -o ./main/platform_back ./main/main.go
 
-      # 4. 组织发布目录
+      # 4. 上传后端产物
+      - name: Upload backend binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-bin
+          path: backend/main/platform_back
+
+
+  deploy:
+    name: Deploy
+    runs-on: ubuntu-latest
+    needs:
+      - build-frontend
+      - build-backend
+
+    steps:
+      # 1. 下载前端产物
+      - name: Download frontend dist
+        uses: actions/download-artifact@v4
+        with:
+          name: frontend-dist
+          path: release/front
+
+      # 2. 下载后端产物
+      - name: Download backend binary
+        uses: actions/download-artifact@v4
+        with:
+          name: backend-bin
+          path: release
+
+      # 3. 打包
       - name: Prepare release package
         run: |
-          mkdir -p release/front
-          cp -r frontend/dist/* release/front/
-          cp backend/main/platform_back release/
           tar czf release.tar.gz release
 
-      # 5. SSH key
+      # 4. SSH key
       - name: Setup SSH
         uses: webfactory/ssh-agent@v0.5.3
         with:
           ssh-private-key: ${{ secrets.SSH_KEY }}
 
-      # 6. 上传并部署
+      # 5. 上传并部署
       - name: Upload & deploy
         run: |
           scp -o StrictHostKeyChecking=no release.tar.gz \
