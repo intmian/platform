@@ -1,4 +1,4 @@
-module github.com/intmian/platform
+module github.com/intmian/platform/backend
 
 go 1.22
 
