@@ -4,5 +4,5 @@ toolchain go1.23.9
 
 use (
 	.
-	../mian_go_lib
+	./mian_go_lib
 )
