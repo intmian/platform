@@ -396,7 +396,7 @@ export function TaskMovePanel(props: TaskMoveProps) {
                     }}
                 />
             </Form.Item>
-            <Form.Item label={"移动位置"} name={"movePosition"} initialValue={"after"}>
+            <Form.Item label={"移动位置"} name={"movePosition"} initialValue={trgIsTask ? "inside" : "after"}>
                 <Select
                     onChange={(value) => {
                         form.setFieldsValue({movePosition: value});
