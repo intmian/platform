@@ -338,6 +338,12 @@ export function TaskMovePanel(props: TaskMoveProps) {
         }
     }
 
+    useEffect(() => {
+        form.setFieldsValue({
+            movePosition: trgIsTask ? "inside" : "after",
+        });
+    }, [form, trgIsTask]);
+
     return <Modal
         open={true}
         title={props.movedTasks.length > 1 ? "批量移动任务" : "移动任务"}
@@ -396,7 +402,7 @@ export function TaskMovePanel(props: TaskMoveProps) {
                     }}
                 />
             </Form.Item>
-            <Form.Item label={"移动位置"} name={"movePosition"} initialValue={trgIsTask ? "inside" : "after"}>
+            <Form.Item label={"移动位置"} name={"movePosition"}>
                 <Select
                     onChange={(value) => {
                         form.setFieldsValue({movePosition: value});
