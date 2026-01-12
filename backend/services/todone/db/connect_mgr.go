@@ -112,7 +112,7 @@ func (d *Mgr) Init(setting Setting) error {
 
 	err := xbi.RegisterLogEntity(d.Setting.XBi, &log2.DbLogEntity{})
 	if err != nil {
-		return errors.Join(err, errors.New("注册数据库日志实体失败"))
+		return errors.Join(err, errors.New("register DbLogEntity failed"))
 	}
 	hookLogger := &misc.HookLogger{
 		Interface: newLogger,
