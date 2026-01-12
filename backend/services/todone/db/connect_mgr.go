@@ -110,6 +110,10 @@ func (d *Mgr) Init(setting Setting) error {
 		},
 	)
 
+	err := xbi.RegisterLogEntity(d.Setting.XBi, &log2.DbLogEntity{})
+	if err != nil {
+		return errors.Join(err, errors.New("注册数据库日志实体失败"))
+	}
 	hookLogger := &misc.HookLogger{
 		Interface: newLogger,
 		Hook: func(
@@ -128,11 +132,13 @@ func (d *Mgr) Init(setting Setting) error {
 			dbLogEntity.GetWriteableData().Rows = rows
 			dbLogEntity.GetWriteableData().Duration = duration
 			dbLogEntity.GetWriteableData().Err = err
-			err = xbi.WriteLog[log2.DbLog](d.Setting.XBi, dbLogEntity)
-			if err != nil {
-				setting.XLog.ErrorErr("todone.log", errors.Join(err, errors.New("写入数据库日志失败")))
-				return
-			}
+			go func() {
+				err = xbi.WriteLog[log2.DbLog](d.Setting.XBi, dbLogEntity)
+				if err != nil {
+					setting.XLog.ErrorErr("todone.log", errors.Join(err, errors.New("写入数据库日志失败")))
+					return
+				}
+			}()
 		},
 	}
 
