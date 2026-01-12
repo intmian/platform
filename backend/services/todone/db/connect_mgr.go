@@ -1,6 +1,7 @@
 package db
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"log"
@@ -8,6 +9,10 @@ import (
 	"time"
 
 	"github.com/intmian/mian_go_lib/fork/d1_gorm_adapter/gormd1"
+	"github.com/intmian/mian_go_lib/tool/misc"
+	"github.com/intmian/mian_go_lib/xbi"
+	"github.com/intmian/mian_go_lib/xlog"
+	log2 "github.com/intmian/platform/backend/services/todone/log"
 	"github.com/intmian/platform/backend/share/utils"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
@@ -17,6 +22,8 @@ type Setting struct {
 	AccountID string
 	ApiToken  string
 	DBID      string
+	XBi       *xbi.XBi
+	XLog      *xlog.XLog
 }
 
 func (s *Setting) ToStr() string {
@@ -102,7 +109,34 @@ func (d *Mgr) Init(setting Setting) error {
 			Colorful:                  false,           // 禁用颜色输出
 		},
 	)
-	d.logger = newLogger
+
+	hookLogger := &misc.HookLogger{
+		Interface: newLogger,
+		Hook: func(
+			ctx context.Context,
+			sql string,
+			rows int64,
+			duration time.Duration,
+			err error,
+		) {
+			fmt.Printf(
+				"[SQL] %s | rows=%d | cost=%s | err=%v\n",
+				sql, rows, duration, err,
+			)
+			dbLogEntity := &log2.DbLogEntity{}
+			dbLogEntity.GetWriteableData().Sql = sql
+			dbLogEntity.GetWriteableData().Rows = rows
+			dbLogEntity.GetWriteableData().Duration = duration
+			dbLogEntity.GetWriteableData().Err = err
+			err = xbi.WriteLog[log2.DbLog](d.Setting.XBi, dbLogEntity)
+			if err != nil {
+				setting.XLog.ErrorErr("todone.log", errors.Join(err, errors.New("写入数据库日志失败")))
+				return
+			}
+		},
+	}
+
+	d.logger = hookLogger
 
 	return nil
 }

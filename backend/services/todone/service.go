@@ -3,12 +3,13 @@ package todone
 import (
 	"context"
 	"errors"
+	"time"
+
 	"github.com/intmian/mian_go_lib/tool/misc"
 	"github.com/intmian/mian_go_lib/xstorage"
 	"github.com/intmian/platform/backend/services/todone/db"
 	"github.com/intmian/platform/backend/services/todone/logic"
 	backendshare "github.com/intmian/platform/backend/share"
-	"time"
 )
 
 // Service 业务
@@ -52,6 +53,7 @@ func (s *Service) Start(share backendshare.ServiceShare) error {
 		AccountID: xstorage.ToBase[string](accIDU),
 		ApiToken:  xstorage.ToBase[string](apiTokenU),
 		DBID:      xstorage.ToBase[string](dbIDU),
+		XBi:       share.Bi,
 	})
 	if err != nil {
 		return errors.Join(errors.New("init db mgr failed"), err)
