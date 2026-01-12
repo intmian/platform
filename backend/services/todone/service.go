@@ -54,6 +54,7 @@ func (s *Service) Start(share backendshare.ServiceShare) error {
 		ApiToken:  xstorage.ToBase[string](apiTokenU),
 		DBID:      xstorage.ToBase[string](dbIDU),
 		XBi:       share.Bi,
+		XLog:      share.Log,
 	})
 	if err != nil {
 		return errors.Join(errors.New("init db mgr failed"), err)
