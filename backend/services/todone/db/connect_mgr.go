@@ -123,10 +123,6 @@ func (d *Mgr) Init(setting Setting) error {
 			duration time.Duration,
 			err error,
 		) {
-			fmt.Printf(
-				"[SQL] %s | rows=%d | cost=%s | err=%v\n",
-				sql, rows, duration, err,
-			)
 			dbLogEntity := &log2.DbLogEntity{}
 			dbLogEntity.GetWriteableData().Sql = sql
 			dbLogEntity.GetWriteableData().Rows = rows
@@ -135,13 +131,12 @@ func (d *Mgr) Init(setting Setting) error {
 			if err != nil {
 				dbLogEntity.GetWriteableData().Err = err.Error()
 			}
-			go func() {
-				err = xbi.WriteLog[log2.DbLog](d.Setting.XBi, dbLogEntity)
-				if err != nil {
-					setting.XLog.ErrorErr("todone.log", errors.Join(err, errors.New("写入数据库日志失败")))
-					return
-				}
-			}()
+			err = xbi.WriteLog[log2.DbLog](d.Setting.XBi, dbLogEntity)
+			if err != nil {
+				setting.XLog.ErrorErr("todone.log", errors.Join(err, errors.New("写入数据库日志失败")))
+				return
+			}
+			
 		},
 	}
 
