@@ -4,7 +4,7 @@ type DbLog struct {
 	Sql      string
 	Rows     int64
 	Duration int64
-	Err      error
+	Err      string
 }
 
 type DbLogEntity struct {
