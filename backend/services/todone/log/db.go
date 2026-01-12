@@ -1,11 +1,9 @@
 package log
 
-import "time"
-
 type DbLog struct {
 	Sql      string
 	Rows     int64
-	Duration time.Duration
+	Duration int64
 	Err      error
 }
 

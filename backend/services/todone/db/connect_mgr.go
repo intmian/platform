@@ -130,7 +130,8 @@ func (d *Mgr) Init(setting Setting) error {
 			dbLogEntity := &log2.DbLogEntity{}
 			dbLogEntity.GetWriteableData().Sql = sql
 			dbLogEntity.GetWriteableData().Rows = rows
-			dbLogEntity.GetWriteableData().Duration = duration
+			durationMillis := duration.Milliseconds()
+			dbLogEntity.GetWriteableData().Duration = durationMillis
 			dbLogEntity.GetWriteableData().Err = err
 			go func() {
 				err = xbi.WriteLog[log2.DbLog](d.Setting.XBi, dbLogEntity)
