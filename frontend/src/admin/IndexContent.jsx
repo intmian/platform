@@ -8,6 +8,7 @@ import {AccountAdmin} from "./AccountAdmin.jsx";
 import Performance from "./Performance.tsx";
 import {useIsMobile} from "../common/hooksv2";
 import Setting from "./Setting";
+import BiLog from "./BiLog.tsx";
 
 const {Content} = Layout;
 
@@ -51,6 +52,9 @@ function IndexContent({contentType}) {
             break;
         case 'setting':
             content = <Setting/>;
+            break;
+        case 'bi':
+            content = <BiLog/>
             break;
         default:
             break;

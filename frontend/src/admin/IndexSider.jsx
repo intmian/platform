@@ -27,6 +27,7 @@ function IndexSider({onChooseMenuItem, disable}) {
                     getItem('账号', 'account'),
                     getItem('性能', 'performance'),
                     getItem('设置', 'setting'),
+                    getItem('bi日志','bi')
                 ]}
                 onSelect={onChooseMenuItem}
             />

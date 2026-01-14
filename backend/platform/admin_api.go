@@ -3,16 +3,19 @@ package platform
 import (
 	"encoding/json"
 	"fmt"
+	"sort"
+	"time"
+
 	"github.com/gin-gonic/gin"
 	"github.com/intmian/mian_go_lib/tool/misc"
 	"github.com/intmian/mian_go_lib/tool/token"
+	"github.com/intmian/mian_go_lib/xbi"
 	share3 "github.com/intmian/platform/backend/services/account/share"
+	"github.com/intmian/platform/backend/services/todone/log"
 	"github.com/intmian/platform/backend/share"
 	"github.com/shirou/gopsutil/cpu"
 	"github.com/shirou/gopsutil/mem"
 	"github.com/shirou/gopsutil/process"
-	"sort"
-	"time"
 )
 
 // login 进行登录。需要去账号服务验证账号密码，然后在web mgr签名才行
@@ -511,5 +514,52 @@ func (m *webMgr) getSystemUsageSSE(c *gin.Context) {
 
 		// 防止阻塞并控制数据发送频率
 		time.Sleep(5 * time.Second)
+	}
+}
+
+func (m *webMgr) searchBiLog(c *gin.Context) {
+	// 获取查询参数
+	table := c.Param("table")
+	type Request struct {
+		Conditions map[string]any `json:"conditions"`
+		PageNum    int            `json:"pageNum"`
+		PageSize   int            `json:"pageSize"`
+		OrderBy    string         `json:"orderBy"`
+		Desc       bool           `json:"desc"`
+	}
+	var req Request
+	err := c.BindJSON(&req)
+
+	if err != nil {
+		makeErrReturn("invalid request: " + err.Error())
+		return
+	}
+
+	filter := &xbi.ReadLogFilter{}
+	if req.Conditions != nil {
+		filter = filter.SetConditions(req.Conditions)
+	}
+	if req.PageNum > 0 && req.PageSize > 0 {
+		filter = filter.SetPage(req.PageNum, req.PageSize)
+	}
+	if req.OrderBy != "" {
+		filter = filter.SetOrderBy(req.OrderBy, req.Desc)
+	}
+
+	dbLog := log.DbLogEntity{}
+	switch table {
+	case dbLog.TableName():
+		data, count, err := xbi.ReadLogWithFilter[log.DbLogEntity](m.plat.bi, table, filter)
+		if err == nil {
+			c.JSON(200, makeOkReturn(map[string]interface{}{
+				"List":  data,
+				"Total": count,
+			}))
+		} else {
+			c.JSON(200, makeErrReturn("read log failed: "+err.Error()))
+		}
+	default:
+		c.JSON(200, makeErrReturn("unknown table: "+table))
+		return
 	}
 }

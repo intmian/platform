@@ -658,3 +658,38 @@ export async function UploadFile(file: File): Promise<FileShow | null> {
         publishUrl: PublicURL
     };
 }
+
+export interface SearchBiLogReq {
+    conditions?: Record<string, any>;
+    pageNum: number;
+    pageSize: number;
+    orderBy?: string;
+    desc?: boolean;
+}
+
+export interface DbLogData<T> {
+    RecordTime: number;
+    Data: T;
+}
+
+export interface TodoneDbLog {
+    Sql: string;
+    Rows: number;
+    Duration: number;
+    Err: string;
+}
+
+export type SearchBiLogRet<T> = {
+    List: DbLogData<T>[]
+    Total: number
+}
+
+export function sendSearchBiLog<T>(table: string, req: SearchBiLogReq, callback: (ret: { data: SearchBiLogRet<T>, ok: boolean }) => void) {
+    UniPost(config.api_base_url + '/admin/bi_log/' + table + '/search', req).then((res: UniResult) => {
+        const result: { data: SearchBiLogRet<T>, ok: boolean } = {
+            data: res.data as SearchBiLogRet<T>,
+            ok: res.ok
+        };
+        callback(result);
+    });
+}
