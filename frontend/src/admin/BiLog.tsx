@@ -24,7 +24,7 @@ const TABLE_CONFIGS: Record<string, TableMetadata> = {
         label: 'Todone 数据库日志',
         columns: [
             {
-                title: '时间',
+                title: 'record_time',
                 dataIndex: 'record_time',
                 width: 200,
                 render: (time: number) => {
@@ -43,12 +43,12 @@ const TABLE_CONFIGS: Record<string, TableMetadata> = {
                 ellipsis: true,
             },
             {
-                title: '行数',
+                title: 'Rows',
                 dataIndex: ['Data', 'Rows'],
                 width: 100,
             },
             {
-                title: '耗时 (ms)',
+                title: 'Duration',
                 dataIndex: ['Data', 'Duration'],
                 width: 120,
                 render: (val: number) => (val ? (val).toFixed(3) : '0')
@@ -198,16 +198,16 @@ const BiLog = () => {
                                         <Form.Item
                                             {...restField}
                                             name={[name, 'key']}
-                                            rules={[{ required: true, message: '请输入字段名' }]}
+                                            rules={[{ required: true, message: '请输入条件' }]}
                                         >
-                                            <Input placeholder="字段名 (例如 Data.Sql)" />
+                                            <Input placeholder="条件 (如 Duration > ?)" />
                                         </Form.Item>
                                         <Form.Item
                                             {...restField}
                                             name={[name, 'value']}
                                             rules={[{ required: true, message: '请输入值' }]}
                                         >
-                                            <Input placeholder="匹配值" />
+                                            <Input placeholder="比较值 (如 100)" />
                                         </Form.Item>
                                         <MinusCircleOutlined onClick={() => remove(name)} />
                                     </Space>
