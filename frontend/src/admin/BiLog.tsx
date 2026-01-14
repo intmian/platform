@@ -26,7 +26,7 @@ const TABLE_CONFIGS: Record<string, TableMetadata> = {
             {
                 title: 'record_time',
                 dataIndex: 'record_time',
-                width: 200,
+                width: 170,
                 render: (time: number) => {
                     if (!time) return '-';
                     let t = time;
@@ -55,7 +55,7 @@ const TABLE_CONFIGS: Record<string, TableMetadata> = {
                 render: (val: number) => (val ? (val).toFixed(3) : '0')
             },
             {
-                title: '错误',
+                title: 'Err',
                 dataIndex: ['Data', 'Err'],
                 render: (text: string) => <span style={{ color: text ? 'red' : 'green' }}>{text || 'Success'}</span>
             },
