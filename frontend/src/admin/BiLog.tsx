@@ -46,8 +46,7 @@ const TABLE_CONFIGS: Record<string, TableMetadata> = {
                 title: 'Rows',
                 dataIndex: ['Data', 'Rows'],
                 width: 100,
-                // == -1 就代表无影响
-                render: (val: number) => (val === -1 ? '无影响' : val)
+                render: (val: number) => (val === -1 ? '仅索引' : val)
             },
             {
                 title: 'Duration',
