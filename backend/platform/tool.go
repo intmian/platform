@@ -1,8 +1,10 @@
 package platform
 
 import (
-	"github.com/intmian/platform/backend/share"
 	"strings"
+
+	"github.com/gin-gonic/gin"
+	"github.com/intmian/platform/backend/share"
 )
 
 // 存储一些优化混存数据与通用工具
@@ -47,11 +49,19 @@ func makeSErrReturn(code int, msg string) uniReturn {
 	}
 }
 
+func ErrReturn(c *gin.Context, msg string) {
+	c.JSON(200, makeErrReturn(msg))
+}
+
 func makeErrReturn(msg string) uniReturn {
 	return uniReturn{
 		Code: 1,
 		Msg:  msg,
 	}
+}
+
+func OkReturn(c *gin.Context, data interface{}) {
+	c.JSON(200, makeOkReturn(data))
 }
 
 func makeOkReturn(data interface{}) uniReturn {
