@@ -70,9 +70,8 @@ func (p *PlatForm) Init(c context.Context) error {
 	if err != nil {
 		return errors.WithMessage(err, "Init xpush err")
 	}
-	err = push.AddDingDing(pushmod.DingSetting{
-		Token:             s.DingDingToken,
-		Secret:            s.DingDingSecret,
+	err = push.AddFeishu(pushmod.FeishuSetting{
+		WebhookUrl:        s.FeishuWebHook,
 		SendInterval:      60,
 		IntervalSendCount: 20,
 		Ctx:               p.ctx,
