@@ -3,18 +3,20 @@ package logic
 import (
 	"context"
 	"errors"
+	"sort"
+	"time"
+
 	"github.com/intmian/mian_go_lib/tool/misc"
 	"github.com/intmian/platform/backend/services/todone/db"
 	"github.com/intmian/platform/backend/services/todone/protocol"
-	"sort"
-	"time"
 )
 
 type SubGroupLogic struct {
 	dbData *db.SubGroupDB
 
-	unFinTasksCache map[uint32]*TaskLogic
-	taskSequence    MapIdTree
+	unFinTasksLoaded bool
+	unFinTasksCache  map[uint32]*TaskLogic
+	taskSequence     MapIdTree
 
 	closeGo func()
 }
@@ -95,10 +97,11 @@ func NewSubGroupLogic(dbData *db.SubGroupDB) *SubGroupLogic {
 	ctx, f := context.WithCancel(GTodoneCtx)
 	NewAutoSave(dbData, ctx)
 	return &SubGroupLogic{
-		dbData:          dbData,
-		unFinTasksCache: make(map[uint32]*TaskLogic),
-		taskSequence:    tree,
-		closeGo:         f,
+		dbData:           dbData,
+		unFinTasksCache:  make(map[uint32]*TaskLogic),
+		unFinTasksLoaded: false,
+		taskSequence:     tree,
+		closeGo:          f,
 	}
 }
 
@@ -117,7 +120,7 @@ func (s *SubGroupLogic) ToProtocol() protocol.PSubGroup {
 
 func (s *SubGroupLogic) GetTasks(containDone bool) ([]*TaskLogic, error) {
 	if !containDone {
-		if len(s.taskSequence) > 0 && len(s.unFinTasksCache) > 0 {
+		if s.unFinTasksLoaded {
 			return s.GetTasksByCache()
 		}
 	}
@@ -175,6 +178,7 @@ func (s *SubGroupLogic) GetTasks(containDone bool) ([]*TaskLogic, error) {
 	for _, task := range res {
 		s.unFinTasksCache[task.dbData.TaskID] = task
 	}
+	s.unFinTasksLoaded = true
 
 	// 处理序列
 	err := s.buildSequence(res)
