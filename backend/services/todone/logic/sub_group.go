@@ -337,7 +337,7 @@ func (s *SubGroupLogic) CreateTask(userID string, title, note string, taskType d
 	task.BindOutTags(make([]string, 0))
 
 	// 更新缓存和序列
-	if s.unFinTasksCache != nil && len(s.unFinTasksCache) > 0 {
+	if s.unFinTasksLoaded {
 		s.unFinTasksCache[task.dbData.TaskID] = task
 		task.BindOutIndex(s.taskSequence.GetSequenceOrAdd(parentTaskID, task.dbData.TaskID))
 		err = s.OnChangeSeq()
