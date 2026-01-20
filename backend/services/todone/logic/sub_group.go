@@ -21,14 +21,14 @@ type SubGroupLogic struct {
 	closeGo func()
 }
 
-type AutoSave struct {
+type subGroupAutoSave struct {
 	LastSave db.SubGroupDB
 	SaveTime time.Time
 	realData *db.SubGroupDB
 	ctx      context.Context
 }
 
-func (a *AutoSave) Init(data *db.SubGroupDB, ctx context.Context) {
+func (a *subGroupAutoSave) Init(data *db.SubGroupDB, ctx context.Context) {
 	a.LastSave = *data
 	a.SaveTime = time.Now()
 	a.realData = data
@@ -53,13 +53,13 @@ func (a *AutoSave) Init(data *db.SubGroupDB, ctx context.Context) {
 	}()
 }
 
-func NewAutoSave(data *db.SubGroupDB, ctx context.Context) *AutoSave {
-	autoSave := &AutoSave{}
+func NewAutoSave(data *db.SubGroupDB, ctx context.Context) *subGroupAutoSave {
+	autoSave := &subGroupAutoSave{}
 	autoSave.Init(data, ctx)
 	return autoSave
 }
 
-func (a *AutoSave) NeedSave() bool {
+func (a *subGroupAutoSave) NeedSave() bool {
 	if a.realData == nil {
 		return false
 	}
@@ -73,7 +73,7 @@ func (a *AutoSave) NeedSave() bool {
 	return false
 }
 
-func (a *AutoSave) Save() {
+func (a *subGroupAutoSave) Save() {
 	if a.realData == nil {
 		return
 	}
