@@ -11,16 +11,6 @@ import (
 	"github.com/intmian/platform/backend/services/todone/protocol"
 )
 
-type SubGroupLogic struct {
-	dbData *db.SubGroupDB
-
-	unFinTasksLoaded bool
-	unFinTasksCache  map[uint32]*TaskLogic
-	taskSequence     MapIdTree
-
-	closeGo func()
-}
-
 type subGroupAutoSave struct {
 	LastSave db.SubGroupDB
 	SaveTime time.Time
@@ -86,6 +76,16 @@ func (a *subGroupAutoSave) Save() {
 	GTodoneShare.Log.Info("todone.subgtoup.auto", "AutoSave Save success %v", a.realData)
 	a.LastSave = *a.realData
 	a.SaveTime = time.Now()
+}
+
+type SubGroupLogic struct {
+	dbData *db.SubGroupDB
+
+	unFinTasksLoaded bool
+	unFinTasksCache  map[uint32]*TaskLogic
+	taskSequence     MapIdTree
+
+	closeGo func()
 }
 
 func NewSubGroupLogic(dbData *db.SubGroupDB) *SubGroupLogic {
@@ -163,12 +163,23 @@ func (s *SubGroupLogic) GetTasks(containDone bool) ([]*TaskLogic, error) {
 			}
 		}
 
+		needSave := false
 		for _, task := range res {
 			if !task.dbData.Done {
-				_, index := s.taskSequence.GetSequence(task.dbData.ParentTaskID, task.dbData.TaskID)
+				ok, index := s.taskSequence.GetSequence(task.dbData.ParentTaskID, task.dbData.TaskID)
+				if !ok {
+					index = s.taskSequence.GetSequenceOrAdd(task.dbData.ParentTaskID, task.dbData.TaskID)
+					needSave = true
+				}
 				task.BindOutIndex(index)
 			} else {
 				task.BindOutIndex(int(task.id + 9999999))
+			}
+		}
+		if needSave {
+			err := s.OnChangeSeq()
+			if err != nil {
+				return nil, errors.Join(err, errors.New("OnChangeSeq error"))
 			}
 		}
 		return res, nil
@@ -376,7 +387,7 @@ func (s *SubGroupLogic) BeforeTaskMove(taskIDs []uint32, newParentID uint32) (Ma
 	if err != nil {
 		return nil, nil, nil
 	}
-	err = s.buildSequence(tasks)
+	err = s.buildSequenceWithLoadData()
 	if err != nil {
 		return nil, nil, nil
 	}
@@ -454,7 +465,7 @@ func (s *SubGroupLogic) BeforeTaskMove(taskIDs []uint32, newParentID uint32) (Ma
 		if task == nil {
 			continue
 		}
-		if _, ok := s.taskSequence[task.dbData.ParentTaskID]; ok {
+		if _, ok := s.taskSequence[task.dbData.ParentTaskID]; !ok {
 			continue
 		}
 		seq[task.dbData.ParentTaskID] = s.taskSequence[task.dbData.ParentTaskID]
@@ -496,7 +507,7 @@ func (s *SubGroupLogic) BeforeTaskMove(taskIDs []uint32, newParentID uint32) (Ma
 }
 
 func (s *SubGroupLogic) AfterTaskMove(seq MapIdTree, needChangeParent, noNeedChangeParent []uint32, newParentID, newAfterID uint32, after bool) error {
-	if s.unFinTasksCache == nil {
+	if !s.unFinTasksLoaded {
 		err := s.buildSequenceWithLoadData()
 		if err != nil {
 			return err
@@ -625,7 +636,7 @@ func (s *SubGroupLogic) OnDeleteTasks(taskIDs []uint32) error {
 	}
 	// 如果存在未完成的任务，则删除缓存并且删除序列
 	if hasUnFin {
-		if s.unFinTasksCache == nil {
+		if !s.unFinTasksLoaded {
 			err := s.buildSequenceWithLoadData()
 			if err != nil {
 				return errors.Join(err, errors.New("buildSequenceWithLoadData error"))
@@ -677,7 +688,7 @@ func (s *SubGroupLogic) GetTaskLogic(id uint32) *TaskLogic {
 
 func (s *SubGroupLogic) RefreshCache(task *TaskLogic) error {
 	// 如果缓存中没有数据，就将其加入缓存，并在下次请求时（加入seq）。
-	if s.unFinTasksCache == nil {
+	if !s.unFinTasksLoaded {
 		// 没有缓存就不用处理
 		return nil
 	}
