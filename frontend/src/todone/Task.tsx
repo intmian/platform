@@ -9,6 +9,7 @@ import {
     MinusCircleOutlined,
     PlusCircleOutlined,
     RetweetOutlined,
+    HolderOutlined
 } from "@ant-design/icons";
 import {IsDateEmptyFromGoEmpty} from "../common/tool";
 import TaskTree, {TaskTreeNode} from "./TaskTree";
@@ -16,6 +17,8 @@ import {TaskList} from "./TaskList";
 import {ChangeTaskReq, sendChangeTask, sendDelTask, sendTaskAddTag, sendTaskDelTag} from "./net/send_back";
 import {useStateWithLocal} from "../common/hooksv2";
 import {TaskMovePanel} from "./TaskDetail";
+import {useSortable} from "@dnd-kit/sortable";
+import {CSS} from "@dnd-kit/utilities";
 
 enum Status {
     // 以下状态为未开始 started == false
@@ -120,6 +123,7 @@ function TaskStatusOperate({status, onClick, operating}: { status: Status, onCli
             // 和文字一样高
             height: '22px',
             width: '22px',
+            marginRight: '10px',
         }}
     >
         {text}
@@ -346,6 +350,27 @@ export interface TaskProps {
 }
 
 export function Task(props: TaskProps) {
+    const {
+        attributes,
+        listeners,
+        setNodeRef,
+        transform,
+        transition,
+        isDragging
+    } = useSortable({id: props.task.ID});
+
+    const style = {
+        transform: CSS.Transform.toString(transform),
+        transition: isDragging ? undefined : transition, // 拖拽时禁用 transition , 否则会有延迟
+        opacity: isDragging ? 0.6 : 1,
+        position: 'relative' as const,
+        zIndex: isDragging ? 9999 : undefined,
+        backgroundColor: isDragging ? '#fafafa' : undefined,
+        boxShadow: isDragging ? '0 9px 28px 8px rgba(0, 0, 0, 0.05), 0 6px 16px 0 rgba(0, 0, 0, 0.08)' : undefined,
+        borderRadius: isDragging ? '8px' : undefined,
+        scale: isDragging ? '1.02' : undefined,
+    };
+
     // 这里的时间只做显示，不会真正的自动开始或者完成（目前）
     const status = GetTaskStatus(props.task)
     let hasSon: boolean = false;
@@ -560,7 +585,10 @@ export function Task(props: TaskProps) {
     };
 
     return <div
+        ref={setNodeRef}
+        {...attributes}
         style={{
+            ...style,
             width: '100%',
         }}
         onMouseLeave={() => {
@@ -621,13 +649,35 @@ export function Task(props: TaskProps) {
         </Modal>
         <Flex
             style={{
-                columnGap: '10px',
+                columnGap: '0px',
                 // 子组件居中
                 alignItems: 'center',
                 marginBottom: '2px',
                 width: '100%',
             }}
         >
+            <div {...listeners}
+                 className="drag-handle"
+                 style={{
+                     cursor: 'pointer',
+                     display: 'flex',
+                     alignItems: 'center',
+                     padding: '2px 4px',
+                     borderRadius: '4px',
+                     transition: 'all 0.2s',
+                     color: 'rgba(0, 0, 0, 0.45)', // Ant Design secondary text color
+                 }}
+                 onMouseEnter={(e) => {
+                     e.currentTarget.style.backgroundColor = 'rgba(0, 0, 0, 0.04)'; // Ant Design hover bg
+                     e.currentTarget.style.color = 'rgba(0, 0, 0, 0.88)';
+                 }}
+                 onMouseLeave={(e) => {
+                     e.currentTarget.style.backgroundColor = 'transparent';
+                     e.currentTarget.style.color = 'rgba(0, 0, 0, 0.45)';
+                 }}
+            >
+                <HolderOutlined/>
+            </div>
             <TaskStatusOperate
                 operating={operate}
                 onClick={

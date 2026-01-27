@@ -189,4 +189,46 @@ export default class TaskTree {
             }
         }
     }
+
+    moveTaskTo(sourceId: number, targetId: number, position: 'over' | 'after' | 'before') {
+        const sourceNode = this.findTask(sourceId);
+        const targetNode = this.findTask(targetId);
+
+        if (!sourceNode || !targetNode || sourceId === targetId) return;
+
+        // 1. 从原位置移除
+        this.deleteTask(sourceId);
+
+        // 2. 插入新位置
+        if (position === 'over') {
+            // 作为子任务插入到 children 末尾
+            targetNode.children.push(sourceNode);
+            sourceNode.task.ParentID = targetNode.task.ID;
+        } else {
+            // 插入到 target 的同级
+            // 找到 target 的父级数组
+            let parentChildren: TaskTreeNode[] | null = null;
+            let parentID = 0;
+
+            if (this.isRoot(targetId)) {
+                parentChildren = this.roots;
+                parentID = 0;
+            } else {
+                const parent = this.findParent(targetId);
+                if (parent) {
+                    parentChildren = parent.children;
+                    parentID = parent.task.ID;
+                }
+            }
+
+            if (parentChildren) {
+                const targetIndex = parentChildren.findIndex(n => n.task.ID === targetId);
+                if (targetIndex !== -1) {
+                    const insertIndex = position === 'after' ? targetIndex + 1 : targetIndex;
+                    parentChildren.splice(insertIndex, 0, sourceNode);
+                    sourceNode.task.ParentID = parentID;
+                }
+            }
+        }
+    }
 }

@@ -9,6 +9,12 @@ import {Task} from "./Task";
 import {useIsMobile, useStateWithLocal} from "../common/hooksv2";
 import "./custom.css"
 
+import {
+    SortableContext,
+    verticalListSortingStrategy
+} from "@dnd-kit/sortable";
+import {useMemo} from "react";
+
 interface TaskCreateData {
     title: string;
     started: boolean;
@@ -260,6 +266,8 @@ export function TaskList({
         />
     </div>
     let show: ReactNode;
+    const itemIds = useMemo(() => taskShow.map(t => t.ID), [taskShow]);
+
     if (loadingTree) {
         show = <List
             header={indexSmallFirst ? null : inputArea}
@@ -272,33 +280,35 @@ export function TaskList({
             locale={{emptyText: ' '}}
         />
     } else {
-        show = <List
-            className="task-list"
-            // loading={loadingTree}
-            header={indexSmallFirst ? null : inputArea}
-            footer={indexSmallFirst ? inputArea : null}
-            dataSource={taskShow.length > 0 ? taskShow : undefined}
-            locale={{emptyText: <div>---添加你的第一个任务吧🥰---</div>}} // 彻底隐藏空状态
-            renderItem={(item) => (
-                <List.Item key={item.ID}
-                           style={{paddingTop: 4, paddingBottom: 4}}
-                >
-                    <Task
-                        onSelectTask={onSelectTask}
-                        level={level + 1}
-                        addr={addr.copy()}
-                        task={item}
-                        taskNode={tree.findTask(item.ID)!}
-                        indexSmallFirst={indexSmallFirst}
-                        loadingTree={loadingTree}
-                        refreshTree={refreshTree}
-                        tree={tree}
-                        selectMode={selectMode}
-                        onSelModeSelect={onSelModeSelect}
-                    />
-                </List.Item>
-            )}
-        />
+        show = <SortableContext items={itemIds} strategy={verticalListSortingStrategy}>
+            <List
+                className="task-list"
+                // loading={loadingTree}
+                header={indexSmallFirst ? null : inputArea}
+                footer={indexSmallFirst ? inputArea : null}
+                dataSource={taskShow.length > 0 ? taskShow : undefined}
+                locale={{emptyText: <div>---添加你的第一个任务吧🥰---</div>}} // 彻底隐藏空状态
+                renderItem={(item) => (
+                    <List.Item key={item.ID}
+                               style={{paddingTop: 4, paddingBottom: 4}}
+                    >
+                        <Task
+                            onSelectTask={onSelectTask}
+                            level={level + 1}
+                            addr={addr.copy()}
+                            task={item}
+                            taskNode={tree.findTask(item.ID)!}
+                            indexSmallFirst={indexSmallFirst}
+                            loadingTree={loadingTree}
+                            refreshTree={refreshTree}
+                            tree={tree}
+                            selectMode={selectMode}
+                            onSelModeSelect={onSelModeSelect}
+                        />
+                    </List.Item>
+                )}
+            />
+        </SortableContext>
     }
 
     return <div
