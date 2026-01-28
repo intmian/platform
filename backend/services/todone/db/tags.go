@@ -41,33 +41,32 @@ func GetTagsByTaskID(db *gorm.DB, taskID uint32) []string {
 	return res
 }
 
+const MaxInSize = 50 // 根据 D1 / SQLite 实测调整
+
 func GetTagsByMultipleTaskID(db *gorm.DB, taskIDs []uint32) map[uint32][]string {
-	if len(taskIDs) > 50 {
-		// 因为gorm底层会把IN的条件展开成多个？号，超过一定数量会报错，理论上最多能支持99个？这里做下分页 (d1的限制可能更低)
-		res := make(map[uint32][]string)
-		for i := 0; i < len(taskIDs); i += 500 {
-			end := i + 500
-			if end > len(taskIDs) {
-				end = len(taskIDs)
-			}
-			partialRes := GetTagsByMultipleTaskID(db, taskIDs[i:end])
-			for k, v := range partialRes {
-				res[k] = v
-			}
-		}
-		return res
+	res := make(map[uint32][]string, len(taskIDs))
+	for _, id := range taskIDs {
+		res[id] = make([]string, 0)
 	}
 
-	var tags []TagsDB
-	tags = make([]TagsDB, 0)
-	db.Where("task_id in ?", taskIDs).Find(&tags)
-	res := make(map[uint32][]string)
-	for _, taskID := range taskIDs {
-		res[taskID] = make([]string, 0)
+	for i := 0; i < len(taskIDs); i += MaxInSize {
+		end := i + MaxInSize
+		if end > len(taskIDs) {
+			end = len(taskIDs)
+		}
+
+		var tags []TagsDB
+		if err := db.
+			Where("task_id IN ?", taskIDs[i:end]).
+			Find(&tags).Error; err != nil {
+			continue
+		}
+
+		for _, tag := range tags {
+			res[tag.TaskID] = append(res[tag.TaskID], tag.Tag)
+		}
 	}
-	for _, tag := range tags {
-		res[tag.TaskID] = append(res[tag.TaskID], tag.Tag)
-	}
+
 	return res
 }
 
