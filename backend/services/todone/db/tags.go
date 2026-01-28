@@ -42,6 +42,22 @@ func GetTagsByTaskID(db *gorm.DB, taskID uint32) []string {
 }
 
 func GetTagsByMultipleTaskID(db *gorm.DB, taskIDs []uint32) map[uint32][]string {
+	if len(taskIDs) > 50 {
+		// 因为gorm底层会把IN的条件展开成多个？号，超过一定数量会报错，理论上最多能支持99个？这里做下分页 (d1的限制可能更低)
+		res := make(map[uint32][]string)
+		for i := 0; i < len(taskIDs); i += 500 {
+			end := i + 500
+			if end > len(taskIDs) {
+				end = len(taskIDs)
+			}
+			partialRes := GetTagsByMultipleTaskID(db, taskIDs[i:end])
+			for k, v := range partialRes {
+				res[k] = v
+			}
+		}
+		return res
+	}
+
 	var tags []TagsDB
 	tags = make([]TagsDB, 0)
 	db.Where("task_id in ?", taskIDs).Find(&tags)

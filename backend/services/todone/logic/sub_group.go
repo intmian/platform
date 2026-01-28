@@ -591,7 +591,7 @@ func (s *SubGroupLogic) AfterTaskMove(seq MapIdTree, needChangeParent, noNeedCha
 	for _, taskDB := range dbs {
 		task := NewTaskLogic(taskDB.TaskID)
 		task.OnBindOutData(&taskDB)
-		if taskDB.Deleted {
+		if taskDB.Deleted || taskDB.Done {
 			continue
 		}
 		s.unFinTasksCache[task.dbData.TaskID] = task
