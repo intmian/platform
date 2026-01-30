@@ -473,8 +473,101 @@ func summary(report *DayReport) error {
 		}
 	}
 
+	// 生成 GoogleNews 汇总段落
+	googleSummary, err := summaryGoogleNews(report.GoogleNews, chat)
+	if err != nil {
+		tool.GLog.WarningErr("auto.Day", errors.Join(errors.New("func summary() summaryGoogleNews error"), err))
+		// GoogleNews 汇总失败不影响整体，继续执行
+	} else if googleSummary != "" {
+		ans += "\n\n" + googleSummary
+	}
+
 	report.Summary = ans
 	return nil
+}
+
+// summaryGoogleNews 生成 GoogleNews 的汇总段落
+func summaryGoogleNews(googleNews []struct {
+	KeyWord string
+	News    []spider.GoogleRssItem
+}, chat *ai.OpenAI) (string, error) {
+	// 筛选有数据的关键词
+	type KeywordNews struct {
+		KeyWord string `json:"keyword"`
+		News    []struct {
+			Title  string `json:"title"`
+			Source string `json:"source"`
+		} `json:"news"`
+	}
+
+	validNews := make([]KeywordNews, 0)
+	for _, item := range googleNews {
+		if len(item.News) == 0 {
+			continue
+		}
+		kn := KeywordNews{
+			KeyWord: item.KeyWord,
+			News: make([]struct {
+				Title  string `json:"title"`
+				Source string `json:"source"`
+			}, 0, len(item.News)),
+		}
+		for _, news := range item.News {
+			kn.News = append(kn.News, struct {
+				Title  string `json:"title"`
+				Source string `json:"source"`
+			}{Title: news.Title, Source: news.Source})
+		}
+		validNews = append(validNews, kn)
+	}
+
+	// 如果没有有效新闻，返回空
+	if len(validNews) == 0 {
+		return "", nil
+	}
+
+	// 转换为 JSON
+	queryJson, err := json.Marshal(validNews)
+	if err != nil {
+		return "", errors.Join(errors.New("func summaryGoogleNews() json.Marshal error"), err)
+	}
+
+	// 定义需要特殊处理的媒体列表
+	prompt := `请阅读以下按关键词分组的 Google 新闻数据（JSON 格式），为每个有新闻的关键词撰写一句简短的汇总说明。
+
+要求：
+1. 仅汇总有新闻数据的关键词，无数据的跳过；
+2. 每个关键词用一句话概括主要动态；
+3. 不使用 Markdown、不添加标题、不使用项目符号，直接用自然段落呈现；
+4. 对于以下媒体来源的报道，请以第三方客观口吻阐述，不可直接采纳其观点，需注明"据XX报道"或"XX称"：
+   - 商业媒体：汽车之家、太平洋汽车、中关村在线、快科技等
+   - 政治倾向性媒体：风闻、观察者网、环球时报等
+5. 语言简洁、客观，不做主观评价；
+6. 整体控制在 200 字以内。
+
+新闻数据：
+`
+
+	ans, err := chat.Chat(prompt + string(queryJson))
+	if err != nil {
+		return "", err
+	}
+
+	// 清除多余的空格和换行符
+	strs := strings.Split(ans, "\n")
+	ans = ""
+	for i, str := range strs {
+		str = strings.TrimSpace(str)
+		if str == "" {
+			continue
+		}
+		ans += str
+		if i != len(strs)-1 {
+			ans += "\n"
+		}
+	}
+
+	return ans, nil
 }
 
 func translate(report *DayReport) error {
