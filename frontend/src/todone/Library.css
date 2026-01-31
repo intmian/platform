@@ -152,26 +152,74 @@
     font-size: 12px;
 }
 
+/* 左上角分类标签 */
+.library-card-category-badge {
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    z-index: 2;
+}
+
+.library-card-category-badge .ant-tag {
+    margin: 0;
+    font-size: 10px;
+    padding: 0 6px;
+    border-radius: 4px;
+}
+
+/* 右上角评分标签 */
+.library-card-score-badge {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    z-index: 2;
+    background: rgba(0, 0, 0, 0.6);
+    color: #fff;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 11px;
+    display: flex;
+    align-items: center;
+}
+
 /* 底部信息条 */
 .library-card-footer {
     display: flex;
     justify-content: space-between;
-    align-items: center;
+    align-items: flex-start;
     padding: 10px 12px;
     background: #fff;
     border-top: 1px solid #f0f0f0;
     min-height: 42px;
 }
 
+.library-card-footer-left {
+    flex: 1;
+    min-width: 0;
+    margin-right: 8px;
+}
+
 .library-card-name {
     color: #333;
     font-size: 13px;
     font-weight: 500;
-    flex: 1;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    margin-right: 8px;
+    display: block;
+}
+
+.library-card-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 4px;
+}
+
+.library-card-meta-item {
+    font-size: 10px;
+    color: #999;
+    white-space: nowrap;
 }
 
 .library-card-status {

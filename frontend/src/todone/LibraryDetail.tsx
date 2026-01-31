@@ -15,6 +15,7 @@ import {
     message,
     Modal,
     Popconfirm,
+    Radio,
     Row,
     Select,
     Space,
@@ -32,6 +33,7 @@ import {
     PictureOutlined,
     PlayCircleOutlined,
     PlusOutlined,
+    ShareAltOutlined,
     StarFilled,
     StarOutlined,
     StopOutlined,
@@ -44,6 +46,7 @@ import {
     LibraryLogEntry,
     LibraryLogType,
     LibraryRound,
+    LibraryScoreData,
     LibraryStatusColors,
     LibraryStatusNames,
 } from './net/protocal';
@@ -61,6 +64,7 @@ import {
 } from './libraryUtil';
 import {useIsMobile} from '../common/hooksv2';
 import TextRate from '../library/TextRate';
+import LibraryShareCard from './LibraryShareCard';
 
 const {Text, Paragraph} = Typography;
 const {TextArea} = Input;
@@ -89,6 +93,10 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
     const [showAddScore, setShowAddScore] = useState(false);
     const [showAddNote, setShowAddNote] = useState(false);
     const [noteContent, setNoteContent] = useState('');
+    
+    // 分享弹窗
+    const [showShare, setShowShare] = useState(false);
+    const [shareEditMode, setShareEditMode] = useState(false);
     
     // 基本信息编辑表单
     const [form] = Form.useForm();
@@ -361,6 +369,12 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
             open={visible}
             extra={
                 <Space>
+                    <Button 
+                        icon={<ShareAltOutlined/>} 
+                        onClick={() => setShowShare(true)}
+                    >
+                        分享
+                    </Button>
                     {editMode ? (
                         <>
                             <Button onClick={() => setEditMode(false)}>取消</Button>
@@ -533,6 +547,96 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
                     value={noteContent}
                     onChange={(e) => setNoteContent(e.target.value)}
                 />
+            </Modal>
+            
+            {/* 分享弹窗 */}
+            <Modal
+                title={
+                    <Flex justify="space-between" align="center">
+                        <span>分享预览</span>
+                        <Space>
+                            <Radio.Group 
+                                value={localItem.extra.scoreMode || 'simple'} 
+                                onChange={(e) => {
+                                    const newExtra = {...localItem.extra, scoreMode: e.target.value};
+                                    const newItem = {...localItem, extra: newExtra};
+                                    setLocalItem(newItem);
+                                }}
+                                size="small"
+                            >
+                                <Radio.Button value="simple">简单评分</Radio.Button>
+                                <Radio.Button value="complex">复杂评分</Radio.Button>
+                            </Radio.Group>
+                            <Button 
+                                size="small"
+                                type={shareEditMode ? 'primary' : 'default'}
+                                onClick={() => setShareEditMode(!shareEditMode)}
+                            >
+                                {shareEditMode ? '完成编辑' : '编辑评分'}
+                            </Button>
+                        </Space>
+                    </Flex>
+                }
+                open={showShare}
+                onCancel={() => {
+                    setShowShare(false);
+                    setShareEditMode(false);
+                }}
+                footer={
+                    <Space>
+                        <Button onClick={() => {
+                            setShowShare(false);
+                            setShareEditMode(false);
+                        }}>
+                            关闭
+                        </Button>
+                        <Button 
+                            type="primary"
+                            onClick={() => {
+                                onSave(localItem);
+                                message.success('评分已保存');
+                            }}
+                        >
+                            保存评分
+                        </Button>
+                    </Space>
+                }
+                width={isMobile ? '100%' : 650}
+                style={{top: 20}}
+            >
+                <div style={{maxHeight: '70vh', overflowY: 'auto'}}>
+                    <LibraryShareCard
+                        title={localItem.title}
+                        extra={localItem.extra}
+                        editable={shareEditMode}
+                        onChange={(newExtra) => {
+                            const newItem = {...localItem, extra: newExtra};
+                            setLocalItem(newItem);
+                        }}
+                    />
+                    
+                    {/* 复杂模式下的总评编辑 */}
+                    {localItem.extra.scoreMode === 'complex' && shareEditMode && (
+                        <div style={{padding: '0 10px 16px'}}>
+                            <Text strong>总评：</Text>
+                            <TextArea
+                                rows={4}
+                                placeholder="请输入总评内容..."
+                                value={localItem.extra.comment || ''}
+                                onChange={(e) => {
+                                    const newExtra = {...localItem.extra, comment: e.target.value};
+                                    const newItem = {...localItem, extra: newExtra};
+                                    setLocalItem(newItem);
+                                }}
+                                style={{marginTop: 8}}
+                            />
+                        </div>
+                    )}
+                    
+                    <div style={{padding: '0 10px', fontSize: 12, color: '#999'}}>
+                        提示：截图此卡片即可分享。{localItem.extra.scoreMode === 'complex' ? '复杂模式包含多维度评分。' : '简单模式仅显示主评分。'}
+                    </div>
+                </div>
             </Modal>
         </Drawer>
     );

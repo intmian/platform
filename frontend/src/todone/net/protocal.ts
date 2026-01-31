@@ -114,6 +114,14 @@ export interface LibraryItem {
     note: string
 }
 
+// 复杂评分数据（与 jianxing 一致）
+export interface LibraryScoreData {
+    value: number       // 1-5分
+    plus: boolean       // 加分
+    sub: boolean        // 减分
+    comment: string     // 评分说明
+}
+
 // Library 扩展数据，存储在 Task.Note 字段中（JSON 格式）
 export interface LibraryExtra {
     pictureAddress: string          // 封面图片地址
@@ -126,6 +134,14 @@ export interface LibraryExtra {
     mainScoreLogIndex?: number      // 主评分所在日志索引
     createdAt: string               // 创建时间
     updatedAt: string               // 更新时间
+    
+    // 复杂评分模式字段（可选）
+    scoreMode?: 'simple' | 'complex'  // 评分模式：简单(仅主评分) / 复杂(多维度)
+    objScore?: LibraryScoreData       // 客观评分
+    subScore?: LibraryScoreData       // 主观评分
+    innovateScore?: LibraryScoreData  // 创新评分
+    mainScore?: LibraryScoreData      // 主评分（复杂模式下的总分）
+    comment?: string                  // 总评（用于分享）
 }
 
 // 单个周目

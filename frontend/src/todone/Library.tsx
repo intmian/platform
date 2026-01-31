@@ -1,12 +1,14 @@
 import React, {useCallback, useEffect, useMemo, useState} from 'react';
 import {
     Button,
+    Checkbox,
     Dropdown,
     Empty,
     Flex,
     Input,
     message,
     Modal,
+    Popover,
     Select,
     Space,
     Spin,
@@ -20,6 +22,7 @@ import {
     ClockCircleOutlined,
     DeleteOutlined,
     EditOutlined,
+    EyeOutlined,
     FilterOutlined,
     PlusOutlined,
     SearchOutlined,
@@ -140,6 +143,16 @@ export default function Library({addr, groupTitle}: LibraryProps) {
     
     // 时间线视图
     const [showTimeline, setShowTimeline] = useState(false);
+    
+    // 显示选项
+    const [showDisplayOptions, setShowDisplayOptions] = useState(false);
+    const [displayOptions, setDisplayOptions] = useState({
+        showScore: true,        // 显示评分
+        showCategory: true,     // 显示分类（仅在全部分类时有效）
+        showUpdateTime: false,  // 显示更新时间
+        showStartTime: false,   // 显示开始时间
+        showAuthor: false,      // 显示作者
+    });
 
     // 加载或创建主 SubGroup
     const loadOrCreateMainSubGroup = useCallback(() => {
@@ -333,7 +346,7 @@ export default function Library({addr, groupTitle}: LibraryProps) {
             DirID: addr.getLastDirID(),
             GroupID: addr.getLastGroupID(),
             SubGroupID: mainSubGroup.ID,
-            TaskID: item.taskId,
+            TaskID: [item.taskId],
         };
         
         sendDelTask(req, (ret) => {
@@ -511,10 +524,26 @@ export default function Library({addr, groupTitle}: LibraryProps) {
         }));
     };
 
+    // 格式化日期显示
+    const formatDate = (dateStr: string) => {
+        if (!dateStr) return '';
+        const date = new Date(dateStr);
+        return `${date.getMonth() + 1}/${date.getDate()}`;
+    };
+
+    // 获取开始时间（第一个周目的开始时间）
+    const getStartTime = (extra: LibraryItemFull['extra']) => {
+        if (extra.rounds && extra.rounds.length > 0) {
+            return extra.rounds[0].startTime;
+        }
+        return extra.createdAt;
+    };
+
     // 卡片渲染
     const renderCard = (item: LibraryItemFull) => {
         const mainScore = getMainScore(item.extra);
         const placeholderColor = stringToColor(item.title);
+        const showCategoryOnCard = displayOptions.showCategory && selectedCategory === 'all' && item.extra.category;
         
         return (
             <div
@@ -560,6 +589,21 @@ export default function Library({addr, groupTitle}: LibraryProps) {
                         </span>
                     </div>
                     
+                    {/* 左上角分类标签（不筛选分类时显示） */}
+                    {showCategoryOnCard && (
+                        <div className="library-card-category-badge">
+                            <Tag color="blue">{item.extra.category}</Tag>
+                        </div>
+                    )}
+                    
+                    {/* 右上角评分（如果开启显示评分） */}
+                    {displayOptions.showScore && mainScore && (
+                        <div className="library-card-score-badge">
+                            <StarFilled style={{color: '#faad14', marginRight: 2}} />
+                            <span>{getScoreText(mainScore.score || 0, mainScore.scorePlus, mainScore.scoreSub)}</span>
+                        </div>
+                    )}
+                    
                     {/* 悬停时显示的信息层 */}
                     <div className="library-card-overlay">
                         <div className="library-card-title">{item.title}</div>
@@ -568,13 +612,13 @@ export default function Library({addr, groupTitle}: LibraryProps) {
                         )}
                         {item.extra.category && (
                             <div className="library-card-category">
-                                <Tag size="small">{item.extra.category}</Tag>
+                                <Tag>{item.extra.category}</Tag>
                             </div>
                         )}
                         {mainScore && (
                             <div className="library-card-score">
                                 <StarFilled />
-                                <span>{getScoreText(mainScore.score, mainScore.scorePlus, mainScore.scoreSub)}</span>
+                                <span>{getScoreText(mainScore.score || 0, mainScore.scorePlus, mainScore.scoreSub)}</span>
                             </div>
                         )}
                     </div>
@@ -582,7 +626,21 @@ export default function Library({addr, groupTitle}: LibraryProps) {
                 
                 {/* 底部信息条 */}
                 <div className="library-card-footer">
-                    <span className="library-card-name">{item.title}</span>
+                    <div className="library-card-footer-left">
+                        <span className="library-card-name">{item.title}</span>
+                        {/* 额外信息行 */}
+                        <div className="library-card-meta">
+                            {displayOptions.showAuthor && item.extra.author && (
+                                <span className="library-card-meta-item">{item.extra.author}</span>
+                            )}
+                            {displayOptions.showStartTime && (
+                                <span className="library-card-meta-item">开始: {formatDate(getStartTime(item.extra))}</span>
+                            )}
+                            {displayOptions.showUpdateTime && (
+                                <span className="library-card-meta-item">更新: {formatDate(item.extra.updatedAt)}</span>
+                            )}
+                        </div>
+                    </div>
                     <Dropdown
                         menu={{items: getStatusMenuItems(item)}}
                         trigger={['click']}
@@ -600,6 +658,45 @@ export default function Library({addr, groupTitle}: LibraryProps) {
             </div>
         );
     };
+
+    // 显示选项面板
+    const displayOptionsContent = (
+        <div style={{width: 180}}>
+            <div style={{marginBottom: 8, fontWeight: 500}}>卡片显示选项</div>
+            <Space direction="vertical" size={4}>
+                <Checkbox
+                    checked={displayOptions.showScore}
+                    onChange={(e) => setDisplayOptions({...displayOptions, showScore: e.target.checked})}
+                >
+                    显示评分
+                </Checkbox>
+                <Checkbox
+                    checked={displayOptions.showCategory}
+                    onChange={(e) => setDisplayOptions({...displayOptions, showCategory: e.target.checked})}
+                >
+                    显示分类
+                </Checkbox>
+                <Checkbox
+                    checked={displayOptions.showAuthor}
+                    onChange={(e) => setDisplayOptions({...displayOptions, showAuthor: e.target.checked})}
+                >
+                    显示作者
+                </Checkbox>
+                <Checkbox
+                    checked={displayOptions.showStartTime}
+                    onChange={(e) => setDisplayOptions({...displayOptions, showStartTime: e.target.checked})}
+                >
+                    显示开始时间
+                </Checkbox>
+                <Checkbox
+                    checked={displayOptions.showUpdateTime}
+                    onChange={(e) => setDisplayOptions({...displayOptions, showUpdateTime: e.target.checked})}
+                >
+                    显示更新时间
+                </Checkbox>
+            </Space>
+        </div>
+    );
 
     if (!addr) {
         return <Empty description="请选择一个 Library 分组"/>;
@@ -622,6 +719,15 @@ export default function Library({addr, groupTitle}: LibraryProps) {
                 </Space>
                 
                 <Space wrap>
+                    <Popover
+                        content={displayOptionsContent}
+                        trigger="click"
+                        placement="bottomRight"
+                    >
+                        <Button icon={<EyeOutlined/>}>
+                            显示
+                        </Button>
+                    </Popover>
                     <Button
                         icon={<ClockCircleOutlined/>}
                         onClick={() => setShowTimeline(true)}
