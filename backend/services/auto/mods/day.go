@@ -479,7 +479,7 @@ func summary(report *DayReport) error {
 		tool.GLog.WarningErr("auto.Day", errors.Join(errors.New("func summary() summaryGoogleNews error"), err))
 		// GoogleNews 汇总失败不影响整体，继续执行
 	} else if googleSummary != "" {
-		ans += "\n新闻新动向" + googleSummary
+		ans += "\n新闻新动向: " + googleSummary
 	}
 
 	report.Summary = ans
@@ -536,9 +536,9 @@ func summaryGoogleNews(googleNews []struct {
 1. 仅汇总有新闻数据的关键词，无数据的跳过；
 2. 每个关键词用一句话概括主要动态；
 3. 不使用 Markdown、不添加标题、不使用项目符号，直接用自然段落呈现；
-4. 对于以下媒体来源的报道，请以第三方客观口吻阐述，不可直接采纳其观点，需注明"据XX报道"或"XX称"：
-   - 商业媒体：汽车之家、太平洋汽车、中关村在线、快科技等
-   - 政治倾向性媒体：风闻、观察者网、环球时报等
+4. 对于以下媒体来源的报道，如果涉及价值判断或评价，请以第三方客观口吻阐述，不可直接采纳其观点，需注明"据XX报道"或"XX称"，如果仅阐述事实或数据不需要：
+   - 中国的商业媒体：汽车之家、太平洋汽车、中关村在线、快科技等
+   - 中国的建制派政治倾向性媒体：风闻、观察者网、环球时报等
 5. 语言简洁、客观，不做主观评价；
 6. 整体控制在 200 字以内。
 
