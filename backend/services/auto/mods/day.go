@@ -479,7 +479,7 @@ func summary(report *DayReport) error {
 		tool.GLog.WarningErr("auto.Day", errors.Join(errors.New("func summary() summaryGoogleNews error"), err))
 		// GoogleNews 汇总失败不影响整体，继续执行
 	} else if googleSummary != "" {
-		ans += "\n\n" + googleSummary
+		ans += "\n新闻新动向" + googleSummary
 	}
 
 	report.Summary = ans
@@ -530,7 +530,7 @@ func summaryGoogleNews(googleNews []struct {
 	}
 
 	// 定义需要特殊处理的媒体列表
-	prompt := `请阅读以下按关键词分组的 Google 新闻数据（JSON 格式），为每个有新闻的关键词撰写一句简短的汇总说明。
+	prompt := `请阅读以下按关键词分组的 Google 新闻数据（JSON 格式），为每个有新闻的关键词撰写一句简短的汇总说明。最后将所有关键词的汇总说明合并成一个自然段，句子之间用顿号分隔。\n
 
 要求：
 1. 仅汇总有新闻数据的关键词，无数据的跳过；
