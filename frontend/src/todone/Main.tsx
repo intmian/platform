@@ -165,8 +165,8 @@ export function Todone() {
 
         <div
             style={{
-                width: isMobile ? '90%' : (chooseGroupType === GroupType.Library ? '90%' : '650px'),
-                minHeight: '100%',
+            width: (isMobile || chooseGroupType === GroupType.Library) ? '90%' : '650px',
+            minHeight: '100%',
             }}
         >
             {chooseGroupType === GroupType.Library ? (
