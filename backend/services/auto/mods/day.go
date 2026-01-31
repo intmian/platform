@@ -495,8 +495,7 @@ func summaryGoogleNews(googleNews []struct {
 	type KeywordNews struct {
 		KeyWord string `json:"keyword"`
 		News    []struct {
-			Title  string `json:"title"`
-			Source string `json:"source"`
+			Title string `json:"title"`
 		} `json:"news"`
 	}
 
@@ -508,15 +507,13 @@ func summaryGoogleNews(googleNews []struct {
 		kn := KeywordNews{
 			KeyWord: item.KeyWord,
 			News: make([]struct {
-				Title  string `json:"title"`
-				Source string `json:"source"`
+				Title string `json:"title"`
 			}, 0, len(item.News)),
 		}
 		for _, news := range item.News {
 			kn.News = append(kn.News, struct {
-				Title  string `json:"title"`
-				Source string `json:"source"`
-			}{Title: news.Title, Source: news.Source})
+				Title string `json:"title"`
+			}{Title: news.Title})
 		}
 		validNews = append(validNews, kn)
 	}
