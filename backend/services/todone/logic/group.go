@@ -2,9 +2,10 @@ package logic
 
 import (
 	"errors"
+	"math"
+
 	"github.com/intmian/platform/backend/services/todone/db"
 	"github.com/intmian/platform/backend/services/todone/protocol"
-	"math"
 )
 
 type GroupLogic struct {
@@ -110,6 +111,7 @@ func (g *GroupLogic) ToProtocol() protocol.PGroup {
 		Title: g.dbData.Title,
 		Note:  g.dbData.Note,
 		Index: g.dbData.Index,
+		Type:  int(g.dbData.Type),
 	}
 }
 

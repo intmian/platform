@@ -10,6 +10,7 @@ export interface PGroup {
     Title: string;
     Note: string;
     Index: number;
+    Type?: number; // GroupType: 0=Normal, 1=Library
 }
 
 export interface PDirTree {
@@ -104,12 +105,92 @@ export interface LibraryNote {
 export interface LibraryScore {
     mainScore: boolean // 是否为主评分
     score: number // 评分
+    comment?: string // 评分备注
 }
 
 export interface LibraryItem {
     id: number
     name: string
     note: string
+}
+
+// Library 扩展数据，存储在 Task.Note 字段中（JSON 格式）
+export interface LibraryExtra {
+    pictureAddress: string          // 封面图片地址
+    author: string                  // 作者/制作方
+    category: string                // 分类（动漫/电影/游戏/小说等）
+    status: LibraryItemStatus       // 当前状态
+    currentRound: number            // 当前周目索引
+    rounds: LibraryRound[]          // 所有周目数据
+    mainScoreRoundIndex?: number    // 主评分所在周目索引
+    mainScoreLogIndex?: number      // 主评分所在日志索引
+    createdAt: string               // 创建时间
+    updatedAt: string               // 更新时间
+}
+
+// 单个周目
+export interface LibraryRound {
+    name: string                    // 周目名称（如：首周目、二周目、DLC1等）
+    logs: LibraryLogEntry[]         // 该周目的日志
+    startTime: string               // 开始时间
+    endTime?: string                // 结束时间
+}
+
+// 日志条目（扩展 LibraryLog）
+export interface LibraryLogEntry {
+    type: LibraryLogType
+    time: string
+    status?: LibraryItemStatus      // 状态变更时的新状态
+    score?: number                  // 评分（1-5）
+    scorePlus?: boolean             // 评分加分
+    scoreSub?: boolean              // 评分减分
+    comment?: string                // 备注/评论
+}
+
+// 从 Task 解析出的 Library 完整数据
+export interface LibraryItemFull {
+    taskId: number
+    title: string
+    extra: LibraryExtra
+    index: number
+    tags: string[] | null
+}
+
+// 时间线条目
+export interface TimelineEntry {
+    time: string
+    itemTitle: string
+    itemId: number
+    pictureAddress: string
+    roundName: string
+    logType: LibraryLogType
+    status?: LibraryItemStatus
+    score?: number
+    comment?: string
+}
+
+// 状态显示名称映射
+export const LibraryStatusNames: Record<LibraryItemStatus, string> = {
+    [LibraryItemStatus.TODO]: '待看',
+    [LibraryItemStatus.DOING]: '进行中',
+    [LibraryItemStatus.DONE]: '已完成',
+    [LibraryItemStatus.WAIT]: '搁置',
+    [LibraryItemStatus.GIVE_UP]: '放弃',
+}
+
+// 状态颜色映射
+export const LibraryStatusColors: Record<LibraryItemStatus, string> = {
+    [LibraryItemStatus.TODO]: '#d9d9d9',
+    [LibraryItemStatus.DOING]: '#1890ff',
+    [LibraryItemStatus.DONE]: '#52c41a',
+    [LibraryItemStatus.WAIT]: '#faad14',
+    [LibraryItemStatus.GIVE_UP]: '#ff4d4f',
+}
+
+// GroupType 枚举
+export enum GroupType {
+    Normal = 0,
+    Library = 1,
 }
 
 

@@ -7,12 +7,13 @@ import {Drawer, FloatButton, message} from "antd";
 import {Addr} from "./addr";
 import Group from "./Group";
 import {TaskDetail} from "./TaskDetail";
-import {PTask} from "./net/protocal";
+import {GroupType, PTask} from "./net/protocal";
 import {MenuOutlined} from "@ant-design/icons";
 import {useIsMobile} from "../common/hooksv2";
 import User from "../common/User";
 import {useParams} from "react-router-dom";
 import TaskTree from "./TaskTree";
+import Library from "./Library";
 
 const TodoneConfigs = new ConfigsCtr(ConfigsType.Server, 'todone')
 TodoneConfigs.addBaseConfig('db.account_id', '数据库账号ID', ConfigType.String, 'cloudflare')
@@ -40,6 +41,7 @@ export function Todone() {
     const loginCtr: LoginCtr = useContext<LoginCtr>(LoginCtx);
     const [chooseAddr, setChooseAddr] = useState<Addr | null>(null);
     const [chooseTitle, setChooseTitle] = useState<string>('')
+    const [chooseGroupType, setChooseGroupType] = useState<number>(GroupType.Normal);
     const [selectTaskAddr, setSelectTaskAddr] = useState<Addr>();
     const taskRef = useRef<PTask>();
     const refreshApiRef = useRef<() => void>();
@@ -63,11 +65,14 @@ export function Todone() {
     }, []);
 
     useEffect(() => {
-        document.title = `TODONE 任务板: ${chooseTitle}`;
-    }, [chooseTitle]);
+        const title = chooseGroupType === GroupType.Library 
+            ? `TODONE 娱乐库: ${chooseTitle}` 
+            : `TODONE 任务板: ${chooseTitle}`;
+        document.title = title;
+    }, [chooseTitle, chooseGroupType]);
 
     useEffect(() => {
-        // 使用竖线分隔group
+        // 使用竖线分隔group: addr|title|type
         if (!group) {
             setShowDir(true);
             return;
@@ -81,11 +86,13 @@ export function Todone() {
         }
         const savedAddr = groupData[0];
         const savedTitle = groupData[1];
+        const savedType = groupData[2] ? parseInt(groupData[2]) : GroupType.Normal;
         if (savedAddr && savedTitle) {
             const addr = new Addr(loginCtr.loginInfo.usr);
             addr.bindAddr(savedAddr);
             setChooseAddr(addr);
             setChooseTitle(savedTitle);
+            setChooseGroupType(savedType);
         } else {
             setShowDir(true);
         }
@@ -131,19 +138,23 @@ export function Todone() {
             >
                 <Dir
                     userID={loginCtr.loginInfo.usr}
-                    onSelectGroup={(addr, title) => {
+                    onSelectGroup={(addr, title, groupType) => {
                         setChooseAddr(addr);
                         setChooseTitle(title);
+                        setChooseGroupType(groupType ?? GroupType.Normal);
                         // 修改路由
                         const newAddr = addr.toString();
                         const newTitle = title;
-                        const newGroup = `${newAddr}|${newTitle}`;
+                        const typeStr = groupType ?? GroupType.Normal;
+                        const newGroup = `${newAddr}|${newTitle}|${typeStr}`;
                         // 对group进行URL编码
                         const encodedGroup = encodeURIComponent(newGroup);
                         window.history.replaceState({}, '', `/todone/${encodedGroup}`);
                         setShowDir(false);
                         // 修改标题
-                        document.title = `TODONE 任务板: ${title}`;
+                        document.title = groupType === GroupType.Library 
+                            ? `TODONE 娱乐库: ${title}` 
+                            : `TODONE 任务板: ${title}`;
                     }}
                     onSelectDir={(addr) => {
                         // 暂无逻辑
@@ -154,20 +165,27 @@ export function Todone() {
 
         <div
             style={{
-                width: isMobile ? '80%' : '650px',
+                width: isMobile ? '90%' : (chooseGroupType === GroupType.Library ? '90%' : '650px'),
                 minHeight: '100%',
             }}
         >
-            <Group
-                addr={chooseAddr}
-                GroupTitle={chooseTitle}
-                onSelectTask={(addr, pTask, refreshApi, tree) => {
-                    setSelectTaskAddr(addr);
-                    taskRef.current = pTask;
-                    refreshApiRef.current = refreshApi;
-                    treeRef.current = tree;
-                }}
-            />
+            {chooseGroupType === GroupType.Library ? (
+                <Library
+                    addr={chooseAddr}
+                    groupTitle={chooseTitle}
+                />
+            ) : (
+                <Group
+                    addr={chooseAddr}
+                    GroupTitle={chooseTitle}
+                    onSelectTask={(addr, pTask, refreshApi, tree) => {
+                        setSelectTaskAddr(addr);
+                        taskRef.current = pTask;
+                        refreshApiRef.current = refreshApi;
+                        treeRef.current = tree;
+                    }}
+                />
+            )}
         </div>
 
         <Drawer

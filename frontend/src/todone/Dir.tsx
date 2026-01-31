@@ -409,6 +409,7 @@ function DirAddPanel({DirID, onAddDir, onAddGroup, onCancel, userID, startAdd,}:
                         Note: values.note,
                         ParentDir: DirID,
                         AfterID: 0,
+                        GroupType: values.groupType ?? 0,
                     };
                     sendCreateGroup(req, (ret) => {
                         setLoading(false);
@@ -418,6 +419,7 @@ function DirAddPanel({DirID, onAddDir, onAddGroup, onCancel, userID, startAdd,}:
                                 Title: values.title,
                                 Note: values.note,
                                 Index: ret.data.Index,
+                                Type: values.groupType ?? 0,
                             };
                             onAddGroup(group);
                             message.success("添加成功").then();
@@ -585,7 +587,7 @@ function PDir2TreeDataNode(pDir: PDirTree, addr: Addr, onRefresh: () => void, on
 
 interface DirProps {
     userID: string
-    onSelectGroup: (groupAddr: Addr, title: string) => void
+    onSelectGroup: (groupAddr: Addr, title: string, groupType?: number) => void
     onSelectDir: (dirAddr: Addr) => void
 }
 
@@ -710,11 +712,13 @@ export function Dir(props: DirProps) {
                 const addr = new Addr(props.userID);
                 addr.addDir(dirTree.RootDir.ID);
                 let title = "";
+                let groupType: number | undefined = undefined;
                 const searchDir = (tree: PDirTree, addr: Addr): Addr | null => {
                     for (const grp of tree.ChildrenGrp) {
                         if (grp.ID === parseInt(id)) {
                             addr.addGroup(grp.ID);
                             title = grp.Title;
+                            groupType = grp.Type;
                             return addr;
                         }
                     }
@@ -730,7 +734,7 @@ export function Dir(props: DirProps) {
                 }
                 const addrRet = searchDir(dirTree, addr);
                 if (addrRet !== null) {
-                    props.onSelectGroup(addrRet, title);
+                    props.onSelectGroup(addrRet, title, groupType);
                 }
             } else {
                 // 从tree中获取搜索到路径并组成Addr
