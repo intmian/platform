@@ -2,9 +2,17 @@ package db
 
 import "gorm.io/gorm"
 
+type GroupType int
+
+const (
+	GroupTypeNormal  GroupType = iota // 普通
+	GroupTypeLibrary                  // 娱乐管理系统
+)
+
 type GroupDB struct {
 	ID        uint32 `gorm:"primaryKey"`
 	UserID    string `gorm:"index"`
+	Type      GroupType
 	Title     string
 	Note      string
 	ParentDir uint32
@@ -12,7 +20,7 @@ type GroupDB struct {
 	Index     float32 `gorm:"index"`
 }
 
-func CreateGroup(db *gorm.DB, userID string, title, note string, parentDirID uint32) (*GroupDB, error) {
+func CreateGroup(db *gorm.DB, userID string, title, note string, parentDirID uint32, groupType GroupType) (*GroupDB, error) {
 	group := GroupDB{
 		UserID:    userID,
 		Title:     title,

@@ -137,7 +137,7 @@ func (s *Service) OnDelDir(valid backendshare.Valid, req DelDirReq) (ret DelDirR
 
 func (s *Service) OnCreateGroup(valid backendshare.Valid, req CreateGroupReq) (ret CreateGroupRet, err error) {
 	s.userMgr.SafeUseUserLogic(req.UserID, func(user *logic.UserLogic) {
-		ID, err2, index := user.CreateGroup(req.ParentDir, req.Title, req.Note, req.AfterID)
+		ID, err2, index := user.CreateGroup(req.ParentDir, req.Title, req.Note, req.AfterID, db.GroupType(req.GroupType))
 		if err2 != nil {
 			err = errors.Join(err, err2)
 			return

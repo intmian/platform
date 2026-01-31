@@ -83,6 +83,7 @@ export interface CreateGroupReq {
     Note: string
     ParentDir: number
     AfterID: number
+    GroupType: number
 }
 
 export interface CreateGroupRet {

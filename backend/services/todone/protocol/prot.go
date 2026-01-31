@@ -14,6 +14,7 @@ type PGroup struct {
 	Title string
 	Note  string
 	Index float32
+	Type  int
 }
 
 type PDirTree struct {

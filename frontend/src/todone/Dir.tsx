@@ -8,6 +8,7 @@ import {
     MenuProps,
     message,
     Modal,
+    Select,
     Space,
     Spin,
     Switch,
@@ -385,6 +386,7 @@ function DirAddPanel({DirID, onAddDir, onAddGroup, onCancel, userID, startAdd,}:
 }) {
     const [loading, setLoading] = useState(false);
     const [form] = Form.useForm();
+    const [needGroupType, setNeedGroupType] = useState(true);
 
     return <>
         {startAdd ? <Modal
@@ -451,7 +453,13 @@ function DirAddPanel({DirID, onAddDir, onAddGroup, onCancel, userID, startAdd,}:
                 }
             }}
         >
-            <Form form={form}>
+            <Form form={form}
+                  onValuesChange={(changedValues) => {
+                      if (changedValues.isGroup !== undefined) {
+                          setNeedGroupType(changedValues.isGroup);
+                      }
+                  }}
+            >
                 <Form.Item label={"标题"} name={"title"}
                            rules={[{required: true, message: "请输入标题"}]}
                 >
@@ -461,9 +469,22 @@ function DirAddPanel({DirID, onAddDir, onAddGroup, onCancel, userID, startAdd,}:
                 >
                     <Input/>
                 </Form.Item>
-                <Form.Item label={"是否为任务组"} name={"isGroup"} initialValue={true}>
+                <Form.Item label={"是否为任务组"} name={"isGroup"} initialValue={true}
+                >
                     <Switch/>
                 </Form.Item>
+                {
+                    // 如果是任务组，则允许选择任务组类型
+                    needGroupType ?
+                        <Form.Item label={"任务组类型"} name={"groupType"} initialValue={0}>
+                            <Select
+                                options={[
+                                    {label: "普通", value: 0},
+                                    {label: "图书馆", value: 1},
+                                ]}
+                            />
+                        </Form.Item> : null
+                }
             </Form>
         </Modal> : null}
     </>

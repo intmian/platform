@@ -100,6 +100,7 @@ type CreateGroupReq struct {
 	Note      string
 	ParentDir uint32
 	AfterID   uint32
+	GroupType int
 }
 
 type CreateGroupRet struct {

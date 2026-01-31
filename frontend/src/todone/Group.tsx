@@ -22,6 +22,7 @@ interface GroupProps {
 }
 
 export default function Group(props: GroupProps) {
+    
     const [subGroups, setSubGroups] = useState<PSubGroup[]>([]);
     const [addSubGroup, setAddSubGroup] = useState(false);
     const [loading, setLoading] = useState(false);

@@ -59,3 +59,57 @@ export interface TaskKey {
     SubGroupID: number
     TaskID: number
 }
+
+export enum LibraryItemStatus {
+    TODO = 0,
+    DOING = 1,
+    DONE = 2,
+    WAIT = 3,
+    GIVE_UP = 4,
+}
+
+export enum LibraryLogType {
+    changeStatus = 0, // 改变状态
+    score = 1, // 评分
+    note = 2, // 备注
+}
+
+export interface LibraryLog {
+    type: LibraryLogType
+    time: string
+    score?: number // 评分
+    note?: LibraryNote // 备注
+}
+
+// 单个体验周目
+export interface LibrarySubLogs {
+    name: string
+    logs: LibraryLog[]
+}
+
+// 全周期
+export interface LibraryLogs {
+    subLogs: LibrarySubLogs[]
+}
+
+// 备注
+export interface LibraryNote {
+    name: string
+    author: string
+    pictureAddress: string
+    time: string
+    logs: LibraryLogs
+}
+
+export interface LibraryScore {
+    mainScore: boolean // 是否为主评分
+    score: number // 评分
+}
+
+export interface LibraryItem {
+    id: number
+    name: string
+    note: string
+}
+
+

@@ -445,7 +445,7 @@ func (u *UserLogic) DelGroup(parentDirID, groupID uint32) error {
 	return nil
 }
 
-func (u *UserLogic) CreateGroup(parentDirID uint32, title, note string, afterID uint32) (uint32, error, float32) {
+func (u *UserLogic) CreateGroup(parentDirID uint32, title, note string, afterID uint32, groupType db.GroupType) (uint32, error, float32) {
 	// 校验父节点是否存在
 	if parentDirID == 0 {
 		return 0, errors.New("parent dir not exist"), 0
@@ -460,7 +460,7 @@ func (u *UserLogic) CreateGroup(parentDirID uint32, title, note string, afterID 
 	if connect == nil {
 		return 0, errors.New("get connect failed"), 0
 	}
-	groupDB, err := db.CreateGroup(connect, u.userID, title, note, parentDirID)
+	groupDB, err := db.CreateGroup(connect, u.userID, title, note, parentDirID, groupType)
 	if err != nil {
 		return 0, errors.Join(err, errors.New("create group failed")), 0
 	}
