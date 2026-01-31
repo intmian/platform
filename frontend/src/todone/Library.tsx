@@ -1,31 +1,29 @@
 import React, {useCallback, useEffect, useMemo, useState} from 'react';
 import {
     Button,
-    Card,
-    Col,
     Dropdown,
     Empty,
     Flex,
-    Image,
     Input,
     message,
     Modal,
-    Row,
     Select,
     Space,
     Spin,
     Tag,
-    Tooltip,
     Form,
+    Popconfirm,
+    AutoComplete,
 } from 'antd';
 import {
     AppstoreOutlined,
     ClockCircleOutlined,
+    DeleteOutlined,
+    EditOutlined,
     FilterOutlined,
-    PictureOutlined,
     PlusOutlined,
-    ReloadOutlined,
     SearchOutlined,
+    SettingOutlined,
     SortAscendingOutlined,
     StarFilled,
 } from '@ant-design/icons';
@@ -40,17 +38,20 @@ import {
 } from './net/protocal';
 import {
     ChangeTaskReq,
+    CreateSubGroupReq,
     CreateTaskReq,
+    DelTaskReq,
     GetSubGroupReq,
     GetTasksReq,
     sendChangeTask,
+    sendCreateSubGroup,
     sendCreateTask,
+    sendDelTask,
     sendGetSubGroup,
     sendGetTasks,
 } from './net/send_back';
 import {
     createDefaultLibraryExtra,
-    formatDate,
     getMainScore,
     getScoreText,
     parseLibraryFromTask,
@@ -59,9 +60,47 @@ import {
 import {useIsMobile} from '../common/hooksv2';
 import LibraryDetail from './LibraryDetail';
 import LibraryTimeline from './LibraryTimeline';
+import './Library.css';
 
 // 排序选项
 type SortOption = 'index' | 'createdAt' | 'updatedAt' | 'title' | 'score';
+
+// 默认的 SubGroup 名称（用于存储所有 Library 条目）
+const DEFAULT_SUBGROUP_NAME = '_library_items_';
+
+// 根据字符串生成一致的颜色
+function stringToColor(str: string): {bg: string; text: string} {
+    // 预定义的柔和色彩方案 [背景色, 文字色]
+    const colorSchemes: Array<{bg: string; text: string}> = [
+        {bg: '#E3F2FD', text: '#1565C0'}, // 蓝色
+        {bg: '#E8F5E9', text: '#2E7D32'}, // 绿色
+        {bg: '#FFF3E0', text: '#E65100'}, // 橙色
+        {bg: '#F3E5F5', text: '#7B1FA2'}, // 紫色
+        {bg: '#E0F7FA', text: '#00838F'}, // 青色
+        {bg: '#FBE9E7', text: '#BF360C'}, // 深橙
+        {bg: '#E8EAF6', text: '#3949AB'}, // 靛蓝
+        {bg: '#FCE4EC', text: '#C2185B'}, // 粉色
+        {bg: '#F1F8E9', text: '#558B2F'}, // 浅绿
+        {bg: '#FFFDE7', text: '#F9A825'}, // 黄色
+        {bg: '#EFEBE9', text: '#5D4037'}, // 棕色
+        {bg: '#ECEFF1', text: '#546E7A'}, // 蓝灰
+        {bg: '#E1F5FE', text: '#0277BD'}, // 浅蓝
+        {bg: '#F9FBE7', text: '#9E9D24'}, // 青柠
+        {bg: '#FFF8E1', text: '#FF8F00'}, // 琥珀
+        {bg: '#E0F2F1', text: '#00695C'}, // 蓝绿
+    ];
+    
+    // 使用简单的哈希算法
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+        const char = str.charCodeAt(i);
+        hash = ((hash << 5) - hash) + char;
+        hash = hash & hash; // Convert to 32bit integer
+    }
+    
+    const index = Math.abs(hash) % colorSchemes.length;
+    return colorSchemes[index];
+}
 
 interface LibraryProps {
     addr: Addr | null;
@@ -72,12 +111,12 @@ export default function Library({addr, groupTitle}: LibraryProps) {
     const isMobile = useIsMobile();
     
     // 数据状态
-    const [subGroups, setSubGroups] = useState<PSubGroup[]>([]);
-    const [tasksBySubGroup, setTasksBySubGroup] = useState<Map<number, PTask[]>>(new Map());
+    const [mainSubGroup, setMainSubGroup] = useState<PSubGroup | null>(null);
+    const [tasks, setTasks] = useState<PTask[]>([]);
     const [loading, setLoading] = useState(false);
     
-    // 当前选中的分类
-    const [selectedSubGroup, setSelectedSubGroup] = useState<number | 'all'>('all');
+    // 当前选中的分类 (extra.category)
+    const [selectedCategory, setSelectedCategory] = useState<string>('all');
     
     // 筛选和排序
     const [statusFilter, setStatusFilter] = useState<LibraryItemStatus | 'all'>('all');
@@ -86,19 +125,24 @@ export default function Library({addr, groupTitle}: LibraryProps) {
     
     // 详情弹窗
     const [detailItem, setDetailItem] = useState<LibraryItemFull | null>(null);
-    const [detailSubGroupId, setDetailSubGroupId] = useState<number>(0);
     const [showDetail, setShowDetail] = useState(false);
     
-    // 添加弹窗
+    // 添加条目弹窗
     const [showAdd, setShowAdd] = useState(false);
     const [addForm] = Form.useForm();
     const [addLoading, setAddLoading] = useState(false);
     
+    // 分类管理弹窗
+    const [showCategoryManager, setShowCategoryManager] = useState(false);
+    const [newCategoryName, setNewCategoryName] = useState('');
+    const [editingCategoryOld, setEditingCategoryOld] = useState<string | null>(null);
+    const [editingCategoryNew, setEditingCategoryNew] = useState('');
+    
     // 时间线视图
     const [showTimeline, setShowTimeline] = useState(false);
 
-    // 加载 SubGroup 列表
-    const loadSubGroups = useCallback(() => {
+    // 加载或创建主 SubGroup
+    const loadOrCreateMainSubGroup = useCallback(() => {
         if (!addr || addr.userID === '') return;
         
         const req: GetSubGroupReq = {
@@ -109,90 +153,113 @@ export default function Library({addr, groupTitle}: LibraryProps) {
         
         setLoading(true);
         sendGetSubGroup(req, (ret) => {
-            if (ret.ok && ret.data.SubGroups) {
-                setSubGroups(ret.data.SubGroups);
-                // 加载所有分类的 tasks
-                loadAllTasks(ret.data.SubGroups);
+            if (ret.ok && ret.data.SubGroups && ret.data.SubGroups.length > 0) {
+                // 使用第一个 SubGroup 作为主存储
+                const sg = ret.data.SubGroups[0];
+                setMainSubGroup(sg);
+                loadTasks(sg.ID);
             } else {
-                setSubGroups([]);
-                setLoading(false);
+                // 创建默认 SubGroup
+                const createReq: CreateSubGroupReq = {
+                    UserID: addr.userID,
+                    ParentDirID: addr.getLastDirID(),
+                    GroupID: addr.getLastGroupID(),
+                    Title: DEFAULT_SUBGROUP_NAME,
+                    Note: 'Library 条目存储',
+                    AfterID: 0,
+                };
+                
+                sendCreateSubGroup(createReq, (createRet) => {
+                    if (createRet.ok) {
+                        // 重新加载
+                        sendGetSubGroup(req, (ret2) => {
+                            if (ret2.ok && ret2.data.SubGroups && ret2.data.SubGroups.length > 0) {
+                                const sg = ret2.data.SubGroups[0];
+                                setMainSubGroup(sg);
+                                loadTasks(sg.ID);
+                            } else {
+                                setLoading(false);
+                            }
+                        });
+                    } else {
+                        message.error('初始化失败');
+                        setLoading(false);
+                    }
+                });
             }
         });
     }, [addr]);
 
-    // 加载所有分类的 tasks
-    const loadAllTasks = useCallback((groups: PSubGroup[]) => {
-        if (!addr || groups.length === 0) {
+    // 加载 Tasks
+    const loadTasks = useCallback((subGroupId: number) => {
+        if (!addr) {
             setLoading(false);
             return;
         }
         
-        const newTasksMap = new Map<number, PTask[]>();
-        let loadedCount = 0;
+        const req: GetTasksReq = {
+            UserID: addr.userID,
+            ParentDirID: addr.getLastDirID(),
+            GroupID: addr.getLastGroupID(),
+            SubGroupID: subGroupId,
+            ContainDone: true,
+        };
         
-        groups.forEach((sg) => {
-            const req: GetTasksReq = {
-                UserID: addr.userID,
-                ParentDirID: addr.getLastDirID(),
-                GroupID: addr.getLastGroupID(),
-                SubGroupID: sg.ID,
-                ContainDone: true,
-            };
-            
-            sendGetTasks(req, (ret) => {
-                if (ret.ok) {
-                    newTasksMap.set(sg.ID, ret.data.Tasks || []);
-                }
-                loadedCount++;
-                if (loadedCount === groups.length) {
-                    setTasksBySubGroup(newTasksMap);
-                    setLoading(false);
-                }
-            });
+        sendGetTasks(req, (ret) => {
+            if (ret.ok) {
+                setTasks(ret.data.Tasks || []);
+            }
+            setLoading(false);
         });
     }, [addr]);
 
     // 初始加载
     useEffect(() => {
-        loadSubGroups();
-    }, [loadSubGroups]);
+        loadOrCreateMainSubGroup();
+    }, [loadOrCreateMainSubGroup]);
 
     // 转换为 LibraryItemFull 列表
-    const allItems: Array<LibraryItemFull & {subGroupId: number; subGroupName: string}> = useMemo(() => {
-        const items: Array<LibraryItemFull & {subGroupId: number; subGroupName: string}> = [];
-        
-        tasksBySubGroup.forEach((tasks, subGroupId) => {
-            const sg = subGroups.find(s => s.ID === subGroupId);
-            const subGroupName = sg?.Title || '未分类';
-            
-            tasks.forEach((task) => {
-                const item = parseLibraryFromTask(task);
-                items.push({
-                    ...item,
-                    subGroupId,
-                    subGroupName,
-                });
-            });
+    const allItems: LibraryItemFull[] = useMemo(() => {
+        return tasks.map(task => parseLibraryFromTask(task));
+    }, [tasks]);
+
+    // 提取所有分类（从 extra.category 字段）
+    const categories: string[] = useMemo(() => {
+        const categorySet = new Set<string>();
+        allItems.forEach(item => {
+            if (item.extra.category && item.extra.category.trim()) {
+                categorySet.add(item.extra.category.trim());
+            }
         });
-        
-        return items;
-    }, [tasksBySubGroup, subGroups]);
+        return Array.from(categorySet).sort((a, b) => a.localeCompare(b, 'zh-CN'));
+    }, [allItems]);
+
+    // 每个分类的条目数量
+    const categoryCount: Map<string, number> = useMemo(() => {
+        const countMap = new Map<string, number>();
+        allItems.forEach(item => {
+            const cat = item.extra.category?.trim() || '未分类';
+            countMap.set(cat, (countMap.get(cat) || 0) + 1);
+        });
+        return countMap;
+    }, [allItems]);
 
     // 应用筛选和排序
     const filteredItems = useMemo(() => {
         let result = [...allItems];
         
-        // 分类筛选
-        if (selectedSubGroup !== 'all') {
-            result = result.filter(item => item.subGroupId === selectedSubGroup);
+        if (selectedCategory !== 'all') {
+            if (selectedCategory === '_uncategorized_') {
+                result = result.filter(item => !item.extra.category || !item.extra.category.trim());
+            } else {
+                result = result.filter(item => item.extra.category?.trim() === selectedCategory);
+            }
         }
         
-        // 状态筛选
         if (statusFilter !== 'all') {
             result = result.filter(item => item.extra.status === statusFilter);
         }
         
-        // 搜索筛选
         if (searchText.trim()) {
             const search = searchText.toLowerCase();
             result = result.filter(item =>
@@ -202,7 +269,6 @@ export default function Library({addr, groupTitle}: LibraryProps) {
             );
         }
         
-        // 排序
         result.sort((a, b) => {
             switch (sortBy) {
                 case 'index':
@@ -224,14 +290,13 @@ export default function Library({addr, groupTitle}: LibraryProps) {
         });
         
         return result;
-    }, [allItems, selectedSubGroup, statusFilter, searchText, sortBy]);
+    }, [allItems, selectedCategory, statusFilter, searchText, sortBy]);
 
     // 保存 item 变更
-    const handleSaveItem = useCallback((item: LibraryItemFull, subGroupId: number) => {
-        if (!addr) return;
+    const handleSaveItem = useCallback((item: LibraryItemFull) => {
+        if (!addr || !mainSubGroup) return;
         
-        const tasks = tasksBySubGroup.get(subGroupId);
-        const originalTask = tasks?.find(t => t.ID === item.taskId);
+        const originalTask = tasks.find(t => t.ID === item.taskId);
         if (!originalTask) return;
         
         const updatedTask: PTask = {
@@ -244,50 +309,60 @@ export default function Library({addr, groupTitle}: LibraryProps) {
         const req: ChangeTaskReq = {
             DirID: addr.getLastDirID(),
             GroupID: addr.getLastGroupID(),
-            SubGroupID: subGroupId,
+            SubGroupID: mainSubGroup.ID,
             UserID: addr.userID,
             Data: updatedTask,
         };
         
         sendChangeTask(req, (ret) => {
             if (ret.ok) {
-                // 更新本地数据
-                const newTasksMap = new Map(tasksBySubGroup);
-                const newTasks = (newTasksMap.get(subGroupId) || []).map(t =>
-                    t.ID === item.taskId ? updatedTask : t
-                );
-                newTasksMap.set(subGroupId, newTasks);
-                setTasksBySubGroup(newTasksMap);
+                setTasks(prev => prev.map(t => t.ID === item.taskId ? updatedTask : t));
                 message.success('保存成功');
             } else {
                 message.error('保存失败');
             }
         });
-    }, [addr, tasksBySubGroup]);
+    }, [addr, mainSubGroup, tasks]);
+
+    // 删除条目
+    const handleDeleteItem = useCallback((item: LibraryItemFull) => {
+        if (!addr || !mainSubGroup) return;
+        
+        const req: DelTaskReq = {
+            UserID: addr.userID,
+            DirID: addr.getLastDirID(),
+            GroupID: addr.getLastGroupID(),
+            SubGroupID: mainSubGroup.ID,
+            TaskID: item.taskId,
+        };
+        
+        sendDelTask(req, (ret) => {
+            if (ret.ok) {
+                setTasks(prev => prev.filter(t => t.ID !== item.taskId));
+                message.success('删除成功');
+            } else {
+                message.error('删除失败');
+            }
+        });
+    }, [addr, mainSubGroup]);
 
     // 添加新条目
     const handleAdd = useCallback(() => {
         addForm.validateFields().then((values) => {
-            if (!addr) return;
-            
-            const targetSubGroupId = values.subGroupId || (subGroups[0]?.ID);
-            if (!targetSubGroupId) {
-                message.error('请先创建分类');
-                return;
-            }
+            if (!addr || !mainSubGroup) return;
             
             setAddLoading(true);
             
             const extra = createDefaultLibraryExtra();
             extra.pictureAddress = values.pictureAddress || '';
             extra.author = values.author || '';
-            extra.category = subGroups.find(s => s.ID === targetSubGroupId)?.Title || '';
+            extra.category = values.category?.trim() || '';
             
             const req: CreateTaskReq = {
                 UserID: addr.userID,
                 DirID: addr.getLastDirID(),
                 GroupID: addr.getLastGroupID(),
-                SubGroupID: targetSubGroupId,
+                SubGroupID: mainSubGroup.ID,
                 ParentTask: 0,
                 Title: values.title,
                 Note: serializeLibraryExtra(extra),
@@ -302,17 +377,114 @@ export default function Library({addr, groupTitle}: LibraryProps) {
                     message.success('添加成功');
                     setShowAdd(false);
                     addForm.resetFields();
-                    // 刷新数据
-                    loadSubGroups();
+                    loadTasks(mainSubGroup.ID);
                 } else {
                     message.error('添加失败');
                 }
             });
         });
-    }, [addr, addForm, subGroups, loadSubGroups]);
+    }, [addr, addForm, mainSubGroup, loadTasks]);
+
+    // 批量修改分类名称
+    const handleRenameCategory = useCallback((oldName: string, newName: string) => {
+        if (!addr || !mainSubGroup || !newName.trim()) return;
+        
+        const itemsToUpdate = allItems.filter(item => item.extra.category?.trim() === oldName);
+        if (itemsToUpdate.length === 0) return;
+        
+        let successCount = 0;
+        let errorCount = 0;
+        
+        itemsToUpdate.forEach(item => {
+            const originalTask = tasks.find(t => t.ID === item.taskId);
+            if (!originalTask) return;
+            
+            const newExtra = {...item.extra, category: newName.trim()};
+            const updatedTask: PTask = {
+                ...originalTask,
+                Note: serializeLibraryExtra(newExtra),
+            };
+            
+            const req: ChangeTaskReq = {
+                DirID: addr.getLastDirID(),
+                GroupID: addr.getLastGroupID(),
+                SubGroupID: mainSubGroup.ID,
+                UserID: addr.userID,
+                Data: updatedTask,
+            };
+            
+            sendChangeTask(req, (ret) => {
+                if (ret.ok) {
+                    successCount++;
+                } else {
+                    errorCount++;
+                }
+                
+                if (successCount + errorCount === itemsToUpdate.length) {
+                    if (errorCount === 0) {
+                        message.success(`已将 ${successCount} 个条目的分类改为 "${newName}"`);
+                        loadTasks(mainSubGroup.ID);
+                    } else {
+                        message.warning(`${successCount} 个成功，${errorCount} 个失败`);
+                        loadTasks(mainSubGroup.ID);
+                    }
+                    setEditingCategoryOld(null);
+                    setEditingCategoryNew('');
+                }
+            });
+        });
+    }, [addr, mainSubGroup, allItems, tasks, loadTasks]);
+
+    // 删除分类（清空该分类下所有条目的分类字段）
+    const handleClearCategory = useCallback((categoryName: string) => {
+        if (!addr || !mainSubGroup) return;
+        
+        const itemsToUpdate = allItems.filter(item => item.extra.category?.trim() === categoryName);
+        if (itemsToUpdate.length === 0) return;
+        
+        let successCount = 0;
+        let errorCount = 0;
+        
+        itemsToUpdate.forEach(item => {
+            const originalTask = tasks.find(t => t.ID === item.taskId);
+            if (!originalTask) return;
+            
+            const newExtra = {...item.extra, category: ''};
+            const updatedTask: PTask = {
+                ...originalTask,
+                Note: serializeLibraryExtra(newExtra),
+            };
+            
+            const req: ChangeTaskReq = {
+                DirID: addr.getLastDirID(),
+                GroupID: addr.getLastGroupID(),
+                SubGroupID: mainSubGroup.ID,
+                UserID: addr.userID,
+                Data: updatedTask,
+            };
+            
+            sendChangeTask(req, (ret) => {
+                if (ret.ok) {
+                    successCount++;
+                } else {
+                    errorCount++;
+                }
+                
+                if (successCount + errorCount === itemsToUpdate.length) {
+                    if (errorCount === 0) {
+                        message.success(`已清除 ${successCount} 个条目的分类`);
+                        loadTasks(mainSubGroup.ID);
+                    } else {
+                        message.warning(`${successCount} 个成功，${errorCount} 个失败`);
+                        loadTasks(mainSubGroup.ID);
+                    }
+                }
+            });
+        });
+    }, [addr, mainSubGroup, allItems, tasks, loadTasks]);
 
     // 快速状态变更菜单
-    const getStatusMenuItems = (item: LibraryItemFull & {subGroupId: number}) => {
+    const getStatusMenuItems = (item: LibraryItemFull) => {
         return Object.entries(LibraryStatusNames).map(([status, name]) => ({
             key: status,
             label: name,
@@ -324,7 +496,7 @@ export default function Library({addr, groupTitle}: LibraryProps) {
                     const currentRound = newExtra.rounds[newExtra.currentRound];
                     if (currentRound) {
                         currentRound.logs.push({
-                            type: 0, // LibraryLogType.changeStatus
+                            type: 0,
                             time: now,
                             status: numStatus,
                         });
@@ -333,113 +505,99 @@ export default function Library({addr, groupTitle}: LibraryProps) {
                     newExtra.updatedAt = now;
                     
                     const newItem = {...item, extra: newExtra};
-                    handleSaveItem(newItem, item.subGroupId);
+                    handleSaveItem(newItem);
                 }
             },
         }));
     };
 
-    // 渲染单个卡片
-    const renderCard = (item: LibraryItemFull & {subGroupId: number; subGroupName: string}) => {
+    // 卡片渲染
+    const renderCard = (item: LibraryItemFull) => {
         const mainScore = getMainScore(item.extra);
-        const cardWidth = isMobile ? '100%' : 180;
-        const imageHeight = isMobile ? 200 : 240;
+        const placeholderColor = stringToColor(item.title);
         
         return (
-            <Card
+            <div
                 key={item.taskId}
-                hoverable
-                style={{width: cardWidth, marginBottom: 16}}
-                cover={
-                    item.extra.pictureAddress ? (
-                        <Image
-                            alt={item.title}
+                className="library-card"
+                onClick={() => {
+                    setDetailItem(item);
+                    setShowDetail(true);
+                }}
+            >
+                {/* 封面图 */}
+                <div className="library-card-cover">
+                    {item.extra.pictureAddress ? (
+                        <img
                             src={item.extra.pictureAddress}
-                            height={imageHeight}
-                            style={{objectFit: 'cover'}}
-                            preview={false}
-                            onClick={() => {
-                                setDetailItem(item);
-                                setDetailSubGroupId(item.subGroupId);
-                                setShowDetail(true);
+                            alt={item.title}
+                            onError={(e) => {
+                                (e.target as HTMLImageElement).style.display = 'none';
+                                // 显示备用占位符
+                                const parent = (e.target as HTMLImageElement).parentElement;
+                                if (parent) {
+                                    const placeholder = parent.querySelector('.library-card-placeholder') as HTMLElement;
+                                    if (placeholder) {
+                                        placeholder.style.display = 'flex';
+                                    }
+                                }
                             }}
-                            fallback="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect fill='%23f0f0f0' width='100' height='100'/%3E%3Ctext x='50' y='50' text-anchor='middle' dy='.3em' fill='%23999'%3E暂无图片%3C/text%3E%3C/svg%3E"
                         />
-                    ) : (
-                        <div
-                            style={{
-                                height: imageHeight,
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                background: '#f5f5f5',
-                                cursor: 'pointer',
-                            }}
-                            onClick={() => {
-                                setDetailItem(item);
-                                setDetailSubGroupId(item.subGroupId);
-                                setShowDetail(true);
-                            }}
+                    ) : null}
+                    {/* 占位符（无图片或图片加载失败时显示） */}
+                    <div 
+                        className="library-card-placeholder"
+                        style={{
+                            background: placeholderColor.bg,
+                            display: item.extra.pictureAddress ? 'none' : 'flex',
+                        }}
+                    >
+                        <span 
+                            className="library-card-placeholder-text"
+                            style={{color: placeholderColor.text}}
                         >
-                            <Space direction="vertical" align="center">
-                                <PictureOutlined style={{fontSize: 32, color: '#999'}}/>
-                                <span style={{
-                                    fontSize: 16,
-                                    fontWeight: 500,
-                                    color: '#666',
-                                    textAlign: 'center',
-                                    padding: '0 8px',
-                                }}>
-                                    {item.title}
-                                </span>
-                            </Space>
-                        </div>
-                    )
-                }
-                actions={[
+                            {item.title}
+                        </span>
+                    </div>
+                    
+                    {/* 悬停时显示的信息层 */}
+                    <div className="library-card-overlay">
+                        <div className="library-card-title">{item.title}</div>
+                        {item.extra.author && (
+                            <div className="library-card-author">{item.extra.author}</div>
+                        )}
+                        {item.extra.category && (
+                            <div className="library-card-category">
+                                <Tag size="small">{item.extra.category}</Tag>
+                            </div>
+                        )}
+                        {mainScore && (
+                            <div className="library-card-score">
+                                <StarFilled />
+                                <span>{getScoreText(mainScore.score, mainScore.scorePlus, mainScore.scoreSub)}</span>
+                            </div>
+                        )}
+                    </div>
+                </div>
+                
+                {/* 底部信息条 */}
+                <div className="library-card-footer">
+                    <span className="library-card-name">{item.title}</span>
                     <Dropdown
-                        key="status"
                         menu={{items: getStatusMenuItems(item)}}
                         trigger={['click']}
+                        placement="topRight"
                     >
                         <Tag
                             color={LibraryStatusColors[item.extra.status]}
-                            style={{cursor: 'pointer', margin: 0}}
+                            className="library-card-status"
+                            onClick={(e) => e.stopPropagation()}
                         >
                             {LibraryStatusNames[item.extra.status]}
                         </Tag>
-                    </Dropdown>,
-                ]}
-            >
-                <Card.Meta
-                    title={
-                        <Tooltip title={item.title}>
-                            <div style={{
-                                overflow: 'hidden',
-                                textOverflow: 'ellipsis',
-                                whiteSpace: 'nowrap',
-                            }}>
-                                {item.title}
-                            </div>
-                        </Tooltip>
-                    }
-                    description={
-                        <Flex justify="space-between" align="center">
-                            <span style={{fontSize: 12, color: '#999'}}>
-                                {item.subGroupName}
-                            </span>
-                            {mainScore && (
-                                <Space size={2}>
-                                    <StarFilled style={{color: '#faad14', fontSize: 12}}/>
-                                    <span style={{fontSize: 12}}>
-                                        {getScoreText(mainScore.score, mainScore.scorePlus, mainScore.scoreSub)}
-                                    </span>
-                                </Space>
-                            )}
-                        </Flex>
-                    }
-                />
-            </Card>
+                    </Dropdown>
+                </div>
+            </div>
         );
     };
 
@@ -448,7 +606,7 @@ export default function Library({addr, groupTitle}: LibraryProps) {
     }
 
     return (
-        <div style={{padding: isMobile ? '8px' : '16px'}}>
+        <div className="library-container">
             {/* 标题和工具栏 */}
             <Flex
                 justify="space-between"
@@ -471,16 +629,18 @@ export default function Library({addr, groupTitle}: LibraryProps) {
                         时间线
                     </Button>
                     <Button
+                        icon={<SettingOutlined/>}
+                        onClick={() => setShowCategoryManager(true)}
+                    >
+                        分类管理
+                    </Button>
+                    <Button
                         type="primary"
                         icon={<PlusOutlined/>}
                         onClick={() => setShowAdd(true)}
                     >
                         添加
                     </Button>
-                    <Button
-                        icon={<ReloadOutlined/>}
-                        onClick={loadSubGroups}
-                    />
                 </Space>
             </Flex>
             
@@ -496,12 +656,19 @@ export default function Library({addr, groupTitle}: LibraryProps) {
                 />
                 
                 <Select
-                    value={selectedSubGroup}
-                    onChange={setSelectedSubGroup}
-                    style={{width: isMobile ? '48%' : 120}}
+                    value={selectedCategory}
+                    onChange={setSelectedCategory}
+                    style={{width: isMobile ? '48%' : 140}}
                     options={[
-                        {value: 'all', label: '全部分类'},
-                        ...subGroups.map(sg => ({value: sg.ID, label: sg.Title})),
+                        {value: 'all', label: `全部分类 (${allItems.length})`},
+                        ...categories.map(cat => ({
+                            value: cat, 
+                            label: `${cat} (${categoryCount.get(cat) || 0})`
+                        })),
+                        ...(categoryCount.has('未分类') ? [{
+                            value: '_uncategorized_', 
+                            label: `未分类 (${categoryCount.get('未分类') || 0})`
+                        }] : []),
                     ]}
                 />
                 
@@ -534,22 +701,29 @@ export default function Library({addr, groupTitle}: LibraryProps) {
                 />
             </Flex>
             
-            {/* 照片墙 */}
+            {/* Steam 风格照片墙 */}
             <Spin spinning={loading}>
                 {filteredItems.length === 0 ? (
-                    <Empty description="暂无内容"/>
+                    <Empty 
+                        description="暂无内容"
+                        style={{marginTop: 60}}
+                    >
+                        <Button 
+                            type="primary" 
+                            icon={<PlusOutlined/>}
+                            onClick={() => setShowAdd(true)}
+                        >
+                            添加第一个条目
+                        </Button>
+                    </Empty>
                 ) : (
-                    <Row gutter={[16, 16]}>
-                        {filteredItems.map(item => (
-                            <Col key={item.taskId} xs={12} sm={8} md={6} lg={4} xl={4}>
-                                {renderCard(item)}
-                            </Col>
-                        ))}
-                    </Row>
+                    <div className="library-grid">
+                        {filteredItems.map(item => renderCard(item))}
+                    </div>
                 )}
             </Spin>
             
-            {/* 添加弹窗 */}
+            {/* 添加条目弹窗 */}
             <Modal
                 title="添加条目"
                 open={showAdd}
@@ -570,16 +744,15 @@ export default function Library({addr, groupTitle}: LibraryProps) {
                     </Form.Item>
                     
                     <Form.Item
-                        name="subGroupId"
+                        name="category"
                         label="分类"
-                        rules={[{required: true, message: '请选择分类'}]}
                     >
-                        <Select
-                            placeholder="请选择分类"
-                            options={subGroups.map(sg => ({
-                                value: sg.ID,
-                                label: sg.Title,
-                            }))}
+                        <AutoComplete
+                            placeholder="选择或输入新分类"
+                            options={categories.map(cat => ({value: cat}))}
+                            filterOption={(inputValue, option) =>
+                                option?.value.toLowerCase().includes(inputValue.toLowerCase()) || false
+                            }
                         />
                     </Form.Item>
                     
@@ -593,18 +766,145 @@ export default function Library({addr, groupTitle}: LibraryProps) {
                 </Form>
             </Modal>
             
+            {/* 分类管理弹窗 */}
+            <Modal
+                title="分类管理"
+                open={showCategoryManager}
+                onCancel={() => {
+                    setShowCategoryManager(false);
+                    setNewCategoryName('');
+                    setEditingCategoryOld(null);
+                    setEditingCategoryNew('');
+                }}
+                footer={null}
+                width={500}
+            >
+                <div style={{marginBottom: 16}}>
+                    <Space.Compact style={{width: '100%'}}>
+                        <Input
+                            placeholder="输入新分类名称"
+                            value={newCategoryName}
+                            onChange={e => setNewCategoryName(e.target.value)}
+                        />
+                        <Button
+                            type="primary"
+                            icon={<PlusOutlined/>}
+                            onClick={() => {
+                                if (newCategoryName.trim()) {
+                                    if (categories.includes(newCategoryName.trim())) {
+                                        message.warning('该分类已存在');
+                                    } else {
+                                        message.info('分类将在添加条目时自动创建');
+                                        setNewCategoryName('');
+                                    }
+                                }
+                            }}
+                        >
+                            提示
+                        </Button>
+                    </Space.Compact>
+                    <div style={{fontSize: 12, color: '#999', marginTop: 4}}>
+                        提示：分类会在添加条目时自动出现，无需预先创建
+                    </div>
+                </div>
+                
+                {categories.length === 0 ? (
+                    <Empty description="暂无分类，添加条目时会自动创建" />
+                ) : (
+                    <div style={{display: 'flex', flexDirection: 'column', gap: 8}}>
+                        {categories.map(cat => (
+                            <div
+                                key={cat}
+                                style={{
+                                    display: 'flex',
+                                    justifyContent: 'space-between',
+                                    alignItems: 'center',
+                                    padding: '12px 16px',
+                                    background: '#fafafa',
+                                    borderRadius: 8,
+                                }}
+                            >
+                                {editingCategoryOld === cat ? (
+                                    <Space.Compact style={{flex: 1, marginRight: 8}}>
+                                        <Input
+                                            value={editingCategoryNew}
+                                            onChange={e => setEditingCategoryNew(e.target.value)}
+                                            placeholder="新分类名称"
+                                        />
+                                        <Button
+                                            type="primary"
+                                            onClick={() => handleRenameCategory(cat, editingCategoryNew)}
+                                        >
+                                            保存
+                                        </Button>
+                                        <Button
+                                            onClick={() => {
+                                                setEditingCategoryOld(null);
+                                                setEditingCategoryNew('');
+                                            }}
+                                        >
+                                            取消
+                                        </Button>
+                                    </Space.Compact>
+                                ) : (
+                                    <>
+                                        <div>
+                                            <div style={{fontWeight: 500}}>{cat}</div>
+                                            <div style={{fontSize: 12, color: '#999'}}>
+                                                {categoryCount.get(cat) || 0} 个条目
+                                            </div>
+                                        </div>
+                                        <Space>
+                                            <Button
+                                                type="text"
+                                                size="small"
+                                                icon={<EditOutlined/>}
+                                                onClick={() => {
+                                                    setEditingCategoryOld(cat);
+                                                    setEditingCategoryNew(cat);
+                                                }}
+                                            />
+                                            <Popconfirm
+                                                title="清除分类标记？"
+                                                description={`将 ${categoryCount.get(cat) || 0} 个条目的分类设为"未分类"`}
+                                                onConfirm={() => handleClearCategory(cat)}
+                                                okText="确定"
+                                                cancelText="取消"
+                                            >
+                                                <Button
+                                                    type="text"
+                                                    size="small"
+                                                    danger
+                                                    icon={<DeleteOutlined/>}
+                                                />
+                                            </Popconfirm>
+                                        </Space>
+                                    </>
+                                )}
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </Modal>
+            
             {/* 详情弹窗 */}
             <LibraryDetail
                 visible={showDetail}
                 item={detailItem}
-                subGroupId={detailSubGroupId}
+                subGroupId={mainSubGroup?.ID || 0}
+                categories={categories}
                 onClose={() => {
                     setShowDetail(false);
                     setDetailItem(null);
                 }}
                 onSave={(item) => {
-                    handleSaveItem(item, detailSubGroupId);
+                    handleSaveItem(item);
                     setDetailItem(item);
+                }}
+                onDelete={(item) => {
+                    handleDeleteItem(item);
+                    setShowDetail(false);
+                    setDetailItem(null);
                 }}
             />
             
@@ -617,7 +917,6 @@ export default function Library({addr, groupTitle}: LibraryProps) {
                     const item = allItems.find(i => i.taskId === itemId);
                     if (item) {
                         setDetailItem(item);
-                        setDetailSubGroupId(item.subGroupId);
                         setShowTimeline(false);
                         setShowDetail(true);
                     }

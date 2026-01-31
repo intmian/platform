@@ -72,11 +72,13 @@ interface LibraryDetailProps {
     visible: boolean;
     item: LibraryItemFull | null;
     subGroupId: number;
+    categories?: string[];
     onClose: () => void;
     onSave: (item: LibraryItemFull) => void;
+    onDelete?: (item: LibraryItemFull) => void;
 }
 
-export default function LibraryDetail({visible, item, subGroupId, onClose, onSave}: LibraryDetailProps) {
+export default function LibraryDetail({visible, item, subGroupId, categories = [], onClose, onSave, onDelete}: LibraryDetailProps) {
     const isMobile = useIsMobile();
     const [editMode, setEditMode] = useState(false);
     const [localItem, setLocalItem] = useState<LibraryItemFull | null>(null);
@@ -369,6 +371,22 @@ export default function LibraryDetail({visible, item, subGroupId, onClose, onSav
                     )}
                 </Space>
             }
+            footer={
+                onDelete && (
+                    <Flex justify="flex-start">
+                        <Popconfirm
+                            title="确认删除"
+                            description="删除后无法恢复，确定要删除吗？"
+                            onConfirm={() => localItem && onDelete(localItem)}
+                            okText="删除"
+                            cancelText="取消"
+                            okButtonProps={{danger: true}}
+                        >
+                            <Button danger>删除此条目</Button>
+                        </Popconfirm>
+                    </Flex>
+                )
+            }
         >
             {/* 封面和基本信息 */}
             <Row gutter={16}>
@@ -408,7 +426,16 @@ export default function LibraryDetail({visible, item, subGroupId, onClose, onSav
                                 <Input/>
                             </Form.Item>
                             <Form.Item name="category" label="分类">
-                                <Input/>
+                                <Select
+                                    showSearch
+                                    allowClear
+                                    placeholder="选择或输入新分类"
+                                    options={categories.map(cat => ({value: cat, label: cat}))}
+                                    mode={undefined}
+                                    filterOption={(input, option) =>
+                                        (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
+                                    }
+                                />
                             </Form.Item>
                             <Form.Item name="pictureAddress" label="封面URL">
                                 <Input/>
