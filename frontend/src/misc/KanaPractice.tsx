@@ -115,6 +115,7 @@ const KanaPractice = () => {
     const [sessionCount, setSessionCount] = useState(0);
     const [questions, setQuestions] = useState<Question[]>([]);
     const [showAnswer, setShowAnswer] = useState(false); // Memory mode only
+    const [revealedIds, setRevealedIds] = useState<Set<number>>(new Set());
     
     // 键盘模式专用状态
     const [currentQuestionIdx, setCurrentQuestionIdx] = useState(0);
@@ -205,6 +206,25 @@ const KanaPractice = () => {
             generateBatch();
         }
     }, [sessionCount, generateBatch]);
+
+    const handleCardClick = (id: number) => {
+        if (showAnswer) return; // 全局显示时不需要单独处理
+        
+        setRevealedIds(prev => {
+            const next = new Set(prev);
+            next.add(id);
+            return next;
+        });
+
+        // 2秒后隐藏
+        setTimeout(() => {
+            setRevealedIds(prev => {
+                const next = new Set(prev);
+                next.delete(id);
+                return next;
+            });
+        }, 2000);
+    };
 
     // 键盘模式交互
     const handleKeyboardInput = (value: string) => {
@@ -327,28 +347,32 @@ const KanaPractice = () => {
     const renderContent = () => {
         if (settings.inputMode === 'memory') {
             return (
-                <div style={{ height: '100%', overflowY: 'auto', paddingBottom: 20 }}>
+                <div style={{ height: '100%', overflowY: 'visible', paddingBottom: 20 }}>
                     <Row gutter={[16, 24]}>
-                        {questions.map((q, idx) => (
-                            <Col span={isMobile ? 12 : 6} key={q.id}>
-                                <Card 
-                                    hoverable
-                                    style={{ height: '100%', textAlign: 'center' }}
-                                    bodyStyle={{ padding: isMobile ? 12 : 24 }}
-                                >
-                                    <div style={{ fontSize: 32, fontWeight: 'bold', margin: '16px 0' }}>
-                                        {q.questionText}
-                                    </div>
-                                    <div style={{ minHeight: 40, borderTop: '1px solid #f0f0f0', paddingTop: 12 }}>
-                                        {showAnswer ? (
-                                            <Text strong style={{ fontSize: 24, color: '#1890ff' }}>{q.answerText}</Text>
-                                        ) : (
-                                            <Text type="secondary">?</Text>
-                                        )}
-                                    </div>
-                                </Card>
-                            </Col>
-                        ))}
+                        {questions.map((q, idx) => {
+                            const isRevealed = showAnswer || revealedIds.has(q.id);
+                            return (
+                                <Col span={isMobile ? 12 : 6} key={q.id}>
+                                    <Card 
+                                        hoverable={!isRevealed}
+                                        onClick={() => handleCardClick(q.id)}
+                                        style={{ height: '100%', textAlign: 'center', cursor: 'pointer' }}
+                                        bodyStyle={{ padding: isMobile ? 12 : 24 }}
+                                    >
+                                        <div style={{ fontSize: 32, fontWeight: 'bold', margin: '16px 0' }}>
+                                            {q.questionText}
+                                        </div>
+                                        <div style={{ minHeight: 40, borderTop: '1px solid #f0f0f0', paddingTop: 12 }}>
+                                            {isRevealed ? (
+                                                <Text strong style={{ fontSize: 24, color: '#1890ff' }}>{q.answerText}</Text>
+                                            ) : (
+                                                <Text type="secondary">?</Text>
+                                            )}
+                                        </div>
+                                    </Card>
+                                </Col>
+                            );
+                        })}
                     </Row>
                 </div>
             );
@@ -366,7 +390,7 @@ const KanaPractice = () => {
                     display: 'flex', 
                     flexDirection: 'column'
                 }}>
-                    <div style={{ flexShrink: 0, marginBottom: 16 }}>
+                    <div style={{ marginBottom: 16 }}>
                         <Card style={{ textAlign: 'center' }}>
                             <div style={{marginBottom: 8}}>
                                 <Tag>进度: {currentQuestionIdx + 1} / {questions.length}</Tag>
@@ -376,7 +400,7 @@ const KanaPractice = () => {
                             </div>
                             {q.isAnswered && (
                                 <div style={{color: q.isCorrect ? '#52c41a' : '#ff4d4f', fontSize: 20, fontWeight: 'bold'}}>
-                                    {q.isCorrect ? 'Correct!' : `Wrong! Answer: ${q.answerText}`}
+                                    {q.isCorrect ? '正解!' : `错啦! 答案: ${q.answerText}`}
                                 </div>
                             )}
                         </Card>
@@ -393,14 +417,11 @@ const KanaPractice = () => {
             padding: isMobile ? '12px' : '24px',
             maxWidth: 1000,
             margin: '0 auto',
-            height: '100vh',
-            display: 'flex',
-            flexDirection: 'column',
-            overflow: 'hidden',
+            minHeight: '100vh',
             background: '#f0f2f5' 
         }}>
             {/* 顶部栏 */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexShrink: 0 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
                 <Title level={4} style={{ margin: 0, whiteSpace: 'nowrap' }}>🇯🇵 假名练习</Title>
                 <Space>
                     {settings.inputMode === 'memory' && (
@@ -424,16 +445,13 @@ const KanaPractice = () => {
                     background: '#e6f7ff', 
                     borderRadius: 8, 
                     border: '1px solid #91d5ff',
-                    color: '#0050b3',
-                    flexShrink: 0
+                    color: '#0050b3'
                 }}>
                     <Text strong style={{fontSize: 16}}>{batchInstruction}</Text>
                 </div>
             )}
 
-            <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-                {renderContent()}
-            </div>
+            {renderContent()}
 
             {/* 设置弹窗 */}
             <Modal
