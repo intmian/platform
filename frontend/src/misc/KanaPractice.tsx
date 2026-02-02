@@ -1,5 +1,5 @@
 import {useState, useCallback, useEffect, useMemo} from 'react';
-import {Button, Card, Checkbox, Col, Modal, Row, Segmented, Slider, Space, Tag, Typography, message} from 'antd';
+import {Button, Card, Checkbox, Col, Modal, Row, Segmented, Slider, Space, Tag, Typography, message, InputNumber} from 'antd';
 import {ReloadOutlined, EyeOutlined, RightOutlined, SettingOutlined} from '@ant-design/icons';
 import {useIsMobile} from "../common/hooksv2";
 
@@ -242,6 +242,20 @@ const KanaPractice = () => {
         };
         setQuestions(newQuestions);
 
+        const checkFinish = () => {
+             const correctCount = newQuestions.filter(q => q.isCorrect).length;
+             const total = newQuestions.length;
+             const rate = Math.round((correctCount / total) * 100);
+
+             Modal.confirm({
+                 title: '本组练习完成',
+                 content: `正确率: ${rate}% (${correctCount}/${total})。`,
+                 onOk: generateBatch,
+                 okText: '好的',
+                 cancelButtonProps: { style: { display: 'none' } }
+             });
+        };
+
         if (isCorrect) {
             message.success('正解！');
             // 延迟切换下一题
@@ -249,13 +263,7 @@ const KanaPractice = () => {
                  if (currentQuestionIdx < questions.length - 1) {
                     setCurrentQuestionIdx(prev => prev + 1);
                  } else {
-                     Modal.confirm({
-                         title: '本组练习完成',
-                         content: '是否开始新的一组？',
-                         onOk: generateBatch,
-                         okText: '好的',
-                         cancelText: '取消'
-                     });
+                     checkFinish();
                  }
             }, 500);
         } else {
@@ -265,13 +273,7 @@ const KanaPractice = () => {
                  if (currentQuestionIdx < questions.length - 1) {
                     setCurrentQuestionIdx(prev => prev + 1);
                  } else {
-                     Modal.confirm({
-                         title: '本组练习完成',
-                         content: '是否开始新的一组？',
-                         onOk: generateBatch,
-                         okText: '好的',
-                         cancelText: '取消'
-                     });
+                     checkFinish();
                  }
             }, 1500);
         }
@@ -525,12 +527,21 @@ const KanaPractice = () => {
 
                     <div>
                         <Text strong>每组数量: {settings.batchSize}</Text>
-                        <Slider 
-                            min={1} 
-                            max={50} 
-                            value={settings.batchSize} 
-                            onChange={v => updateSetting('batchSize', v)} 
-                        />
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                            <Slider 
+                                min={1} 
+                                max={50} 
+                                style={{ flex: 1 }}
+                                value={settings.batchSize} 
+                                onChange={v => updateSetting('batchSize', v)} 
+                            />
+                            <InputNumber
+                                min={1}
+                                max={50}
+                                value={settings.batchSize}
+                                onChange={v => updateSetting('batchSize', v || 5)}
+                            />
+                        </div>
                     </div>
                  </Space>
             </Modal>
