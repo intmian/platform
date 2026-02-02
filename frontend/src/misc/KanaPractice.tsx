@@ -85,6 +85,10 @@ interface Question {
 const KanaPractice = () => {
     const isMobile = useIsMobile();
     
+    useEffect(() => {
+        document.title = '日语-假名练习';
+    }, []);
+
     // ============ 设置与持久化 ============
     const [settings, setSettings] = useState<PracticeSettings>(() => {
         try {
@@ -282,23 +286,31 @@ const KanaPractice = () => {
 
         return (
             <div style={{
-                marginTop: 16, 
-                maxHeight: '40vh', 
+                marginTop: 16,
+                flex: 1,
+                minHeight: 0,
                 overflowY: 'auto',
-                padding: '4px',
+                padding: '12px',
                 background: '#fff',
                 borderRadius: 8,
-                border: '1px solid #f0f0f0'
+                border: '1px solid #f0f0f0',
+                boxSizing: 'border-box'
             }}>
-                <div style={{display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'center'}}>
+                <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: `repeat(${isMobile ? 5 : 10}, minmax(0, 1fr))`,
+                    gap: 8,
+                    alignItems: 'stretch'
+                }}>
                     {keyboardItems.map(k => (
                         <Button 
                             key={k.display} 
                             style={{
-                                width: isMobile ? 50 : 60, 
-                                height: isMobile ? 40 : 45,
-                                fontSize: 16,
-                                padding: 0
+                                width: '100%',
+                                height: isMobile ? 64 : 56,
+                                fontSize: isMobile ? 18 : 16,
+                                padding: 0,
+                                lineHeight: 1
                             }}
                             onClick={() => handleKeyboardInput(k.value)}
                             disabled={q.isAnswered}
@@ -315,28 +327,30 @@ const KanaPractice = () => {
     const renderContent = () => {
         if (settings.inputMode === 'memory') {
             return (
-                <Row gutter={[16, 24]}>
-                    {questions.map((q, idx) => (
-                        <Col span={isMobile ? 12 : 6} key={q.id}>
-                            <Card 
-                                hoverable
-                                style={{ height: '100%', textAlign: 'center' }}
-                                bodyStyle={{ padding: isMobile ? 12 : 24 }}
-                            >
-                                <div style={{ fontSize: 32, fontWeight: 'bold', margin: '16px 0' }}>
-                                    {q.questionText}
-                                </div>
-                                <div style={{ minHeight: 40, borderTop: '1px solid #f0f0f0', paddingTop: 12 }}>
-                                    {showAnswer ? (
-                                        <Text strong style={{ fontSize: 24, color: '#1890ff' }}>{q.answerText}</Text>
-                                    ) : (
-                                        <Text type="secondary">?</Text>
-                                    )}
-                                </div>
-                            </Card>
-                        </Col>
-                    ))}
-                </Row>
+                <div style={{ height: '100%', overflowY: 'auto', paddingBottom: 20 }}>
+                    <Row gutter={[16, 24]}>
+                        {questions.map((q, idx) => (
+                            <Col span={isMobile ? 12 : 6} key={q.id}>
+                                <Card 
+                                    hoverable
+                                    style={{ height: '100%', textAlign: 'center' }}
+                                    bodyStyle={{ padding: isMobile ? 12 : 24 }}
+                                >
+                                    <div style={{ fontSize: 32, fontWeight: 'bold', margin: '16px 0' }}>
+                                        {q.questionText}
+                                    </div>
+                                    <div style={{ minHeight: 40, borderTop: '1px solid #f0f0f0', paddingTop: 12 }}>
+                                        {showAnswer ? (
+                                            <Text strong style={{ fontSize: 24, color: '#1890ff' }}>{q.answerText}</Text>
+                                        ) : (
+                                            <Text type="secondary">?</Text>
+                                        )}
+                                    </div>
+                                </Card>
+                            </Col>
+                        ))}
+                    </Row>
+                </div>
             );
         } else {
             // Keyboard Mode
@@ -344,20 +358,29 @@ const KanaPractice = () => {
             if (!q) return <div style={{textAlign: 'center', padding: 20}}>Loading...</div>;
             
             return (
-                <div style={{ maxWidth: 600, margin: '0 auto' }}>
-                    <Card style={{ textAlign: 'center', marginBottom: 16 }}>
-                        <div style={{marginBottom: 8}}>
-                             <Tag>进度: {currentQuestionIdx + 1} / {questions.length}</Tag>
-                        </div>
-                        <div style={{ fontSize: 64, fontWeight: 'bold', margin: '24px 0' }}>
-                            {q.questionText}
-                        </div>
-                        {q.isAnswered && (
-                            <div style={{color: q.isCorrect ? '#52c41a' : '#ff4d4f', fontSize: 20, fontWeight: 'bold'}}>
-                                {q.isCorrect ? 'Correct!' : `Wrong! Answer: ${q.answerText}`}
+                <div style={{ 
+                    maxWidth: 600, 
+                    margin: '0 auto', 
+                    width: '100%', 
+                    height: '100%',
+                    display: 'flex', 
+                    flexDirection: 'column'
+                }}>
+                    <div style={{ flexShrink: 0, marginBottom: 16 }}>
+                        <Card style={{ textAlign: 'center' }}>
+                            <div style={{marginBottom: 8}}>
+                                <Tag>进度: {currentQuestionIdx + 1} / {questions.length}</Tag>
                             </div>
-                        )}
-                    </Card>
+                            <div style={{ fontSize: 64, fontWeight: 'bold', margin: '24px 0' }}>
+                                {q.questionText}
+                            </div>
+                            {q.isAnswered && (
+                                <div style={{color: q.isCorrect ? '#52c41a' : '#ff4d4f', fontSize: 20, fontWeight: 'bold'}}>
+                                    {q.isCorrect ? 'Correct!' : `Wrong! Answer: ${q.answerText}`}
+                                </div>
+                            )}
+                        </Card>
+                    </div>
                     
                     {renderKeyboard()}
                 </div>
@@ -370,12 +393,15 @@ const KanaPractice = () => {
             padding: isMobile ? '12px' : '24px',
             maxWidth: 1000,
             margin: '0 auto',
-            minHeight: '100vh',
+            height: '100vh',
+            display: 'flex',
+            flexDirection: 'column',
+            overflow: 'hidden',
             background: '#f0f2f5' 
         }}>
             {/* 顶部栏 */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-                <Title level={4} style={{ margin: 0 }}>🇯🇵 假名练习</Title>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexShrink: 0 }}>
+                <Title level={4} style={{ margin: 0, whiteSpace: 'nowrap' }}>🇯🇵 假名练习</Title>
                 <Space>
                     {settings.inputMode === 'memory' && (
                         <Button onClick={() => setShowAnswer(!showAnswer)} icon={showAnswer ? <ReloadOutlined/> : <EyeOutlined/>}>
@@ -398,13 +424,16 @@ const KanaPractice = () => {
                     background: '#e6f7ff', 
                     borderRadius: 8, 
                     border: '1px solid #91d5ff',
-                    color: '#0050b3'
+                    color: '#0050b3',
+                    flexShrink: 0
                 }}>
                     <Text strong style={{fontSize: 16}}>{batchInstruction}</Text>
                 </div>
             )}
 
-            {renderContent()}
+            <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+                {renderContent()}
+            </div>
 
             {/* 设置弹窗 */}
             <Modal
