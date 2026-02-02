@@ -133,10 +133,14 @@ const KanaPractice = () => {
     const generateBatch = useCallback(() => {
         const pool = getCandidatePool();
         const size = settings.batchSize;
-        const selectedItems = [];
-        for (let i = 0; i < size; i++) {
-            selectedItems.push(pool[Math.floor(Math.random() * pool.length)]);
+        
+        // 洗牌算法确保不重复
+        const shuffled = [...pool];
+        for (let i = shuffled.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
         }
+        const selectedItems = shuffled.slice(0, Math.min(size, pool.length));
         
         // 统一决定方向和假名类型
         const isToRomaji = Math.random() > 0.5;
@@ -424,17 +428,21 @@ const KanaPractice = () => {
         }}>
             {/* 顶部栏 */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-                <Title level={4} style={{ margin: 0, whiteSpace: 'nowrap' }}>🇯🇵 假名练习</Title>
-                <Space>
+                <Title level={4} style={{ margin: 0, whiteSpace: 'nowrap', fontSize: isMobile ? 18 : undefined }}>
+                    {isMobile ? '假名练习' : '🇯🇵 假名练习'}
+                </Title>
+                <Space size={isMobile ? 'small' : 'middle'}>
                     {settings.inputMode === 'memory' && (
                         <Button onClick={() => setShowAnswer(!showAnswer)} icon={showAnswer ? <ReloadOutlined/> : <EyeOutlined/>}>
-                            {showAnswer ? '隐藏' : '看答案'}
+                            {!isMobile && (showAnswer ? '隐藏' : '看答案')}
                         </Button>
                     )}
                     <Button onClick={generateBatch} icon={<RightOutlined/>}>
-                        换一组
+                        {!isMobile && '换一组'}
                     </Button>
-                    <Button icon={<SettingOutlined />} onClick={() => setIsSettingsOpen(true)}>设置</Button>
+                    <Button icon={<SettingOutlined />} onClick={() => setIsSettingsOpen(true)}>
+                        {!isMobile && '设置'}
+                    </Button>
                 </Space>
             </div>
             
