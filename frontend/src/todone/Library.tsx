@@ -154,55 +154,6 @@ export default function Library({addr, groupTitle}: LibraryProps) {
         showAuthor: false,      // 显示作者
     });
 
-    // 加载或创建主 SubGroup
-    const loadOrCreateMainSubGroup = useCallback(() => {
-        if (!addr || addr.userID === '') return;
-        
-        const req: GetSubGroupReq = {
-            UserID: addr.userID,
-            ParentDirID: addr.getLastDirID(),
-            GroupID: addr.getLastGroupID(),
-        };
-        
-        setLoading(true);
-        sendGetSubGroup(req, (ret) => {
-            if (ret.ok && ret.data.SubGroups && ret.data.SubGroups.length > 0) {
-                // 使用第一个 SubGroup 作为主存储
-                const sg = ret.data.SubGroups[0];
-                setMainSubGroup(sg);
-                loadTasks(sg.ID);
-            } else {
-                // 创建默认 SubGroup
-                const createReq: CreateSubGroupReq = {
-                    UserID: addr.userID,
-                    ParentDirID: addr.getLastDirID(),
-                    GroupID: addr.getLastGroupID(),
-                    Title: DEFAULT_SUBGROUP_NAME,
-                    Note: 'Library 条目存储',
-                    AfterID: 0,
-                };
-                
-                sendCreateSubGroup(createReq, (createRet) => {
-                    if (createRet.ok) {
-                        // 重新加载
-                        sendGetSubGroup(req, (ret2) => {
-                            if (ret2.ok && ret2.data.SubGroups && ret2.data.SubGroups.length > 0) {
-                                const sg = ret2.data.SubGroups[0];
-                                setMainSubGroup(sg);
-                                loadTasks(sg.ID);
-                            } else {
-                                setLoading(false);
-                            }
-                        });
-                    } else {
-                        message.error('初始化失败');
-                        setLoading(false);
-                    }
-                });
-            }
-        });
-    }, [addr]);
-
     // 加载 Tasks
     const loadTasks = useCallback((subGroupId: number) => {
         if (!addr) {
@@ -225,6 +176,60 @@ export default function Library({addr, groupTitle}: LibraryProps) {
             setLoading(false);
         });
     }, [addr]);
+
+    // 加载或创建主 SubGroup
+    const loadOrCreateMainSubGroup = useCallback(() => {
+        if (!addr || addr.userID === '') return;
+        
+        const req: GetSubGroupReq = {
+            UserID: addr.userID,
+            ParentDirID: addr.getLastDirID(),
+            GroupID: addr.getLastGroupID(),
+        };
+        
+        setLoading(true);
+        sendGetSubGroup(req, (ret) => {
+            if (ret.ok && ret.data.SubGroups && ret.data.SubGroups.length > 0) {
+                // 优先查找名为 DEFAULT_SUBGROUP_NAME 的 SubGroup
+                let sg = ret.data.SubGroups.find((g: any) => g.Title === DEFAULT_SUBGROUP_NAME);
+                if (!sg) {
+                    // 没找到则回退到第一个（兼容旧数据）
+                    sg = ret.data.SubGroups[0];
+                }
+                
+                setMainSubGroup(sg);
+                loadTasks(sg.ID);
+            } else {
+                // 创建默认 SubGroup
+                const createReq: CreateSubGroupReq = {
+                    UserID: addr.userID,
+                    ParentDirID: addr.getLastDirID(),
+                    GroupID: addr.getLastGroupID(),
+                    Title: DEFAULT_SUBGROUP_NAME,
+                    Note: 'Library 条目存储',
+                    AfterID: 0,
+                };
+                
+                sendCreateSubGroup(createReq, (createRet) => {
+                    if (createRet.ok) {
+                        // 重新加载
+                        sendGetSubGroup(req, (ret2) => {
+                            if (ret2.ok && ret2.data.SubGroups && ret2.data.SubGroups.length > 0) {
+                                const sg = ret2.data.SubGroups.find((g: any) => g.Title === DEFAULT_SUBGROUP_NAME) || ret2.data.SubGroups[0];
+                                setMainSubGroup(sg);
+                                loadTasks(sg.ID);
+                            } else {
+                                setLoading(false);
+                            }
+                        });
+                    } else {
+                        message.error('初始化失败');
+                        setLoading(false);
+                    }
+                });
+            }
+        });
+    }, [addr, loadTasks]);
 
     // 初始加载
     useEffect(() => {

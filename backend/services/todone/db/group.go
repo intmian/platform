@@ -23,6 +23,7 @@ type GroupDB struct {
 func CreateGroup(db *gorm.DB, userID string, title, note string, parentDirID uint32, groupType GroupType) (*GroupDB, error) {
 	group := GroupDB{
 		UserID:    userID,
+		Type:      groupType,
 		Title:     title,
 		Note:      note,
 		ParentDir: parentDirID,
