@@ -6,3 +6,5 @@ test
 pack
 SecConfig.json
 *.log
+backend/main/__debug_bin.exe
+/.vscode
