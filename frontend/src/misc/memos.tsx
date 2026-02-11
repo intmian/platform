@@ -9,6 +9,7 @@ import {useIsMobile} from "../common/hooksv2";
 import User from "../common/User";
 import {LoginCtx} from "../common/loginCtx";
 import {FileShow, sendGptRewrite, UploadFile} from "../common/newSendHttp";
+import {useImageUpload} from "../common/useImageUpload";
 
 // TODO: 使用ios打开网页时，当浏览器切换到后台，立刻重新切回前台，网页并未被回收，但是浏览器会自动刷新一次，此时如果停止刷新，使用是完全正常的，似乎是底层问题后面看看
 
@@ -572,8 +573,8 @@ function Memos() {
     const [openSetting, setOpenSetting] = useState(false);
     const [hidden, setHidden] = useState(false);
     const isMobile = useIsMobile();
-    const [uploading, setUploading] = useState(false);
-    const fileInputRef = useRef<HTMLInputElement>(null);
+    // const [uploading, setUploading] = useState(false); // Removed for useImageUpload
+    // const fileInputRef = useRef<HTMLInputElement>(null); // Removed for useImageUpload
 
     // 更换Favicon为/newslogo.webp
     useEffect(() => {
@@ -644,25 +645,13 @@ function Memos() {
         }
     });
 
-    function onUpload(file: File) {
-        setUploading(true);
-        UploadFile(file).then((fileShow) => {
-            setUploading(false);
-            if (fileShow) {
-                // 上传成功，显示通��
-                notification.success({
-                    message: '上传成功',
-                    description: `文件 ${fileShow.name} 已上传`,
-                });
-                inputRef.current.addFile(fileShow);
-            } else {
-                notification.error({
-                    message: '上传失败',
-                    description: '请重试或联系管理员',
-                });
-            }
-        })
-    }
+    const {uploading, selectLocalFile, uploadSingle} = useImageUpload((fileShow) => {
+        notification.success({
+            message: '上传成功',
+            description: `文件 ${fileShow.name} 已上传`,
+        });
+        inputRef.current.addFile(fileShow);
+    });
 
     const [canSubmit, setCanSubmit] = useState(false);
     const input = <HideInput functionsRef={inputRef}
@@ -672,7 +661,7 @@ function Memos() {
                              }}
                              onPasteFile={(file) => {
                                  if (file) {
-                                     onUpload(file);
+                                     uploadSingle(file);
                                  }
                              }}
     />
@@ -747,10 +736,7 @@ function Memos() {
 
     function UpdateFileWith() {
         const triggerUpload = () => {
-            if (fileInputRef.current) {
-                fileInputRef.current.value = '';
-                fileInputRef.current.click();
-            }
+            selectLocalFile();
         };
 
         // 如果剪切板里面有图片，则询问是否上传剪切板图片，否则
@@ -767,7 +753,7 @@ function Memos() {
                                 onOk: () => {
                                     item.getType(type).then((blob) => {
                                         const file = new File([blob], `clipboard-image.${type.split('/')[1]}`, {type});
-                                        onUpload(file);
+                                        uploadSingle(file);
                                     });
                                 },
                                 onCancel: () => {
@@ -783,6 +769,7 @@ function Memos() {
                 triggerUpload();
             }).catch((err) => {
                 console.error('Failed to read clipboard contents: ', err);
+                triggerUpload(); 
             });
         } else {
             triggerUpload();
@@ -935,19 +922,7 @@ function Memos() {
                 </Space>
             </div>
         </div>
-        <input
-            type="file"
-            ref={fileInputRef}
-            style={{display: 'none'}}
-            multiple={true}
-            onChange={(e) => {
-                if (e.target.files) {
-                    for (const file of e.target.files) {
-                        onUpload(file);
-                    }
-                }
-            }}
-        />
+
     </div>
 }
 

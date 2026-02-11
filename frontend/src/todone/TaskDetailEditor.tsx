@@ -4,11 +4,31 @@ import {Button, Flex, message} from "antd";
 import MarkdownIt from "markdown-it";
 import MdEditor, {PluginComponent} from "react-markdown-editor-lite";
 import 'react-markdown-editor-lite/lib/index.css';
-import {UploadFile} from "../common/newSendHttp";
-import {GetFile} from "../tool/tool";
 import {FileAddOutlined} from "@ant-design/icons";
+import {useImageUpload} from "../common/useImageUpload";
 
 const mdParser = new MarkdownIt();
+
+// 定义一个函数式组件来使用 Hook
+function UploadButton(props: { editor: any }) {
+    const {uploading, checkClipboard} = useImageUpload((fileShow) => {
+        if (fileShow.isImage) {
+            props.editor.insertText(`![${fileShow.name}](${fileShow.publishUrl})`);
+        } else {
+            props.editor.insertText(`[${fileShow.name}](${fileShow.publishUrl})`);
+        }
+    });
+
+    return (
+        <Button
+            type="text"
+            loading={uploading}
+            icon={<FileAddOutlined/>}
+            onClick={() => checkClipboard(false)} // false 表示不自动上传，会询问用户；取消则打开文件选择
+            style={{marginLeft: 8}}
+        />
+    );
+}
 
 class FileComponent extends PluginComponent {
     // 这里定义插件名称，注意不能重复
@@ -20,50 +40,8 @@ class FileComponent extends PluginComponent {
         start: 0
     };
 
-    constructor(props) {
-        super(props);
-
-        this.handleClick = this.handleClick.bind(this);
-
-        this.state = {
-            loading: false,
-        };
-    }
-
-    handleClick() {
-        this.setState({loading: true});
-        console.log("点击了上传文件按钮");
-        GetFile(false, (file) => {
-            console.log("选择的文件", file);
-            if (!file) {
-                console.error("没有选择文件");
-                return;
-            }
-            UploadFile(file).then((fileShow) => {
-                this.setState({loading: false});
-                if (!fileShow) {
-                    message.error("上传失败，请重试");
-                    return;
-                }
-                if (fileShow.isImage) {
-                    this.editor.insertText(`![${fileShow.name}](${fileShow.publishUrl})`);
-                } else {
-                    this.editor.insertText(`[${fileShow.name}](${fileShow.publishUrl})`);
-                }
-            })
-        })
-    }
-
     render() {
-        return (
-            <Button
-                type="text"
-                loading={this.state.loading}
-                icon={<FileAddOutlined/>}
-                onClick={this.handleClick}
-                style={{marginLeft: 8}}
-            />
-        );
+        return <UploadButton editor={this.editor}/>;
     }
 }
 

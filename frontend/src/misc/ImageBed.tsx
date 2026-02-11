@@ -1,7 +1,8 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { Button, Card, Col, Grid, Input, message, Modal, Row, Spin, Tooltip } from "antd";
+import { Button, Card, Col, Input, message, Modal, Row, Spin, Tooltip } from "antd";
 import { UploadOutlined, CopyOutlined, DeleteOutlined, FileAddOutlined } from "@ant-design/icons";
 import { UploadFile, FileShow } from "../common/newSendHttp"; // 保持和原组件相同的第三方函数引用
+import { useImageUpload } from "../common/useImageUpload";
 
 // 本地缓存 key
 const LOCAL_STORAGE_KEY = "imagebed.list.v1";
@@ -50,8 +51,6 @@ function saveToDisk(list: ImageItem[]) {
 export default function ImageBed() {
     // 已上传图片列表（最新在前）
     const [images, setImages] = useState<ImageItem[]>(() => loadFromDisk());
-    // 上传状态：true 表示正在上传（此时禁止继续上传）
-    const [uploading, setUploading] = useState(false);
     // 用于阻止重复上传相同文件（在单次会话中用签名缓存）
     const uploadingSignaturesRef = useRef<Set<string>>(new Set());
 
@@ -65,166 +64,79 @@ export default function ImageBed() {
         saveToDisk(images);
     }, [images]);
 
-    // 内部：把一个 File 上传并把结果加入到 images（严格参考原组件 UploadFile）
-    const uploadAndAdd = useCallback(async (file: File) => {
-        // 如果已有上传在进行，拒绝
-        if (uploading) {
-            message.warn("当前正在上传，请稍候");
-            return;
-        }
 
+    const addToImages = (ret: FileShow, file: File) => {
+        const newItem: ImageItem = {
+            name: ret.name || file.name,
+            size: file.size,
+            publishUrl: ret.publishUrl || "",
+            isImage: ret.isImage ?? true,
+            uploadedAt: Date.now(),
+        };
+
+        // 更新 images：新上传放在最前面，并限制数量
+        setImages((prev) => {
+            const merged = [newItem, ...prev];
+            // 去重（以 publishUrl 或 name+size 为准）
+            const seen = new Set<string>();
+            const deduped: ImageItem[] = [];
+            for (const it of merged) {
+                const key = it.publishUrl || `${it.name}_${it.size}`;
+                if (!seen.has(key)) {
+                    seen.add(key);
+                    deduped.push(it);
+                }
+            }
+            return deduped.slice(0, MAX_IMAGES);
+        });
+
+        message.success(`上传成功：${newItem.name}`);
+    };
+
+    // 内部：把一个 File 上传并把结果加入到 images（严格参考原组件 UploadFile）
+    const customUpload = useCallback(async (file: File): Promise<FileShow | null> => {
         const sig = fileSignature(file);
         // 去重：先检查本地缓存中是否已存在相同签名
         const existsLocal = images.some((it) => it.name === file.name && it.size === file.size);
         if (existsLocal) {
             message.info("该图片已上传（本地缓存存在），已跳过上传");
-            return;
+            return null;
         }
         // 在会话中也避免重复上传
         if (uploadingSignaturesRef.current.has(sig)) {
             message.info("该文件正在上传中或已排队，稍后查看列表");
-            return;
+            return null;
         }
 
         try {
-            // 标记上传中并在会话签名集合中记录
-            setUploading(true);
             uploadingSignaturesRef.current.add(sig);
-
             // 严格参考原组件使用 UploadFile(file) -> FileShow
-            const ret: FileShow | null = await UploadFile(file);
-
-            // 上传完成后移除会话签名
-            uploadingSignaturesRef.current.delete(sig);
-
+            const ret = await UploadFile(file);
+            
             if (!ret) {
                 message.error("上传失败，请重试");
-                return;
+                return null;
             }
-
-            // 处理返回的 fileShow 内容：fileShow.publishUrl 是我们需要保存的链接
-            const newItem: ImageItem = {
-                name: ret.name || file.name,
-                size: file.size,
-                publishUrl: ret.publishUrl || "",
-                isImage: ret.isImage ?? true,
-                uploadedAt: Date.now(),
-            };
-
-            // 更新 images：新上传放在最前面，并限制数量
-            setImages((prev) => {
-                const merged = [newItem, ...prev];
-                // 去重（以 publishUrl 或 name+size 为准）
-                const seen = new Set<string>();
-                const deduped: ImageItem[] = [];
-                for (const it of merged) {
-                    const key = it.publishUrl || `${it.name}_${it.size}`;
-                    if (!seen.has(key)) {
-                        seen.add(key);
-                        deduped.push(it);
-                    }
-                }
-                return deduped.slice(0, MAX_IMAGES);
-            });
-
-            message.success(`上传成功：${newItem.name}`);
+            
+            addToImages(ret, file);
+            return ret;
         } catch (e) {
             console.error("上传异常", e);
             message.error("上传发生错误");
+            return null;
         } finally {
-            // 解除上传锁
-            setUploading(false);
-            // 确保签名集合没有残留
-            // uploadingSignaturesRef.current.delete(sig); // 已在成功路径删除，额外保底
+            // 上传完成后移除会话签名
+            uploadingSignaturesRef.current.delete(sig);
         }
-    }, [images, uploading]);
+    }, [images]);
 
-    // 文件选择（按钮触发）
-    const onSelectFiles = useCallback(() => {
-        // 如果上传中则阻止打开
-        if (uploading) {
-            message.warn("上传中，暂时无法选择文件");
-            return;
-        }
-        const input = document.createElement("input");
-        input.type = "file";
-        input.accept = "image/*";
-        input.multiple = true;
-        input.onchange = (e: any) => {
-            const files: FileList = e.target.files;
-            if (!files || files.length === 0) return;
-            // 逐个上传，但因为我们要求“上传中不能继续上传”，这里采取顺序上传并设置 uploading 标志（uploadAndAdd 已处理）
-            // 为了保证在单次操作中连续上传多个文件仍被视为“上传中”状态，这里按顺序 await。
-            (async () => {
-                for (let i = 0; i < files.length; i++) {
-                    // 注意：uploadAndAdd 内部会在开始处检查 uploading 状态；因为我们在循环中不手动修改 uploading，
-                    // 我们需要直接调用 uploadAndAdd 并等待完成（它会维护 uploading 标志）
-                    // 这里简单调用并等待，以保证“上传中禁止其它上传”策略生效。
-                    // eslint-disable-next-line no-await-in-loop
-                    await uploadAndAdd(files[i]);
-                }
-            })();
-        };
-        input.click();
-    }, [uploading, uploadAndAdd]);
+    const {
+        uploading,
+        handlePaste,
+        selectLocalFile,
+        checkClipboard
+    } = useImageUpload(undefined, customUpload);
 
-    // 支持从剪贴板读取图片（参考原组件 UpdateFileWith）
-    const onPasteUpload = useCallback((ev: React.ClipboardEvent) => {
-        // 阻止默认处理（避免把图片以文件形式粘贴到输入框）
-        if (uploading) {
-            message.warn("上传中，粘贴被阻止");
-            ev.preventDefault();
-            return;
-        }
-        const clipboard = ev.clipboardData;
-        if (!clipboard) return;
-        const files = clipboard.files;
-        if (files && files.length > 0) {
-            // 上传 clipboard 的文件（通常为图片）
-            (async () => {
-                for (let i = 0; i < files.length; i++) {
-                    // eslint-disable-next-line no-await-in-loop
-                    await uploadAndAdd(files[i]);
-                }
-            })();
-            ev.preventDefault();
-            return;
-        }
-        // 另外部分浏览器支持 navigator.clipboard.read()，但在 paste 事件里我们可以直接读取 files
-    }, [uploading, uploadAndAdd]);
-
-    // 另外提供一个直接读取剪贴板（异步 API）的方法，类似原组件
-    const updateFromSystemClipboard = useCallback(async () => {
-        if (uploading) {
-            message.warn("上传中，稍后重试");
-            return;
-        }
-
-        // 尝试 navigator.clipboard.read()（需要 https 且有权限）
-        const nav: any = navigator;
-        if (nav.clipboard && nav.clipboard.read) {
-            try {
-                const items = await nav.clipboard.read(); // ClipboardItem[]
-                for (const item of items) {
-                    for (const type of item.types) {
-                        if (type.startsWith("image/")) {
-                            const blob = await item.getType(type);
-                            const file = new File([blob], `clipboard-image.${type.split("/")[1]}`, { type });
-                            await uploadAndAdd(file);
-                            return;
-                        }
-                    }
-                }
-                message.info("剪贴板中没有图片，尝试打开文件选择");
-            } catch (e) {
-                console.error("读取剪贴板失败", e);
-                message.info("无法访问剪贴板，打开文件选择");
-            }
-        }
-
-        // fallback：打开文件选择
-        onSelectFiles();
-    }, [uploading, uploadAndAdd, onSelectFiles]);
 
     // 复制链接
     const copyLink = useCallback(async (url: string) => {
@@ -265,14 +177,14 @@ export default function ImageBed() {
                     <Button
                         size="small"
                         icon={<FileAddOutlined />}
-                        onClick={updateFromSystemClipboard}
+                        onClick={() => checkClipboard(true)} // true: 尝试自动上传，保留与原来逻辑接近的体验
                         disabled={uploading}
                         title="从剪贴板上传或选择文件"
                     />
                     <Button
                         size="small"
                         icon={<UploadOutlined />}
-                        onClick={onSelectFiles}
+                        onClick={() => selectLocalFile(true)}
                         disabled={uploading}
                         title="选择图片上传"
                     />
@@ -283,7 +195,7 @@ export default function ImageBed() {
         >
             <div
                 // 绑定 paste 事件到容器，方便用户直接在该区域 Ctrl+V 粘贴图片
-                onPaste={onPasteUpload}
+                onPaste={handlePaste}
                 style={{
                     minHeight: 180,
                     border: "1px dashed #e9e9e9",
