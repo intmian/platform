@@ -25,6 +25,11 @@ export interface UseImageUploadRet {
 }
 
 export type UploadHandler = (file: File) => Promise<FileShow | null>;
+export type BeforeUploadHandler = (file: File) => Promise<File | null> | File | null;
+
+export interface UseImageUploadOptions {
+    beforeUpload?: BeforeUploadHandler;
+}
 
 /**
  * 统一的图片上传 Hook
@@ -33,15 +38,24 @@ export type UploadHandler = (file: File) => Promise<FileShow | null>;
  */
 export function useImageUpload(
     onUploadSuccess?: (file: FileShow) => void,
-    customUpload?: UploadHandler
+    customUpload?: UploadHandler,
+    options?: UseImageUploadOptions
 ): UseImageUploadRet {
     const [uploading, setUploading] = useState(false);
 
     const uploadSingle = useCallback(async (file: File) => {
         setUploading(true);
         try {
+            let processedFile = file;
+            if (options?.beforeUpload) {
+                const nextFile = await options.beforeUpload(file);
+                if (!nextFile) {
+                    return null;
+                }
+                processedFile = nextFile;
+            }
             const uploader = customUpload || UploadFile;
-            const ret = await uploader(file);
+            const ret = await uploader(processedFile);
             if (ret) {
                 onUploadSuccess?.(ret);
                 return ret;
@@ -53,7 +67,7 @@ export function useImageUpload(
         } finally {
             setUploading(false);
         }
-    }, [onUploadSuccess, customUpload]);
+    }, [onUploadSuccess, customUpload, options]);
 
     const selectLocalFile = useCallback((multiple: boolean = false) => {
         const input = document.createElement('input');

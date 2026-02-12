@@ -38,6 +38,7 @@ import {
     StarOutlined,
     StopOutlined,
     SyncOutlined,
+    UploadOutlined,
 } from '@ant-design/icons';
 import {
     LibraryExtra,
@@ -65,6 +66,8 @@ import {
 import {useIsMobile} from '../common/hooksv2';
 import TextRate from '../library/TextRate';
 import LibraryShareCard from './LibraryShareCard';
+import {useImageUpload} from '../common/useImageUpload';
+import {cropImageToAspectRatio} from '../common/imageCrop';
 
 const {Text, Paragraph} = Typography;
 const {TextArea} = Input;
@@ -100,6 +103,35 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
     
     // 基本信息编辑表单
     const [form] = Form.useForm();
+
+    const {uploading: coverUploading, selectLocalFile: selectCoverFile, checkClipboard: checkCoverClipboard} = useImageUpload(
+        (fileShow) => {
+            form.setFieldValue('pictureAddress', fileShow.publishUrl);
+            setLocalItem((prev) => {
+                if (!prev) return prev;
+                return {
+                    ...prev,
+                    extra: {
+                        ...prev.extra,
+                        pictureAddress: fileShow.publishUrl,
+                    },
+                };
+            });
+            message.success('封面已上传并裁剪为 3:4');
+        },
+        undefined,
+        {
+            beforeUpload: async (file) => {
+                try {
+                    return await cropImageToAspectRatio(file, 3, 4);
+                } catch (error) {
+                    console.error(error);
+                    message.error('图片裁剪失败');
+                    return null;
+                }
+            },
+        }
+    );
 
     // 初始化 localItem
     useEffect(() => {
@@ -404,17 +436,34 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
         >
             {/* 封面和基本信息 */}
             <Row gutter={16}>
-                <Col span={8}>
+                <Col span={isMobile ? 24 : 8}>
                     {localItem.extra.pictureAddress ? (
-                        <Image
-                            src={localItem.extra.pictureAddress}
-                            style={{width: '100%', borderRadius: 8}}
-                            fallback="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect fill='%23f0f0f0' width='100' height='100'/%3E%3Ctext x='50' y='50' text-anchor='middle' dy='.3em' fill='%23999'%3E暂无图片%3C/text%3E%3C/svg%3E"
-                        />
+                        <div
+                            style={{
+                                position: 'relative',
+                                width: '100%',
+                                paddingTop: '133.333%',
+                                borderRadius: 8,
+                                overflow: 'hidden',
+                                background: '#f5f5f5',
+                            }}
+                        >
+                            <Image
+                                src={localItem.extra.pictureAddress}
+                                style={{
+                                    position: 'absolute',
+                                    inset: 0,
+                                    width: '100%',
+                                    height: '100%',
+                                    objectFit: 'cover',
+                                }}
+                                fallback="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 300 400'%3E%3Crect fill='%23f0f0f0' width='300' height='400'/%3E%3Ctext x='150' y='200' text-anchor='middle' dy='.3em' fill='%23999'%3E暂无图片%3C/text%3E%3C/svg%3E"
+                            />
+                        </div>
                     ) : (
                         <div style={{
                             width: '100%',
-                            paddingTop: '140%',
+                            paddingTop: '133.333%',
                             background: '#f5f5f5',
                             borderRadius: 8,
                             position: 'relative',
@@ -430,7 +479,7 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
                         </div>
                     )}
                 </Col>
-                <Col span={16}>
+                <Col span={isMobile ? 24 : 16} style={{marginTop: isMobile ? 12 : 0}}>
                     {editMode ? (
                         <Form form={form} layout="vertical" size="small">
                             <Form.Item name="title" label="名称" rules={[{required: true}]}>
@@ -452,7 +501,26 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
                                 />
                             </Form.Item>
                             <Form.Item name="pictureAddress" label="封面URL">
-                                <Input/>
+                                <Space.Compact style={{width: '100%'}}>
+                                    <Input placeholder="可粘贴URL，或使用右侧按钮上传"/>
+                                    <Button
+                                        icon={<UploadOutlined/>}
+                                        loading={coverUploading}
+                                        onClick={() => selectCoverFile(false)}
+                                    >
+                                        上传3:4
+                                    </Button>
+                                </Space.Compact>
+                                <Space style={{marginTop: 8}}>
+                                    <Button
+                                        size="small"
+                                        loading={coverUploading}
+                                        onClick={() => checkCoverClipboard(false)}
+                                    >
+                                        剪贴板上传
+                                    </Button>
+                                    <Text type="secondary">上传时自动居中裁剪为 3:4</Text>
+                                </Space>
                             </Form.Item>
                         </Form>
                     ) : (

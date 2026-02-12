@@ -132,16 +132,16 @@ export default function LibraryTimeline({visible, items, onClose, onItemClick}: 
                     {entry.pictureAddress ? (
                         <Image
                             src={entry.pictureAddress}
-                            width={isMobile ? 40 : 50}
-                            height={isMobile ? 56 : 70}
+                            width={isMobile ? 42 : 48}
+                            height={isMobile ? 56 : 64}
                             style={{borderRadius: 4, objectFit: 'cover'}}
                             preview={false}
-                            fallback="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 56'%3E%3Crect fill='%23f0f0f0' width='40' height='56'/%3E%3C/svg%3E"
+                            fallback="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 64'%3E%3Crect fill='%23f0f0f0' width='48' height='64'/%3E%3C/svg%3E"
                         />
                     ) : (
                         <Avatar
                             shape="square"
-                            size={isMobile ? 40 : 50}
+                            size={isMobile ? 42 : 48}
                             style={{background: '#f0f0f0', color: '#999'}}
                         >
                             {entry.itemTitle.slice(0, 1)}

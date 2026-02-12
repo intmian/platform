@@ -180,6 +180,10 @@ const LibraryShareCard: React.FC<LibraryShareCardProps> = ({title, extra, editab
                         <div
                             style={{
                                 width: "100%",
+                                maxWidth: isMobile ? 260 : 320,
+                                margin: "0 auto",
+                                position: "relative",
+                                paddingTop: "133.333%",
                                 overflow: "hidden",
                                 borderRadius: 6,
                                 display: "flex",
@@ -193,12 +197,11 @@ const LibraryShareCard: React.FC<LibraryShareCardProps> = ({title, extra, editab
                                 alt={title}
                                 preview={true}
                                 style={{
-                                    display: "block",
-                                    maxWidth: "100%",
-                                    maxHeight: 360,
-                                    width: "auto",
-                                    height: "auto",
-                                    objectFit: "contain"
+                                    position: "absolute",
+                                    inset: 0,
+                                    width: "100%",
+                                    height: "100%",
+                                    objectFit: "cover"
                                 }}
                             />
                         </div>

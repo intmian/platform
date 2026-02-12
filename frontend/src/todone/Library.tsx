@@ -29,6 +29,7 @@ import {
     SettingOutlined,
     SortAscendingOutlined,
     StarFilled,
+    UploadOutlined,
 } from '@ant-design/icons';
 import {Addr} from './addr';
 import {
@@ -63,6 +64,8 @@ import {
 import {useIsMobile} from '../common/hooksv2';
 import LibraryDetail from './LibraryDetail';
 import LibraryTimeline from './LibraryTimeline';
+import {useImageUpload} from '../common/useImageUpload';
+import {cropImageToAspectRatio} from '../common/imageCrop';
 import './Library.css';
 
 // 排序选项
@@ -134,6 +137,25 @@ export default function Library({addr, groupTitle}: LibraryProps) {
     const [showAdd, setShowAdd] = useState(false);
     const [addForm] = Form.useForm();
     const [addLoading, setAddLoading] = useState(false);
+
+    const {uploading: addCoverUploading, selectLocalFile: selectAddCoverFile, checkClipboard: checkAddCoverClipboard} = useImageUpload(
+        (fileShow) => {
+            addForm.setFieldValue('pictureAddress', fileShow.publishUrl);
+            message.success('封面已上传并裁剪为 3:4');
+        },
+        undefined,
+        {
+            beforeUpload: async (file) => {
+                try {
+                    return await cropImageToAspectRatio(file, 3, 4);
+                } catch (error) {
+                    console.error(error);
+                    message.error('图片裁剪失败');
+                    return null;
+                }
+            },
+        }
+    );
     
     // 分类管理弹窗
     const [showCategoryManager, setShowCategoryManager] = useState(false);
@@ -872,7 +894,25 @@ export default function Library({addr, groupTitle}: LibraryProps) {
                     </Form.Item>
                     
                     <Form.Item name="pictureAddress" label="封面图片地址">
-                        <Input placeholder="请输入图片URL"/>
+                        <Space.Compact style={{width: '100%'}}>
+                            <Input placeholder="请输入图片URL，或使用右侧按钮上传"/>
+                            <Button
+                                icon={<UploadOutlined/>}
+                                loading={addCoverUploading}
+                                onClick={() => selectAddCoverFile(false)}
+                            >
+                                上传3:4
+                            </Button>
+                        </Space.Compact>
+                        <Space style={{marginTop: 8}}>
+                            <Button
+                                size="small"
+                                loading={addCoverUploading}
+                                onClick={() => checkAddCoverClipboard(false)}
+                            >
+                                剪贴板上传
+                            </Button>
+                        </Space>
                     </Form.Item>
                 </Form>
             </Modal>
