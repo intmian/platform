@@ -10,6 +10,7 @@ import {lazy} from 'react';
 import ReportPanel from "./report/report";
 import {Todone} from "./todone/Main";
 import NutritionCalculator from "./misc/NutritionCalculator";
+import KanaPractice from "./misc/KanaPractice";
 import dayjs from 'dayjs';
 import 'dayjs/locale/zh-cn';
 import {JianXing} from "./library/JianXingTemp.tsx";
@@ -77,6 +78,10 @@ const router = createBrowserRouter([
     {
         path: '/loss-fat',
         element: <NutritionCalculator/>,
+    },
+    {
+        path: '/kana',
+        element: <KanaPractice/>
     },
     {
         path: '/rate/jianxing',
