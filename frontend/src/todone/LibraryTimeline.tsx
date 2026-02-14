@@ -32,6 +32,7 @@ import {
     extractTimeline,
     formatDate,
     formatDateTime,
+    getLibraryCoverDisplayUrl,
     getLogTypeText,
     getScoreText,
     groupTimelineByYear,
@@ -65,10 +66,16 @@ export default function LibraryTimeline({visible, items, onClose, onItemClick}: 
 
     // 当前显示的条目
     const displayEntries = useMemo(() => {
+        const sortedEntries = (selectedYear === 'all'
+            ? allEntries
+            : entriesByYear.get(selectedYear) || [])
+            .slice()
+            .sort((a, b) => new Date(a.time).getTime() - new Date(b.time).getTime());
+
         if (selectedYear === 'all') {
-            return allEntries;
+            return sortedEntries;
         }
-        return entriesByYear.get(selectedYear) || [];
+        return sortedEntries;
     }, [allEntries, entriesByYear, selectedYear]);
 
     // 获取日志类型图标
@@ -112,6 +119,7 @@ export default function LibraryTimeline({visible, items, onClose, onItemClick}: 
 
     // 渲染时间线条目
     const renderTimelineItem = (entry: TimelineEntry, index: number) => {
+        const thumbUrl = getLibraryCoverDisplayUrl(entry.itemTitle, entry.pictureAddress);
         const actionText = entry.logType === LibraryLogType.score
             ? `评分 ${getScoreText(entry.score || 0)}`
             : getLogTypeText(entry.logType, entry.status);
@@ -129,9 +137,9 @@ export default function LibraryTimeline({visible, items, onClose, onItemClick}: 
                     onClick={() => onItemClick?.(entry.itemId)}
                 >
                     {/* 封面缩略图 */}
-                    {entry.pictureAddress ? (
+                    {thumbUrl ? (
                         <Image
-                            src={entry.pictureAddress}
+                            src={thumbUrl}
                             width={isMobile ? 42 : 48}
                             height={isMobile ? 56 : 64}
                             style={{borderRadius: 4, objectFit: 'cover'}}

@@ -126,6 +126,10 @@ export interface LibraryScoreData {
 export interface LibraryExtra {
     pictureAddress: string          // 封面图片地址
     author: string                  // 作者/制作方
+    year?: number                   // 作品年份
+    remark?: string                 // 作品备注
+    waitReason?: string             // 搁置原因
+    waitSince?: string              // 最近一次搁置开始时间
     category: string                // 分类（动漫/电影/游戏/小说等）
     status: LibraryItemStatus       // 当前状态
     currentRound: number            // 当前周目索引

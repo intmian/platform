@@ -1,4 +1,4 @@
-import React, {useEffect, useMemo, useState} from 'react';
+import React, {useEffect, useMemo, useRef, useState} from 'react';
 import {
     Button,
     Card,
@@ -9,7 +9,6 @@ import {
     Drawer,
     Flex,
     Form,
-    Image,
     Input,
     InputNumber,
     message,
@@ -28,6 +27,7 @@ import {
 import {
     CheckOutlined,
     ClockCircleOutlined,
+    DownloadOutlined,
     EditOutlined,
     PauseOutlined,
     PictureOutlined,
@@ -37,7 +37,6 @@ import {
     StarFilled,
     StarOutlined,
     StopOutlined,
-    SyncOutlined,
     UploadOutlined,
 } from '@ant-design/icons';
 import {
@@ -56,6 +55,8 @@ import {
     addScoreLog,
     addStatusLog,
     formatDateTime,
+    getDisplayStatusInfo,
+    getLibraryCoverDisplayUrl,
     getLogTypeText,
     getMainScore,
     getScoreDisplay,
@@ -66,6 +67,7 @@ import {
 import {useIsMobile} from '../common/hooksv2';
 import TextRate from '../library/TextRate';
 import LibraryShareCard from './LibraryShareCard';
+import LibraryScorePopover from './LibraryScorePopover';
 import {useImageUpload} from '../common/useImageUpload';
 import {cropImageToAspectRatio} from '../common/imageCrop';
 
@@ -96,18 +98,19 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
     const [showAddScore, setShowAddScore] = useState(false);
     const [showAddNote, setShowAddNote] = useState(false);
     const [noteContent, setNoteContent] = useState('');
+    const [showWaitReason, setShowWaitReason] = useState(false);
+    const [waitReasonInput, setWaitReasonInput] = useState('');
     
     // 分享弹窗
     const [showShare, setShowShare] = useState(false);
-    const [shareEditMode, setShareEditMode] = useState(false);
+    const shareCardRef = useRef<HTMLDivElement | null>(null);
     
     // 基本信息编辑表单
     const [form] = Form.useForm();
 
-    const {uploading: coverUploading, selectLocalFile: selectCoverFile, checkClipboard: checkCoverClipboard} = useImageUpload(
+    const {uploading: coverUploading, checkClipboard: checkCoverClipboard} = useImageUpload(
         (fileShow) => {
-            form.setFieldValue('pictureAddress', fileShow.publishUrl);
-            setLocalItem((prev) => {
+            setLocalItem((prev: LibraryItemFull | null) => {
                 if (!prev) return prev;
                 return {
                     ...prev,
@@ -132,6 +135,7 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
             },
         }
     );
+    const editingTitle = Form.useWatch('title', form) || '';
 
     // 初始化 localItem
     useEffect(() => {
@@ -139,8 +143,9 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
             setLocalItem(JSON.parse(JSON.stringify(item)));
             form.setFieldsValue({
                 title: item.title,
-                pictureAddress: item.extra.pictureAddress,
                 author: item.extra.author,
+                year: item.extra.year,
+                remark: item.extra.remark,
                 category: item.extra.category,
             });
         }
@@ -151,13 +156,18 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
         form.validateFields().then((values) => {
             if (!localItem) return;
             
+            const title = values.title?.trim() || '';
+            const pictureAddress = localItem.extra.pictureAddress?.trim() || '';
+
             const newItem: LibraryItemFull = {
                 ...localItem,
-                title: values.title,
+                title,
                 extra: {
                     ...localItem.extra,
-                    pictureAddress: values.pictureAddress || '',
+                    pictureAddress,
                     author: values.author || '',
+                    year: typeof values.year === 'number' ? values.year : undefined,
+                    remark: values.remark?.trim() || '',
                     category: values.category || '',
                     updatedAt: new Date().toISOString(),
                 },
@@ -170,13 +180,19 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
     };
 
     // 快速状态变更
-    const handleStatusChange = (newStatus: LibraryItemStatus) => {
+    const handleStatusChange = (newStatus: LibraryItemStatus, comment?: string) => {
         if (!localItem) return;
         
-        const newExtra = addStatusLog({...localItem.extra}, newStatus);
+        const newExtra = addStatusLog({...localItem.extra}, newStatus, comment);
         const newItem = {...localItem, extra: newExtra};
         setLocalItem(newItem);
         onSave(newItem);
+    };
+
+    const handleSetWaitStatus = () => {
+        handleStatusChange(LibraryItemStatus.WAIT, waitReasonInput.trim());
+        setShowWaitReason(false);
+        setWaitReasonInput('');
     };
 
     // 开始新周目
@@ -196,14 +212,78 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
     };
 
     // 添加评分
-    const handleAddScore = (score: number, plus: boolean, sub: boolean, comment: string) => {
+    const handleAddScore = (payload: AddScorePayload) => {
         if (!localItem) return;
-        
-        const newExtra = addScoreLog({...localItem.extra}, score, plus, sub, comment);
+
+        const scoreLogComment = payload.comment?.trim() || '';
+
+        const newExtra = addScoreLog(
+            {...localItem.extra},
+            payload.mainScore.value,
+            payload.mainScore.plus,
+            payload.mainScore.sub,
+            scoreLogComment
+        );
+
+        if (payload.mode === 'complex') {
+            newExtra.scoreMode = 'complex';
+            if (payload.objScore) {
+                newExtra.objScore = {
+                    ...payload.objScore,
+                    comment: payload.objComment?.trim() || payload.objScore.comment || '',
+                };
+            }
+            if (payload.subScore) {
+                newExtra.subScore = {
+                    ...payload.subScore,
+                    comment: payload.subComment?.trim() || payload.subScore.comment || '',
+                };
+            }
+            if (payload.innovateScore) {
+                newExtra.innovateScore = {
+                    ...payload.innovateScore,
+                    comment: payload.innovateComment?.trim() || payload.innovateScore.comment || '',
+                };
+            }
+            newExtra.mainScore = {
+                ...payload.mainScore,
+                comment: payload.mainScore.comment || '',
+            };
+            if (payload.comment?.trim()) {
+                newExtra.comment = payload.comment.trim();
+            } else {
+                delete newExtra.comment;
+            }
+        }
+
         const newItem = {...localItem, extra: newExtra};
         setLocalItem(newItem);
         onSave(newItem);
         setShowAddScore(false);
+    };
+
+    const handleExportShareImage = async () => {
+        if (!shareCardRef.current || !localItem) {
+            message.warning('暂无可导出的分享内容');
+            return;
+        }
+        try {
+            const html2canvas = (await import('html2canvas')).default;
+            const canvas = await html2canvas(shareCardRef.current, {
+                scale: 2,
+                useCORS: true,
+                backgroundColor: '#ffffff',
+            });
+            const dataUrl = canvas.toDataURL('image/png');
+            const link = document.createElement('a');
+            link.href = dataUrl;
+            link.download = `${localItem.title || 'library-share'}.png`;
+            link.click();
+            message.success('已导出分享图片');
+        } catch (error) {
+            console.error(error);
+            message.error('导出失败，请稍后重试');
+        }
     };
 
     // 添加备注
@@ -252,14 +332,21 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
                         key={btn.status}
                         type={currentStatus === btn.status ? 'primary' : 'default'}
                         icon={btn.icon}
-                        onClick={() => handleStatusChange(btn.status)}
+                        onClick={() => {
+                            if (btn.status === LibraryItemStatus.WAIT) {
+                                setWaitReasonInput(localItem?.extra.waitReason || '');
+                                setShowWaitReason(true);
+                                return;
+                            }
+                            handleStatusChange(btn.status);
+                        }}
                         size="small"
                     >
                         {btn.label}
                     </Button>
                 ))}
                 <Button
-                    icon={<SyncOutlined/>}
+                    icon={<PlusOutlined/>}
                     onClick={() => setShowNewRound(true)}
                     size="small"
                 >
@@ -289,26 +376,37 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
                 break;
             case LibraryLogType.score:
                 color = '#faad14';
+                const isComplexScore = localItem?.extra.scoreMode === 'complex';
+                const scoreContent = (
+                    <Space>
+                        <StarFilled style={{color: '#faad14'}}/>
+                        <Text strong>
+                            {getScoreText(log.score || 0, log.scorePlus, log.scoreSub)}
+                        </Text>
+                        <Text type="secondary">({getScoreDisplay(log.score || 0, log.scorePlus, log.scoreSub)})</Text>
+                        {isMainScore && <Tag color="gold">主评分</Tag>}
+                        {!isMainScore && log.type === LibraryLogType.score && (
+                            <Tooltip title="设为主评分">
+                                <Button
+                                    type="text"
+                                    size="small"
+                                    icon={<StarOutlined/>}
+                                    onClick={() => handleSetMainScore(roundIndex, logIndex)}
+                                />
+                            </Tooltip>
+                        )}
+                    </Space>
+                );
                 content = (
                     <Space direction="vertical" size={0}>
-                        <Space>
-                            <StarFilled style={{color: '#faad14'}}/>
-                            <Text strong>
-                                {getScoreText(log.score || 0, log.scorePlus, log.scoreSub)}
-                            </Text>
-                            <Text type="secondary">({getScoreDisplay(log.score || 0, log.scorePlus, log.scoreSub)})</Text>
-                            {isMainScore && <Tag color="gold">主评分</Tag>}
-                            {!isMainScore && log.type === LibraryLogType.score && (
-                                <Tooltip title="设为主评分">
-                                    <Button
-                                        type="text"
-                                        size="small"
-                                        icon={<StarOutlined/>}
-                                        onClick={() => handleSetMainScore(roundIndex, logIndex)}
-                                    />
-                                </Tooltip>
-                            )}
-                        </Space>
+                        {isComplexScore ? (
+                            <Tooltip
+                                placement="topLeft"
+                                title={<LibraryScorePopover extra={localItem.extra} mainScoreOverride={log} />}
+                            >
+                                {scoreContent}
+                            </Tooltip>
+                        ) : scoreContent}
                         {log.comment && <Text type="secondary" style={{fontSize: 12}}>{log.comment}</Text>}
                     </Space>
                 );
@@ -384,15 +482,15 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
     const mainScoreEntry = localItem ? getMainScore(localItem.extra) : null;
 
     if (!localItem) return null;
+    const displayTitle = editMode ? (editingTitle.trim() || localItem.title) : localItem.title;
+    const displayCoverUrl = getLibraryCoverDisplayUrl(displayTitle || '', localItem.extra.pictureAddress);
+    const displayStatus = getDisplayStatusInfo(localItem.extra);
 
     return (
         <Drawer
             title={
                 <Flex justify="space-between" align="center">
-                    <span>{localItem.title}</span>
-                    <Tag color={LibraryStatusColors[localItem.extra.status]}>
-                        {LibraryStatusNames[localItem.extra.status]}
-                    </Tag>
+                    <span>{displayTitle}</span>
                 </Flex>
             }
             placement="right"
@@ -437,7 +535,7 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
             {/* 封面和基本信息 */}
             <Row gutter={16}>
                 <Col span={isMobile ? 24 : 8}>
-                    {localItem.extra.pictureAddress ? (
+                    {displayCoverUrl ? (
                         <div
                             style={{
                                 position: 'relative',
@@ -446,10 +544,12 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
                                 borderRadius: 8,
                                 overflow: 'hidden',
                                 background: '#f5f5f5',
+                                border: '1px solid #d9d9d9',
                             }}
                         >
-                            <Image
-                                src={localItem.extra.pictureAddress}
+                            <img
+                                src={displayCoverUrl}
+                                alt={displayTitle}
                                 style={{
                                     position: 'absolute',
                                     inset: 0,
@@ -457,7 +557,9 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
                                     height: '100%',
                                     objectFit: 'cover',
                                 }}
-                                fallback="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 300 400'%3E%3Crect fill='%23f0f0f0' width='300' height='400'/%3E%3Ctext x='150' y='200' text-anchor='middle' dy='.3em' fill='%23999'%3E暂无图片%3C/text%3E%3C/svg%3E"
+                                onError={(e) => {
+                                    (e.target as HTMLImageElement).style.display = 'none';
+                                }}
                             />
                         </div>
                     ) : (
@@ -467,6 +569,7 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
                             background: '#f5f5f5',
                             borderRadius: 8,
                             position: 'relative',
+                            border: '1px solid #d9d9d9',
                         }}>
                             <PictureOutlined style={{
                                 position: 'absolute',
@@ -488,6 +591,12 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
                             <Form.Item name="author" label="作者/制作方">
                                 <Input/>
                             </Form.Item>
+                            <Form.Item name="year" label="年份">
+                                <InputNumber min={1900} max={3000} style={{width: '100%'}} placeholder="例如：2024"/>
+                            </Form.Item>
+                            <Form.Item name="remark" label="备注">
+                                <TextArea rows={2} placeholder="作品备注（如国家、版本、平台等）"/>
+                            </Form.Item>
                             <Form.Item name="category" label="分类">
                                 <Select
                                     showSearch
@@ -500,34 +609,34 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
                                     }
                                 />
                             </Form.Item>
-                            <Form.Item name="pictureAddress" label="封面URL">
-                                <Space.Compact style={{width: '100%'}}>
-                                    <Input placeholder="可粘贴URL，或使用右侧按钮上传"/>
-                                    <Button
-                                        icon={<UploadOutlined/>}
-                                        loading={coverUploading}
-                                        onClick={() => selectCoverFile(false)}
-                                    >
-                                        上传3:4
-                                    </Button>
-                                </Space.Compact>
+                            <Form.Item label="封面">
+                                <Button
+                                    icon={<UploadOutlined/>}
+                                    loading={coverUploading}
+                                    onClick={() => checkCoverClipboard(false)}
+                                >
+                                    上传（先读剪贴板）
+                                </Button>
                                 <Space style={{marginTop: 8}}>
-                                    <Button
-                                        size="small"
-                                        loading={coverUploading}
-                                        onClick={() => checkCoverClipboard(false)}
-                                    >
-                                        剪贴板上传
-                                    </Button>
-                                    <Text type="secondary">上传时自动居中裁剪为 3:4</Text>
+                                    <Text type="secondary">检测到剪贴板图片会先询问使用，取消后可自行选择本地图片</Text>
                                 </Space>
                             </Form.Item>
                         </Form>
                     ) : (
                         <Descriptions column={1} size="small">
+                            <Descriptions.Item label="状态">
+                                <Tag color={displayStatus.color}>
+                                    {displayStatus.name}
+                                </Tag>
+                            </Descriptions.Item>
                             <Descriptions.Item label="作者">{localItem.extra.author || '-'}</Descriptions.Item>
                             <Descriptions.Item label="分类">{localItem.extra.category || '-'}</Descriptions.Item>
                             <Descriptions.Item label="添加时间">{formatDateTime(localItem.extra.createdAt)}</Descriptions.Item>
+                            <Descriptions.Item label="年份">{localItem.extra.year || '-'}</Descriptions.Item>
+                            <Descriptions.Item label="备注">{localItem.extra.remark || '-'}</Descriptions.Item>
+                            {localItem.extra.status === LibraryItemStatus.WAIT && (
+                                <Descriptions.Item label="搁置原因">{localItem.extra.waitReason || '-'}</Descriptions.Item>
+                            )}
                             <Descriptions.Item label="主评分">
                                 {mainScoreEntry ? (
                                     <Space>
@@ -597,6 +706,7 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
                 visible={showAddScore}
                 onOk={handleAddScore}
                 onCancel={() => setShowAddScore(false)}
+                initialMode={localItem.extra.scoreMode || 'simple'}
             />
             
             {/* 添加备注弹窗 */}
@@ -616,93 +726,66 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
                     onChange={(e) => setNoteContent(e.target.value)}
                 />
             </Modal>
+
+            <Modal
+                title="搁置原因"
+                open={showWaitReason}
+                onOk={handleSetWaitStatus}
+                onCancel={() => {
+                    setShowWaitReason(false);
+                    setWaitReasonInput('');
+                }}
+            >
+                <TextArea
+                    rows={3}
+                    placeholder="可选：例如排期冲突、状态不佳、版本问题等"
+                    value={waitReasonInput}
+                    onChange={(e) => setWaitReasonInput(e.target.value)}
+                />
+            </Modal>
             
             {/* 分享弹窗 */}
             <Modal
-                title={
-                    <Flex justify="space-between" align="center">
-                        <span>分享预览</span>
-                        <Space>
-                            <Radio.Group 
-                                value={localItem.extra.scoreMode || 'simple'} 
-                                onChange={(e) => {
-                                    const newExtra = {...localItem.extra, scoreMode: e.target.value};
-                                    const newItem = {...localItem, extra: newExtra};
-                                    setLocalItem(newItem);
-                                }}
-                                size="small"
-                            >
-                                <Radio.Button value="simple">简单评分</Radio.Button>
-                                <Radio.Button value="complex">复杂评分</Radio.Button>
-                            </Radio.Group>
-                            <Button 
-                                size="small"
-                                type={shareEditMode ? 'primary' : 'default'}
-                                onClick={() => setShareEditMode(!shareEditMode)}
-                            >
-                                {shareEditMode ? '完成编辑' : '编辑评分'}
-                            </Button>
-                        </Space>
-                    </Flex>
-                }
+                title="分享预览"
                 open={showShare}
                 onCancel={() => {
                     setShowShare(false);
-                    setShareEditMode(false);
                 }}
                 footer={
                     <Space>
                         <Button onClick={() => {
                             setShowShare(false);
-                            setShareEditMode(false);
                         }}>
                             关闭
                         </Button>
-                        <Button 
+                        <Button
+                            icon={<DownloadOutlined/>}
                             type="primary"
-                            onClick={() => {
-                                onSave(localItem);
-                                message.success('评分已保存');
-                            }}
+                            onClick={handleExportShareImage}
                         >
-                            保存评分
+                            导出图片
                         </Button>
                     </Space>
                 }
+                styles={{
+                    footer: {
+                        borderTop: '1px solid #f0f0f0',
+                        paddingTop: 12,
+                        marginTop: 0,
+                    },
+                }}
                 width={isMobile ? '100%' : 650}
                 style={{top: 20}}
             >
-                <div style={{maxHeight: '70vh', overflowY: 'auto'}}>
+                <div ref={shareCardRef} style={{maxHeight: '70vh', overflowY: 'auto', background: '#fff', paddingBottom: 8}}>
                     <LibraryShareCard
                         title={localItem.title}
                         extra={localItem.extra}
-                        editable={shareEditMode}
-                        onChange={(newExtra) => {
-                            const newItem = {...localItem, extra: newExtra};
-                            setLocalItem(newItem);
-                        }}
+                        editable={false}
                     />
                     
-                    {/* 复杂模式下的总评编辑 */}
-                    {localItem.extra.scoreMode === 'complex' && shareEditMode && (
-                        <div style={{padding: '0 10px 16px'}}>
-                            <Text strong>总评：</Text>
-                            <TextArea
-                                rows={4}
-                                placeholder="请输入总评内容..."
-                                value={localItem.extra.comment || ''}
-                                onChange={(e) => {
-                                    const newExtra = {...localItem.extra, comment: e.target.value};
-                                    const newItem = {...localItem, extra: newExtra};
-                                    setLocalItem(newItem);
-                                }}
-                                style={{marginTop: 8}}
-                            />
-                        </div>
-                    )}
-                    
                     <div style={{padding: '0 10px', fontSize: 12, color: '#999'}}>
-                        提示：截图此卡片即可分享。{localItem.extra.scoreMode === 'complex' ? '复杂模式包含多维度评分。' : '简单模式仅显示主评分。'}
+                        提示：可直接点击“导出图片”生成分享图。
                     </div>
                 </div>
             </Modal>
@@ -713,43 +796,88 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
 // 添加评分弹窗组件
 interface AddScoreModalProps {
     visible: boolean;
-    onOk: (score: number, plus: boolean, sub: boolean, comment: string) => void;
+    onOk: (payload: AddScorePayload) => void;
     onCancel: () => void;
+    initialMode?: 'simple' | 'complex';
 }
 
-function AddScoreModal({visible, onOk, onCancel}: AddScoreModalProps) {
-    const [score, setScore] = useState(3);
-    const [plus, setPlus] = useState(false);
-    const [sub, setSub] = useState(false);
+interface AddScorePayload {
+    mode: 'simple' | 'complex';
+    mainScore: LibraryScoreData;
+    objScore?: LibraryScoreData;
+    subScore?: LibraryScoreData;
+    innovateScore?: LibraryScoreData;
+    objComment?: string;
+    subComment?: string;
+    innovateComment?: string;
+    comment?: string;
+}
+
+function AddScoreModal({visible, onOk, onCancel, initialMode = 'simple'}: AddScoreModalProps) {
+    const [mode, setMode] = useState<'simple' | 'complex'>(initialMode);
+    const [mainScoreText, setMainScoreText] = useState('合');
+    const [objScoreText, setObjScoreText] = useState('普通');
+    const [subScoreText, setSubScoreText] = useState('消磨');
+    const [innovateScoreText, setInnovateScoreText] = useState('沿袭');
+    const [objComment, setObjComment] = useState('');
+    const [subComment, setSubComment] = useState('');
+    const [innovateComment, setInnovateComment] = useState('');
     const [comment, setComment] = useState('');
 
-    const handleTextRateChange = (text: string) => {
-        const SCORE_SEQ = ["零", "差", "合", "优", "满"];
-        let sign: "" | "+" | "-" = "";
-        if (text.endsWith("+")) sign = "+";
-        else if (text.endsWith("-")) sign = "-";
+    useEffect(() => {
+        if (visible) {
+            setMode(initialMode);
+        }
+    }, [initialMode, visible]);
+
+    const parseRate = (seq: string[], text: string, scoreComment: string): LibraryScoreData => {
+        let sign: '' | '+' | '-' = '';
+        if (text.endsWith('+')) sign = '+';
+        if (text.endsWith('-')) sign = '-';
         const label = sign ? text.slice(0, -1) : text;
-        const idx = SCORE_SEQ.findIndex((s) => s === label);
-        
-        setScore(idx >= 0 ? idx + 1 : 3);
-        setPlus(sign === "+");
-        setSub(sign === "-");
+        const idx = seq.findIndex((s) => s === label);
+        return {
+            value: idx >= 0 ? idx + 1 : 3,
+            plus: sign === '+',
+            sub: sign === '-',
+            comment: scoreComment.trim(),
+        };
+    };
+
+    const resetForm = () => {
+        setMainScoreText('合');
+        setObjScoreText('普通');
+        setSubScoreText('消磨');
+        setInnovateScoreText('沿袭');
+        setObjComment('');
+        setSubComment('');
+        setInnovateComment('');
+        setComment('');
     };
 
     const handleOk = () => {
-        onOk(score, plus, sub, comment);
-        setScore(3);
-        setPlus(false);
-        setSub(false);
-        setComment('');
+        const payload: AddScorePayload = {
+            mode,
+            mainScore: parseRate(["零", "差", "合", "优", "满"], mainScoreText, ''),
+            comment,
+        };
+
+        if (mode === 'complex') {
+            payload.objScore = parseRate(["垃圾", "低劣", "普通", "优秀", "传奇"], objScoreText, objComment);
+            payload.subScore = parseRate(["折磨", "负面", "消磨", "享受", "极致"], subScoreText, subComment);
+            payload.innovateScore = parseRate(["抄袭", "模仿", "沿袭", "创新", "革命"], innovateScoreText, innovateComment);
+            payload.objComment = objComment;
+            payload.subComment = subComment;
+            payload.innovateComment = innovateComment;
+        }
+
+        onOk(payload);
+        resetForm();
     };
 
     const handleCancel = () => {
         onCancel();
-        setScore(3);
-        setPlus(false);
-        setSub(false);
-        setComment('');
+        resetForm();
     };
 
     return (
@@ -760,25 +888,92 @@ function AddScoreModal({visible, onOk, onCancel}: AddScoreModalProps) {
             onCancel={handleCancel}
         >
             <Space direction="vertical" style={{width: '100%'}}>
+                <Radio.Group value={mode} onChange={(e) => setMode(e.target.value)}>
+                    <Radio.Button value="simple">简单评分</Radio.Button>
+                    <Radio.Button value="complex">复杂评分</Radio.Button>
+                </Radio.Group>
+
                 <div>
-                    <Text>评分：</Text>
+                    <Text>{mode === 'complex' ? '主评分：' : '评分：'}</Text>
                     <div style={{marginTop: 8}}>
                         <TextRate
                             sequence={["零", "差", "合", "优", "满"]}
                             editable={true}
-                            initialValue={getScoreText(score, plus, sub)}
-                            onChange={handleTextRateChange}
+                            initialValue={mainScoreText}
+                            onChange={setMainScoreText}
                             fontSize={24}
                             fontSize2={16}
                         />
                     </div>
-                    <Text type="secondary" style={{marginTop: 4, display: 'block'}}>
-                        当前：{getScoreDisplay(score, plus, sub)}
-                    </Text>
                 </div>
+
+                {mode === 'complex' && (
+                    <>
+                        <div>
+                            <Text>客观好坏：</Text>
+                            <div style={{marginTop: 8}}>
+                                <TextRate
+                                    sequence={["垃圾", "低劣", "普通", "优秀", "传奇"]}
+                                    editable={true}
+                                    initialValue={objScoreText}
+                                    onChange={setObjScoreText}
+                                    fontSize={20}
+                                    fontSize2={14}
+                                />
+                            </div>
+                            <TextArea
+                                rows={2}
+                                placeholder="客观维度评价（可选）"
+                                value={objComment}
+                                onChange={(e) => setObjComment(e.target.value)}
+                                style={{marginTop: 8}}
+                            />
+                        </div>
+                        <div>
+                            <Text>主观感受：</Text>
+                            <div style={{marginTop: 8}}>
+                                <TextRate
+                                    sequence={["折磨", "负面", "消磨", "享受", "极致"]}
+                                    editable={true}
+                                    initialValue={subScoreText}
+                                    onChange={setSubScoreText}
+                                    fontSize={20}
+                                    fontSize2={14}
+                                />
+                            </div>
+                            <TextArea
+                                rows={2}
+                                placeholder="主观维度评价（可选）"
+                                value={subComment}
+                                onChange={(e) => setSubComment(e.target.value)}
+                                style={{marginTop: 8}}
+                            />
+                        </div>
+                        <div>
+                            <Text>玩法创新：</Text>
+                            <div style={{marginTop: 8}}>
+                                <TextRate
+                                    sequence={["抄袭", "模仿", "沿袭", "创新", "革命"]}
+                                    editable={true}
+                                    initialValue={innovateScoreText}
+                                    onChange={setInnovateScoreText}
+                                    fontSize={20}
+                                    fontSize2={14}
+                                />
+                            </div>
+                            <TextArea
+                                rows={2}
+                                placeholder="创新维度评价（可选）"
+                                value={innovateComment}
+                                onChange={(e) => setInnovateComment(e.target.value)}
+                                style={{marginTop: 8}}
+                            />
+                        </div>
+                    </>
+                )}
                 
                 <div>
-                    <Text>评价（可选）：</Text>
+                    <Text>{mode === 'complex' ? '总评（可选，用于分享）：' : '评价（可选）：'}</Text>
                     <TextArea
                         rows={3}
                         placeholder="请输入评价内容..."

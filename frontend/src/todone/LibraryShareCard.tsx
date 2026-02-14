@@ -1,10 +1,10 @@
 import React, {useMemo} from 'react';
-import {Card, Col, Divider, Image, Row, Space, Tag, Typography} from 'antd';
-import {LibraryExtra, LibraryScoreData, LibraryStatusColors, LibraryStatusNames} from './net/protocal';
+import {Card, Col, Divider, Row, Space, Tag, Typography} from 'antd';
+import {LibraryExtra, LibraryScoreData} from './net/protocal';
 import TextRate from '../library/TextRate';
 import Paragraphs from '../common/Paragraphs';
 import {useIsMobile} from '../common/hooksv2';
-import {getMainScore} from './libraryUtil';
+import {getLibraryCoverDisplayUrl, getMainScore} from './libraryUtil';
 
 const {Title, Text} = Typography;
 
@@ -36,6 +36,7 @@ export interface LibraryShareCardProps {
 const LibraryShareCard: React.FC<LibraryShareCardProps> = ({title, extra, editable = false, onChange}) => {
     const isMobile = useIsMobile();
     const isComplexMode = extra.scoreMode === 'complex';
+    const coverUrl = getLibraryCoverDisplayUrl(title, extra.pictureAddress);
     
     // 从日志中获取简单模式的主评分
     const simpleMainScore = useMemo(() => {
@@ -103,10 +104,10 @@ const LibraryShareCard: React.FC<LibraryShareCardProps> = ({title, extra, editab
         onChange(newExtra);
     };
 
-    const fontSizeSub1 = isMobile ? 15 : 20;
-    const fontSizeSub2 = isMobile ? 10 : 16;
-    const fontSizeMain1 = isMobile ? 20 : 26;
-    const fontSizeMain2 = isMobile ? 16 : 22;
+    const fontSizeSub1 = isMobile ? 15 : 19;
+    const fontSizeSub2 = isMobile ? 10 : 15;
+    const fontSizeMain1 = isMobile ? 22 : 30;
+    const fontSizeMain2 = isMobile ? 16 : 20;
 
     // 小卡片渲染函数（复杂模式用）
     const renderScoreCard = (
@@ -133,11 +134,9 @@ const LibraryShareCard: React.FC<LibraryShareCardProps> = ({title, extra, editab
                         />
                     </Col>
                 </Row>
-                {comment && (
-                    <div style={{marginTop: 8}}>
-                        <Paragraphs>{comment}</Paragraphs>
-                    </div>
-                )}
+                <div style={{marginTop: 8}}>
+                    <Paragraphs>{comment}</Paragraphs>
+                </div>
             </Card>
         );
     };
@@ -153,61 +152,64 @@ const LibraryShareCard: React.FC<LibraryShareCardProps> = ({title, extra, editab
                 backgroundColor: '#fff',
             }}
         >
-            {/* 标题 */}
-            <Row>
-                <Space direction="vertical" size={4}>
-                    <Title level={isMobile ? 3 : 2} style={{margin: 0}}>
-                        {title}
-                    </Title>
-                </Space>
-            </Row>
-            
-            {/* 副标题信息 */}
-            <Row style={{marginBottom: 8}}>
-                <Space>
-                    {extra.author && <Text type="secondary">{extra.author}</Text>}
-                    {extra.category && <Tag>{extra.category}</Tag>}
-                    <Tag color={LibraryStatusColors[extra.status]}>
-                        {LibraryStatusNames[extra.status]}
-                    </Tag>
-                </Space>
-            </Row>
+            <Row justify="space-between" align="top" style={{marginBottom: 8}}>
+                <Col flex="auto" style={{minWidth: 0, paddingRight: 16}}>
+                    <Space direction="vertical" size={4} style={{width: '100%'}}>
+                        <Row align="middle" gutter={8}>
+                            <Col flex="auto">
+                                <Title level={isMobile ? 2 : 1} style={{margin: 0, fontSize: isMobile ? 40 : 48, lineHeight: 1.05}}>
+                                    {title}
+                                </Title>
+                            </Col>
+                            {extra.category ? (
+                                <Col>
+                                    <Tag>{extra.category}</Tag>
+                                </Col>
+                            ) : null}
+                        </Row>
+                        <Space wrap size={[6, 6]}>
+                            {extra.year ? <Text type="secondary">{extra.year}</Text> : null}
+                            {extra.author && <Text type="secondary">{extra.author}</Text>}
+                        </Space>
+                        {extra.remark ? (
+                            <Text type="secondary" style={{fontSize: 12}}>{extra.remark}</Text>
+                        ) : null}
+                    </Space>
+                </Col>
 
-            <Space direction="vertical" size={16} style={{width: "100%"}}>
-                {/* 封面图 */}
-                {extra.pictureAddress && (
-                    <Row>
-                        <div
-                            style={{
-                                width: "100%",
-                                maxWidth: isMobile ? 260 : 320,
-                                margin: "0 auto",
-                                position: "relative",
-                                paddingTop: "133.333%",
-                                overflow: "hidden",
-                                borderRadius: 6,
-                                display: "flex",
-                                alignItems: "center",
-                                justifyContent: "center",
-                            }}
-                        >
-                            <Image
-                                placeholder
-                                src={extra.pictureAddress}
+                <Col flex="110px">
+                    <div
+                        style={{
+                            width: isMobile ? 88 : 108,
+                            aspectRatio: '3 / 4',
+                            marginLeft: 'auto',
+                            borderRadius: 8,
+                            border: '1px solid #d9d9d9',
+                            overflow: 'hidden',
+                            background: '#f5f5f5',
+                        }}
+                    >
+                        {coverUrl ? (
+                            <img
+                                src={coverUrl}
                                 alt={title}
-                                preview={true}
                                 style={{
-                                    position: "absolute",
-                                    inset: 0,
-                                    width: "100%",
-                                    height: "100%",
-                                    objectFit: "cover"
+                                    display: 'block',
+                                    width: '100%',
+                                    height: '100%',
+                                    objectFit: 'cover',
+                                }}
+                                onError={(e) => {
+                                    (e.target as HTMLImageElement).style.display = 'none';
                                 }}
                             />
-                        </div>
-                    </Row>
-                )}
+                        ) : null}
+                    </div>
+                </Col>
+            </Row>
 
+            <Space direction="vertical" size={10} style={{width: "100%"}}>
+                <Divider style={{margin: '2px 0 6px 0'}}/>
                 {/* 主评分 */}
                 <Row align="middle" justify="space-between">
                     <Col>
@@ -266,7 +268,7 @@ const LibraryShareCard: React.FC<LibraryShareCardProps> = ({title, extra, editab
                 {/* 总评 */}
                 {extra.comment && (
                     <>
-                        <Divider style={{margin: "8px 0"}} />
+                        <Divider style={{margin: "8px 0"}}/>
                         <div>
                             <Paragraphs type="secondary" style={{fontSize: 12}}>
                                 {extra.comment}

@@ -8,3 +8,4 @@ SecConfig.json
 *.log
 backend/main/__debug_bin.exe
 /.vscode
+backend/main/__debug_bin*

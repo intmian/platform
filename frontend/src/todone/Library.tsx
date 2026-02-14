@@ -55,8 +55,15 @@ import {
     sendGetTasks,
 } from './net/send_back';
 import {
+    addStatusLog,
+    buildLibraryTitleCoverDataUrl,
     createDefaultLibraryExtra,
+    getDisplayStatusInfo,
+    getLibraryCoverDisplayUrl,
+    isWaitExpired,
+    LIBRARY_WAIT_EXPIRED_FILTER,
     getMainScore,
+    getLibraryCoverPaletteByTitle,
     getScoreText,
     parseLibraryFromTask,
     serializeLibraryExtra,
@@ -64,49 +71,17 @@ import {
 import {useIsMobile} from '../common/hooksv2';
 import LibraryDetail from './LibraryDetail';
 import LibraryTimeline from './LibraryTimeline';
+import LibraryScorePopover from './LibraryScorePopover';
 import {useImageUpload} from '../common/useImageUpload';
 import {cropImageToAspectRatio} from '../common/imageCrop';
 import './Library.css';
 
 // 排序选项
 type SortOption = 'index' | 'createdAt' | 'updatedAt' | 'title' | 'score';
+type StatusFilterOption = LibraryItemStatus | 'all' | typeof LIBRARY_WAIT_EXPIRED_FILTER;
 
 // 默认的 SubGroup 名称（用于存储所有 Library 条目）
 const DEFAULT_SUBGROUP_NAME = '_library_items_';
-
-// 根据字符串生成一致的颜色
-function stringToColor(str: string): {bg: string; text: string} {
-    // 预定义的柔和色彩方案 [背景色, 文字色]
-    const colorSchemes: Array<{bg: string; text: string}> = [
-        {bg: '#E3F2FD', text: '#1565C0'}, // 蓝色
-        {bg: '#E8F5E9', text: '#2E7D32'}, // 绿色
-        {bg: '#FFF3E0', text: '#E65100'}, // 橙色
-        {bg: '#F3E5F5', text: '#7B1FA2'}, // 紫色
-        {bg: '#E0F7FA', text: '#00838F'}, // 青色
-        {bg: '#FBE9E7', text: '#BF360C'}, // 深橙
-        {bg: '#E8EAF6', text: '#3949AB'}, // 靛蓝
-        {bg: '#FCE4EC', text: '#C2185B'}, // 粉色
-        {bg: '#F1F8E9', text: '#558B2F'}, // 浅绿
-        {bg: '#FFFDE7', text: '#F9A825'}, // 黄色
-        {bg: '#EFEBE9', text: '#5D4037'}, // 棕色
-        {bg: '#ECEFF1', text: '#546E7A'}, // 蓝灰
-        {bg: '#E1F5FE', text: '#0277BD'}, // 浅蓝
-        {bg: '#F9FBE7', text: '#9E9D24'}, // 青柠
-        {bg: '#FFF8E1', text: '#FF8F00'}, // 琥珀
-        {bg: '#E0F2F1', text: '#00695C'}, // 蓝绿
-    ];
-    
-    // 使用简单的哈希算法
-    let hash = 0;
-    for (let i = 0; i < str.length; i++) {
-        const char = str.charCodeAt(i);
-        hash = ((hash << 5) - hash) + char;
-        hash = hash & hash; // Convert to 32bit integer
-    }
-    
-    const index = Math.abs(hash) % colorSchemes.length;
-    return colorSchemes[index];
-}
 
 interface LibraryProps {
     addr: Addr | null;
@@ -125,7 +100,7 @@ export default function Library({addr, groupTitle}: LibraryProps) {
     const [selectedCategory, setSelectedCategory] = useState<string>('all');
     
     // 筛选和排序
-    const [statusFilter, setStatusFilter] = useState<LibraryItemStatus | 'all'>('all');
+    const [statusFilter, setStatusFilter] = useState<StatusFilterOption>('all');
     const [sortBy, setSortBy] = useState<SortOption>('updatedAt');
     const [searchText, setSearchText] = useState('');
     
@@ -137,10 +112,11 @@ export default function Library({addr, groupTitle}: LibraryProps) {
     const [showAdd, setShowAdd] = useState(false);
     const [addForm] = Form.useForm();
     const [addLoading, setAddLoading] = useState(false);
+    const [addCoverUrl, setAddCoverUrl] = useState('');
 
-    const {uploading: addCoverUploading, selectLocalFile: selectAddCoverFile, checkClipboard: checkAddCoverClipboard} = useImageUpload(
+    const {uploading: addCoverUploading, checkClipboard: checkAddCoverClipboard} = useImageUpload(
         (fileShow) => {
-            addForm.setFieldValue('pictureAddress', fileShow.publishUrl);
+            setAddCoverUrl(fileShow.publishUrl);
             message.success('封面已上传并裁剪为 3:4');
         },
         undefined,
@@ -156,6 +132,8 @@ export default function Library({addr, groupTitle}: LibraryProps) {
             },
         }
     );
+    const addTitle = Form.useWatch('title', addForm) || '';
+    const addPreviewUrl = addCoverUrl.trim() || buildLibraryTitleCoverDataUrl(addTitle.trim());
     
     // 分类管理弹窗
     const [showCategoryManager, setShowCategoryManager] = useState(false);
@@ -165,6 +143,7 @@ export default function Library({addr, groupTitle}: LibraryProps) {
     
     // 时间线视图
     const [showTimeline, setShowTimeline] = useState(false);
+    const [scoreModalItem, setScoreModalItem] = useState<LibraryItemFull | null>(null);
     
     // 显示选项
     const [showDisplayOptions, setShowDisplayOptions] = useState(false);
@@ -297,7 +276,11 @@ export default function Library({addr, groupTitle}: LibraryProps) {
         }
         
         if (statusFilter !== 'all') {
-            result = result.filter(item => item.extra.status === statusFilter);
+            if (statusFilter === LIBRARY_WAIT_EXPIRED_FILTER) {
+                result = result.filter(item => isWaitExpired(item.extra));
+            } else {
+                result = result.filter(item => item.extra.status === statusFilter);
+            }
         }
         
         if (searchText.trim()) {
@@ -393,9 +376,14 @@ export default function Library({addr, groupTitle}: LibraryProps) {
             
             setAddLoading(true);
             
+            const title = values.title?.trim() || '';
             const extra = createDefaultLibraryExtra();
-            extra.pictureAddress = values.pictureAddress || '';
+            extra.pictureAddress = addCoverUrl.trim() || '';
             extra.author = values.author || '';
+            extra.year = values.year !== undefined && values.year !== null && values.year !== ''
+                ? Number(values.year)
+                : undefined;
+            extra.remark = values.remark?.trim() || '';
             extra.category = values.category?.trim() || '';
             
             const req: CreateTaskReq = {
@@ -404,7 +392,7 @@ export default function Library({addr, groupTitle}: LibraryProps) {
                 GroupID: addr.getLastGroupID(),
                 SubGroupID: mainSubGroup.ID,
                 ParentTask: 0,
-                Title: values.title,
+                Title: title,
                 Note: serializeLibraryExtra(extra),
                 AfterID: 0,
                 Started: false,
@@ -416,6 +404,7 @@ export default function Library({addr, groupTitle}: LibraryProps) {
                 if (ret.ok) {
                     message.success('添加成功');
                     setShowAdd(false);
+                    setAddCoverUrl('');
                     addForm.resetFields();
                     loadTasks(mainSubGroup.ID);
                 } else {
@@ -423,7 +412,7 @@ export default function Library({addr, groupTitle}: LibraryProps) {
                 }
             });
         });
-    }, [addr, addForm, mainSubGroup, loadTasks]);
+    }, [addr, addCoverUrl, addForm, mainSubGroup, loadTasks]);
 
     // 批量修改分类名称
     const handleRenameCategory = useCallback((oldName: string, newName: string) => {
@@ -531,18 +520,7 @@ export default function Library({addr, groupTitle}: LibraryProps) {
             onClick: () => {
                 const numStatus = Number(status) as LibraryItemStatus;
                 if (item.extra.status !== numStatus) {
-                    const newExtra = {...item.extra};
-                    const now = new Date().toISOString();
-                    const currentRound = newExtra.rounds[newExtra.currentRound];
-                    if (currentRound) {
-                        currentRound.logs.push({
-                            type: 0,
-                            time: now,
-                            status: numStatus,
-                        });
-                    }
-                    newExtra.status = numStatus;
-                    newExtra.updatedAt = now;
+                    const newExtra = addStatusLog({...item.extra}, numStatus);
                     
                     const newItem = {...item, extra: newExtra};
                     handleSaveItem(newItem);
@@ -558,6 +536,12 @@ export default function Library({addr, groupTitle}: LibraryProps) {
         return `${date.getMonth() + 1}/${date.getDate()}`;
     };
 
+    const formatDateTime = (dateStr: string) => {
+        if (!dateStr) return '-';
+        const date = new Date(dateStr);
+        return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')} ${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
+    };
+
     // 获取开始时间（第一个周目的开始时间）
     const getStartTime = (extra: LibraryItemFull['extra']) => {
         if (extra.rounds && extra.rounds.length > 0) {
@@ -569,8 +553,22 @@ export default function Library({addr, groupTitle}: LibraryProps) {
     // 卡片渲染
     const renderCard = (item: LibraryItemFull) => {
         const mainScore = getMainScore(item.extra);
-        const placeholderColor = stringToColor(item.title);
+        const placeholderColor = getLibraryCoverPaletteByTitle(item.title);
+        const coverUrl = getLibraryCoverDisplayUrl(item.title, item.extra.pictureAddress);
         const showCategoryOnCard = displayOptions.showCategory && selectedCategory === 'all' && item.extra.category;
+        const currentRoundName = item.extra.rounds[item.extra.currentRound]?.name || '-';
+        const displayStatus = getDisplayStatusInfo(item.extra);
+        const showRoundTag = currentRoundName && currentRoundName !== '首周目';
+        const showScoreBadge = displayOptions.showScore && !!mainScore;
+        const mainScoreValue = Math.max(1, Math.min(5, mainScore?.score || 1));
+        const scoreStarColorMap: Record<number, string> = {
+            1: '#ffffff',
+            2: '#52c41a',
+            3: '#1677ff',
+            4: '#722ed1',
+            5: '#faad14',
+        };
+        const scoreStarColor = scoreStarColorMap[mainScoreValue] || '#faad14';
         
         return (
             <div
@@ -583,9 +581,9 @@ export default function Library({addr, groupTitle}: LibraryProps) {
             >
                 {/* 封面图 */}
                 <div className="library-card-cover">
-                    {item.extra.pictureAddress ? (
+                    {coverUrl ? (
                         <img
-                            src={item.extra.pictureAddress}
+                            src={coverUrl}
                             alt={item.title}
                             onError={(e) => {
                                 (e.target as HTMLImageElement).style.display = 'none';
@@ -605,7 +603,7 @@ export default function Library({addr, groupTitle}: LibraryProps) {
                         className="library-card-placeholder"
                         style={{
                             background: placeholderColor.bg,
-                            display: item.extra.pictureAddress ? 'none' : 'flex',
+                            display: coverUrl ? 'none' : 'flex',
                         }}
                     >
                         <span 
@@ -616,39 +614,32 @@ export default function Library({addr, groupTitle}: LibraryProps) {
                         </span>
                     </div>
                     
-                    {/* 左上角分类标签（不筛选分类时显示） */}
-                    {showCategoryOnCard && (
-                        <div className="library-card-category-badge">
-                            <Tag color="blue">{item.extra.category}</Tag>
-                        </div>
-                    )}
-                    
-                    {/* 右上角评分（如果开启显示评分） */}
-                    {displayOptions.showScore && mainScore && (
-                        <div className="library-card-score-badge">
-                            <StarFilled style={{color: '#faad14', marginRight: 2}} />
-                            <span>{getScoreText(mainScore.score || 0, mainScore.scorePlus, mainScore.scoreSub)}</span>
-                        </div>
-                    )}
-                    
-                    {/* 悬停时显示的信息层 */}
-                    <div className="library-card-overlay">
-                        <div className="library-card-title">{item.title}</div>
-                        {item.extra.author && (
-                            <div className="library-card-author">{item.extra.author}</div>
-                        )}
-                        {item.extra.category && (
-                            <div className="library-card-category">
-                                <Tag>{item.extra.category}</Tag>
+                    {/* 顶部标签行（左：分类/周目，右：评分） */}
+                    {(showCategoryOnCard || showRoundTag || showScoreBadge) ? (
+                        <div className="library-card-top-row">
+                            <div className="library-card-category-badge">
+                                <Space size={4} align="center" style={{height:"100%"}}>
+                                    {showCategoryOnCard ? <Tag color="blue"
+                                        className='library-card-category-tag'
+                                    >{item.extra.category}</Tag> : null}
+                                    {showRoundTag ? <Tag color="geekblue" className='library-card-round-tag'>{currentRoundName}</Tag> : null}
+                                </Space>
                             </div>
-                        )}
-                        {mainScore && (
-                            <div className="library-card-score">
-                                <StarFilled />
-                                <span>{getScoreText(mainScore.score || 0, mainScore.scorePlus, mainScore.scoreSub)}</span>
-                            </div>
-                        )}
-                    </div>
+
+                            {showScoreBadge ? (
+                                <div
+                                    className="library-card-score-badge"
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        setScoreModalItem(item);
+                                    }}
+                                >
+                                    <StarFilled className="library-card-score-star" style={{color: scoreStarColor}} />
+                                    <span>{getScoreText(mainScore!.score || 0, mainScore!.scorePlus, mainScore!.scoreSub)}</span>
+                                </div>
+                            ) : null}
+                        </div>
+                    ) : null}
                 </div>
                 
                 {/* 底部信息条 */}
@@ -674,11 +665,11 @@ export default function Library({addr, groupTitle}: LibraryProps) {
                         placement="topRight"
                     >
                         <Tag
-                            color={LibraryStatusColors[item.extra.status]}
+                            color={displayStatus.color}
                             className="library-card-status"
                             onClick={(e) => e.stopPropagation()}
                         >
-                            {LibraryStatusNames[item.extra.status]}
+                            {displayStatus.name}
                         </Tag>
                     </Dropdown>
                 </div>
@@ -733,53 +724,58 @@ export default function Library({addr, groupTitle}: LibraryProps) {
         <div className="library-container">
             {/* 标题和工具栏 */}
             <Flex
+                className="library-toolbar"
                 justify="space-between"
                 align="center"
                 wrap="wrap"
                 gap={8}
                 style={{marginBottom: 16}}
             >
-                <Space>
+                <Space className="library-toolbar-title">
                     <AppstoreOutlined style={{fontSize: 20}}/>
                     <span style={{fontSize: 18, fontWeight: 500}}>{groupTitle}</span>
                     <Tag>{filteredItems.length} 项</Tag>
                 </Space>
                 
-                <Space wrap>
+                <div className="library-toolbar-actions">
                     <Popover
                         content={displayOptionsContent}
                         trigger="click"
                         placement="bottomRight"
                     >
-                        <Button icon={<EyeOutlined/>}>
+                        <Button className="library-toolbar-btn" icon={<EyeOutlined/>}>
                             显示
                         </Button>
                     </Popover>
                     <Button
+                        className="library-toolbar-btn"
                         icon={<ClockCircleOutlined/>}
                         onClick={() => setShowTimeline(true)}
                     >
                         时间线
                     </Button>
                     <Button
+                        className="library-toolbar-btn"
                         icon={<SettingOutlined/>}
                         onClick={() => setShowCategoryManager(true)}
                     >
                         分类管理
                     </Button>
                     <Button
+                        className="library-toolbar-btn"
                         type="primary"
                         icon={<PlusOutlined/>}
                         onClick={() => setShowAdd(true)}
                     >
                         添加
                     </Button>
-                </Space>
+                </div>
             </Flex>
             
             {/* 筛选栏 */}
-            <Flex wrap="wrap" gap={8} style={{marginBottom: 16}}>
+            <Flex className="library-filter-bar" wrap="wrap" gap={8} style={{marginBottom: 16}}>
                 <Input
+                    className="library-filter-search"
                     placeholder="搜索名称/作者..."
                     prefix={<SearchOutlined/>}
                     value={searchText}
@@ -789,9 +785,10 @@ export default function Library({addr, groupTitle}: LibraryProps) {
                 />
                 
                 <Select
+                    className="library-filter-category"
                     value={selectedCategory}
                     onChange={setSelectedCategory}
-                    style={{width: isMobile ? '48%' : 140}}
+                    style={{width: isMobile ? 'calc(50% - 4px)' : 140}}
                     options={[
                         {value: 'all', label: `全部分类 (${allItems.length})`},
                         ...categories.map(cat => ({
@@ -806,9 +803,10 @@ export default function Library({addr, groupTitle}: LibraryProps) {
                 />
                 
                 <Select
+                    className="library-filter-status"
                     value={statusFilter}
                     onChange={setStatusFilter}
-                    style={{width: isMobile ? '48%' : 120}}
+                    style={{width: isMobile ? 'calc(50% - 4px)' : 120}}
                     suffixIcon={<FilterOutlined/>}
                     options={[
                         {value: 'all', label: '全部状态'},
@@ -816,10 +814,12 @@ export default function Library({addr, groupTitle}: LibraryProps) {
                             value: Number(k),
                             label: v,
                         })),
+                        {value: LIBRARY_WAIT_EXPIRED_FILTER, label: '搁置放弃'},
                     ]}
                 />
                 
                 <Select
+                    className="library-filter-sort"
                     value={sortBy}
                     onChange={setSortBy}
                     style={{width: isMobile ? '100%' : 140}}
@@ -841,13 +841,13 @@ export default function Library({addr, groupTitle}: LibraryProps) {
                         description="暂无内容"
                         style={{marginTop: 60}}
                     >
-                        <Button 
+                        {/* <Button 
                             type="primary" 
                             icon={<PlusOutlined/>}
                             onClick={() => setShowAdd(true)}
                         >
                             添加第一个条目
-                        </Button>
+                        </Button> */}
                     </Empty>
                 ) : (
                     <div className="library-grid">
@@ -863,58 +863,70 @@ export default function Library({addr, groupTitle}: LibraryProps) {
                 onOk={handleAdd}
                 onCancel={() => {
                     setShowAdd(false);
+                    setAddCoverUrl('');
                     addForm.resetFields();
                 }}
                 confirmLoading={addLoading}
+                width={isMobile ? undefined : 500}
             >
-                <Form form={addForm} layout="vertical">
-                    <Form.Item
-                        name="title"
-                        label="名称"
-                        rules={[{required: true, message: '请输入名称'}]}
-                    >
-                        <Input placeholder="请输入名称"/>
-                    </Form.Item>
-                    
-                    <Form.Item
-                        name="category"
-                        label="分类"
-                    >
-                        <AutoComplete
-                            placeholder="选择或输入新分类"
-                            options={categories.map(cat => ({value: cat}))}
-                            filterOption={(inputValue, option) =>
-                                option?.value.toLowerCase().includes(inputValue.toLowerCase()) || false
-                            }
-                        />
-                    </Form.Item>
-                    
-                    <Form.Item name="author" label="作者/制作方">
-                        <Input placeholder="请输入作者或制作方"/>
-                    </Form.Item>
-                    
-                    <Form.Item name="pictureAddress" label="封面图片地址">
-                        <Space.Compact style={{width: '100%'}}>
-                            <Input placeholder="请输入图片URL，或使用右侧按钮上传"/>
-                            <Button
-                                icon={<UploadOutlined/>}
-                                loading={addCoverUploading}
-                                onClick={() => selectAddCoverFile(false)}
-                            >
-                                上传3:4
-                            </Button>
-                        </Space.Compact>
-                        <Space style={{marginTop: 8}}>
-                            <Button
-                                size="small"
-                                loading={addCoverUploading}
-                                onClick={() => checkAddCoverClipboard(false)}
-                            >
-                                剪贴板上传
-                            </Button>
-                        </Space>
-                    </Form.Item>
-                </Form>
+                <div className="library-add-modal-layout">
+                    <div className="library-add-cover-column">
+                        <div
+                            className="library-add-cover-box"
+                            onClick={() => checkAddCoverClipboard(false)}
+                        >
+                            {addPreviewUrl ? (
+                                <img src={addPreviewUrl} alt="封面预览" className="library-add-cover-image"/>
+                            ) : (
+                                <div className="library-add-cover-empty">
+                                    <Button type="link" icon={<UploadOutlined/>} loading={addCoverUploading}>
+                                        点击上传
+                                    </Button>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
+                    <Form form={addForm} layout="vertical" className="library-add-form">
+                        <Form.Item
+                            name="title"
+                            label="名称"
+                            rules={[{required: true, message: '请输入名称'}]}
+                        >
+                            <Input placeholder="请输入名称"/>
+                        </Form.Item>
+
+                        <Form.Item
+                            name="category"
+                            label="分类"
+                        >
+                            <AutoComplete
+                                placeholder="选择或输入新分类"
+                                options={categories.map(cat => ({value: cat}))}
+                                filterOption={(inputValue, option) =>
+                                    option?.value.toLowerCase().includes(inputValue.toLowerCase()) || false
+                                }
+                            />
+                        </Form.Item>
+
+                        <Form.Item name="author" label="作者/制作方">
+                            <Input placeholder="请输入作者或制作方"/>
+                        </Form.Item>
+
+                        <Form.Item name="year" label="年份">
+                            <Input
+                                type="number"
+                                min={1900}
+                                max={3000}
+                                placeholder="例如：2024"
+                            />
+                        </Form.Item>
+
+                        <Form.Item name="remark" label="备注">
+                            <Input.TextArea rows={2} placeholder="作品备注（如国家、平台、版本）"/>
+                        </Form.Item>
+                    </Form>
+                </div>
             </Modal>
             
             {/* 分类管理弹窗 */}
@@ -1073,6 +1085,38 @@ export default function Library({addr, groupTitle}: LibraryProps) {
                     }
                 }}
             />
+
+            {/* 评分详情弹窗 */}
+            <Modal
+                title="评分详情"
+                open={!!scoreModalItem}
+                onCancel={() => setScoreModalItem(null)}
+                footer={[
+                    <Button key="close" onClick={() => setScoreModalItem(null)}>
+                        关闭
+                    </Button>
+                ]}
+                width={isMobile ? '100%' : 420}
+                style={{top: 20}}
+            >
+                {scoreModalItem ? (
+                    scoreModalItem.extra.scoreMode === 'complex' ? (
+                        <LibraryScorePopover
+                            extra={scoreModalItem.extra}
+                            mainScoreOverride={getMainScore(scoreModalItem.extra) || undefined}
+                        />
+                    ) : (
+                        <div style={{fontSize: 16, fontWeight: 600}}>
+                            主评分：
+                            {(() => {
+                                const mainScore = getMainScore(scoreModalItem.extra);
+                                if (!mainScore) return '-';
+                                return getScoreText(mainScore.score || 0, mainScore.scorePlus, mainScore.scoreSub);
+                            })()}
+                        </div>
+                    )
+                ) : null}
+            </Modal>
         </div>
     );
 }
