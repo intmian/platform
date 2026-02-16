@@ -106,7 +106,7 @@ export default function Library({addr, groupTitle}: LibraryProps) {
     const [sortBy, setSortBy] = useState<SortOption>('updatedAt');
     const [searchText, setSearchText] = useState('');
 
-    // 列表状态切换（待看需输入原因）
+    // 列表状态切换（等待需输入原因）
     const [showTodoReasonModal, setShowTodoReasonModal] = useState(false);
     const [todoReasonInput, setTodoReasonInput] = useState('');
     const [pendingTodoItem, setPendingTodoItem] = useState<LibraryItemFull | null>(null);
@@ -398,7 +398,7 @@ export default function Library({addr, groupTitle}: LibraryProps) {
         if (!pendingTodoItem) return;
         const reason = todoReasonInput.trim();
         if (!reason) {
-            message.warning('请输入待看原因');
+            message.warning('请输入等待原因');
             return;
         }
         const newExtra = addStatusLog({...pendingTodoItem.extra}, LibraryItemStatus.TODO, reason);
@@ -885,7 +885,7 @@ export default function Library({addr, groupTitle}: LibraryProps) {
                         onChange={setTodoReasonFilter}
                         style={{width: isMobile ? '100%' : 220}}
                         options={[
-                            {value: 'all', label: '全部待看二级状态'},
+                            {value: 'all', label: '全部等待二级状态'},
                             ...todoReasonOptions.map(reason => ({value: reason, label: reason})),
                         ]}
                     />
@@ -1140,7 +1140,7 @@ export default function Library({addr, groupTitle}: LibraryProps) {
             </Modal>
 
             <Modal
-                title="待看原因（待看二级状态）"
+                title="等待原因（等待二级状态）"
                 open={showTodoReasonModal}
                 onOk={handleConfirmTodoReason}
                 onCancel={() => {
@@ -1151,7 +1151,7 @@ export default function Library({addr, groupTitle}: LibraryProps) {
             >
                 <Input.TextArea
                     rows={3}
-                    placeholder="请输入待看原因/二级状态（例如：等字幕、等朋友、片源问题）"
+                    placeholder="请输入等待原因/二级状态（例如：等字幕、等朋友、片源问题）"
                     value={todoReasonInput}
                     onChange={(e) => setTodoReasonInput(e.target.value)}
                 />

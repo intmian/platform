@@ -131,8 +131,8 @@ export interface LibraryExtra {
     remark?: string                 // 作品备注
     waitReason?: string             // 搁置原因
     waitSince?: string              // 最近一次搁置开始时间
-    todoReason?: string             // 待看二级状态（自由文本）
-    todoSince?: string              // 最近一次待看设置时间
+    todoReason?: string             // 等待二级状态（自由文本）
+    todoSince?: string              // 最近一次等待设置时间
     category: string                // 分类（动漫/电影/游戏/小说等）
     status?: LibraryItemStatus      // 当前状态（可空：无状态）
     currentRound: number            // 当前周目索引
@@ -195,7 +195,7 @@ export interface TimelineEntry {
 
 // 状态显示名称映射
 export const LibraryStatusNames: Record<LibraryItemStatus, string> = {
-    [LibraryItemStatus.TODO]: '待看',
+    [LibraryItemStatus.TODO]: '等待',
     [LibraryItemStatus.DOING]: '进行中',
     [LibraryItemStatus.DONE]: '已完成',
     [LibraryItemStatus.WAIT]: '搁置',

@@ -405,7 +405,7 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
         const currentStatus = localItem.extra.status;
         
         const buttons = [
-            {status: LibraryItemStatus.TODO, icon: <ClockCircleOutlined/>, label: '待看'},
+            {status: LibraryItemStatus.TODO, icon: <ClockCircleOutlined/>, label: '等待'},
             {status: LibraryItemStatus.DOING, icon: <PlayCircleOutlined/>, label: '开始'},
             {status: LibraryItemStatus.WAIT, icon: <PauseOutlined/>, label: '搁置'},
             {status: LibraryItemStatus.GIVE_UP, icon: <StopOutlined/>, label: '放弃'},
@@ -746,7 +746,7 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
                             <Descriptions.Item label="年份">{localItem.extra.year || '-'}</Descriptions.Item>
                             <Descriptions.Item label="备注">{localItem.extra.remark || '-'}</Descriptions.Item>
                             {localItem.extra.status === LibraryItemStatus.TODO && (
-                                <Descriptions.Item label="待看原因">{localItem.extra.todoReason || '-'}</Descriptions.Item>
+                                <Descriptions.Item label="等待原因">{localItem.extra.todoReason || '-'}</Descriptions.Item>
                             )}
                             {localItem.extra.status === LibraryItemStatus.WAIT && (
                                 <Descriptions.Item label="搁置原因">{localItem.extra.waitReason || '-'}</Descriptions.Item>
@@ -842,7 +842,7 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
             </Modal>
 
             <Modal
-                title={pendingStatus === LibraryItemStatus.TODO ? '待看原因（待看二级状态）' : '搁置原因'}
+                title={pendingStatus === LibraryItemStatus.TODO ? '等待原因（等待二级状态）' : '搁置原因'}
                 open={showStatusReason}
                 onOk={handleSetStatusWithReason}
                 onCancel={() => {
@@ -853,7 +853,7 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
             >
                 <TextArea
                     rows={3}
-                    placeholder={pendingStatus === LibraryItemStatus.TODO ? '请输入待看原因/二级状态（例如：等字幕、等朋友、片源问题）' : '请输入搁置原因'}
+                    placeholder={pendingStatus === LibraryItemStatus.TODO ? '请输入等待原因/二级状态（例如：等字幕、等朋友、片源问题）' : '请输入搁置原因'}
                     value={statusReasonInput}
                     onChange={(e) => setStatusReasonInput(e.target.value)}
                 />

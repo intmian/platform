@@ -526,7 +526,7 @@ export function getLogTypeText(logType: LibraryLogType, status?: LibraryItemStat
         case LibraryLogType.changeStatus:
             if (status !== undefined) {
                 switch (status) {
-                    case LibraryItemStatus.TODO: return '添加到待看';
+                    case LibraryItemStatus.TODO: return '添加到等待';
                     case LibraryItemStatus.DOING: return '开始';
                     case LibraryItemStatus.DONE: return '完成';
                     case LibraryItemStatus.WAIT: return '搁置';
