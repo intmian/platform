@@ -1,7 +1,8 @@
 import React from 'react';
+import {StarFilled} from '@ant-design/icons';
 import {Divider, Space, Typography} from 'antd';
 import {LibraryExtra, LibraryScoreData} from './net/protocal';
-import {getScoreText} from './libraryUtil';
+import {getMainScore, getScoreDisplay, getScoreStarColor, getScoreText} from './libraryUtil';
 
 const {Text} = Typography;
 
@@ -45,25 +46,50 @@ interface LibraryScorePopoverProps {
 
 export default function LibraryScorePopover({extra, mainScoreOverride}: LibraryScorePopoverProps) {
     const isComplex = extra.scoreMode === 'complex';
-    if (!isComplex) return null;
-
-    const mainValue = mainScoreOverride
-        ? getScoreText(mainScoreOverride.score || 0, mainScoreOverride.scorePlus, mainScoreOverride.scoreSub)
-        : scoreDataToText(SEQ_MAIN, extra.mainScore);
-
-    const mainComment = mainScoreOverride?.comment || '';
+    const mainScore = mainScoreOverride || getMainScore(extra);
+    const mainScoreText = mainScore
+        ? getScoreText(mainScore.score || 0, mainScore.scorePlus, mainScore.scoreSub)
+        : '-';
+    const mainScoreDisplay = mainScore
+        ? getScoreDisplay(mainScore.score || 0, mainScore.scorePlus, mainScore.scoreSub)
+        : '';
+    const mainScoreComment = mainScore?.comment || '';
+    const mainScoreColor = getScoreStarColor(mainScore?.score || 0);
 
     return (
         <div style={{maxWidth: 320, minWidth: 260}}>
-            <Row label="主评分" value={mainValue} comment={mainComment} />
-            <Divider style={{margin: '8px 0'}} />
-            <Row label="客观好坏" value={scoreDataToText(SEQ_OBJ, extra.objScore)} comment={extra.objScore?.comment} />
-            <Row label="主观感受" value={scoreDataToText(SEQ_SUB, extra.subScore)} comment={extra.subScore?.comment} />
-            <Row label="玩法创新" value={scoreDataToText(SEQ_INNO, extra.innovateScore)} comment={extra.innovateScore?.comment} />
-            {extra.comment?.trim() ? (
+            <div style={{marginBottom: 8}}>
+                <Space size={6} wrap>
+                    <Text strong>主评分</Text>
+                    {mainScore ? (
+                        <>
+                            <StarFilled style={{color: mainScoreColor}}/>
+                            <Text>{mainScoreText}</Text>
+                            <Text type="secondary">({mainScoreDisplay})</Text>
+                        </>
+                    ) : (
+                        <Text type="secondary">-</Text>
+                    )}
+                </Space>
+                {mainScoreComment.trim() ? (
+                    <div style={{marginTop: 2}}>
+                        <Text type="secondary" style={{fontSize: 12}}>{mainScoreComment.trim()}</Text>
+                    </div>
+                ) : null}
+            </div>
+
+            {isComplex ? (
                 <>
                     <Divider style={{margin: '8px 0'}} />
-                    <Row label="总评" value="" comment={extra.comment} />
+                    <Row label="客观好坏" value={scoreDataToText(SEQ_OBJ, extra.objScore)} comment={extra.objScore?.comment} />
+                    <Row label="主观感受" value={scoreDataToText(SEQ_SUB, extra.subScore)} comment={extra.subScore?.comment} />
+                    <Row label="玩法创新" value={scoreDataToText(SEQ_INNO, extra.innovateScore)} comment={extra.innovateScore?.comment} />
+                    {extra.comment?.trim() ? (
+                        <>
+                            <Divider style={{margin: '8px 0'}} />
+                            <Row label="总评" value="" comment={extra.comment} />
+                        </>
+                    ) : null}
                 </>
             ) : null}
         </div>

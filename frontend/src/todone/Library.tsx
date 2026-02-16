@@ -64,6 +64,7 @@ import {
     LIBRARY_WAIT_EXPIRED_FILTER,
     getMainScore,
     getLibraryCoverPaletteByTitle,
+    getScoreStarColor,
     getScoreText,
     parseLibraryFromTask,
     serializeLibraryExtra,
@@ -560,15 +561,7 @@ export default function Library({addr, groupTitle}: LibraryProps) {
         const displayStatus = getDisplayStatusInfo(item.extra);
         const showRoundTag = currentRoundName && currentRoundName !== '首周目';
         const showScoreBadge = displayOptions.showScore && !!mainScore;
-        const mainScoreValue = Math.max(1, Math.min(5, mainScore?.score || 1));
-        const scoreStarColorMap: Record<number, string> = {
-            1: '#ffffff',
-            2: '#52c41a',
-            3: '#1677ff',
-            4: '#722ed1',
-            5: '#faad14',
-        };
-        const scoreStarColor = scoreStarColorMap[mainScoreValue] || '#faad14';
+        const scoreStarColor = getScoreStarColor(mainScore?.score || 0);
         
         return (
             <div
@@ -1100,21 +1093,10 @@ export default function Library({addr, groupTitle}: LibraryProps) {
                 style={{top: 20}}
             >
                 {scoreModalItem ? (
-                    scoreModalItem.extra.scoreMode === 'complex' ? (
-                        <LibraryScorePopover
-                            extra={scoreModalItem.extra}
-                            mainScoreOverride={getMainScore(scoreModalItem.extra) || undefined}
-                        />
-                    ) : (
-                        <div style={{fontSize: 16, fontWeight: 600}}>
-                            主评分：
-                            {(() => {
-                                const mainScore = getMainScore(scoreModalItem.extra);
-                                if (!mainScore) return '-';
-                                return getScoreText(mainScore.score || 0, mainScore.scorePlus, mainScore.scoreSub);
-                            })()}
-                        </div>
-                    )
+                    <LibraryScorePopover
+                        extra={scoreModalItem.extra}
+                        mainScoreOverride={getMainScore(scoreModalItem.extra) || undefined}
+                    />
                 ) : null}
             </Modal>
         </div>

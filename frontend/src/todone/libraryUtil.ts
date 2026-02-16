@@ -295,6 +295,21 @@ export function getScoreDisplay(score: number, plus?: boolean, sub?: boolean): s
 }
 
 /**
+ * 获取评分星标颜色
+ */
+export function getScoreStarColor(score: number): string {
+    const value = Math.max(1, Math.min(5, score || 1));
+    const scoreStarColorMap: Record<number, string> = {
+        1: '#ffffff',
+        2: '#52c41a',
+        3: '#1677ff',
+        4: '#722ed1',
+        5: '#faad14',
+    };
+    return scoreStarColorMap[value] || '#faad14';
+}
+
+/**
  * 从多个 Library 项目中提取时间线
  */
 export function extractTimeline(items: LibraryItemFull[]): TimelineEntry[] {

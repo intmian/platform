@@ -13,6 +13,7 @@ import {
     InputNumber,
     message,
     Modal,
+    Popover,
     Popconfirm,
     Radio,
     Row,
@@ -60,6 +61,7 @@ import {
     getLogTypeText,
     getMainScore,
     getScoreDisplay,
+    getScoreStarColor,
     getScoreText,
     setMainScore,
     startNewRound,
@@ -225,25 +227,32 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
             scoreLogComment
         );
 
+        newExtra.scoreMode = payload.mode;
+
         if (payload.mode === 'complex') {
-            newExtra.scoreMode = 'complex';
             if (payload.objScore) {
                 newExtra.objScore = {
                     ...payload.objScore,
                     comment: payload.objComment?.trim() || payload.objScore.comment || '',
                 };
+            } else {
+                delete newExtra.objScore;
             }
             if (payload.subScore) {
                 newExtra.subScore = {
                     ...payload.subScore,
                     comment: payload.subComment?.trim() || payload.subScore.comment || '',
                 };
+            } else {
+                delete newExtra.subScore;
             }
             if (payload.innovateScore) {
                 newExtra.innovateScore = {
                     ...payload.innovateScore,
                     comment: payload.innovateComment?.trim() || payload.innovateScore.comment || '',
                 };
+            } else {
+                delete newExtra.innovateScore;
             }
             newExtra.mainScore = {
                 ...payload.mainScore,
@@ -254,6 +263,12 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
             } else {
                 delete newExtra.comment;
             }
+        } else {
+            delete newExtra.objScore;
+            delete newExtra.subScore;
+            delete newExtra.innovateScore;
+            delete newExtra.mainScore;
+            delete newExtra.comment;
         }
 
         const newItem = {...localItem, extra: newExtra};
@@ -377,9 +392,10 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
             case LibraryLogType.score:
                 color = '#faad14';
                 const isComplexScore = localItem?.extra.scoreMode === 'complex';
+                const scoreStarColor = getScoreStarColor(log.score || 0);
                 const scoreContent = (
                     <Space>
-                        <StarFilled style={{color: '#faad14'}}/>
+                        <StarFilled style={{color: scoreStarColor}}/>
                         <Text strong>
                             {getScoreText(log.score || 0, log.scorePlus, log.scoreSub)}
                         </Text>
@@ -400,12 +416,13 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
                 content = (
                     <Space direction="vertical" size={0}>
                         {isComplexScore ? (
-                            <Tooltip
+                            <Popover
                                 placement="topLeft"
-                                title={<LibraryScorePopover extra={localItem.extra} mainScoreOverride={log} />}
+                                trigger="click"
+                                content={<LibraryScorePopover extra={localItem.extra} mainScoreOverride={log} />}
                             >
                                 {scoreContent}
-                            </Tooltip>
+                            </Popover>
                         ) : scoreContent}
                         {log.comment && <Text type="secondary" style={{fontSize: 12}}>{log.comment}</Text>}
                     </Space>
@@ -640,7 +657,7 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
                             <Descriptions.Item label="主评分">
                                 {mainScoreEntry ? (
                                     <Space>
-                                        <StarFilled style={{color: '#faad14'}}/>
+                                        <StarFilled style={{color: getScoreStarColor(mainScoreEntry.score || 0)}}/>
                                         <Text strong>
                                             {getScoreText(mainScoreEntry.score || 0, mainScoreEntry.scorePlus, mainScoreEntry.scoreSub)}
                                         </Text>
@@ -816,6 +833,9 @@ interface AddScorePayload {
 function AddScoreModal({visible, onOk, onCancel, initialMode = 'simple'}: AddScoreModalProps) {
     const [mode, setMode] = useState<'simple' | 'complex'>(initialMode);
     const [mainScoreText, setMainScoreText] = useState('合');
+    const [enableObjScore, setEnableObjScore] = useState(true);
+    const [enableSubScore, setEnableSubScore] = useState(true);
+    const [enableInnovateScore, setEnableInnovateScore] = useState(true);
     const [objScoreText, setObjScoreText] = useState('普通');
     const [subScoreText, setSubScoreText] = useState('消磨');
     const [innovateScoreText, setInnovateScoreText] = useState('沿袭');
@@ -846,6 +866,9 @@ function AddScoreModal({visible, onOk, onCancel, initialMode = 'simple'}: AddSco
 
     const resetForm = () => {
         setMainScoreText('合');
+        setEnableObjScore(true);
+        setEnableSubScore(true);
+        setEnableInnovateScore(true);
         setObjScoreText('普通');
         setSubScoreText('消磨');
         setInnovateScoreText('沿袭');
@@ -863,12 +886,18 @@ function AddScoreModal({visible, onOk, onCancel, initialMode = 'simple'}: AddSco
         };
 
         if (mode === 'complex') {
-            payload.objScore = parseRate(["垃圾", "低劣", "普通", "优秀", "传奇"], objScoreText, objComment);
-            payload.subScore = parseRate(["折磨", "负面", "消磨", "享受", "极致"], subScoreText, subComment);
-            payload.innovateScore = parseRate(["抄袭", "模仿", "沿袭", "创新", "革命"], innovateScoreText, innovateComment);
-            payload.objComment = objComment;
-            payload.subComment = subComment;
-            payload.innovateComment = innovateComment;
+            if (enableObjScore) {
+                payload.objScore = parseRate(["垃圾", "低劣", "普通", "优秀", "传奇"], objScoreText, objComment);
+                payload.objComment = objComment;
+            }
+            if (enableSubScore) {
+                payload.subScore = parseRate(["折磨", "负面", "消磨", "享受", "极致"], subScoreText, subComment);
+                payload.subComment = subComment;
+            }
+            if (enableInnovateScore) {
+                payload.innovateScore = parseRate(["抄袭", "模仿", "沿袭", "创新", "革命"], innovateScoreText, innovateComment);
+                payload.innovateComment = innovateComment;
+            }
         }
 
         onOk(payload);
@@ -910,64 +939,85 @@ function AddScoreModal({visible, onOk, onCancel, initialMode = 'simple'}: AddSco
                 {mode === 'complex' && (
                     <>
                         <div>
-                            <Text>客观好坏：</Text>
-                            <div style={{marginTop: 8}}>
-                                <TextRate
-                                    sequence={["垃圾", "低劣", "普通", "优秀", "传奇"]}
-                                    editable={true}
-                                    initialValue={objScoreText}
-                                    onChange={setObjScoreText}
-                                    fontSize={20}
-                                    fontSize2={14}
-                                />
-                            </div>
-                            <TextArea
-                                rows={2}
-                                placeholder="客观维度评价（可选）"
-                                value={objComment}
-                                onChange={(e) => setObjComment(e.target.value)}
-                                style={{marginTop: 8}}
-                            />
+                            <Flex justify="space-between" align="center">
+                                <Text>客观好坏：</Text>
+                                <Switch size="small" checked={enableObjScore} onChange={setEnableObjScore} checkedChildren="启用" unCheckedChildren="关闭"/>
+                            </Flex>
+                            {enableObjScore ? (
+                                <>
+                                    <div style={{marginTop: 8}}>
+                                        <TextRate
+                                            sequence={["垃圾", "低劣", "普通", "优秀", "传奇"]}
+                                            editable={true}
+                                            initialValue={objScoreText}
+                                            onChange={setObjScoreText}
+                                            fontSize={20}
+                                            fontSize2={14}
+                                        />
+                                    </div>
+                                    <TextArea
+                                        rows={2}
+                                        placeholder="客观维度评价（可选）"
+                                        value={objComment}
+                                        onChange={(e) => setObjComment(e.target.value)}
+                                        style={{marginTop: 8}}
+                                    />
+                                </>
+                            ) : null}
                         </div>
                         <div>
-                            <Text>主观感受：</Text>
-                            <div style={{marginTop: 8}}>
-                                <TextRate
-                                    sequence={["折磨", "负面", "消磨", "享受", "极致"]}
-                                    editable={true}
-                                    initialValue={subScoreText}
-                                    onChange={setSubScoreText}
-                                    fontSize={20}
-                                    fontSize2={14}
-                                />
-                            </div>
-                            <TextArea
-                                rows={2}
-                                placeholder="主观维度评价（可选）"
-                                value={subComment}
-                                onChange={(e) => setSubComment(e.target.value)}
-                                style={{marginTop: 8}}
-                            />
+                            <Flex justify="space-between" align="center">
+                                <Text>主观感受：</Text>
+                                <Switch size="small" checked={enableSubScore} onChange={setEnableSubScore} checkedChildren="启用" unCheckedChildren="关闭"/>
+                            </Flex>
+                            {enableSubScore ? (
+                                <>
+                                    <div style={{marginTop: 8}}>
+                                        <TextRate
+                                            sequence={["折磨", "负面", "消磨", "享受", "极致"]}
+                                            editable={true}
+                                            initialValue={subScoreText}
+                                            onChange={setSubScoreText}
+                                            fontSize={20}
+                                            fontSize2={14}
+                                        />
+                                    </div>
+                                    <TextArea
+                                        rows={2}
+                                        placeholder="主观维度评价（可选）"
+                                        value={subComment}
+                                        onChange={(e) => setSubComment(e.target.value)}
+                                        style={{marginTop: 8}}
+                                    />
+                                </>
+                            ) : null}
                         </div>
                         <div>
-                            <Text>玩法创新：</Text>
-                            <div style={{marginTop: 8}}>
-                                <TextRate
-                                    sequence={["抄袭", "模仿", "沿袭", "创新", "革命"]}
-                                    editable={true}
-                                    initialValue={innovateScoreText}
-                                    onChange={setInnovateScoreText}
-                                    fontSize={20}
-                                    fontSize2={14}
-                                />
-                            </div>
-                            <TextArea
-                                rows={2}
-                                placeholder="创新维度评价（可选）"
-                                value={innovateComment}
-                                onChange={(e) => setInnovateComment(e.target.value)}
-                                style={{marginTop: 8}}
-                            />
+                            <Flex justify="space-between" align="center">
+                                <Text>玩法创新：</Text>
+                                <Switch size="small" checked={enableInnovateScore} onChange={setEnableInnovateScore} checkedChildren="启用" unCheckedChildren="关闭"/>
+                            </Flex>
+                            {enableInnovateScore ? (
+                                <>
+                                    <div style={{marginTop: 8}}>
+                                        <TextRate
+                                            sequence={["抄袭", "模仿", "沿袭", "创新", "革命"]}
+                                            editable={true}
+                                            initialValue={innovateScoreText}
+                                            onChange={setInnovateScoreText}
+                                            fontSize={20}
+                                            fontSize2={14}
+                                        />
+                                    </div>
+                                    <TextArea
+                                        rows={2}
+                                        placeholder="创新维度评价（可选）"
+                                        value={innovateComment}
+                                        onChange={(e) => setInnovateComment(e.target.value)}
+                                        style={{marginTop: 8}}
+                                    />
+                                </>
+                            ) : null}
                         </div>
                     </>
                 )}
