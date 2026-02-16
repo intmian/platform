@@ -4,6 +4,7 @@ import {
     Card,
     Col,
     Collapse,
+    DatePicker,
     Descriptions,
     Divider,
     Drawer,
@@ -25,6 +26,7 @@ import {
     Tooltip,
     Typography,
 } from 'antd';
+import dayjs from 'dayjs';
 import {
     CheckOutlined,
     ClockCircleOutlined,
@@ -55,6 +57,7 @@ import {
     addNoteLog,
     addScoreLog,
     addStatusLog,
+    addTimelineCutoffLog,
     formatDateTime,
     getDisplayStatusInfo,
     getLibraryCoverDisplayUrl,
@@ -100,8 +103,12 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
     const [showAddScore, setShowAddScore] = useState(false);
     const [showAddNote, setShowAddNote] = useState(false);
     const [noteContent, setNoteContent] = useState('');
-    const [showWaitReason, setShowWaitReason] = useState(false);
-    const [waitReasonInput, setWaitReasonInput] = useState('');
+    const [showStatusReason, setShowStatusReason] = useState(false);
+    const [statusReasonInput, setStatusReasonInput] = useState('');
+    const [pendingStatus, setPendingStatus] = useState<LibraryItemStatus | null>(null);
+    const [showEditLogTime, setShowEditLogTime] = useState(false);
+    const [editingLogPos, setEditingLogPos] = useState<{roundIndex: number; logIndex: number} | null>(null);
+    const [editingLogTime, setEditingLogTime] = useState('');
     
     // 分享弹窗
     const [showShare, setShowShare] = useState(false);
@@ -191,10 +198,28 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
         onSave(newItem);
     };
 
-    const handleSetWaitStatus = () => {
-        handleStatusChange(LibraryItemStatus.WAIT, waitReasonInput.trim());
-        setShowWaitReason(false);
-        setWaitReasonInput('');
+    const openStatusReason = (status: LibraryItemStatus) => {
+        if (!localItem) return;
+        setPendingStatus(status);
+        if (status === LibraryItemStatus.TODO) {
+            setStatusReasonInput(localItem.extra.todoReason || '');
+        } else {
+            setStatusReasonInput(localItem.extra.waitReason || '');
+        }
+        setShowStatusReason(true);
+    };
+
+    const handleSetStatusWithReason = () => {
+        if (pendingStatus === null) return;
+        const reason = statusReasonInput.trim();
+        if (!reason) {
+            message.warning('请输入原因');
+            return;
+        }
+        handleStatusChange(pendingStatus, reason);
+        setShowStatusReason(false);
+        setStatusReasonInput('');
+        setPendingStatus(null);
     };
 
     // 开始新周目
@@ -327,6 +352,53 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
         message.success('已设为主评分');
     };
 
+    const getSortedLogEntries = (round: LibraryRound) => {
+        return round.logs
+            .map((log, index) => ({log, index}))
+            .sort((a, b) => new Date(a.log.time).getTime() - new Date(b.log.time).getTime());
+    };
+
+    const openLogTimeEditor = (roundIndex: number, logIndex: number, time: string) => {
+        setEditingLogPos({roundIndex, logIndex});
+        setEditingLogTime(time);
+        setShowEditLogTime(true);
+    };
+
+    const handleSaveLogTime = () => {
+        if (!localItem || !editingLogPos || !editingLogTime) {
+            setShowEditLogTime(false);
+            setEditingLogPos(null);
+            return;
+        }
+
+        const newItem: LibraryItemFull = JSON.parse(JSON.stringify(localItem));
+        const targetRound = newItem.extra.rounds[editingLogPos.roundIndex];
+        const targetLog = targetRound?.logs[editingLogPos.logIndex];
+        if (!targetLog) {
+            setShowEditLogTime(false);
+            setEditingLogPos(null);
+            return;
+        }
+
+        targetLog.time = editingLogTime;
+        targetRound.logs.sort((a, b) => new Date(a.time).getTime() - new Date(b.time).getTime());
+        newItem.extra.updatedAt = new Date().toISOString();
+
+        setLocalItem(newItem);
+        onSave(newItem);
+        setShowEditLogTime(false);
+        setEditingLogPos(null);
+    };
+
+    const handleSetTimelineCutoff = () => {
+        if (!localItem) return;
+        const newExtra = addTimelineCutoffLog({...localItem.extra});
+        const newItem = {...localItem, extra: newExtra};
+        setLocalItem(newItem);
+        onSave(newItem);
+        message.success('已设置时间线断点（此前历史不计入总时间线）');
+    };
+
     // 渲染状态快捷按钮
     const renderStatusButtons = () => {
         if (!localItem) return null;
@@ -348,9 +420,8 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
                         type={currentStatus === btn.status ? 'primary' : 'default'}
                         icon={btn.icon}
                         onClick={() => {
-                            if (btn.status === LibraryItemStatus.WAIT) {
-                                setWaitReasonInput(localItem?.extra.waitReason || '');
-                                setShowWaitReason(true);
+                            if (btn.status === LibraryItemStatus.WAIT || btn.status === LibraryItemStatus.TODO) {
+                                openStatusReason(btn.status);
                                 return;
                             }
                             handleStatusChange(btn.status);
@@ -386,6 +457,15 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
                     <Space direction="vertical" size={0}>
                         <Text>{getLogTypeText(log.type, log.status)}</Text>
                         {log.comment && <Text type="secondary" style={{fontSize: 12}}>{log.comment}</Text>}
+                    </Space>
+                );
+                break;
+            case LibraryLogType.timelineCutoff:
+                color = '#8c8c8c';
+                content = (
+                    <Space direction="vertical" size={0}>
+                        <Text strong>时间线断点</Text>
+                        <Text type="secondary" style={{fontSize: 12}}>{log.comment || '此前历史不计入总时间线'}</Text>
                     </Space>
                 );
                 break;
@@ -443,9 +523,17 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
             <Timeline.Item key={`${roundIndex}-${logIndex}`} color={color}>
                 <Flex justify="space-between" align="flex-start">
                     {content}
-                    <Text type="secondary" style={{fontSize: 11, whiteSpace: 'nowrap'}}>
-                        {formatDateTime(log.time)}
-                    </Text>
+                    <Space size={2}>
+                        <Button
+                            type="text"
+                            size="small"
+                            icon={<EditOutlined/>}
+                            onClick={() => openLogTimeEditor(roundIndex, logIndex, log.time)}
+                        />
+                        <Text type="secondary" style={{fontSize: 11, whiteSpace: 'nowrap'}}>
+                            {formatDateTime(log.time)}
+                        </Text>
+                    </Space>
                 </Flex>
             </Timeline.Item>
         );
@@ -470,7 +558,7 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
                 }
             >
                 <Timeline>
-                    {round.logs.map((log, logIndex) => renderLogItem(log, roundIndex, logIndex))}
+                    {getSortedLogEntries(round).map(({log, index}) => renderLogItem(log, roundIndex, index))}
                 </Timeline>
                 
                 {isCurrentRound && (
@@ -488,6 +576,12 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
                             onClick={() => setShowAddNote(true)}
                         >
                             添加备注
+                        </Button>
+                        <Button
+                            size="small"
+                            onClick={handleSetTimelineCutoff}
+                        >
+                            不加入时间线（断点）
                         </Button>
                     </Space>
                 )}
@@ -651,6 +745,9 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
                             <Descriptions.Item label="添加时间">{formatDateTime(localItem.extra.createdAt)}</Descriptions.Item>
                             <Descriptions.Item label="年份">{localItem.extra.year || '-'}</Descriptions.Item>
                             <Descriptions.Item label="备注">{localItem.extra.remark || '-'}</Descriptions.Item>
+                            {localItem.extra.status === LibraryItemStatus.TODO && (
+                                <Descriptions.Item label="待看原因">{localItem.extra.todoReason || '-'}</Descriptions.Item>
+                            )}
                             {localItem.extra.status === LibraryItemStatus.WAIT && (
                                 <Descriptions.Item label="搁置原因">{localItem.extra.waitReason || '-'}</Descriptions.Item>
                             )}
@@ -745,19 +842,37 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
             </Modal>
 
             <Modal
-                title="搁置原因"
-                open={showWaitReason}
-                onOk={handleSetWaitStatus}
+                title={pendingStatus === LibraryItemStatus.TODO ? '待看原因（待看二级状态）' : '搁置原因'}
+                open={showStatusReason}
+                onOk={handleSetStatusWithReason}
                 onCancel={() => {
-                    setShowWaitReason(false);
-                    setWaitReasonInput('');
+                    setShowStatusReason(false);
+                    setStatusReasonInput('');
+                    setPendingStatus(null);
                 }}
             >
                 <TextArea
                     rows={3}
-                    placeholder="可选：例如排期冲突、状态不佳、版本问题等"
-                    value={waitReasonInput}
-                    onChange={(e) => setWaitReasonInput(e.target.value)}
+                    placeholder={pendingStatus === LibraryItemStatus.TODO ? '请输入待看原因/二级状态（例如：等字幕、等朋友、片源问题）' : '请输入搁置原因'}
+                    value={statusReasonInput}
+                    onChange={(e) => setStatusReasonInput(e.target.value)}
+                />
+            </Modal>
+
+            <Modal
+                title="编辑历史时间"
+                open={showEditLogTime}
+                onOk={handleSaveLogTime}
+                onCancel={() => {
+                    setShowEditLogTime(false);
+                    setEditingLogPos(null);
+                }}
+            >
+                <DatePicker
+                    showTime
+                    value={editingLogTime ? dayjs(editingLogTime) : null}
+                    onChange={(value) => setEditingLogTime(value ? value.toISOString() : '')}
+                    style={{width: '100%'}}
                 />
             </Modal>
             

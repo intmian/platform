@@ -23,15 +23,16 @@ export function createDefaultLibraryExtra(): LibraryExtra {
         remark: '',
         waitReason: '',
         waitSince: undefined,
+        todoReason: '',
+        todoSince: undefined,
         category: '',
-        status: LibraryItemStatus.TODO,
+        status: undefined,
         currentRound: 0,
         rounds: [{
             name: '首周目',
             logs: [{
-                type: LibraryLogType.changeStatus,
+                type: LibraryLogType.note,
                 time: now,
-                status: LibraryItemStatus.TODO,
                 comment: '添加到库'
             }],
             startTime: now,
@@ -62,14 +63,14 @@ export function parseLibraryExtra(note: string): LibraryExtra {
         if (parsed.currentRound === undefined) {
             parsed.currentRound = 0;
         }
-        if (parsed.status === undefined) {
-            parsed.status = LibraryItemStatus.TODO;
-        }
         if (parsed.remark === undefined) {
             parsed.remark = '';
         }
         if (parsed.waitReason === undefined) {
             parsed.waitReason = '';
+        }
+        if (parsed.todoReason === undefined) {
+            parsed.todoReason = '';
         }
         return parsed;
     } catch {
@@ -114,7 +115,7 @@ export function libraryToTask(item: LibraryItemFull, originalTask: PTask): PTask
 /**
  * 添加状态变更日志
  */
-export function addStatusLog(extra: LibraryExtra, newStatus: LibraryItemStatus, comment?: string): LibraryExtra {
+export function addStatusLog(extra: LibraryExtra, newStatus?: LibraryItemStatus, comment?: string): LibraryExtra {
     const now = new Date().toISOString();
     const currentRound = extra.rounds[extra.currentRound];
     if (currentRound) {
@@ -126,12 +127,21 @@ export function addStatusLog(extra: LibraryExtra, newStatus: LibraryItemStatus, 
         });
     }
     extra.status = newStatus;
-    if (newStatus === LibraryItemStatus.WAIT) {
+    if (newStatus === LibraryItemStatus.TODO) {
+        extra.todoSince = now;
+        extra.todoReason = comment?.trim() || '';
+        extra.waitSince = undefined;
+        extra.waitReason = '';
+    } else if (newStatus === LibraryItemStatus.WAIT) {
         extra.waitSince = now;
         extra.waitReason = comment?.trim() || '';
+        extra.todoSince = undefined;
+        extra.todoReason = '';
     } else {
         extra.waitSince = undefined;
         extra.waitReason = '';
+        extra.todoSince = undefined;
+        extra.todoReason = '';
     }
     extra.updatedAt = now;
     
@@ -163,11 +173,43 @@ export function getDisplayStatusInfo(extra: LibraryExtra): {name: string; color:
             isExpiredWait: true,
         };
     }
+    if (extra.status === undefined) {
+        return {
+            name: '无状态',
+            color: '#bfbfbf',
+            isExpiredWait: false,
+        };
+    }
     return {
         name: LibraryStatusNames[extra.status],
         color: LibraryStatusColors[extra.status],
         isExpiredWait: false,
     };
+}
+
+/**
+ * 设置时间线截断：此前历史不进入总时间线
+ * 多次设置仅保留最新一条截断日志
+ */
+export function addTimelineCutoffLog(extra: LibraryExtra, comment?: string): LibraryExtra {
+    const now = new Date().toISOString();
+
+    for (const round of extra.rounds) {
+        round.logs = round.logs.filter(log => log.type !== LibraryLogType.timelineCutoff);
+    }
+
+    const currentRound = extra.rounds[extra.currentRound];
+    if (currentRound) {
+        currentRound.logs.push({
+            type: LibraryLogType.timelineCutoff,
+            time: now,
+            comment: comment?.trim() || '设置时间线断点（此前历史不计入总时间线）',
+        });
+    }
+
+    extra.timelineCutoffTime = now;
+    extra.updatedAt = now;
+    return extra;
 }
 
 /**
@@ -316,8 +358,16 @@ export function extractTimeline(items: LibraryItemFull[]): TimelineEntry[] {
     const entries: TimelineEntry[] = [];
     
     for (const item of items) {
+        const cutoffMs = getTimelineCutoffTime(item.extra);
         for (const round of item.extra.rounds) {
             for (const log of round.logs) {
+                if (log.type === LibraryLogType.timelineCutoff) {
+                    continue;
+                }
+                const logTimeMs = new Date(log.time).getTime();
+                if (cutoffMs !== undefined && !Number.isNaN(logTimeMs) && logTimeMs < cutoffMs) {
+                    continue;
+                }
                 entries.push({
                     time: log.time,
                     itemTitle: item.title,
@@ -483,12 +533,40 @@ export function getLogTypeText(logType: LibraryLogType, status?: LibraryItemStat
                     case LibraryItemStatus.GIVE_UP: return '放弃';
                 }
             }
-            return '状态变更';
+            return '状态变更（无状态）';
         case LibraryLogType.score:
             return '评分';
         case LibraryLogType.note:
             return '备注';
+        case LibraryLogType.timelineCutoff:
+            return '时间线断点';
         default:
             return '操作';
     }
+}
+
+function getTimelineCutoffTime(extra: LibraryExtra): number | undefined {
+    let latestMs: number | undefined;
+
+    for (const round of extra.rounds) {
+        for (const log of round.logs) {
+            if (log.type !== LibraryLogType.timelineCutoff) continue;
+            const value = new Date(log.time).getTime();
+            if (Number.isNaN(value)) continue;
+            if (latestMs === undefined || value > latestMs) {
+                latestMs = value;
+            }
+        }
+    }
+
+    if (latestMs !== undefined) {
+        return latestMs;
+    }
+    if (extra.timelineCutoffTime) {
+        const value = new Date(extra.timelineCutoffTime).getTime();
+        if (!Number.isNaN(value)) {
+            return value;
+        }
+    }
+    return undefined;
 }

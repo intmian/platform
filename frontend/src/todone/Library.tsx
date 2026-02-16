@@ -79,7 +79,7 @@ import './Library.css';
 
 // 排序选项
 type SortOption = 'index' | 'createdAt' | 'updatedAt' | 'title' | 'score';
-type StatusFilterOption = LibraryItemStatus | 'all' | typeof LIBRARY_WAIT_EXPIRED_FILTER;
+type StatusFilterOption = LibraryItemStatus | 'all' | 'none' | typeof LIBRARY_WAIT_EXPIRED_FILTER;
 
 // 默认的 SubGroup 名称（用于存储所有 Library 条目）
 const DEFAULT_SUBGROUP_NAME = '_library_items_';
@@ -102,8 +102,14 @@ export default function Library({addr, groupTitle}: LibraryProps) {
     
     // 筛选和排序
     const [statusFilter, setStatusFilter] = useState<StatusFilterOption>('all');
+    const [todoReasonFilter, setTodoReasonFilter] = useState<string>('all');
     const [sortBy, setSortBy] = useState<SortOption>('updatedAt');
     const [searchText, setSearchText] = useState('');
+
+    // 列表状态切换（待看需输入原因）
+    const [showTodoReasonModal, setShowTodoReasonModal] = useState(false);
+    const [todoReasonInput, setTodoReasonInput] = useState('');
+    const [pendingTodoItem, setPendingTodoItem] = useState<LibraryItemFull | null>(null);
     
     // 详情弹窗
     const [detailItem, setDetailItem] = useState<LibraryItemFull | null>(null);
@@ -238,6 +244,12 @@ export default function Library({addr, groupTitle}: LibraryProps) {
         loadOrCreateMainSubGroup();
     }, [loadOrCreateMainSubGroup]);
 
+    useEffect(() => {
+        if (statusFilter !== LibraryItemStatus.TODO) {
+            setTodoReasonFilter('all');
+        }
+    }, [statusFilter]);
+
     // 转换为 LibraryItemFull 列表
     const allItems: LibraryItemFull[] = useMemo(() => {
         return tasks.map(task => parseLibraryFromTask(task));
@@ -264,6 +276,19 @@ export default function Library({addr, groupTitle}: LibraryProps) {
         return countMap;
     }, [allItems]);
 
+    const todoReasonOptions: string[] = useMemo(() => {
+        const reasonSet = new Set<string>();
+        allItems.forEach(item => {
+            if (item.extra.status === LibraryItemStatus.TODO) {
+                const reason = item.extra.todoReason?.trim() || '';
+                if (reason) {
+                    reasonSet.add(reason);
+                }
+            }
+        });
+        return Array.from(reasonSet).sort((a, b) => a.localeCompare(b, 'zh-CN'));
+    }, [allItems]);
+
     // 应用筛选和排序
     const filteredItems = useMemo(() => {
         let result = [...allItems];
@@ -279,9 +304,15 @@ export default function Library({addr, groupTitle}: LibraryProps) {
         if (statusFilter !== 'all') {
             if (statusFilter === LIBRARY_WAIT_EXPIRED_FILTER) {
                 result = result.filter(item => isWaitExpired(item.extra));
+            } else if (statusFilter === 'none') {
+                result = result.filter(item => item.extra.status === undefined);
             } else {
                 result = result.filter(item => item.extra.status === statusFilter);
             }
+        }
+
+        if (statusFilter === LibraryItemStatus.TODO && todoReasonFilter !== 'all') {
+            result = result.filter(item => (item.extra.todoReason?.trim() || '') === todoReasonFilter);
         }
         
         if (searchText.trim()) {
@@ -314,7 +345,7 @@ export default function Library({addr, groupTitle}: LibraryProps) {
         });
         
         return result;
-    }, [allItems, selectedCategory, statusFilter, searchText, sortBy]);
+    }, [allItems, selectedCategory, statusFilter, todoReasonFilter, searchText, sortBy]);
 
     // 保存 item 变更
     const handleSaveItem = useCallback((item: LibraryItemFull) => {
@@ -347,6 +378,36 @@ export default function Library({addr, groupTitle}: LibraryProps) {
             }
         });
     }, [addr, mainSubGroup, tasks]);
+
+    const handleQuickStatusChange = useCallback((item: LibraryItemFull, status?: LibraryItemStatus) => {
+        if (status === LibraryItemStatus.TODO) {
+            setPendingTodoItem(item);
+            setTodoReasonInput(item.extra.todoReason || '');
+            setShowTodoReasonModal(true);
+            return;
+        }
+        if (item.extra.status === status) {
+            return;
+        }
+        const newExtra = addStatusLog({...item.extra}, status);
+        const newItem = {...item, extra: newExtra};
+        handleSaveItem(newItem);
+    }, [handleSaveItem]);
+
+    const handleConfirmTodoReason = useCallback(() => {
+        if (!pendingTodoItem) return;
+        const reason = todoReasonInput.trim();
+        if (!reason) {
+            message.warning('请输入待看原因');
+            return;
+        }
+        const newExtra = addStatusLog({...pendingTodoItem.extra}, LibraryItemStatus.TODO, reason);
+        const newItem = {...pendingTodoItem, extra: newExtra};
+        handleSaveItem(newItem);
+        setShowTodoReasonModal(false);
+        setPendingTodoItem(null);
+        setTodoReasonInput('');
+    }, [pendingTodoItem, todoReasonInput, handleSaveItem]);
 
     // 删除条目
     const handleDeleteItem = useCallback((item: LibraryItemFull) => {
@@ -515,19 +576,22 @@ export default function Library({addr, groupTitle}: LibraryProps) {
 
     // 快速状态变更菜单
     const getStatusMenuItems = (item: LibraryItemFull) => {
-        return Object.entries(LibraryStatusNames).map(([status, name]) => ({
+        const items = [
+            {
+                key: 'none',
+                label: '无状态',
+                onClick: () => handleQuickStatusChange(item, undefined),
+            },
+            ...Object.entries(LibraryStatusNames).map(([status, name]) => ({
             key: status,
             label: name,
             onClick: () => {
                 const numStatus = Number(status) as LibraryItemStatus;
-                if (item.extra.status !== numStatus) {
-                    const newExtra = addStatusLog({...item.extra}, numStatus);
-                    
-                    const newItem = {...item, extra: newExtra};
-                    handleSaveItem(newItem);
-                }
+                handleQuickStatusChange(item, numStatus);
             },
-        }));
+        })),
+        ];
+        return items;
     };
 
     // 格式化日期显示
@@ -803,6 +867,7 @@ export default function Library({addr, groupTitle}: LibraryProps) {
                     suffixIcon={<FilterOutlined/>}
                     options={[
                         {value: 'all', label: '全部状态'},
+                        {value: 'none', label: '无状态'},
                         ...Object.entries(LibraryStatusNames).map(([k, v]) => ({
                             value: Number(k),
                             label: v,
@@ -810,6 +875,19 @@ export default function Library({addr, groupTitle}: LibraryProps) {
                         {value: LIBRARY_WAIT_EXPIRED_FILTER, label: '搁置放弃'},
                     ]}
                 />
+
+                {statusFilter === LibraryItemStatus.TODO ? (
+                    <Select
+                        className="library-filter-todo-reason"
+                        value={todoReasonFilter}
+                        onChange={setTodoReasonFilter}
+                        style={{width: isMobile ? '100%' : 220}}
+                        options={[
+                            {value: 'all', label: '全部待看二级状态'},
+                            ...todoReasonOptions.map(reason => ({value: reason, label: reason})),
+                        ]}
+                    />
+                ) : null}
                 
                 <Select
                     className="library-filter-sort"
@@ -1041,6 +1119,24 @@ export default function Library({addr, groupTitle}: LibraryProps) {
                         ))}
                     </div>
                 )}
+            </Modal>
+
+            <Modal
+                title="待看原因（待看二级状态）"
+                open={showTodoReasonModal}
+                onOk={handleConfirmTodoReason}
+                onCancel={() => {
+                    setShowTodoReasonModal(false);
+                    setPendingTodoItem(null);
+                    setTodoReasonInput('');
+                }}
+            >
+                <Input.TextArea
+                    rows={3}
+                    placeholder="请输入待看原因/二级状态（例如：等字幕、等朋友、片源问题）"
+                    value={todoReasonInput}
+                    onChange={(e) => setTodoReasonInput(e.target.value)}
+                />
             </Modal>
             
             {/* 详情弹窗 */}

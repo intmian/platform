@@ -73,6 +73,7 @@ export enum LibraryLogType {
     changeStatus = 0, // 改变状态
     score = 1, // 评分
     note = 2, // 备注
+    timelineCutoff = 3, // 时间线截断（此前历史不进入总时间线）
 }
 
 export interface LibraryLog {
@@ -130,8 +131,10 @@ export interface LibraryExtra {
     remark?: string                 // 作品备注
     waitReason?: string             // 搁置原因
     waitSince?: string              // 最近一次搁置开始时间
+    todoReason?: string             // 待看二级状态（自由文本）
+    todoSince?: string              // 最近一次待看设置时间
     category: string                // 分类（动漫/电影/游戏/小说等）
-    status: LibraryItemStatus       // 当前状态
+    status?: LibraryItemStatus      // 当前状态（可空：无状态）
     currentRound: number            // 当前周目索引
     rounds: LibraryRound[]          // 所有周目数据
     mainScoreRoundIndex?: number    // 主评分所在周目索引
@@ -146,6 +149,7 @@ export interface LibraryExtra {
     innovateScore?: LibraryScoreData  // 创新评分
     mainScore?: LibraryScoreData      // 主评分（复杂模式下的总分）
     comment?: string                  // 总评（用于分享）
+    timelineCutoffTime?: string       // 时间线截断时间（此前历史不进入总时间线）
 }
 
 // 单个周目
