@@ -773,6 +773,8 @@ export default function Library({addr, groupTitle}: LibraryProps) {
         </div>
     );
 
+    const mobileModalWidth = 'calc(100vw - 16px)';
+
     if (!addr) {
         return <Empty description="请选择一个 Library 分组"/>;
     }
@@ -893,7 +895,7 @@ export default function Library({addr, groupTitle}: LibraryProps) {
                     className="library-filter-sort"
                     value={sortBy}
                     onChange={setSortBy}
-                    style={{width: isMobile ? '100%' : 140}}
+                    style={{width: isMobile ? 'calc(50% - 4px)' : 140}}
                     suffixIcon={<SortAscendingOutlined/>}
                     options={[
                         {value: 'updatedAt', label: '最近更新'},
@@ -931,6 +933,7 @@ export default function Library({addr, groupTitle}: LibraryProps) {
             <Modal
                 title="添加条目"
                 open={showAdd}
+                className="library-add-modal"
                 onOk={handleAdd}
                 onCancel={() => {
                     setShowAdd(false);
@@ -938,7 +941,8 @@ export default function Library({addr, groupTitle}: LibraryProps) {
                     addForm.resetFields();
                 }}
                 confirmLoading={addLoading}
-                width={isMobile ? undefined : 500}
+                width={isMobile ? mobileModalWidth : 500}
+                style={{top: isMobile ? 8 : undefined}}
             >
                 <div className="library-add-modal-layout">
                     <div className="library-add-cover-column">
@@ -1004,6 +1008,7 @@ export default function Library({addr, groupTitle}: LibraryProps) {
             <Modal
                 title="分类管理"
                 open={showCategoryManager}
+                className="library-category-modal"
                 onCancel={() => {
                     setShowCategoryManager(false);
                     setNewCategoryName('');
@@ -1011,7 +1016,8 @@ export default function Library({addr, groupTitle}: LibraryProps) {
                     setEditingCategoryNew('');
                 }}
                 footer={null}
-                width={500}
+                width={isMobile ? mobileModalWidth : 500}
+                style={{top: isMobile ? 8 : undefined}}
             >
                 <div style={{marginBottom: 16}}>
                     <Space.Compact style={{width: '100%'}}>
@@ -1049,18 +1055,30 @@ export default function Library({addr, groupTitle}: LibraryProps) {
                         {categories.map(cat => (
                             <div
                                 key={cat}
+                                className="library-category-item"
                                 style={{
                                     display: 'flex',
+                                    flexDirection: isMobile ? 'column' : 'row',
                                     justifyContent: 'space-between',
-                                    alignItems: 'center',
+                                    alignItems: isMobile ? 'stretch' : 'center',
                                     padding: '12px 16px',
                                     background: '#fafafa',
                                     borderRadius: 8,
+                                    gap: isMobile ? 8 : 0,
                                 }}
                             >
                                 {editingCategoryOld === cat ? (
-                                    <Space.Compact style={{flex: 1, marginRight: 8}}>
+                                    <div
+                                        style={{
+                                            flex: 1,
+                                            marginRight: isMobile ? 0 : 8,
+                                            display: 'flex',
+                                            gap: 8,
+                                            flexWrap: isMobile ? 'wrap' : 'nowrap',
+                                        }}
+                                    >
                                         <Input
+                                            style={{flex: 1, minWidth: isMobile ? 180 : undefined}}
                                             value={editingCategoryNew}
                                             onChange={e => setEditingCategoryNew(e.target.value)}
                                             placeholder="新分类名称"
@@ -1079,7 +1097,7 @@ export default function Library({addr, groupTitle}: LibraryProps) {
                                         >
                                             取消
                                         </Button>
-                                    </Space.Compact>
+                                    </div>
                                 ) : (
                                     <>
                                         <div>
@@ -1088,7 +1106,7 @@ export default function Library({addr, groupTitle}: LibraryProps) {
                                                 {categoryCount.get(cat) || 0} 个条目
                                             </div>
                                         </div>
-                                        <Space>
+                                        <Space style={{alignSelf: isMobile ? 'flex-end' : 'auto'}}>
                                             <Button
                                                 type="text"
                                                 size="small"

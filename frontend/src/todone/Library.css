@@ -8,7 +8,7 @@
 /* 照片墙网格 */
 .library-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(0, 146px));
+    grid-template-columns: repeat(auto-fill, minmax(0, 140px));
     gap: 14px;
     justify-content: flex-start;
 }
@@ -22,12 +22,13 @@
 
 @media (max-width: 768px) {
     .library-container {
+        padding: 10px 8px 8px;
         padding-top: 12px;
     }
 
     .library-grid {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 10px;
+        grid-template-columns: repeat(auto-fill, minmax(112px, 1fr));
+        gap: 8px;
     }
 
     .library-toolbar {
@@ -54,14 +55,23 @@
         gap: 8px !important;
     }
 
-    .library-filter-search,
-    .library-filter-sort {
+    .library-filter-search {
         width: 100% !important;
     }
 
     .library-filter-category,
-    .library-filter-status {
+    .library-filter-status,
+    .library-filter-sort {
         width: calc(50% - 4px) !important;
+    }
+
+    .library-filter-bar .ant-select .ant-select-selector,
+    .library-filter-bar .ant-input-affix-wrapper {
+        min-height: 36px;
+    }
+
+    .library-filter-bar .ant-select-selection-item {
+        font-size: 13px;
     }
 }
 
@@ -200,16 +210,16 @@
     display: inline-flex;
     align-items: center;
     margin: 0;
-    font-size: 10px;
-    padding: 0 6px;
+    font-size: 11px;
+    padding: 0 7px;
     border-radius: 4px;
-    line-height: 18px;
+    line-height: 20px;
 }
 
 .library-card-score-badge {
     background: rgba(0, 0, 0, 0.62);
     color: #fff;
-    padding: 2px 6px;
+    padding: 3px 7px;
     border-radius: 4px;
     font-size: 11px;
     display: flex;
@@ -228,7 +238,7 @@
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
-    padding: 10px 12px;
+    padding: 8px 10px;
     background: #fff;
     border-top: 1px solid #f0f0f0;
     min-height: 20px;
@@ -242,7 +252,7 @@
 
 .library-card-name {
     color: #333;
-    font-size: 13px;
+    font-size: 12px;
     font-weight: 500;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -266,9 +276,11 @@
 .library-card-status {
     flex-shrink: 0;
     margin: 0 !important;
-    font-size: 11px;
+    font-size: 12px;
     cursor: pointer;
     transition: opacity 0.2s;
+    min-height: 22px;
+    line-height: 20px;
 }
 
 .library-card-status:hover {
@@ -283,7 +295,7 @@
     }
     
     .library-card-footer {
-        padding: 8px 10px;
+        padding: 7px 8px;
         /* min-height: 38px; */
     }
     
@@ -292,8 +304,8 @@
     }
     
     .library-card-status {
-        font-size: 10px;
-        padding: 0 4px;
+        font-size: 11px;
+        padding: 0 6px;
     }
     
     .library-card-placeholder-text {
@@ -364,11 +376,43 @@
 @media (max-width: 768px) {
     .library-add-modal-layout {
         flex-direction: column;
+        gap: 12px;
     }
 
     .library-add-cover-column {
         width: 100%;
-        max-width: 220px;
+        max-width: 180px;
         margin: 0 auto;
+    }
+
+    .library-add-form {
+        max-width: none;
+        width: 100%;
+    }
+
+    .library-add-modal .ant-modal-content,
+    .library-category-modal .ant-modal-content {
+        padding: 14px 12px;
+    }
+
+    .library-add-modal .ant-modal-body,
+    .library-category-modal .ant-modal-body {
+        max-height: calc(100vh - 170px);
+        overflow-y: auto;
+    }
+
+    .library-add-modal .ant-modal-header,
+    .library-category-modal .ant-modal-header {
+        margin-bottom: 10px;
+    }
+
+    .library-add-modal .ant-form-item,
+    .library-category-modal .ant-form-item {
+        margin-bottom: 12px;
+    }
+
+    .library-category-item {
+        padding: 10px 12px;
+        gap: 8px;
     }
 }
