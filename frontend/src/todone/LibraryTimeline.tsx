@@ -36,7 +36,6 @@ import {
 } from './net/protocal';
 import {
     extractTimeline,
-    formatDate,
     formatDateTime,
     getLibraryCoverDisplayUrl,
     getLogTypeText,
@@ -355,28 +354,29 @@ export default function LibraryTimeline({visible, items, onClose, onItemClick}: 
         );
     };
 
-    // 按日期分组渲染（同一天的合并显示日期）
+    // 按月份分组渲染（同一月份的合并显示）
     const renderGroupedTimeline = () => {
         if (displayEntries.length === 0) {
             return <Empty description="暂无记录"/>;
         }
 
-        let currentDate = '';
+        let currentMonth = '';
         const elements: React.ReactNode[] = [];
 
         displayEntries.forEach((entry, index) => {
-            const entryDate = formatDate(entry.time);
+            const date = new Date(entry.time);
+            const entryMonth = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
             
-            if (entryDate !== currentDate) {
-                currentDate = entryDate;
+            if (entryMonth !== currentMonth) {
+                currentMonth = entryMonth;
                 elements.push(
                     <Divider
-                        key={`date-${entryDate}`}
+                        key={`month-${entryMonth}`}
                         orientation="left"
                         style={{margin: '16px 0 8px'}}
                     >
                         <Text type="secondary" style={{fontSize: 12}}>
-                            {entryDate}
+                            {entryMonth}
                         </Text>
                     </Divider>
                 );

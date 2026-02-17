@@ -76,30 +76,34 @@
 }
 
 /* 单个卡片 */
-.library-card {
+.library-container .library-card {
     position: relative;
     border-radius: 8px;
     overflow: hidden;
     cursor: pointer;
     background: #fff;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-    transition: all 0.25s ease;
+    transition: transform 0.25s ease, box-shadow 0.25s ease;
+    --library-hover-glow-opacity: 0.26;
+    --library-hover-shine-opacity: 0.22;
+    --library-hover-title-duration: 280ms;
+    --library-hover-placeholder-duration: 420ms;
 }
 
-.library-card:hover {
+.library-container .library-card:hover {
     transform: translateY(-6px);
     box-shadow: 0 12px 24px rgba(0, 0, 0, 0.15);
 }
 
 /* 封面区域 */
-.library-card-cover {
+.library-container .library-card-cover {
     position: relative;
     width: 100%;
     padding-top: 133%; /* 3:4 竖版封面比例 */
     overflow: hidden;
 }
 
-.library-card-cover img {
+.library-container .library-card-cover img {
     position: absolute;
     top: 0;
     left: 0;
@@ -107,14 +111,48 @@
     height: 100%;
     object-fit: cover;
     transition: transform 0.3s ease;
+    z-index: 0;
 }
 
-.library-card:hover .library-card-cover img {
+.library-container .library-card.is-real-cover:not(.is-cover-error):hover .library-card-cover img {
     transform: scale(1.05);
 }
 
+/* 实图 hover：轻微光影浮动 */
+.library-container .library-card.is-real-cover:not(.is-cover-error) .library-card-cover::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 1;
+    background: linear-gradient(115deg, rgba(255, 255, 255, 0) 32%, rgba(255, 255, 255, var(--library-hover-shine-opacity)) 50%, rgba(255, 255, 255, 0) 68%);
+    opacity: 0;
+    transform: translate(-130%, -130%) rotate(12deg);
+    transition: transform 0.5s ease, opacity 0.35s ease;
+}
+
+.library-container .library-card.is-real-cover:not(.is-cover-error) .library-card-cover::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 1;
+    background: radial-gradient(120% 120% at 90% 8%, rgba(255, 255, 255, var(--library-hover-glow-opacity)) 0%, rgba(255, 255, 255, 0) 62%);
+    opacity: 0;
+    transition: opacity 0.32s ease;
+}
+
+.library-container .library-card.is-real-cover:not(.is-cover-error):hover .library-card-cover::before {
+    opacity: 1;
+    transform: translate(18%, 18%) rotate(12deg);
+}
+
+.library-container .library-card.is-real-cover:not(.is-cover-error):hover .library-card-cover::after {
+    opacity: 1;
+}
+
 /* 无图片占位 - 彩色背景 + 标题 */
-.library-card-placeholder {
+.library-container .library-card-placeholder {
     position: absolute;
     top: 0;
     left: 0;
@@ -125,9 +163,49 @@
     justify-content: center;
     padding: 12px;
     box-sizing: border-box;
+    z-index: 0;
+    overflow: hidden;
+    background: linear-gradient(140deg, var(--library-placeholder-base, #e3f2fd) 0%, #ffffff 100%);
 }
 
-.library-card-placeholder-text {
+/* 占位图 hover：颜色分布方向反转（平滑过渡） */
+.library-container .library-card.is-placeholder .library-card-placeholder::before,
+.library-container .library-card.is-cover-error .library-card-placeholder::before,
+.library-container .library-card.is-placeholder .library-card-placeholder::after,
+.library-container .library-card.is-cover-error .library-card-placeholder::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+}
+
+.library-container .library-card.is-placeholder .library-card-placeholder::before,
+.library-container .library-card.is-cover-error .library-card-placeholder::before {
+    background: linear-gradient(140deg, var(--library-placeholder-base, #e3f2fd) 0%, #ffffff 100%);
+    opacity: 1;
+    transition: opacity var(--library-hover-placeholder-duration) ease;
+}
+
+.library-container .library-card.is-placeholder .library-card-placeholder::after,
+.library-container .library-card.is-cover-error .library-card-placeholder::after {
+    background: linear-gradient(40deg, var(--library-placeholder-base, #e3f2fd) 0%, #ffffff 100%);
+    opacity: 0;
+    transition: opacity var(--library-hover-placeholder-duration) ease;
+}
+
+.library-container .library-card.is-placeholder:hover .library-card-placeholder::before,
+.library-container .library-card.is-cover-error:hover .library-card-placeholder::before {
+    opacity: 0;
+}
+
+.library-container .library-card.is-placeholder:hover .library-card-placeholder::after,
+.library-container .library-card.is-cover-error:hover .library-card-placeholder::after {
+    opacity: 1;
+}
+
+.library-container .library-card-placeholder-text {
+    position: relative;
+    z-index: 1;
     font-weight: 600;
     line-height: 1.35;
     width: 100%;
@@ -234,30 +312,46 @@
 }
 
 /* 底部信息条 */
-.library-card-footer {
-    display: flex;
-    flex-direction: column;
-    padding: 8px 10px;
-    background: #fff;
-    border-top: 1px solid #f0f0f0;
-    /* min-height: 36px; */
+.library-container .library-card-hover-title {
+    position: absolute;
+    left: 5px;
+    right: 5px;
+    bottom: 0px;
+    /* 半透明 */
+    
+    z-index: 6;
+    background: rgba(255, 255, 255, 0.98);
+    border: 1px solid rgba(213, 220, 232, 0.95);
+    border-radius: 7px;
+    padding: 0 8px;
+    box-shadow: 0 6px 14px rgba(18, 24, 40, 0.2);
+    backdrop-filter: blur(2px);
+    opacity: 0;
+    transform: translateY(100%);
+    transition: transform var(--library-hover-title-duration) cubic-bezier(0.22, 0.78, 0.22, 1), opacity var(--library-hover-title-duration) ease;
+    pointer-events: none;
 }
 
-.library-card-title-row {
+.library-container .library-card:hover .library-card-hover-title {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.library-container .library-card-title-row {
     width: 100%;
     min-width: 0;
-    height: 18px;
+    height: 28px;
     display: flex;
     align-items: center;
 }
 
-.library-card-title-window {
+.library-container .library-card-title-window {
     width: 100%;
     overflow: hidden;
     white-space: nowrap;
 }
 
-.library-card-title-content {
+.library-container .library-card-title-content {
     color: #333;
     font-size: 12px;
     font-weight: 500;
@@ -265,7 +359,7 @@
     will-change: transform;
 }
 
-.library-card-status-overlay {
+.library-container .library-card-status-overlay {
     position: absolute;
     right: 8px;
     bottom: 8px;
@@ -280,9 +374,10 @@
     line-height: 18px;
     box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
     transition: opacity 0.2s;
+    z-index: 4;
 }
 
-.library-card-status-overlay:hover {
+.library-container .library-card-status-overlay:hover {
     opacity: 0.88;
 }
 
@@ -293,23 +388,25 @@
         padding-top: 12px;
     }
     
-    .library-card-footer {
-        padding: 7px 8px;
-        /* min-height: 34px; */
+    .library-container .library-card-hover-title {
+        left: 3px;
+        right: 3px;
+        bottom: 3px;
+        padding: 0 7px;
     }
     
-    .library-card-title-content {
+    .library-container .library-card-title-content {
         font-size: 12px;
     }
     
-    .library-card-status-overlay {
+    .library-container .library-card-status-overlay {
         font-size: 11px;
         right: 7px;
         bottom: 7px;
         padding: 0 7px;
     }
     
-    .library-card-placeholder-text {
+    .library-container .library-card-placeholder-text {
         font-size: 16px;
     }
 }

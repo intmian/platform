@@ -435,6 +435,13 @@ export const LIBRARY_COVER_TEXT_CONFIG = {
     maxLines: 2,
 } as const;
 
+export const LIBRARY_CARD_HOVER_EFFECT_CONFIG = {
+    realCoverGlowOpacity: 0.26,
+    realCoverShineOpacity: 0.22,
+    titleBarDurationMs: 280,
+    placeholderGradientDurationMs: 420,
+} as const;
+
 export function getLibraryCoverPaletteByTitle(title: string): {bg: string; text: string} {
     const value = title || '';
     let hash = 0;

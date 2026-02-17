@@ -59,7 +59,7 @@ import {
     buildLibraryTitleCoverDataUrl,
     createDefaultLibraryExtra,
     getDisplayStatusInfo,
-    getLibraryCoverDisplayUrl,
+    LIBRARY_CARD_HOVER_EFFECT_CONFIG,
     isWaitExpired,
     LIBRARY_WAIT_EXPIRED_FILTER,
     getMainScore,
@@ -712,7 +712,8 @@ export default function Library({addr, groupTitle}: LibraryProps) {
     const renderCard = (item: LibraryItemFull) => {
         const mainScore = getMainScore(item.extra);
         const placeholderColor = getLibraryCoverPaletteByTitle(item.title);
-        const coverUrl = getLibraryCoverDisplayUrl(item.title, item.extra.pictureAddress);
+        const realCoverUrl = item.extra.pictureAddress?.trim() || '';
+        const isPlaceholderCover = realCoverUrl === '';
         const showCategoryOnCard = displayOptions.showCategory && selectedCategory === 'all' && item.extra.category;
         const currentRoundName = item.extra.rounds[item.extra.currentRound]?.name || '-';
         const displayStatus = getDisplayStatusInfo(item.extra);
@@ -720,11 +721,19 @@ export default function Library({addr, groupTitle}: LibraryProps) {
         const showScoreBadge = displayOptions.showScore && !!mainScore;
         const scoreStarColor = getScoreStarColor(mainScore?.score || 0);
         const statusTextColor = getStatusTextColor(displayStatus.color);
+        const cardClassName = `library-card ${isPlaceholderCover ? 'is-placeholder' : 'is-real-cover'}`;
+        const hoverEffectStyle = {
+            '--library-hover-glow-opacity': LIBRARY_CARD_HOVER_EFFECT_CONFIG.realCoverGlowOpacity,
+            '--library-hover-shine-opacity': LIBRARY_CARD_HOVER_EFFECT_CONFIG.realCoverShineOpacity,
+            '--library-hover-title-duration': `${LIBRARY_CARD_HOVER_EFFECT_CONFIG.titleBarDurationMs}ms`,
+            '--library-hover-placeholder-duration': `${LIBRARY_CARD_HOVER_EFFECT_CONFIG.placeholderGradientDurationMs}ms`,
+        } as React.CSSProperties;
         
         return (
             <div
                 key={item.taskId}
-                className="library-card"
+                className={cardClassName}
+                style={hoverEffectStyle}
                 onClick={() => {
                     setDetailItem(item);
                     setShowDetail(true);
@@ -732,9 +741,9 @@ export default function Library({addr, groupTitle}: LibraryProps) {
             >
                 {/* 封面图 */}
                 <div className="library-card-cover">
-                    {coverUrl ? (
+                    {realCoverUrl ? (
                         <img
-                            src={coverUrl}
+                            src={realCoverUrl}
                             alt={item.title}
                             onError={(e) => {
                                 (e.target as HTMLImageElement).style.display = 'none';
@@ -745,6 +754,10 @@ export default function Library({addr, groupTitle}: LibraryProps) {
                                     if (placeholder) {
                                         placeholder.style.display = 'flex';
                                     }
+                                    const cardNode = parent.closest('.library-card');
+                                    if (cardNode) {
+                                        cardNode.classList.add('is-cover-error');
+                                    }
                                 }
                             }}
                         />
@@ -753,9 +766,9 @@ export default function Library({addr, groupTitle}: LibraryProps) {
                     <div 
                         className="library-card-placeholder"
                         style={{
-                            background: placeholderColor.bg,
-                            display: coverUrl ? 'none' : 'flex',
-                        }}
+                            '--library-placeholder-base': placeholderColor.bg,
+                            display: realCoverUrl ? 'none' : 'flex',
+                        } as React.CSSProperties}
                     >
                         <span 
                             className="library-card-placeholder-text"
@@ -807,8 +820,8 @@ export default function Library({addr, groupTitle}: LibraryProps) {
                     </Dropdown>
                 </div>
                 
-                {/* 底部信息条 */}
-                <div className="library-card-footer">
+                {/* 悬浮标题条（仅 hover 显示） */}
+                <div className="library-card-hover-title">
                     <div className="library-card-title-row">
                         <AutoScrollTitle text={item.title}/>
                     </div>
