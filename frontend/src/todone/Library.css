@@ -317,10 +317,9 @@
     left: 5px;
     right: 5px;
     bottom: 0px;
-    /* 半透明 */
     
     z-index: 6;
-    background: rgba(255, 255, 255, 0.98);
+    background: rgba(128, 128, 128, 0.55);
     border: 1px solid rgba(213, 220, 232, 0.95);
     border-radius: 7px;
     padding: 0 8px;
@@ -349,14 +348,30 @@
     width: 100%;
     overflow: hidden;
     white-space: nowrap;
+    text-align: center;
+}
+
+.library-container .library-card-title-window.is-scrolling {
+    text-align: left;
 }
 
 .library-container .library-card-title-content {
-    color: #333;
+    color: #000;
     font-size: 12px;
     font-weight: 500;
     display: inline-block;
     will-change: transform;
+}
+
+.library-container .library-card-title-content.is-scrolling {
+    display: inline-flex;
+    align-items: center;
+    white-space: nowrap;
+}
+
+.library-container .library-card-title-text {
+    display: inline-block;
+    white-space: nowrap;
 }
 
 .library-container .library-card-status-overlay {

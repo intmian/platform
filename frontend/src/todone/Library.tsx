@@ -107,19 +107,25 @@ function getStatusTextColor(bg: string): string {
 function AutoScrollTitle({text}: {text: string}) {
     const containerRef = useRef<HTMLDivElement>(null);
     const contentRef = useRef<HTMLSpanElement>(null);
+    const textRef = useRef<HTMLSpanElement>(null);
     const [overflowDistance, setOverflowDistance] = useState(0);
+    const [loopWidth, setLoopWidth] = useState(0);
+    const loopText = `${text}\u00A0\u00A0`;
 
     useEffect(() => {
         const measure = () => {
             const container = containerRef.current;
-            const content = contentRef.current;
-            if (!container || !content) {
+            const primaryText = textRef.current ?? contentRef.current;
+            if (!container || !primaryText) {
                 setOverflowDistance(0);
+                setLoopWidth(0);
                 return;
             }
 
-            const distance = Math.max(0, Math.ceil(content.scrollWidth - container.clientWidth));
+            const width = Math.ceil(primaryText.scrollWidth);
+            const distance = Math.max(0, width - container.clientWidth);
             setOverflowDistance(distance);
+            setLoopWidth(width);
         };
 
         measure();
@@ -130,12 +136,15 @@ function AutoScrollTitle({text}: {text: string}) {
         if (contentRef.current) {
             observer.observe(contentRef.current);
         }
+        if (textRef.current) {
+            observer.observe(textRef.current);
+        }
         return () => observer.disconnect();
     }, [text]);
 
     useEffect(() => {
         const content = contentRef.current;
-        if (!content || overflowDistance <= 0) {
+        if (!content || overflowDistance <= 0 || loopWidth <= 0) {
             if (content) {
                 content.style.transform = 'translateX(0px)';
             }
@@ -143,7 +152,7 @@ function AutoScrollTitle({text}: {text: string}) {
         }
 
         const pauseMs = 1000;
-        const speedPxPerSecond = 30;
+        const speedPxPerSecond = 22;
         let rafId = 0;
         let phase: 'pause' | 'scroll' = 'pause';
         let elapsedInPhase = 0;
@@ -165,19 +174,14 @@ function AutoScrollTitle({text}: {text: string}) {
                 elapsedInPhase += dt;
                 if (elapsedInPhase >= pauseMs) {
                     phase = 'scroll';
-                    elapsedInPhase = 0;
                 }
             } else {
                 const delta = (dt / 1000) * speedPxPerSecond;
-                offset = Math.max(-overflowDistance, offset - delta);
-                contentRef.current.style.transform = `translateX(${offset}px)`;
-
-                if (offset <= -overflowDistance) {
-                    offset = 0;
-                    contentRef.current.style.transform = 'translateX(0px)';
-                    phase = 'pause';
-                    elapsedInPhase = 0;
+                offset -= delta;
+                if (Math.abs(offset) >= loopWidth) {
+                    offset += loopWidth;
                 }
+                contentRef.current.style.transform = `translateX(${offset}px)`;
             }
 
             rafId = window.requestAnimationFrame(tick);
@@ -189,16 +193,21 @@ function AutoScrollTitle({text}: {text: string}) {
         return () => {
             window.cancelAnimationFrame(rafId);
         };
-    }, [overflowDistance]);
+    }, [overflowDistance, loopWidth]);
 
     return (
-        <div ref={containerRef} className="library-card-title-window">
-            <span
-                ref={contentRef}
-                className={`library-card-title-content${overflowDistance > 0 ? ' is-scrolling' : ''}`}
-            >
-                {text}
-            </span>
+        <div
+            ref={containerRef}
+            className={`library-card-title-window${overflowDistance > 0 ? ' is-scrolling' : ''}`}
+        >
+            {overflowDistance > 0 ? (
+                <span ref={contentRef} className="library-card-title-content is-scrolling">
+                    <span ref={textRef} className="library-card-title-text">{loopText}</span>
+                    <span className="library-card-title-text" aria-hidden="true">{loopText}</span>
+                </span>
+            ) : (
+                <span ref={contentRef} className="library-card-title-content">{text}</span>
+            )}
         </div>
     );
 }
