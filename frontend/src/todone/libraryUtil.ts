@@ -31,9 +31,8 @@ export function createDefaultLibraryExtra(): LibraryExtra {
         rounds: [{
             name: '首周目',
             logs: [{
-                type: LibraryLogType.note,
+                type: LibraryLogType.addToLibrary,
                 time: now,
-                comment: '添加到库'
             }],
             startTime: now,
         }],
@@ -72,6 +71,24 @@ export function parseLibraryExtra(note: string): LibraryExtra {
         if (parsed.todoReason === undefined) {
             parsed.todoReason = '';
         }
+
+        parsed.rounds = parsed.rounds.map((round) => ({
+            ...round,
+            logs: round.logs.map((log) => {
+                if (
+                    log.type === LibraryLogType.note
+                    && (log.comment || '').trim() === '添加到库'
+                ) {
+                    return {
+                        ...log,
+                        type: LibraryLogType.addToLibrary,
+                        comment: undefined,
+                    };
+                }
+                return log;
+            }),
+        }));
+
         return parsed;
     } catch {
         return createDefaultLibraryExtra();
@@ -540,6 +557,8 @@ export function getLogTypeText(logType: LibraryLogType, status?: LibraryItemStat
             return '备注';
         case LibraryLogType.timelineCutoff:
             return '时间线断点';
+        case LibraryLogType.addToLibrary:
+            return '添加到库';
         default:
             return '操作';
     }

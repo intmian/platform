@@ -1,11 +1,14 @@
-import React, {useMemo, useState} from 'react';
+import React, {useMemo, useRef, useState} from 'react';
 import {
+    Button,
+    Checkbox,
     Avatar,
     Divider,
     Drawer,
     Empty,
     Flex,
     Image,
+    message,
     Select,
     Space,
     Tag,
@@ -16,12 +19,15 @@ import {
     CalendarOutlined,
     CheckCircleFilled,
     ClockCircleFilled,
+    DownloadOutlined,
     PauseCircleFilled,
+    PlusCircleFilled,
     PlayCircleFilled,
     StarFilled,
     StopOutlined,
 } from '@ant-design/icons';
 import {
+    LibraryStatusNames,
     LibraryItemFull,
     LibraryItemStatus,
     LibraryLogType,
@@ -40,6 +46,8 @@ import {
 import {useIsMobile} from '../common/hooksv2';
 
 const {Text, Title} = Typography;
+const UNCATEGORIZED_KEY = '__uncategorized__';
+type TimelineStatusOption = LibraryItemStatus | 'addToLibrary';
 
 interface LibraryTimelineProps {
     visible: boolean;
@@ -51,12 +59,71 @@ interface LibraryTimelineProps {
 export default function LibraryTimeline({visible, items, onClose, onItemClick}: LibraryTimelineProps) {
     const isMobile = useIsMobile();
     const [selectedYear, setSelectedYear] = useState<number | 'all'>('all');
+    const [exporting, setExporting] = useState(false);
+    const exportRef = useRef<HTMLDivElement>(null);
+
+    const [selectedStatuses, setSelectedStatuses] = useState<TimelineStatusOption[]>([
+        LibraryItemStatus.DOING,
+        LibraryItemStatus.DONE,
+        LibraryItemStatus.WAIT,
+        LibraryItemStatus.GIVE_UP,
+    ]);
 
     // 提取时间线数据
     const allEntries = useMemo(() => extractTimeline(items), [items]);
+
+    const categoryMap = useMemo(() => {
+        const result = new Map<number, string>();
+        items.forEach((item) => {
+            const category = item.extra.category?.trim() || UNCATEGORIZED_KEY;
+            result.set(item.taskId, category);
+        });
+        return result;
+    }, [items]);
+
+    const categoryOptions = useMemo(() => {
+        const categorySet = new Set<string>();
+        allEntries.forEach((entry) => {
+            categorySet.add(categoryMap.get(entry.itemId) || UNCATEGORIZED_KEY);
+        });
+        return Array.from(categorySet).sort((a, b) => {
+            if (a === UNCATEGORIZED_KEY) return 1;
+            if (b === UNCATEGORIZED_KEY) return -1;
+            return a.localeCompare(b, 'zh-CN');
+        });
+    }, [allEntries, categoryMap]);
+
+    const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
     
     // 按年份分组
     const entriesByYear = useMemo(() => groupTimelineByYear(allEntries), [allEntries]);
+
+    const statusOptions = useMemo(
+        () => [
+            {value: 'addToLibrary' as TimelineStatusOption, label: '添加到库'},
+            {
+                value: LibraryItemStatus.TODO as TimelineStatusOption,
+                label: '待看',
+            },
+            {
+                value: LibraryItemStatus.DOING as TimelineStatusOption,
+                label: LibraryStatusNames[LibraryItemStatus.DOING],
+            },
+            {
+                value: LibraryItemStatus.DONE as TimelineStatusOption,
+                label: LibraryStatusNames[LibraryItemStatus.DONE],
+            },
+            {
+                value: LibraryItemStatus.WAIT as TimelineStatusOption,
+                label: LibraryStatusNames[LibraryItemStatus.WAIT],
+            },
+            {
+                value: LibraryItemStatus.GIVE_UP as TimelineStatusOption,
+                label: LibraryStatusNames[LibraryItemStatus.GIVE_UP],
+            },
+        ],
+        []
+    );
     
     // 可用年份列表
     const years = useMemo(() => {
@@ -64,19 +131,102 @@ export default function LibraryTimeline({visible, items, onClose, onItemClick}: 
         return yearList;
     }, [entriesByYear]);
 
+    const selectedCategoriesFinal = useMemo(
+        () => (selectedCategories.length > 0 ? selectedCategories : categoryOptions),
+        [selectedCategories, categoryOptions]
+    );
+
     // 当前显示的条目
     const displayEntries = useMemo(() => {
-        const sortedEntries = (selectedYear === 'all'
+        const baseEntries = (selectedYear === 'all'
             ? allEntries
             : entriesByYear.get(selectedYear) || [])
             .slice()
             .sort((a, b) => new Date(a.time).getTime() - new Date(b.time).getTime());
 
-        if (selectedYear === 'all') {
-            return sortedEntries;
+        return baseEntries.filter((entry) => {
+            const category = categoryMap.get(entry.itemId) || UNCATEGORIZED_KEY;
+            if (!selectedCategoriesFinal.includes(category)) {
+                return false;
+            }
+
+            if (entry.logType === LibraryLogType.addToLibrary) {
+                return selectedStatuses.includes('addToLibrary');
+            }
+
+            if (entry.logType === LibraryLogType.changeStatus) {
+                if (entry.status === undefined) {
+                    return false;
+                }
+                return selectedStatuses.includes(entry.status);
+            }
+
+            return true;
+        });
+    }, [
+        allEntries,
+        categoryMap,
+        entriesByYear,
+        selectedCategoriesFinal,
+        selectedStatuses,
+        selectedYear,
+    ]);
+
+    const allCategoryChecked =
+        categoryOptions.length > 0 && selectedCategoriesFinal.length === categoryOptions.length;
+    const categoryIndeterminate =
+        selectedCategoriesFinal.length > 0 && selectedCategoriesFinal.length < categoryOptions.length;
+
+    const allStatusValues = useMemo(
+        () => statusOptions.map((option) => option.value),
+        [statusOptions]
+    );
+    const allStatusChecked = selectedStatuses.length === allStatusValues.length;
+    const statusIndeterminate = selectedStatuses.length > 0 && selectedStatuses.length < allStatusValues.length;
+
+    const getCategoryLabel = (value: string) => {
+        if (value === UNCATEGORIZED_KEY) {
+            return '未分类';
         }
-        return sortedEntries;
-    }, [allEntries, entriesByYear, selectedYear]);
+        return value;
+    };
+
+    const handleExportImage = async () => {
+        if (!exportRef.current) {
+            message.warning('暂无可导出内容');
+            return;
+        }
+
+        try {
+            setExporting(true);
+            const html2canvas = (await import('html2canvas')).default;
+            const target = exportRef.current;
+            const canvas = await html2canvas(target, {
+                scale: 2,
+                useCORS: true,
+                backgroundColor: '#ffffff',
+                width: target.scrollWidth,
+                height: target.scrollHeight,
+                windowWidth: target.scrollWidth,
+                windowHeight: target.scrollHeight,
+                scrollX: 0,
+                scrollY: -window.scrollY,
+            });
+            const dataUrl = canvas.toDataURL('image/png');
+            const now = new Date();
+            const ts = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`;
+            const link = document.createElement('a');
+            link.href = dataUrl;
+            link.download = `library-timeline-${ts}.png`;
+            link.click();
+            message.success('时间线已导出为图片');
+        } catch (error) {
+            console.error(error);
+            message.error('导出失败，请稍后重试');
+        } finally {
+            setExporting(false);
+        }
+    };
 
     // 获取日志类型图标
     const getLogIcon = (entry: TimelineEntry) => {
@@ -85,6 +235,9 @@ export default function LibraryTimeline({visible, items, onClose, onItemClick}: 
         }
         if (entry.logType === LibraryLogType.note) {
             return <CalendarOutlined style={{color: '#1890ff'}}/>;
+        }
+        if (entry.logType === LibraryLogType.addToLibrary) {
+            return <PlusCircleFilled style={{color: '#722ed1'}}/>;
         }
         // 状态变更图标
         switch (entry.status) {
@@ -110,6 +263,9 @@ export default function LibraryTimeline({visible, items, onClose, onItemClick}: 
         }
         if (entry.logType === LibraryLogType.note) {
             return '#1890ff';
+        }
+        if (entry.logType === LibraryLogType.addToLibrary) {
+            return '#722ed1';
         }
         if (entry.status !== undefined) {
             return LibraryStatusColors[entry.status];
@@ -240,9 +396,20 @@ export default function LibraryTimeline({visible, items, onClose, onItemClick}: 
                         <CalendarOutlined/>
                         <span>时间线</span>
                     </Space>
-                    <Text type="secondary" style={{fontSize: 12}}>
-                        共 {displayEntries.length} 条记录
-                    </Text>
+                    <Space>
+                        <Text type="secondary" style={{fontSize: 12}}>
+                            共 {displayEntries.length} 条记录
+                        </Text>
+                        <Button
+                            type="text"
+                            size="small"
+                            icon={<DownloadOutlined/>}
+                            loading={exporting}
+                            onClick={handleExportImage}
+                        >
+                            导出图片
+                        </Button>
+                    </Space>
                 </Flex>
             }
             placement="right"
@@ -250,44 +417,99 @@ export default function LibraryTimeline({visible, items, onClose, onItemClick}: 
             onClose={onClose}
             open={visible}
         >
-            {/* 年份筛选 */}
-            <Flex justify="space-between" align="center" style={{marginBottom: 16}}>
-                <Select
-                    value={selectedYear}
-                    onChange={setSelectedYear}
-                    style={{width: 120}}
-                    options={[
-                        {value: 'all', label: '全部年份'},
-                        ...years.map(year => ({value: year, label: `${year}年`})),
-                    ]}
-                />
-                
-                {/* 统计信息 */}
-                <Space size={8}>
-                    {[
-                        LibraryItemStatus.DOING,
-                        LibraryItemStatus.DONE,
-                        LibraryItemStatus.WAIT,
-                    ].map(status => {
-                        const count = displayEntries.filter(
-                            e => e.logType === LibraryLogType.changeStatus && e.status === status
-                        ).length;
-                        if (count === 0) return null;
-                        return (
-                            <Tag
-                                key={status}
-                                color={LibraryStatusColors[status]}
-                                style={{margin: 0}}
-                            >
-                                {getLogTypeText(LibraryLogType.changeStatus, status)} {count}
-                            </Tag>
-                        );
-                    })}
+            <div ref={exportRef}>
+                <Space direction="vertical" size={10} style={{width: '100%', marginBottom: 14}}>
+                    <Flex gap={8} wrap="wrap" align="center">
+                        <Select
+                            value={selectedYear}
+                            onChange={setSelectedYear}
+                            style={{width: 120}}
+                            options={[
+                                {value: 'all', label: '全部年份'},
+                                ...years.map(year => ({value: year, label: `${year}年`})),
+                            ]}
+                        />
+
+                        <Checkbox
+                            checked={allCategoryChecked}
+                            indeterminate={categoryIndeterminate}
+                            onChange={(event) => {
+                                if (event.target.checked) {
+                                    setSelectedCategories([...categoryOptions]);
+                                } else {
+                                    setSelectedCategories([]);
+                                }
+                            }}
+                        >
+                            分类全选
+                        </Checkbox>
+
+                        <Checkbox
+                            checked={allStatusChecked}
+                            indeterminate={statusIndeterminate}
+                            onChange={(event) => {
+                                if (event.target.checked) {
+                                    setSelectedStatuses([...allStatusValues]);
+                                } else {
+                                    setSelectedStatuses([]);
+                                }
+                            }}
+                        >
+                            状态全选
+                        </Checkbox>
+                    </Flex>
+
+                    <Checkbox.Group
+                        value={selectedCategoriesFinal}
+                        onChange={(values) => setSelectedCategories(values as string[])}
+                    >
+                        <Flex gap={8} wrap="wrap">
+                            {categoryOptions.map((value) => (
+                                <Checkbox key={value} value={value}>
+                                    {getCategoryLabel(value)}
+                                </Checkbox>
+                            ))}
+                        </Flex>
+                    </Checkbox.Group>
+
+                    <Checkbox.Group
+                        value={selectedStatuses}
+                        onChange={(values) => setSelectedStatuses(values as TimelineStatusOption[])}
+                    >
+                        <Flex gap={8} wrap="wrap">
+                            {statusOptions.map((option) => (
+                                <Checkbox key={String(option.value)} value={option.value}>
+                                    {option.label}
+                                </Checkbox>
+                            ))}
+                        </Flex>
+                    </Checkbox.Group>
+
+                    <Space size={8}>
+                        {[
+                            LibraryItemStatus.DOING,
+                            LibraryItemStatus.DONE,
+                            LibraryItemStatus.WAIT,
+                        ].map(status => {
+                            const count = displayEntries.filter(
+                                e => e.logType === LibraryLogType.changeStatus && e.status === status
+                            ).length;
+                            if (count === 0) return null;
+                            return (
+                                <Tag
+                                    key={status}
+                                    color={LibraryStatusColors[status]}
+                                    style={{margin: 0}}
+                                >
+                                    {getLogTypeText(LibraryLogType.changeStatus, status)} {count}
+                                </Tag>
+                            );
+                        })}
+                    </Space>
                 </Space>
-            </Flex>
-            
-            {/* 时间线内容 */}
-            {renderGroupedTimeline()}
+
+                {renderGroupedTimeline()}
+            </div>
         </Drawer>
     );
 }

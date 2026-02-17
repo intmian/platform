@@ -236,55 +236,54 @@
 /* 底部信息条 */
 .library-card-footer {
     display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
+    flex-direction: column;
     padding: 8px 10px;
     background: #fff;
     border-top: 1px solid #f0f0f0;
-    min-height: 20px;
+    /* min-height: 36px; */
 }
 
-.library-card-footer-left {
-    flex: 1;
+.library-card-title-row {
+    width: 100%;
     min-width: 0;
-    margin-right: 8px;
+    height: 18px;
+    display: flex;
+    align-items: center;
 }
 
-.library-card-name {
+.library-card-title-window {
+    width: 100%;
+    overflow: hidden;
+    white-space: nowrap;
+}
+
+.library-card-title-content {
     color: #333;
     font-size: 12px;
     font-weight: 500;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    display: block;
+    display: inline-block;
+    will-change: transform;
 }
 
-.library-card-meta {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-    margin-top: 4px;
-}
-
-.library-card-meta-item {
-    font-size: 10px;
-    color: #999;
-    white-space: nowrap;
-}
-
-.library-card-status {
-    flex-shrink: 0;
+.library-card-status-overlay {
+    position: absolute;
+    right: 8px;
+    bottom: 8px;
     margin: 0 !important;
-    font-size: 12px;
+    padding: 1px 8px;
+    font-size: 11px;
+    font-weight: 500;
+    border: none;
     cursor: pointer;
+    z-index: 2;
+    border-radius: 6px;
+    line-height: 18px;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
     transition: opacity 0.2s;
-    min-height: 22px;
-    line-height: 20px;
 }
 
-.library-card-status:hover {
-    opacity: 0.8;
+.library-card-status-overlay:hover {
+    opacity: 0.88;
 }
 
 /* 响应式调整 */
@@ -296,16 +295,18 @@
     
     .library-card-footer {
         padding: 7px 8px;
-        /* min-height: 38px; */
+        /* min-height: 34px; */
     }
     
-    .library-card-name {
+    .library-card-title-content {
         font-size: 12px;
     }
     
-    .library-card-status {
+    .library-card-status-overlay {
         font-size: 11px;
-        padding: 0 6px;
+        right: 7px;
+        bottom: 7px;
+        padding: 0 7px;
     }
     
     .library-card-placeholder-text {

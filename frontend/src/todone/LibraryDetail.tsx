@@ -469,6 +469,14 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
                     </Space>
                 );
                 break;
+            case LibraryLogType.addToLibrary:
+                color = '#722ed1';
+                content = (
+                    <Space direction="vertical" size={0}>
+                        <Text strong>添加到库</Text>
+                    </Space>
+                );
+                break;
             case LibraryLogType.score:
                 color = '#faad14';
                 const isComplexScore = localItem?.extra.scoreMode === 'complex';

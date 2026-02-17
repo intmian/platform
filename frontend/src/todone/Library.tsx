@@ -1,4 +1,4 @@
-import React, {useCallback, useEffect, useMemo, useState} from 'react';
+import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import {
     Button,
     Checkbox,
@@ -87,6 +87,120 @@ const DEFAULT_SUBGROUP_NAME = '_library_items_';
 interface LibraryProps {
     addr: Addr | null;
     groupTitle: string;
+}
+
+function getStatusTextColor(bg: string): string {
+    const hex = bg.replace('#', '').trim();
+    if (hex.length !== 6) {
+        return '#ffffff';
+    }
+    const r = Number.parseInt(hex.slice(0, 2), 16);
+    const g = Number.parseInt(hex.slice(2, 4), 16);
+    const b = Number.parseInt(hex.slice(4, 6), 16);
+    if (Number.isNaN(r) || Number.isNaN(g) || Number.isNaN(b)) {
+        return '#ffffff';
+    }
+    const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+    return brightness >= 160 ? '#1f1f1f' : '#ffffff';
+}
+
+function AutoScrollTitle({text}: {text: string}) {
+    const containerRef = useRef<HTMLDivElement>(null);
+    const contentRef = useRef<HTMLSpanElement>(null);
+    const [overflowDistance, setOverflowDistance] = useState(0);
+
+    useEffect(() => {
+        const measure = () => {
+            const container = containerRef.current;
+            const content = contentRef.current;
+            if (!container || !content) {
+                setOverflowDistance(0);
+                return;
+            }
+
+            const distance = Math.max(0, Math.ceil(content.scrollWidth - container.clientWidth));
+            setOverflowDistance(distance);
+        };
+
+        measure();
+        const observer = new ResizeObserver(() => measure());
+        if (containerRef.current) {
+            observer.observe(containerRef.current);
+        }
+        if (contentRef.current) {
+            observer.observe(contentRef.current);
+        }
+        return () => observer.disconnect();
+    }, [text]);
+
+    useEffect(() => {
+        const content = contentRef.current;
+        if (!content || overflowDistance <= 0) {
+            if (content) {
+                content.style.transform = 'translateX(0px)';
+            }
+            return;
+        }
+
+        const pauseMs = 1000;
+        const speedPxPerSecond = 30;
+        let rafId = 0;
+        let phase: 'pause' | 'scroll' = 'pause';
+        let elapsedInPhase = 0;
+        let offset = 0;
+        let lastTs = 0;
+
+        const tick = (ts: number) => {
+            if (!contentRef.current) {
+                return;
+            }
+
+            if (!lastTs) {
+                lastTs = ts;
+            }
+            const dt = ts - lastTs;
+            lastTs = ts;
+
+            if (phase === 'pause') {
+                elapsedInPhase += dt;
+                if (elapsedInPhase >= pauseMs) {
+                    phase = 'scroll';
+                    elapsedInPhase = 0;
+                }
+            } else {
+                const delta = (dt / 1000) * speedPxPerSecond;
+                offset = Math.max(-overflowDistance, offset - delta);
+                contentRef.current.style.transform = `translateX(${offset}px)`;
+
+                if (offset <= -overflowDistance) {
+                    offset = 0;
+                    contentRef.current.style.transform = 'translateX(0px)';
+                    phase = 'pause';
+                    elapsedInPhase = 0;
+                }
+            }
+
+            rafId = window.requestAnimationFrame(tick);
+        };
+
+        content.style.transform = 'translateX(0px)';
+        rafId = window.requestAnimationFrame(tick);
+
+        return () => {
+            window.cancelAnimationFrame(rafId);
+        };
+    }, [overflowDistance]);
+
+    return (
+        <div ref={containerRef} className="library-card-title-window">
+            <span
+                ref={contentRef}
+                className={`library-card-title-content${overflowDistance > 0 ? ' is-scrolling' : ''}`}
+            >
+                {text}
+            </span>
+        </div>
+    );
 }
 
 export default function Library({addr, groupTitle}: LibraryProps) {
@@ -594,27 +708,6 @@ export default function Library({addr, groupTitle}: LibraryProps) {
         return items;
     };
 
-    // 格式化日期显示
-    const formatDate = (dateStr: string) => {
-        if (!dateStr) return '';
-        const date = new Date(dateStr);
-        return `${date.getMonth() + 1}/${date.getDate()}`;
-    };
-
-    const formatDateTime = (dateStr: string) => {
-        if (!dateStr) return '-';
-        const date = new Date(dateStr);
-        return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')} ${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
-    };
-
-    // 获取开始时间（第一个周目的开始时间）
-    const getStartTime = (extra: LibraryItemFull['extra']) => {
-        if (extra.rounds && extra.rounds.length > 0) {
-            return extra.rounds[0].startTime;
-        }
-        return extra.createdAt;
-    };
-
     // 卡片渲染
     const renderCard = (item: LibraryItemFull) => {
         const mainScore = getMainScore(item.extra);
@@ -626,6 +719,7 @@ export default function Library({addr, groupTitle}: LibraryProps) {
         const showRoundTag = currentRoundName && currentRoundName !== '首周目';
         const showScoreBadge = displayOptions.showScore && !!mainScore;
         const scoreStarColor = getScoreStarColor(mainScore?.score || 0);
+        const statusTextColor = getStatusTextColor(displayStatus.color);
         
         return (
             <div
@@ -697,38 +791,27 @@ export default function Library({addr, groupTitle}: LibraryProps) {
                             ) : null}
                         </div>
                     ) : null}
-                </div>
-                
-                {/* 底部信息条 */}
-                <div className="library-card-footer">
-                    <div className="library-card-footer-left">
-                        <span className="library-card-name">{item.title}</span>
-                        {/* 额外信息行 */}
-                        <div className="library-card-meta">
-                            {displayOptions.showAuthor && item.extra.author && (
-                                <span className="library-card-meta-item">{item.extra.author}</span>
-                            )}
-                            {displayOptions.showStartTime && (
-                                <span className="library-card-meta-item">开始: {formatDate(getStartTime(item.extra))}</span>
-                            )}
-                            {displayOptions.showUpdateTime && (
-                                <span className="library-card-meta-item">更新: {formatDate(item.extra.updatedAt)}</span>
-                            )}
-                        </div>
-                    </div>
+
                     <Dropdown
                         menu={{items: getStatusMenuItems(item)}}
                         trigger={['click']}
                         placement="topRight"
                     >
                         <Tag
-                            color={displayStatus.color}
-                            className="library-card-status"
+                            className="library-card-status-overlay"
+                            style={{backgroundColor: displayStatus.color, color: statusTextColor}}
                             onClick={(e) => e.stopPropagation()}
                         >
                             {displayStatus.name}
                         </Tag>
                     </Dropdown>
+                </div>
+                
+                {/* 底部信息条 */}
+                <div className="library-card-footer">
+                    <div className="library-card-title-row">
+                        <AutoScrollTitle text={item.title}/>
+                    </div>
                 </div>
             </div>
         );

@@ -74,6 +74,7 @@ export enum LibraryLogType {
     score = 1, // 评分
     note = 2, // 备注
     timelineCutoff = 3, // 时间线截断（此前历史不进入总时间线）
+    addToLibrary = 4, // 添加到库（独立事件）
 }
 
 export interface LibraryLog {
