@@ -83,7 +83,7 @@ export default function LibraryScorePopover({extra, mainScoreOverride}: LibraryS
                     <Divider style={{margin: '8px 0'}} />
                     <Row label="客观好坏" value={scoreDataToText(SEQ_OBJ, extra.objScore)} comment={extra.objScore?.comment} />
                     <Row label="主观感受" value={scoreDataToText(SEQ_SUB, extra.subScore)} comment={extra.subScore?.comment} />
-                    <Row label="玩法创新" value={scoreDataToText(SEQ_INNO, extra.innovateScore)} comment={extra.innovateScore?.comment} />
+                    <Row label="艺术创新" value={scoreDataToText(SEQ_INNO, extra.innovateScore)} comment={extra.innovateScore?.comment} />
                     {extra.comment?.trim() ? (
                         <>
                             <Divider style={{margin: '8px 0'}} />

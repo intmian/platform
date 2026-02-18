@@ -200,7 +200,7 @@ const OutPutCard: React.FC<OutPutCardProps> = ({data, editable = true, onChange}
 
                 {/* 第四栏：创新 */}
                 {renderScoreCard(
-                    "玩法创新",
+                    "艺术创新",
                     SEQ_INNO,
                     initInno,
                     local.innovateScore?.comment || "",

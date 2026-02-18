@@ -1259,7 +1259,7 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
 
                                 <div>
                                     <Flex justify="space-between" align="center">
-                                        <Text>玩法创新：</Text>
+                                        <Text>艺术创新：</Text>
                                         <Switch
                                             size="small"
                                             checked={editingEnableInnovateScore}
@@ -1546,7 +1546,7 @@ function AddScoreModal({visible, onOk, onCancel, initialMode = 'simple'}: AddSco
                         </div>
                         <div>
                             <Flex justify="space-between" align="center">
-                                <Text>玩法创新：</Text>
+                                <Text>艺术创新：</Text>
                                 <Switch size="small" checked={enableInnovateScore} onChange={setEnableInnovateScore} checkedChildren="启用" unCheckedChildren="关闭"/>
                             </Flex>
                             {enableInnovateScore ? (
