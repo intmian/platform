@@ -85,7 +85,9 @@ const TextRate: React.FC<TextRateProps> = ({
         return sequence[index];
     };
 
-    const gap = fontSize2 / 2
+    const gap = editable
+        ? Math.max(3, Math.round(fontSize2 / 2))
+        : Math.max(2, Math.round(fontSize2 * 0.35));
 
     return (
         <div
@@ -119,8 +121,9 @@ const TextRate: React.FC<TextRateProps> = ({
                             justifyContent: "center",
                             alignItems: "center",
                             whiteSpace: "nowrap",
-                            width: itemWidthPx,
+                            width: editable ? itemWidthPx : 'auto',
                             flex: "0 0 auto",
+                            lineHeight: 1.15,
                         }}
                     >
                         {displayText}

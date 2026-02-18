@@ -1029,15 +1029,15 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
                             )}
                             <Descriptions.Item label="主评分">
                                 {mainScoreEntry ? (
-                                    <Space>
-                                        <StarFilled style={{color: getScoreStarColor(mainScoreEntry.score || 0)}}/>
-                                        <Text strong>
-                                            {getScoreText(mainScoreEntry.score || 0, mainScoreEntry.scorePlus, mainScoreEntry.scoreSub)}
-                                        </Text>
-                                        <Text type="secondary">
-                                            ({getScoreDisplay(mainScoreEntry.score || 0, mainScoreEntry.scorePlus, mainScoreEntry.scoreSub)})
-                                        </Text>
-                                    </Space>
+                                    <div style={{display: 'inline-flex', alignItems: 'center'}}>
+                                        <TextRate
+                                            sequence={SCORE_SEQ}
+                                            editable={false}
+                                            initialValue={getScoreText(mainScoreEntry.score || 0, mainScoreEntry.scorePlus, mainScoreEntry.scoreSub)}
+                                            fontSize={20}
+                                            fontSize2={13}
+                                        />
+                                    </div>
                                 ) : (
                                     <Text type="secondary">暂无评分</Text>
                                 )}
@@ -1575,7 +1575,7 @@ function AddScoreModal({visible, onOk, onCancel, initialMode = 'simple'}: AddSco
                 )}
                 
                 <div>
-                    <Text>{mode === 'complex' ? '总评（可选，用于分享）：' : '评价（可选）：'}</Text>
+                    <Text>{mode === 'complex' ? '总评（可选）：' : '评价（可选）：'}</Text>
                     <TextArea
                         rows={3}
                         placeholder="请输入评价内容..."
