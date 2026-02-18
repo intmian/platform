@@ -181,7 +181,7 @@ const LibraryShareCard: React.FC<LibraryShareCardProps> = ({title, extra, editab
                     <div
                         style={{
                             width: isMobile ? 88 : 108,
-                            aspectRatio: '3 / 4',
+                            aspectRatio: '2 / 3',
                             marginLeft: 'auto',
                             borderRadius: 8,
                             border: '1px solid #d9d9d9',
@@ -198,6 +198,7 @@ const LibraryShareCard: React.FC<LibraryShareCardProps> = ({title, extra, editab
                                     width: '100%',
                                     height: '100%',
                                     objectFit: 'cover',
+                                    objectPosition: 'center',
                                 }}
                                 onError={(e) => {
                                     (e.target as HTMLImageElement).style.display = 'none';

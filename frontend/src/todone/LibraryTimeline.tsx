@@ -377,8 +377,8 @@ export default function LibraryTimeline({visible, items, onClose, onItemClick}: 
                         <img
                             src={finalCoverUrl}
                             width={isMobile ? 42 : 48}
-                            height={isMobile ? 56 : 64}
-                            style={{borderRadius: 4, objectFit: 'cover'}}
+                            height={isMobile ? 63 : 72}
+                            style={{borderRadius: 4, objectFit: 'cover', objectPosition: 'center'}}
                             onError={(e) => {
                                 const target = e.currentTarget;
                                 if (target.src !== fallbackCoverUrl) {

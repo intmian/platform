@@ -520,7 +520,7 @@ const LIBRARY_COVER_COLOR_SCHEMES: Array<{bg: string; text: string}> = [
 
 export const LIBRARY_COVER_TEXT_CONFIG = {
     x: 300,
-    centerY: 400,
+    centerY: 450,
     lineHeight: 100,
     fontSize: 90,
     fontWeight: 700,
@@ -581,7 +581,7 @@ export function buildLibraryTitleCoverDataUrl(title: string): string {
         .map((line, index) => `<text x="${x}" y="${firstLineY + (index * lineHeight)}" text-anchor="middle" dominant-baseline="middle" fill="${palette.text}" font-size="${fontSize}" font-weight="${fontWeight}" font-family="PingFang SC, Microsoft YaHei, sans-serif">${escapeXml(line)}</text>`)
         .join('');
 
-    const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 800"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="${palette.bg}"/><stop offset="100%" stop-color="#ffffff"/></linearGradient></defs><rect width="600" height="800" fill="url(#g)"/>${textSvg}</svg>`;
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 900"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="${palette.bg}"/><stop offset="100%" stop-color="#ffffff"/></linearGradient></defs><rect width="600" height="900" fill="url(#g)"/>${textSvg}</svg>`;
     return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
 }
 

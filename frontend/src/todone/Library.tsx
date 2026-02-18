@@ -293,13 +293,13 @@ export default function Library({addr, groupTitle}: LibraryProps) {
     const {uploading: addCoverUploading, checkClipboard: checkAddCoverClipboard} = useImageUpload(
         (fileShow) => {
             setAddCoverUrl(fileShow.publishUrl);
-            message.success('封面已上传并裁剪为 3:4');
+            message.success('封面已上传并裁剪为 2:3');
         },
         undefined,
         {
             beforeUpload: async (file) => {
                 try {
-                    return await cropImageToAspectRatio(file, 3, 4);
+                    return await cropImageToAspectRatio(file, 2, 3);
                 } catch (error) {
                     console.error(error);
                     message.error('图片裁剪失败');

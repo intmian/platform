@@ -140,13 +140,13 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
                     },
                 };
             });
-            message.success('封面已上传并裁剪为 3:4');
+            message.success('封面已上传并裁剪为 2:3');
         },
         undefined,
         {
             beforeUpload: async (file) => {
                 try {
-                    return await cropImageToAspectRatio(file, 3, 4);
+                    return await cropImageToAspectRatio(file, 2, 3);
                 } catch (error) {
                     console.error(error);
                     message.error('图片裁剪失败');
@@ -802,7 +802,7 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
                             style={{
                                 position: 'relative',
                                 width: '100%',
-                                paddingTop: '133.333%',
+                                paddingTop: '150%',
                                 borderRadius: 8,
                                 overflow: 'hidden',
                                 background: '#f5f5f5',
@@ -818,6 +818,7 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
                                     width: '100%',
                                     height: '100%',
                                     objectFit: 'cover',
+                                    objectPosition: 'center',
                                 }}
                                 onError={(e) => {
                                     (e.target as HTMLImageElement).style.display = 'none';
@@ -827,7 +828,7 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
                     ) : (
                         <div style={{
                             width: '100%',
-                            paddingTop: '133.333%',
+                            paddingTop: '150%',
                             background: '#f5f5f5',
                             borderRadius: 8,
                             position: 'relative',

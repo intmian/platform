@@ -1,7 +1,7 @@
 export async function cropImageToAspectRatio(
     file: File,
-    aspectWidth: number = 3,
-    aspectHeight: number = 4,
+    aspectWidth: number = 2,
+    aspectHeight: number = 3,
     quality: number = 0.92
 ): Promise<File | null> {
     const imageUrl = URL.createObjectURL(file);
@@ -39,7 +39,7 @@ export async function cropImageToAspectRatio(
             return file;
         }
 
-        const nextName = normalizeFileName(file.name, mimeType);
+        const nextName = normalizeFileName(file.name, mimeType, aspectWidth, aspectHeight);
         return new File([blob], nextName, {type: mimeType});
     } finally {
         URL.revokeObjectURL(imageUrl);
@@ -61,7 +61,7 @@ function canvasToBlob(canvas: HTMLCanvasElement, type: string, quality: number):
     });
 }
 
-function normalizeFileName(originalName: string, mimeType: string): string {
+function normalizeFileName(originalName: string, mimeType: string, aspectWidth: number, aspectHeight: number): string {
     const extMap: Record<string, string> = {
         'image/jpeg': 'jpg',
         'image/png': 'png',
@@ -69,7 +69,7 @@ function normalizeFileName(originalName: string, mimeType: string): string {
     };
     const targetExt = extMap[mimeType] || 'jpg';
     const baseName = originalName.replace(/\.[^.]+$/, '') || 'image';
-    return `${baseName}_3x4.${targetExt}`;
+    return `${baseName}_${aspectWidth}x${aspectHeight}.${targetExt}`;
 }
 
 interface CropModalResult {
@@ -118,7 +118,7 @@ function openInteractiveCropModal(
         panel.style.boxSizing = 'border-box';
 
         const title = document.createElement('div');
-        title.textContent = '裁剪封面（3:4）';
+        title.textContent = `裁剪封面（${aspectWidth}:${aspectHeight}）`;
         title.style.fontSize = '16px';
         title.style.fontWeight = '600';
         title.style.marginBottom = '12px';
