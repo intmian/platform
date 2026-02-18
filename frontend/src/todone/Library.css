@@ -8,8 +8,8 @@
 /* 照片墙网格 */
 .library-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(0, 140px));
-    gap: 14px;
+    grid-template-columns: repeat(auto-fill, minmax(0, 156px));
+    gap: 16px;
     justify-content: flex-start;
 }
 
@@ -390,6 +390,10 @@
     box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
     transition: opacity 0.2s;
     z-index: 4;
+    max-width: calc(100% - 16px);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .library-container .library-card-status-overlay:hover {

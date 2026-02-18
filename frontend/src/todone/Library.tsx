@@ -62,12 +62,14 @@ import {
     LIBRARY_CARD_HOVER_EFFECT_CONFIG,
     isWaitExpired,
     LIBRARY_WAIT_EXPIRED_FILTER,
+    LIBRARY_WAIT_EXPIRED_RULE_TEXT,
     getMainScore,
     getLibraryCoverPaletteByTitle,
     getScoreStarColor,
     getScoreText,
     parseLibraryFromTask,
     serializeLibraryExtra,
+    startNewRound,
 } from './libraryUtil';
 import {useIsMobile} from '../common/hooksv2';
 import LibraryDetail from './LibraryDetail';
@@ -229,10 +231,14 @@ export default function Library({addr, groupTitle}: LibraryProps) {
     const [sortBy, setSortBy] = useState<SortOption>('updatedAt');
     const [searchText, setSearchText] = useState('');
 
-    // 列表状态切换（等待需输入原因）
-    const [showTodoReasonModal, setShowTodoReasonModal] = useState(false);
-    const [todoReasonInput, setTodoReasonInput] = useState('');
-    const [pendingTodoItem, setPendingTodoItem] = useState<LibraryItemFull | null>(null);
+    // 列表状态切换（等待/搁置可输入原因）
+    const [showStatusReasonModal, setShowStatusReasonModal] = useState(false);
+    const [statusReasonInput, setStatusReasonInput] = useState('');
+    const [pendingStatusItem, setPendingStatusItem] = useState<LibraryItemFull | null>(null);
+    const [pendingStatus, setPendingStatus] = useState<LibraryItemStatus | null>(null);
+    const [showNewRoundModal, setShowNewRoundModal] = useState(false);
+    const [newRoundNameInput, setNewRoundNameInput] = useState('');
+    const [pendingNewRoundItem, setPendingNewRoundItem] = useState<LibraryItemFull | null>(null);
     
     // 详情弹窗
     const [detailItem, setDetailItem] = useState<LibraryItemFull | null>(null);
@@ -274,6 +280,9 @@ export default function Library({addr, groupTitle}: LibraryProps) {
     // 时间线视图
     const [showTimeline, setShowTimeline] = useState(false);
     const [scoreModalItem, setScoreModalItem] = useState<LibraryItemFull | null>(null);
+    const [cardMenuVisible, setCardMenuVisible] = useState(false);
+    const [cardMenuPosition, setCardMenuPosition] = useState<{x: number; y: number} | null>(null);
+    const [cardMenuItem, setCardMenuItem] = useState<LibraryItemFull | null>(null);
     
     // 显示选项
     const [showDisplayOptions, setShowDisplayOptions] = useState(false);
@@ -284,6 +293,14 @@ export default function Library({addr, groupTitle}: LibraryProps) {
         showStartTime: false,   // 显示开始时间
         showAuthor: false,      // 显示作者
     });
+    const [waitExpiredTick, setWaitExpiredTick] = useState(0);
+
+    useEffect(() => {
+        const timer = window.setInterval(() => {
+            setWaitExpiredTick((prev) => prev + 1);
+        }, 60 * 1000);
+        return () => window.clearInterval(timer);
+    }, []);
 
     // 加载 Tasks
     const loadTasks = useCallback((subGroupId: number) => {
@@ -468,7 +485,7 @@ export default function Library({addr, groupTitle}: LibraryProps) {
         });
         
         return result;
-    }, [allItems, selectedCategory, statusFilter, todoReasonFilter, searchText, sortBy]);
+    }, [allItems, selectedCategory, statusFilter, todoReasonFilter, searchText, sortBy, waitExpiredTick]);
 
     // 保存 item 变更
     const handleSaveItem = useCallback((item: LibraryItemFull) => {
@@ -495,6 +512,8 @@ export default function Library({addr, groupTitle}: LibraryProps) {
         sendChangeTask(req, (ret) => {
             if (ret.ok) {
                 setTasks(prev => prev.map(t => t.ID === item.taskId ? updatedTask : t));
+                const savedItem = parseLibraryFromTask(updatedTask);
+                setDetailItem(prev => prev && prev.taskId === item.taskId ? savedItem : prev);
                 message.success('保存成功');
             } else {
                 message.error('保存失败');
@@ -503,10 +522,11 @@ export default function Library({addr, groupTitle}: LibraryProps) {
     }, [addr, mainSubGroup, tasks]);
 
     const handleQuickStatusChange = useCallback((item: LibraryItemFull, status?: LibraryItemStatus) => {
-        if (status === LibraryItemStatus.TODO) {
-            setPendingTodoItem(item);
-            setTodoReasonInput(item.extra.todoReason || '');
-            setShowTodoReasonModal(true);
+        if (status === LibraryItemStatus.TODO || status === LibraryItemStatus.WAIT) {
+            setPendingStatusItem(item);
+            setPendingStatus(status);
+            setStatusReasonInput(status === LibraryItemStatus.TODO ? (item.extra.todoReason || '') : (item.extra.waitReason || ''));
+            setShowStatusReasonModal(true);
             return;
         }
         if (item.extra.status === status) {
@@ -517,20 +537,132 @@ export default function Library({addr, groupTitle}: LibraryProps) {
         handleSaveItem(newItem);
     }, [handleSaveItem]);
 
-    const handleConfirmTodoReason = useCallback(() => {
-        if (!pendingTodoItem) return;
-        const reason = todoReasonInput.trim();
-        if (!reason) {
+    const handleConfirmStatusReason = useCallback(() => {
+        if (!pendingStatusItem || pendingStatus === null) return;
+        const reason = statusReasonInput.trim();
+        if (pendingStatus === LibraryItemStatus.TODO && !reason) {
             message.warning('请输入等待原因');
             return;
         }
-        const newExtra = addStatusLog({...pendingTodoItem.extra}, LibraryItemStatus.TODO, reason);
-        const newItem = {...pendingTodoItem, extra: newExtra};
+        const newExtra = addStatusLog({...pendingStatusItem.extra}, pendingStatus, reason);
+        const newItem = {...pendingStatusItem, extra: newExtra};
         handleSaveItem(newItem);
-        setShowTodoReasonModal(false);
-        setPendingTodoItem(null);
-        setTodoReasonInput('');
-    }, [pendingTodoItem, todoReasonInput, handleSaveItem]);
+        setShowStatusReasonModal(false);
+        setPendingStatusItem(null);
+        setPendingStatus(null);
+        setStatusReasonInput('');
+    }, [pendingStatusItem, pendingStatus, statusReasonInput, handleSaveItem]);
+
+    const handleQuickStartNewRound = useCallback((item: LibraryItemFull, roundName: string) => {
+        const finalRoundName = roundName.trim();
+        if (!finalRoundName) {
+            message.warning('请输入周目名称');
+            return false;
+        }
+        const newExtra = startNewRound({...item.extra}, finalRoundName);
+        const newItem = {...item, extra: newExtra};
+        handleSaveItem(newItem);
+        message.success(`已开始${finalRoundName}`);
+        return true;
+    }, [handleSaveItem]);
+
+    const openQuickNewRoundModal = useCallback((item: LibraryItemFull) => {
+        const nextRoundName = `第${item.extra.rounds.length + 1}周目`;
+        setPendingNewRoundItem(item);
+        setNewRoundNameInput(nextRoundName);
+        setShowNewRoundModal(true);
+    }, []);
+
+    const handleConfirmQuickNewRound = useCallback(() => {
+        if (!pendingNewRoundItem) {
+            return;
+        }
+        const ok = handleQuickStartNewRound(pendingNewRoundItem, newRoundNameInput);
+        if (!ok) {
+            return;
+        }
+        setShowNewRoundModal(false);
+        setPendingNewRoundItem(null);
+        setNewRoundNameInput('');
+    }, [handleQuickStartNewRound, newRoundNameInput, pendingNewRoundItem]);
+
+    const handleCardContextMenu = useCallback((e: React.MouseEvent, item: LibraryItemFull) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setCardMenuItem(item);
+        setCardMenuPosition({x: e.clientX, y: e.clientY});
+        setCardMenuVisible(true);
+    }, []);
+
+    const handleCardMenuClick = ({key}: {key: string}) => {
+        const item = cardMenuItem;
+        if (!item) return;
+
+        if (key.startsWith('status:')) {
+            const value = key.slice('status:'.length);
+            if (value === 'none') {
+                handleQuickStatusChange(item, undefined);
+            } else {
+                handleQuickStatusChange(item, Number(value) as LibraryItemStatus);
+            }
+            setCardMenuVisible(false);
+            return;
+        }
+
+        if (key === 'new-round') {
+            openQuickNewRoundModal(item);
+            setCardMenuVisible(false);
+            return;
+        }
+
+        if (key === 'category-manager') {
+            setShowCategoryManager(true);
+            setCardMenuVisible(false);
+            return;
+        }
+
+        if (key === 'delete') {
+            Modal.confirm({
+                title: '确认删除',
+                content: `确认要删除《${item.title}》吗？此操作不可恢复。`,
+                okText: '删除',
+                okButtonProps: {danger: true},
+                cancelText: '取消',
+                onOk: () => handleDeleteItem(item),
+            });
+            setCardMenuVisible(false);
+        }
+    };
+
+    const getCardContextMenuItems = (item: LibraryItemFull) => {
+        return [
+            {
+                key: 'status',
+                label: '切换状态',
+                children: [
+                    {key: 'status:none', label: '无状态'},
+                    ...Object.entries(LibraryStatusNames).map(([status, name]) => ({
+                        key: `status:${status}`,
+                        label: name,
+                    })),
+                ],
+            },
+            {type: 'divider' as const},
+            {
+                key: 'new-round',
+                label: `开始新周目（第${item.extra.rounds.length + 1}周目）`,
+            },
+            {
+                key: 'category-manager',
+                label: '管理分类',
+            },
+            {type: 'divider' as const},
+            {
+                key: 'delete',
+                label: <span style={{color: '#ff4d4f'}}>删除</span>,
+            },
+        ];
+    };
 
     // 删除条目
     const handleDeleteItem = useCallback((item: LibraryItemFull) => {
@@ -730,6 +862,10 @@ export default function Library({addr, groupTitle}: LibraryProps) {
         const showScoreBadge = displayOptions.showScore && !!mainScore;
         const scoreStarColor = getScoreStarColor(mainScore?.score || 0);
         const statusTextColor = getStatusTextColor(displayStatus.color);
+        const todoReason = (item.extra.todoReason || '').trim();
+        const displayStatusText = item.extra.status === LibraryItemStatus.TODO && todoReason
+            ? `等待:${todoReason}`
+            : displayStatus.name;
         const cardClassName = `library-card ${isPlaceholderCover ? 'is-placeholder' : 'is-real-cover'}`;
         const hoverEffectStyle = {
             '--library-hover-glow-opacity': LIBRARY_CARD_HOVER_EFFECT_CONFIG.realCoverGlowOpacity,
@@ -743,6 +879,7 @@ export default function Library({addr, groupTitle}: LibraryProps) {
                 key={item.taskId}
                 className={cardClassName}
                 style={hoverEffectStyle}
+                onContextMenu={(e) => handleCardContextMenu(e, item)}
                 onClick={() => {
                     setDetailItem(item);
                     setShowDetail(true);
@@ -824,7 +961,7 @@ export default function Library({addr, groupTitle}: LibraryProps) {
                             style={{backgroundColor: displayStatus.color, color: statusTextColor}}
                             onClick={(e) => e.stopPropagation()}
                         >
-                            {displayStatus.name}
+                            {displayStatusText}
                         </Tag>
                     </Dropdown>
                 </div>
@@ -935,7 +1072,7 @@ export default function Library({addr, groupTitle}: LibraryProps) {
                     </Button>
                 </div>
             </Flex>
-            
+
             {/* 筛选栏 */}
             <Flex className="library-filter-bar" wrap="wrap" gap={8} style={{marginBottom: 16}}>
                 <Input
@@ -979,7 +1116,7 @@ export default function Library({addr, groupTitle}: LibraryProps) {
                             value: Number(k),
                             label: v,
                         })),
-                        {value: LIBRARY_WAIT_EXPIRED_FILTER, label: '搁置放弃'},
+                        {value: LIBRARY_WAIT_EXPIRED_FILTER, label: '鸽了'},
                     ]}
                 />
 
@@ -1033,6 +1170,31 @@ export default function Library({addr, groupTitle}: LibraryProps) {
                     </div>
                 )}
             </Spin>
+
+            {cardMenuVisible && cardMenuPosition && cardMenuItem ? (
+                <div
+                    style={{
+                        position: 'fixed',
+                        top: cardMenuPosition.y,
+                        left: cardMenuPosition.x,
+                        zIndex: 1100,
+                    }}
+                    onContextMenu={(e) => e.preventDefault()}
+                    onMouseLeave={() => setCardMenuVisible(false)}
+                >
+                    <Dropdown
+                        menu={{
+                            items: getCardContextMenuItems(cardMenuItem),
+                            onClick: handleCardMenuClick,
+                        }}
+                        open={cardMenuVisible}
+                        trigger={[]}
+                        placement="bottomLeft"
+                    >
+                        <div />
+                    </Dropdown>
+                </div>
+            ) : null}
             
             {/* 添加条目弹窗 */}
             <Modal
@@ -1245,20 +1407,43 @@ export default function Library({addr, groupTitle}: LibraryProps) {
             </Modal>
 
             <Modal
-                title="等待原因（等待二级状态）"
-                open={showTodoReasonModal}
-                onOk={handleConfirmTodoReason}
+                title={pendingStatus === LibraryItemStatus.TODO ? '等待原因（等待二级状态）' : '搁置原因'}
+                open={showStatusReasonModal}
+                onOk={handleConfirmStatusReason}
                 onCancel={() => {
-                    setShowTodoReasonModal(false);
-                    setPendingTodoItem(null);
-                    setTodoReasonInput('');
+                    setShowStatusReasonModal(false);
+                    setPendingStatusItem(null);
+                    setPendingStatus(null);
+                    setStatusReasonInput('');
                 }}
             >
+                {pendingStatus === LibraryItemStatus.WAIT ? (
+                    <div style={{marginBottom: 8, color: '#8c8c8c', fontSize: 12}}>
+                        {LIBRARY_WAIT_EXPIRED_RULE_TEXT}
+                    </div>
+                ) : null}
                 <Input.TextArea
                     rows={3}
-                    placeholder="请输入等待原因/二级状态（例如：等字幕、等朋友、片源问题）"
-                    value={todoReasonInput}
-                    onChange={(e) => setTodoReasonInput(e.target.value)}
+                    placeholder={pendingStatus === LibraryItemStatus.TODO ? '请输入等待原因/二级状态（例如：等字幕、等朋友、片源问题）' : '可选：请输入搁置原因（填写后不会进入“鸽了”）'}
+                    value={statusReasonInput}
+                    onChange={(e) => setStatusReasonInput(e.target.value)}
+                />
+            </Modal>
+
+            <Modal
+                title="开始新周目"
+                open={showNewRoundModal}
+                onOk={handleConfirmQuickNewRound}
+                onCancel={() => {
+                    setShowNewRoundModal(false);
+                    setPendingNewRoundItem(null);
+                    setNewRoundNameInput('');
+                }}
+            >
+                <Input
+                    placeholder="请输入周目名称"
+                    value={newRoundNameInput}
+                    onChange={(e) => setNewRoundNameInput(e.target.value)}
                 />
             </Modal>
             

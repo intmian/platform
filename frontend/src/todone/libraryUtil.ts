@@ -173,12 +173,41 @@ export function addStatusLog(extra: LibraryExtra, newStatus?: LibraryItemStatus,
 }
 
 export const LIBRARY_WAIT_EXPIRED_FILTER = 'wait_expired' as const;
+export const LIBRARY_WAIT_EXPIRED_RULE_TEXT = '规则：搁置超过30天且未填写搁置原因，记为“鸽了”；填写搁置原因则不会进入“鸽了”。';
+
+function getLatestStatusLog(extra: LibraryExtra): LibraryLogEntry | undefined {
+    let latestStatusLog: LibraryLogEntry | undefined;
+    let latestStatusMs = Number.MIN_SAFE_INTEGER;
+
+    extra.rounds.forEach((round) => {
+        round.logs.forEach((log) => {
+            if (log.type !== LibraryLogType.changeStatus) {
+                return;
+            }
+
+            const timeMs = new Date(log.time).getTime();
+            if (Number.isNaN(timeMs)) {
+                return;
+            }
+
+            if (timeMs >= latestStatusMs) {
+                latestStatusMs = timeMs;
+                latestStatusLog = log;
+            }
+        });
+    });
+
+    return latestStatusLog;
+}
 
 export function isWaitExpired(extra: LibraryExtra): boolean {
-    if (extra.status !== LibraryItemStatus.WAIT) return false;
-    const since = extra.waitSince || '';
-    if (!since) return false;
-    const start = new Date(since).getTime();
+    // 规则：仅“搁置超过30天且未填写搁置原因”才视为“鸽了”。
+    // 若填写了搁置原因，则一直保持“搁置”，不会进入“鸽了”。
+    const latestStatusLog = getLatestStatusLog(extra);
+    if (!latestStatusLog || latestStatusLog.status !== LibraryItemStatus.WAIT) return false;
+    const reason = (latestStatusLog.comment || '').trim();
+    if (reason) return false;
+    const start = new Date(latestStatusLog.time).getTime();
     if (Number.isNaN(start)) return false;
     const monthMs = 30 * 24 * 60 * 60 * 1000;
     return (Date.now() - start) >= monthMs;
@@ -187,8 +216,8 @@ export function isWaitExpired(extra: LibraryExtra): boolean {
 export function getDisplayStatusInfo(extra: LibraryExtra): {name: string; color: string; isExpiredWait: boolean} {
     if (isWaitExpired(extra)) {
         return {
-            name: '搁置放弃',
-            color: '#8c8c8c',
+            name: '鸽了',
+            color: LibraryStatusColors[LibraryItemStatus.GIVE_UP],
             isExpiredWait: true,
         };
     }
@@ -313,6 +342,57 @@ export function setMainScore(extra: LibraryExtra, roundIndex: number, logIndex: 
     extra.mainScoreRoundIndex = roundIndex;
     extra.mainScoreLogIndex = logIndex;
     extra.updatedAt = new Date().toISOString();
+    return extra;
+}
+
+export function normalizeMainScoreSelection(extra: LibraryExtra): LibraryExtra {
+    const currentRoundIndex = extra.mainScoreRoundIndex;
+    const currentLogIndex = extra.mainScoreLogIndex;
+
+    if (currentRoundIndex !== undefined && currentLogIndex !== undefined) {
+        const currentRound = extra.rounds[currentRoundIndex];
+        const currentLog = currentRound?.logs[currentLogIndex];
+        if (currentLog?.type === LibraryLogType.score) {
+            return extra;
+        }
+    }
+
+    let latestRoundIndex: number | undefined;
+    let latestLogIndex: number | undefined;
+    let latestTimeMs = Number.MIN_SAFE_INTEGER;
+
+    extra.rounds.forEach((round, roundIndex) => {
+        round.logs.forEach((log, logIndex) => {
+            if (log.type !== LibraryLogType.score) {
+                return;
+            }
+
+            const timeMs = new Date(log.time).getTime();
+            const safeTimeMs = Number.isNaN(timeMs) ? Number.MIN_SAFE_INTEGER : timeMs;
+            if (
+                latestRoundIndex === undefined ||
+                latestLogIndex === undefined ||
+                safeTimeMs > latestTimeMs ||
+                (safeTimeMs === latestTimeMs && (
+                    roundIndex > latestRoundIndex ||
+                    (roundIndex === latestRoundIndex && logIndex > latestLogIndex)
+                ))
+            ) {
+                latestRoundIndex = roundIndex;
+                latestLogIndex = logIndex;
+                latestTimeMs = safeTimeMs;
+            }
+        });
+    });
+
+    if (latestRoundIndex === undefined || latestLogIndex === undefined) {
+        delete extra.mainScoreRoundIndex;
+        delete extra.mainScoreLogIndex;
+        return extra;
+    }
+
+    extra.mainScoreRoundIndex = latestRoundIndex;
+    extra.mainScoreLogIndex = latestLogIndex;
     return extra;
 }
 

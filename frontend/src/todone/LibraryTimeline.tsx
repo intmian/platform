@@ -1,4 +1,4 @@
-import React, {useMemo, useRef, useState} from 'react';
+import React, {useEffect, useMemo, useRef, useState} from 'react';
 import {
     Button,
     Checkbox,
@@ -7,8 +7,8 @@ import {
     Drawer,
     Empty,
     Flex,
-    Image,
     message,
+    Modal,
     Select,
     Space,
     Tag,
@@ -35,18 +35,21 @@ import {
     TimelineEntry,
 } from './net/protocal';
 import {
+    buildLibraryTitleCoverDataUrl,
     extractTimeline,
     formatDateTime,
     getLibraryCoverDisplayUrl,
     getLogTypeText,
     getScoreText,
     groupTimelineByYear,
+    isWaitExpired,
 } from './libraryUtil';
 import {useIsMobile} from '../common/hooksv2';
 
 const {Text, Title} = Typography;
 const UNCATEGORIZED_KEY = '__uncategorized__';
-type TimelineStatusOption = LibraryItemStatus | 'addToLibrary' | 'score' | 'note';
+type TimelineStatusOption = LibraryItemStatus | 'addToLibrary' | 'score' | 'note' | 'waitExpired';
+const WAIT_EXPIRED_TIMELINE_COLOR = LibraryStatusColors[LibraryItemStatus.GIVE_UP];
 
 interface LibraryTimelineProps {
     visible: boolean;
@@ -59,7 +62,16 @@ export default function LibraryTimeline({visible, items, onClose, onItemClick}: 
     const isMobile = useIsMobile();
     const [selectedYear, setSelectedYear] = useState<number | 'all'>('all');
     const [exporting, setExporting] = useState(false);
+    const [showExportPreview, setShowExportPreview] = useState(false);
     const exportRef = useRef<HTMLDivElement>(null);
+    const [waitExpiredTick, setWaitExpiredTick] = useState(0);
+
+    useEffect(() => {
+        const timer = window.setInterval(() => {
+            setWaitExpiredTick((prev) => prev + 1);
+        }, 60 * 1000);
+        return () => window.clearInterval(timer);
+    }, []);
 
     const [selectedStatuses, setSelectedStatuses] = useState<TimelineStatusOption[]>([
         'score',
@@ -68,6 +80,14 @@ export default function LibraryTimeline({visible, items, onClose, onItemClick}: 
         LibraryItemStatus.WAIT,
         LibraryItemStatus.GIVE_UP,
     ]);
+
+    const itemMap = useMemo(() => {
+        const result = new Map<number, LibraryItemFull>();
+        items.forEach((item) => {
+            result.set(item.taskId, item);
+        });
+        return result;
+    }, [items]);
 
     // 提取时间线数据
     const allEntries = useMemo(() => extractTimeline(items), [items]);
@@ -98,6 +118,50 @@ export default function LibraryTimeline({visible, items, onClose, onItemClick}: 
     // 按年份分组
     const entriesByYear = useMemo(() => groupTimelineByYear(allEntries), [allEntries]);
 
+    const latestWaitEntryTimeMap = useMemo(() => {
+        const map = new Map<number, string>();
+        allEntries
+            .filter((entry) => entry.logType === LibraryLogType.changeStatus && entry.status === LibraryItemStatus.WAIT)
+            .slice()
+            .sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime())
+            .forEach((entry) => {
+                if (!map.has(entry.itemId)) {
+                    map.set(entry.itemId, entry.time);
+                }
+            });
+        return map;
+    }, [allEntries, waitExpiredTick]);
+
+    const isWaitExpiredEntry = (entry: TimelineEntry): boolean => {
+        if (entry.logType !== LibraryLogType.changeStatus || entry.status !== LibraryItemStatus.WAIT) {
+            return false;
+        }
+        const item = itemMap.get(entry.itemId);
+        if (!item || !isWaitExpired(item.extra)) {
+            return false;
+        }
+        return latestWaitEntryTimeMap.get(entry.itemId) === entry.time;
+    };
+
+    const getEntryStatusOption = (entry: TimelineEntry): TimelineStatusOption | undefined => {
+        if (entry.logType === LibraryLogType.addToLibrary) {
+            return 'addToLibrary';
+        }
+        if (entry.logType === LibraryLogType.score) {
+            return 'score';
+        }
+        if (entry.logType === LibraryLogType.note) {
+            return 'note';
+        }
+        if (entry.logType === LibraryLogType.changeStatus) {
+            if (entry.status === LibraryItemStatus.WAIT && isWaitExpiredEntry(entry)) {
+                return 'waitExpired';
+            }
+            return entry.status;
+        }
+        return undefined;
+    };
+
     const statusOptions = useMemo(
         () => [
             {value: 'addToLibrary' as TimelineStatusOption, label: '添加到库'},
@@ -118,6 +182,10 @@ export default function LibraryTimeline({visible, items, onClose, onItemClick}: 
             {
                 value: LibraryItemStatus.WAIT as TimelineStatusOption,
                 label: LibraryStatusNames[LibraryItemStatus.WAIT],
+            },
+            {
+                value: 'waitExpired' as TimelineStatusOption,
+                label: '鸽了',
             },
             {
                 value: LibraryItemStatus.GIVE_UP as TimelineStatusOption,
@@ -152,31 +220,17 @@ export default function LibraryTimeline({visible, items, onClose, onItemClick}: 
                 return false;
             }
 
-            if (entry.logType === LibraryLogType.addToLibrary) {
-                return selectedStatuses.includes('addToLibrary');
+            const option = getEntryStatusOption(entry);
+            if (option === undefined) {
+                return false;
             }
-
-            if (entry.logType === LibraryLogType.score) {
-                return selectedStatuses.includes('score');
-            }
-
-            if (entry.logType === LibraryLogType.note) {
-                return selectedStatuses.includes('note');
-            }
-
-            if (entry.logType === LibraryLogType.changeStatus) {
-                if (entry.status === undefined) {
-                    return false;
-                }
-                return selectedStatuses.includes(entry.status);
-            }
-
-            return true;
+            return selectedStatuses.includes(option);
         });
     }, [
         allEntries,
         categoryMap,
         entriesByYear,
+        getEntryStatusOption,
         selectedCategoriesFinal,
         selectedStatuses,
         selectedYear,
@@ -240,6 +294,9 @@ export default function LibraryTimeline({visible, items, onClose, onItemClick}: 
 
     // 获取日志类型图标
     const getLogIcon = (entry: TimelineEntry) => {
+        if (isWaitExpiredEntry(entry)) {
+            return <StopOutlined style={{color: WAIT_EXPIRED_TIMELINE_COLOR}}/>;
+        }
         if (entry.logType === LibraryLogType.score) {
             return <StarFilled style={{color: '#faad14'}}/>;
         }
@@ -268,6 +325,9 @@ export default function LibraryTimeline({visible, items, onClose, onItemClick}: 
 
     // 获取时间线条目颜色
     const getEntryColor = (entry: TimelineEntry): string => {
+        if (isWaitExpiredEntry(entry)) {
+            return WAIT_EXPIRED_TIMELINE_COLOR;
+        }
         if (entry.logType === LibraryLogType.score) {
             return '#faad14';
         }
@@ -286,9 +346,13 @@ export default function LibraryTimeline({visible, items, onClose, onItemClick}: 
     // 渲染时间线条目
     const renderTimelineItem = (entry: TimelineEntry, index: number) => {
         const thumbUrl = getLibraryCoverDisplayUrl(entry.itemTitle, entry.pictureAddress);
-        const actionText = entry.logType === LibraryLogType.score
-            ? `评分 ${getScoreText(entry.score || 0)}`
-            : getLogTypeText(entry.logType, entry.status);
+        const actionText = isWaitExpiredEntry(entry)
+            ? '鸽了'
+            : entry.logType === LibraryLogType.score
+                ? `评分 ${getScoreText(entry.score || 0)}`
+                : getLogTypeText(entry.logType, entry.status);
+        const fallbackCoverUrl = buildLibraryTitleCoverDataUrl(entry.itemTitle || '未命名');
+        const finalCoverUrl = thumbUrl || fallbackCoverUrl;
 
         return (
             <Timeline.Item
@@ -303,14 +367,19 @@ export default function LibraryTimeline({visible, items, onClose, onItemClick}: 
                     onClick={() => onItemClick?.(entry.itemId)}
                 >
                     {/* 封面缩略图 */}
-                    {thumbUrl ? (
-                        <Image
-                            src={thumbUrl}
+                    {finalCoverUrl ? (
+                        <img
+                            src={finalCoverUrl}
                             width={isMobile ? 42 : 48}
                             height={isMobile ? 56 : 64}
                             style={{borderRadius: 4, objectFit: 'cover'}}
-                            preview={false}
-                            fallback="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 64'%3E%3Crect fill='%23f0f0f0' width='48' height='64'/%3E%3C/svg%3E"
+                            onError={(e) => {
+                                const target = e.currentTarget;
+                                if (target.src !== fallbackCoverUrl) {
+                                    target.src = fallbackCoverUrl;
+                                }
+                            }}
+                            alt={entry.itemTitle}
                         />
                     ) : (
                         <Avatar
@@ -415,10 +484,9 @@ export default function LibraryTimeline({visible, items, onClose, onItemClick}: 
                             type="text"
                             size="small"
                             icon={<DownloadOutlined/>}
-                            loading={exporting}
-                            onClick={handleExportImage}
+                            onClick={() => setShowExportPreview(true)}
                         >
-                            导出图片
+                            预览导出
                         </Button>
                     </Space>
                 </Flex>
@@ -501,26 +569,58 @@ export default function LibraryTimeline({visible, items, onClose, onItemClick}: 
                             LibraryItemStatus.DOING,
                             LibraryItemStatus.DONE,
                             LibraryItemStatus.WAIT,
+                            'waitExpired' as TimelineStatusOption,
                         ].map(status => {
-                            const count = displayEntries.filter(
-                                e => e.logType === LibraryLogType.changeStatus && e.status === status
-                            ).length;
+                            const count = displayEntries.filter((entry) => getEntryStatusOption(entry) === status).length;
                             if (count === 0) return null;
+                            const color = status === 'waitExpired' ? WAIT_EXPIRED_TIMELINE_COLOR : LibraryStatusColors[status as LibraryItemStatus];
+                            const text = status === 'waitExpired'
+                                ? '鸽了'
+                                : getLogTypeText(LibraryLogType.changeStatus, status as LibraryItemStatus);
                             return (
                                 <Tag
                                     key={status}
-                                    color={LibraryStatusColors[status]}
+                                    color={color}
                                     style={{margin: 0}}
                                 >
-                                    {getLogTypeText(LibraryLogType.changeStatus, status)} {count}
+                                    {text} {count}
                                 </Tag>
                             );
                         })}
                     </Space>
+
                 </Space>
 
                 {renderGroupedTimeline()}
             </div>
+
+            <Modal
+                title="导出预览"
+                open={showExportPreview}
+                onCancel={() => setShowExportPreview(false)}
+                footer={
+                    <Space>
+                        <Button onClick={() => setShowExportPreview(false)}>关闭</Button>
+                        <Button
+                            type="primary"
+                            icon={<DownloadOutlined/>}
+                            loading={exporting}
+                            onClick={handleExportImage}
+                        >
+                            导出图片
+                        </Button>
+                    </Space>
+                }
+                width={isMobile ? '100%' : 680}
+                style={{top: 20}}
+            >
+                <div ref={exportRef} style={{maxHeight: '70vh', overflowY: 'auto', background: '#fff', paddingBottom: 8}}>
+                    <div style={{padding: '0 12px'}}>{renderGroupedTimeline()}</div>
+                    <div style={{padding: '8px 12px 0', fontSize: 12, color: '#999'}}>
+                        提示：请先确认预览内容，再点击“导出图片”。
+                    </div>
+                </div>
+            </Modal>
         </Drawer>
     );
 }

@@ -30,6 +30,7 @@ import dayjs from 'dayjs';
 import {
     CheckOutlined,
     ClockCircleOutlined,
+    DeleteOutlined,
     DownloadOutlined,
     EditOutlined,
     PauseOutlined,
@@ -66,6 +67,8 @@ import {
     getScoreDisplay,
     getScoreStarColor,
     getScoreText,
+    LIBRARY_WAIT_EXPIRED_RULE_TEXT,
+    normalizeMainScoreSelection,
     setMainScore,
     startNewRound,
 } from './libraryUtil';
@@ -212,7 +215,7 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
     const handleSetStatusWithReason = () => {
         if (pendingStatus === null) return;
         const reason = statusReasonInput.trim();
-        if (!reason) {
+        if (pendingStatus === LibraryItemStatus.TODO && !reason) {
             message.warning('请输入原因');
             return;
         }
@@ -368,6 +371,7 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
         if (!localItem || !editingLogPos || !editingLogTime) {
             setShowEditLogTime(false);
             setEditingLogPos(null);
+            setEditingLogTime('');
             return;
         }
 
@@ -377,17 +381,36 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
         if (!targetLog) {
             setShowEditLogTime(false);
             setEditingLogPos(null);
+            setEditingLogTime('');
             return;
         }
 
         targetLog.time = editingLogTime;
-        targetRound.logs.sort((a, b) => new Date(a.time).getTime() - new Date(b.time).getTime());
         newItem.extra.updatedAt = new Date().toISOString();
 
         setLocalItem(newItem);
         onSave(newItem);
         setShowEditLogTime(false);
         setEditingLogPos(null);
+        setEditingLogTime('');
+    };
+
+    const handleDeleteLog = (roundIndex: number, logIndex: number) => {
+        if (!localItem) return;
+
+        const newItem: LibraryItemFull = JSON.parse(JSON.stringify(localItem));
+        const targetRound = newItem.extra.rounds[roundIndex];
+        if (!targetRound || !targetRound.logs[logIndex]) {
+            return;
+        }
+
+        targetRound.logs.splice(logIndex, 1);
+        normalizeMainScoreSelection(newItem.extra);
+        newItem.extra.updatedAt = new Date().toISOString();
+
+        setLocalItem(newItem);
+        onSave(newItem);
+        message.success('日志已删除');
     };
 
     const handleSetTimelineCutoff = () => {
@@ -532,6 +555,21 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
                 <Flex justify="space-between" align="flex-start">
                     {content}
                     <Space size={2}>
+                        <Popconfirm
+                            title="删除该日志？"
+                            description="删除后不可恢复"
+                            onConfirm={() => handleDeleteLog(roundIndex, logIndex)}
+                            okText="删除"
+                            cancelText="取消"
+                            okButtonProps={{danger: true}}
+                        >
+                            <Button
+                                type="text"
+                                size="small"
+                                danger
+                                icon={<DeleteOutlined/>}
+                            />
+                        </Popconfirm>
                         <Button
                             type="text"
                             size="small"
@@ -781,9 +819,9 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
             
             <Divider/>
             
-            {/* 状态快捷操作 */}
+            {/* 状态操作 */}
             <div style={{marginBottom: 16}}>
-                <Text strong>快捷操作</Text>
+                <Text strong>操作</Text>
                 <div style={{marginTop: 8}}>
                     {renderStatusButtons()}
                 </div>
@@ -859,9 +897,14 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
                     setPendingStatus(null);
                 }}
             >
+                {pendingStatus === LibraryItemStatus.WAIT ? (
+                    <Text type="secondary" style={{display: 'block', marginBottom: 8}}>
+                        {LIBRARY_WAIT_EXPIRED_RULE_TEXT}
+                    </Text>
+                ) : null}
                 <TextArea
                     rows={3}
-                    placeholder={pendingStatus === LibraryItemStatus.TODO ? '请输入等待原因/二级状态（例如：等字幕、等朋友、片源问题）' : '请输入搁置原因'}
+                    placeholder={pendingStatus === LibraryItemStatus.TODO ? '请输入等待原因/二级状态（例如：等字幕、等朋友、片源问题）' : '可选：请输入搁置原因（填写后不会进入“鸽了”）'}
                     value={statusReasonInput}
                     onChange={(e) => setStatusReasonInput(e.target.value)}
                 />
@@ -874,6 +917,7 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
                 onCancel={() => {
                     setShowEditLogTime(false);
                     setEditingLogPos(null);
+                    setEditingLogTime('');
                 }}
             >
                 <DatePicker
