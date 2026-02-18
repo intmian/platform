@@ -257,7 +257,7 @@ const LibraryShareCard: React.FC<LibraryShareCardProps> = ({title, extra, editab
                             'subScore'
                         )}
                         {renderScoreCard(
-                            "玩法创新",
+                            "艺术创新",
                             SEQ_INNO,
                             innoText,
                             extra.innovateScore?.comment || "",

@@ -85,6 +85,24 @@ const {TextArea} = Input;
 
 // 评分序列
 const SCORE_SEQ = ["零", "差", "合", "优", "满"];
+const SCORE_OBJ_SEQ = ["垃圾", "低劣", "普通", "优秀", "传奇"];
+const SCORE_SUB_SEQ = ["折磨", "负面", "消磨", "享受", "极致"];
+const SCORE_INNOVATE_SEQ = ["抄袭", "模仿", "沿袭", "创新", "革命"];
+
+function scoreDataToText(seq: string[], score?: LibraryScoreData): string {
+    if (!score) {
+        return seq[2];
+    }
+    const idx = Math.max(1, Math.min(5, score.value || 3)) - 1;
+    const base = seq[idx] || seq[2];
+    if (score.plus) {
+        return `${base}+`;
+    }
+    if (score.sub) {
+        return `${base}-`;
+    }
+    return base;
+}
 
 interface LibraryDetailProps {
     visible: boolean;
@@ -120,6 +138,15 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
     const [editingContentType, setEditingContentType] = useState<LibraryLogType | null>(null);
     const [editingContentText, setEditingContentText] = useState('');
     const [editingScoreText, setEditingScoreText] = useState('合');
+    const [editingObjScoreText, setEditingObjScoreText] = useState('普通');
+    const [editingSubScoreText, setEditingSubScoreText] = useState('消磨');
+    const [editingInnovateScoreText, setEditingInnovateScoreText] = useState('沿袭');
+    const [editingObjComment, setEditingObjComment] = useState('');
+    const [editingSubComment, setEditingSubComment] = useState('');
+    const [editingInnovateComment, setEditingInnovateComment] = useState('');
+    const [editingEnableObjScore, setEditingEnableObjScore] = useState(true);
+    const [editingEnableSubScore, setEditingEnableSubScore] = useState(true);
+    const [editingEnableInnovateScore, setEditingEnableInnovateScore] = useState(true);
     
     // 分享弹窗
     const [showShare, setShowShare] = useState(false);
@@ -369,6 +396,23 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
             .sort((a, b) => new Date(a.log.time).getTime() - new Date(b.log.time).getTime());
     };
 
+    const resetEditingContentState = () => {
+        setShowEditLogContent(false);
+        setEditingContentPos(null);
+        setEditingContentType(null);
+        setEditingContentText('');
+        setEditingScoreText('合');
+        setEditingObjScoreText('普通');
+        setEditingSubScoreText('消磨');
+        setEditingInnovateScoreText('沿袭');
+        setEditingObjComment('');
+        setEditingSubComment('');
+        setEditingInnovateComment('');
+        setEditingEnableObjScore(true);
+        setEditingEnableSubScore(true);
+        setEditingEnableInnovateScore(true);
+    };
+
     const openLogTimeEditor = (roundIndex: number, logIndex: number, time: string) => {
         setEditingLogPos({roundIndex, logIndex});
         setEditingLogTime(time);
@@ -381,10 +425,53 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
         if (log.type === LibraryLogType.score) {
             setEditingScoreText(getScoreText(log.score || 0, log.scorePlus, log.scoreSub));
             setEditingContentText(log.comment || '');
+            const isComplexScore = localItem?.extra.scoreMode === 'complex';
+            if (isComplexScore && localItem) {
+                const objScore = localItem.extra.objScore;
+                const subScore = localItem.extra.subScore;
+                const innovateScore = localItem.extra.innovateScore;
+
+                setEditingEnableObjScore(!!objScore);
+                setEditingEnableSubScore(!!subScore);
+                setEditingEnableInnovateScore(!!innovateScore);
+
+                setEditingObjScoreText(scoreDataToText(SCORE_OBJ_SEQ, objScore));
+                setEditingSubScoreText(scoreDataToText(SCORE_SUB_SEQ, subScore));
+                setEditingInnovateScoreText(scoreDataToText(SCORE_INNOVATE_SEQ, innovateScore));
+
+                setEditingObjComment(objScore?.comment || '');
+                setEditingSubComment(subScore?.comment || '');
+                setEditingInnovateComment(innovateScore?.comment || '');
+
+                if (!log.comment && localItem.extra.comment) {
+                    setEditingContentText(localItem.extra.comment);
+                }
+            }
         } else {
             setEditingContentText(log.comment || '');
         }
         setShowEditLogContent(true);
+    };
+
+    const parseRateTextToData = (seq: string[], text: string, scoreComment: string): LibraryScoreData | null => {
+        const trimmed = text.trim();
+        if (!trimmed) {
+            return null;
+        }
+        let sign: '' | '+' | '-' = '';
+        if (trimmed.endsWith('+')) sign = '+';
+        if (trimmed.endsWith('-')) sign = '-';
+        const label = sign ? trimmed.slice(0, -1) : trimmed;
+        const idx = seq.findIndex((s) => s === label);
+        if (idx < 0) {
+            return null;
+        }
+        return {
+            value: idx + 1,
+            plus: sign === '+',
+            sub: sign === '-',
+            comment: scoreComment.trim(),
+        };
     };
 
     const parseScoreTextToData = (text: string): {score: number; plus: boolean; sub: boolean} | null => {
@@ -408,11 +495,7 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
 
     const handleSaveLogContent = () => {
         if (!localItem || !editingContentPos || !editingContentType) {
-            setShowEditLogContent(false);
-            setEditingContentPos(null);
-            setEditingContentType(null);
-            setEditingContentText('');
-            setEditingScoreText('合');
+            resetEditingContentState();
             return;
         }
 
@@ -420,11 +503,7 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
         const targetRound = newItem.extra.rounds[editingContentPos.roundIndex];
         const targetLog = targetRound?.logs[editingContentPos.logIndex];
         if (!targetLog || targetLog.type !== editingContentType) {
-            setShowEditLogContent(false);
-            setEditingContentPos(null);
-            setEditingContentType(null);
-            setEditingContentText('');
-            setEditingScoreText('合');
+            resetEditingContentState();
             return;
         }
 
@@ -439,6 +518,55 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
             targetLog.scoreSub = parsedScore.sub;
             const trimmed = editingContentText.trim();
             targetLog.comment = trimmed || undefined;
+
+            if (newItem.extra.scoreMode === 'complex') {
+                const mainScore: LibraryScoreData = {
+                    value: parsedScore.score,
+                    plus: parsedScore.plus,
+                    sub: parsedScore.sub,
+                    comment: '',
+                };
+                newItem.extra.mainScore = mainScore;
+
+                if (editingEnableObjScore) {
+                    const objData = parseRateTextToData(SCORE_OBJ_SEQ, editingObjScoreText, editingObjComment);
+                    if (!objData) {
+                        message.warning('客观评分格式无效');
+                        return;
+                    }
+                    newItem.extra.objScore = objData;
+                } else {
+                    delete newItem.extra.objScore;
+                }
+
+                if (editingEnableSubScore) {
+                    const subData = parseRateTextToData(SCORE_SUB_SEQ, editingSubScoreText, editingSubComment);
+                    if (!subData) {
+                        message.warning('主观评分格式无效');
+                        return;
+                    }
+                    newItem.extra.subScore = subData;
+                } else {
+                    delete newItem.extra.subScore;
+                }
+
+                if (editingEnableInnovateScore) {
+                    const innovateData = parseRateTextToData(SCORE_INNOVATE_SEQ, editingInnovateScoreText, editingInnovateComment);
+                    if (!innovateData) {
+                        message.warning('创新评分格式无效');
+                        return;
+                    }
+                    newItem.extra.innovateScore = innovateData;
+                } else {
+                    delete newItem.extra.innovateScore;
+                }
+
+                if (trimmed) {
+                    newItem.extra.comment = trimmed;
+                } else {
+                    delete newItem.extra.comment;
+                }
+            }
         } else if (editingContentType === LibraryLogType.note) {
             targetLog.comment = editingContentText;
         }
@@ -447,11 +575,7 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
         setLocalItem(newItem);
         onSave(newItem);
 
-        setShowEditLogContent(false);
-        setEditingContentPos(null);
-        setEditingContentType(null);
-        setEditingContentText('');
-        setEditingScoreText('合');
+        resetEditingContentState();
         message.success('内容已更新');
     };
 
@@ -1046,18 +1170,12 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
                 title={editingContentType === LibraryLogType.score ? '编辑评分内容' : '编辑备注内容'}
                 open={showEditLogContent}
                 onOk={handleSaveLogContent}
-                onCancel={() => {
-                    setShowEditLogContent(false);
-                    setEditingContentPos(null);
-                    setEditingContentType(null);
-                    setEditingContentText('');
-                    setEditingScoreText('合');
-                }}
+                onCancel={resetEditingContentState}
             >
                 {editingContentType === LibraryLogType.score ? (
                     <Space direction="vertical" style={{width: '100%'}}>
                         <div>
-                            <Text>评分</Text>
+                            <Text>{localItem?.extra.scoreMode === 'complex' ? '主评分' : '评分'}</Text>
                             <div style={{marginTop: 8}}>
                                 <TextRate
                                     sequence={SCORE_SEQ}
@@ -1069,8 +1187,113 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
                                 />
                             </div>
                         </div>
+                        {localItem?.extra.scoreMode === 'complex' ? (
+                            <>
+                                <div>
+                                    <Flex justify="space-between" align="center">
+                                        <Text>客观好坏：</Text>
+                                        <Switch
+                                            size="small"
+                                            checked={editingEnableObjScore}
+                                            onChange={setEditingEnableObjScore}
+                                            checkedChildren="启用"
+                                            unCheckedChildren="关闭"
+                                        />
+                                    </Flex>
+                                    {editingEnableObjScore ? (
+                                        <>
+                                            <div style={{marginTop: 8}}>
+                                                <TextRate
+                                                    sequence={SCORE_OBJ_SEQ}
+                                                    editable={true}
+                                                    initialValue={editingObjScoreText}
+                                                    onChange={setEditingObjScoreText}
+                                                    fontSize={20}
+                                                    fontSize2={14}
+                                                />
+                                            </div>
+                                            <TextArea
+                                                rows={2}
+                                                placeholder="客观维度评价（可选）"
+                                                value={editingObjComment}
+                                                onChange={(e) => setEditingObjComment(e.target.value)}
+                                                style={{marginTop: 8}}
+                                            />
+                                        </>
+                                    ) : null}
+                                </div>
+
+                                <div>
+                                    <Flex justify="space-between" align="center">
+                                        <Text>主观感受：</Text>
+                                        <Switch
+                                            size="small"
+                                            checked={editingEnableSubScore}
+                                            onChange={setEditingEnableSubScore}
+                                            checkedChildren="启用"
+                                            unCheckedChildren="关闭"
+                                        />
+                                    </Flex>
+                                    {editingEnableSubScore ? (
+                                        <>
+                                            <div style={{marginTop: 8}}>
+                                                <TextRate
+                                                    sequence={SCORE_SUB_SEQ}
+                                                    editable={true}
+                                                    initialValue={editingSubScoreText}
+                                                    onChange={setEditingSubScoreText}
+                                                    fontSize={20}
+                                                    fontSize2={14}
+                                                />
+                                            </div>
+                                            <TextArea
+                                                rows={2}
+                                                placeholder="主观维度评价（可选）"
+                                                value={editingSubComment}
+                                                onChange={(e) => setEditingSubComment(e.target.value)}
+                                                style={{marginTop: 8}}
+                                            />
+                                        </>
+                                    ) : null}
+                                </div>
+
+                                <div>
+                                    <Flex justify="space-between" align="center">
+                                        <Text>玩法创新：</Text>
+                                        <Switch
+                                            size="small"
+                                            checked={editingEnableInnovateScore}
+                                            onChange={setEditingEnableInnovateScore}
+                                            checkedChildren="启用"
+                                            unCheckedChildren="关闭"
+                                        />
+                                    </Flex>
+                                    {editingEnableInnovateScore ? (
+                                        <>
+                                            <div style={{marginTop: 8}}>
+                                                <TextRate
+                                                    sequence={SCORE_INNOVATE_SEQ}
+                                                    editable={true}
+                                                    initialValue={editingInnovateScoreText}
+                                                    onChange={setEditingInnovateScoreText}
+                                                    fontSize={20}
+                                                    fontSize2={14}
+                                                />
+                                            </div>
+                                            <TextArea
+                                                rows={2}
+                                                placeholder="创新维度评价（可选）"
+                                                value={editingInnovateComment}
+                                                onChange={(e) => setEditingInnovateComment(e.target.value)}
+                                                style={{marginTop: 8}}
+                                            />
+                                        </>
+                                    ) : null}
+                                </div>
+                            </>
+                        ) : null}
                         <div>
-                            <Text>评价内容（可选）</Text>
+                            <Text>{localItem?.extra.scoreMode === 'complex' ? '总评（可选）' : '评价内容（可选）'}</Text>
                             <TextArea
                                 rows={3}
                                 value={editingContentText}
