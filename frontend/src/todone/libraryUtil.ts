@@ -26,6 +26,7 @@ export function createDefaultLibraryExtra(): LibraryExtra {
         todoReason: '',
         todoSince: undefined,
         category: '',
+        isFavorite: false,
         status: undefined,
         currentRound: 0,
         rounds: [{
@@ -70,6 +71,9 @@ export function parseLibraryExtra(note: string): LibraryExtra {
         }
         if (parsed.todoReason === undefined) {
             parsed.todoReason = '';
+        }
+        if (parsed.isFavorite === undefined) {
+            parsed.isFavorite = false;
         }
 
         parsed.rounds = parsed.rounds.map((round) => ({
@@ -214,6 +218,13 @@ export function isWaitExpired(extra: LibraryExtra): boolean {
 }
 
 export function getDisplayStatusInfo(extra: LibraryExtra): {name: string; color: string; isExpiredWait: boolean} {
+    if (extra.status === LibraryItemStatus.ARCHIVED) {
+        return {
+            name: LibraryStatusNames[LibraryItemStatus.ARCHIVED],
+            color: LibraryStatusColors[LibraryItemStatus.ARCHIVED],
+            isExpiredWait: false,
+        };
+    }
     if (isWaitExpired(extra)) {
         return {
             name: '鸽了',
@@ -637,6 +648,7 @@ export function getLogTypeText(logType: LibraryLogType, status?: LibraryItemStat
                     case LibraryItemStatus.DONE: return '完成';
                     case LibraryItemStatus.WAIT: return '搁置';
                     case LibraryItemStatus.GIVE_UP: return '放弃';
+                    case LibraryItemStatus.ARCHIVED: return '归档';
                 }
             }
             return '状态变更（无状态）';

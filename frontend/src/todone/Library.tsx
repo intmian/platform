@@ -16,6 +16,7 @@ import {
     Form,
     Popconfirm,
     AutoComplete,
+    Divider,
 } from 'antd';
 import {
     AppstoreOutlined,
@@ -29,6 +30,7 @@ import {
     SettingOutlined,
     SortAscendingOutlined,
     StarFilled,
+    StarOutlined,
     UploadOutlined,
 } from '@ant-design/icons';
 import {Addr} from './addr';
@@ -80,8 +82,45 @@ import {cropImageToAspectRatio} from '../common/imageCrop';
 import './Library.css';
 
 // 排序选项
-type SortOption = 'index' | 'createdAt' | 'updatedAt' | 'title' | 'score';
-type StatusFilterOption = LibraryItemStatus | 'all' | 'none' | typeof LIBRARY_WAIT_EXPIRED_FILTER;
+type SortOption = 'default' | 'index' | 'createdAt' | 'updatedAt' | 'title' | 'score';
+type StatusFilterOption = LibraryItemStatus | 'none' | typeof LIBRARY_WAIT_EXPIRED_FILTER;
+
+const STATUS_FILTER_OPTIONS: StatusFilterOption[] = [
+    LibraryItemStatus.DOING,
+    LibraryItemStatus.WAIT,
+    'none',
+    LibraryItemStatus.TODO,
+    LibraryItemStatus.DONE,
+    LIBRARY_WAIT_EXPIRED_FILTER,
+    LibraryItemStatus.GIVE_UP,
+    LibraryItemStatus.ARCHIVED,
+];
+
+const DEFAULT_STATUS_FILTER_OPTIONS: StatusFilterOption[] = STATUS_FILTER_OPTIONS.filter(
+    (status) => status !== LibraryItemStatus.ARCHIVED
+);
+
+const STATUS_FILTER_LABELS: Record<string, string> = {
+    [LibraryItemStatus.DOING]: '进行中',
+    [LibraryItemStatus.WAIT]: '搁置',
+    none: '无状态',
+    [LibraryItemStatus.TODO]: '等待',
+    [LibraryItemStatus.DONE]: '已完成',
+    [LIBRARY_WAIT_EXPIRED_FILTER]: '鸽了',
+    [LibraryItemStatus.GIVE_UP]: '放弃',
+    [LibraryItemStatus.ARCHIVED]: '归档',
+};
+
+const DEFAULT_SORT_STATUS_ORDER: Record<string, number> = {
+    [LibraryItemStatus.DOING]: 0,
+    [LibraryItemStatus.WAIT]: 1,
+    none: 2,
+    [LibraryItemStatus.TODO]: 3,
+    [LibraryItemStatus.DONE]: 4,
+    [LIBRARY_WAIT_EXPIRED_FILTER]: 5,
+    [LibraryItemStatus.GIVE_UP]: 6,
+    [LibraryItemStatus.ARCHIVED]: 7,
+};
 
 // 默认的 SubGroup 名称（用于存储所有 Library 条目）
 const DEFAULT_SUBGROUP_NAME = '_library_items_';
@@ -226,9 +265,10 @@ export default function Library({addr, groupTitle}: LibraryProps) {
     const [selectedCategory, setSelectedCategory] = useState<string>('all');
     
     // 筛选和排序
-    const [statusFilter, setStatusFilter] = useState<StatusFilterOption>('all');
+    const [selectedStatuses, setSelectedStatuses] = useState<StatusFilterOption[]>(DEFAULT_STATUS_FILTER_OPTIONS);
+    const [statusFilterOpen, setStatusFilterOpen] = useState(false);
     const [todoReasonFilter, setTodoReasonFilter] = useState<string>('all');
-    const [sortBy, setSortBy] = useState<SortOption>('updatedAt');
+    const [sortBy, setSortBy] = useState<SortOption>('default');
     const [searchText, setSearchText] = useState('');
 
     // 列表状态切换（等待/搁置可输入原因）
@@ -385,10 +425,10 @@ export default function Library({addr, groupTitle}: LibraryProps) {
     }, [loadOrCreateMainSubGroup]);
 
     useEffect(() => {
-        if (statusFilter !== LibraryItemStatus.TODO) {
+        if (!selectedStatuses.includes(LibraryItemStatus.TODO)) {
             setTodoReasonFilter('all');
         }
-    }, [statusFilter]);
+    }, [selectedStatuses]);
 
     // 转换为 LibraryItemFull 列表
     const allItems: LibraryItemFull[] = useMemo(() => {
@@ -429,6 +469,61 @@ export default function Library({addr, groupTitle}: LibraryProps) {
         return Array.from(reasonSet).sort((a, b) => a.localeCompare(b, 'zh-CN'));
     }, [allItems]);
 
+    const statusFilterSummary = useMemo(() => {
+        if (selectedStatuses.length === 0) {
+            return '状态（未选）';
+        }
+        if (selectedStatuses.length === 1) {
+            return STATUS_FILTER_LABELS[String(selectedStatuses[0])] || '状态';
+        }
+        return `状态（${selectedStatuses.length}）`;
+    }, [selectedStatuses]);
+
+    const toggleStatusFilterOption = useCallback((status: StatusFilterOption) => {
+        setSelectedStatuses((prev) => {
+            if (prev.includes(status)) {
+                return prev.filter((item) => item !== status);
+            }
+            return [...prev, status];
+        });
+    }, []);
+
+    const selectOnlyStatusFilterOption = useCallback((status: StatusFilterOption) => {
+        setSelectedStatuses([status]);
+        setStatusFilterOpen(false);
+    }, []);
+
+    const getItemStatusForFilter = useCallback((item: LibraryItemFull): StatusFilterOption => {
+        if (item.extra.status === LibraryItemStatus.ARCHIVED) {
+            return LibraryItemStatus.ARCHIVED;
+        }
+        if (isWaitExpired(item.extra)) {
+            return LIBRARY_WAIT_EXPIRED_FILTER;
+        }
+        if (item.extra.status === undefined) {
+            return 'none';
+        }
+        return item.extra.status;
+    }, []);
+
+    const compareByDefaultSort = useCallback((a: LibraryItemFull, b: LibraryItemFull) => {
+        const statusA = getItemStatusForFilter(a);
+        const statusB = getItemStatusForFilter(b);
+        const rankA = DEFAULT_SORT_STATUS_ORDER[String(statusA)] ?? Number.MAX_SAFE_INTEGER;
+        const rankB = DEFAULT_SORT_STATUS_ORDER[String(statusB)] ?? Number.MAX_SAFE_INTEGER;
+        if (rankA !== rankB) {
+            return rankA - rankB;
+        }
+
+        const categoryA = a.extra.category?.trim() || '';
+        const categoryB = b.extra.category?.trim() || '';
+        if (categoryA === categoryB && !!a.extra.isFavorite !== !!b.extra.isFavorite) {
+            return a.extra.isFavorite ? -1 : 1;
+        }
+
+        return new Date(b.extra.updatedAt).getTime() - new Date(a.extra.updatedAt).getTime();
+    }, [getItemStatusForFilter]);
+
     // 应用筛选和排序
     const filteredItems = useMemo(() => {
         let result = [...allItems];
@@ -441,17 +536,13 @@ export default function Library({addr, groupTitle}: LibraryProps) {
             }
         }
         
-        if (statusFilter !== 'all') {
-            if (statusFilter === LIBRARY_WAIT_EXPIRED_FILTER) {
-                result = result.filter(item => isWaitExpired(item.extra));
-            } else if (statusFilter === 'none') {
-                result = result.filter(item => item.extra.status === undefined);
-            } else {
-                result = result.filter(item => item.extra.status === statusFilter);
-            }
+        if (selectedStatuses.length > 0) {
+            result = result.filter(item => selectedStatuses.includes(getItemStatusForFilter(item)));
+        } else {
+            result = [];
         }
 
-        if (statusFilter === LibraryItemStatus.TODO && todoReasonFilter !== 'all') {
+        if (selectedStatuses.includes(LibraryItemStatus.TODO) && todoReasonFilter !== 'all') {
             result = result.filter(item => (item.extra.todoReason?.trim() || '') === todoReasonFilter);
         }
         
@@ -466,6 +557,8 @@ export default function Library({addr, groupTitle}: LibraryProps) {
         
         result.sort((a, b) => {
             switch (sortBy) {
+                case 'default':
+                    return compareByDefaultSort(a, b);
                 case 'index':
                     return a.index - b.index;
                 case 'createdAt':
@@ -485,7 +578,7 @@ export default function Library({addr, groupTitle}: LibraryProps) {
         });
         
         return result;
-    }, [allItems, selectedCategory, statusFilter, todoReasonFilter, searchText, sortBy, waitExpiredTick]);
+    }, [allItems, selectedCategory, selectedStatuses, getItemStatusForFilter, todoReasonFilter, searchText, sortBy, compareByDefaultSort, waitExpiredTick]);
 
     // 保存 item 变更
     const handleSaveItem = useCallback((item: LibraryItemFull) => {
@@ -534,6 +627,17 @@ export default function Library({addr, groupTitle}: LibraryProps) {
         }
         const newExtra = addStatusLog({...item.extra}, status);
         const newItem = {...item, extra: newExtra};
+        handleSaveItem(newItem);
+    }, [handleSaveItem]);
+
+    const handleToggleFavorite = useCallback((item: LibraryItemFull) => {
+        const newItem: LibraryItemFull = {
+            ...item,
+            extra: {
+                ...item.extra,
+                isFavorite: !item.extra.isFavorite,
+            },
+        };
         handleSaveItem(newItem);
     }, [handleSaveItem]);
 
@@ -615,8 +719,23 @@ export default function Library({addr, groupTitle}: LibraryProps) {
             return;
         }
 
-        if (key === 'category-manager') {
-            setShowCategoryManager(true);
+        if (key.startsWith('category:')) {
+            const nextCategory = key.slice('category:'.length);
+            const normalizedCategory = nextCategory === '_uncategorized_' ? '' : nextCategory;
+            const newItem: LibraryItemFull = {
+                ...item,
+                extra: {
+                    ...item.extra,
+                    category: normalizedCategory,
+                },
+            };
+            handleSaveItem(newItem);
+            setCardMenuVisible(false);
+            return;
+        }
+
+        if (key === 'favorite') {
+            handleToggleFavorite(item);
             setCardMenuVisible(false);
             return;
         }
@@ -653,8 +772,19 @@ export default function Library({addr, groupTitle}: LibraryProps) {
                 label: `开始新周目（第${item.extra.rounds.length + 1}周目）`,
             },
             {
-                key: 'category-manager',
-                label: '管理分类',
+                key: 'category',
+                label: '设置分类',
+                children: [
+                    {key: 'category:_uncategorized_', label: '未分类'},
+                    ...categories.map((cat) => ({
+                        key: `category:${cat}`,
+                        label: cat,
+                    })),
+                ],
+            },
+            {
+                key: 'favorite',
+                label: item.extra.isFavorite ? '取消收藏' : '收藏',
             },
             {type: 'divider' as const},
             {
@@ -856,6 +986,7 @@ export default function Library({addr, groupTitle}: LibraryProps) {
         const realCoverUrl = item.extra.pictureAddress?.trim() || '';
         const isPlaceholderCover = realCoverUrl === '';
         const showCategoryOnCard = displayOptions.showCategory && selectedCategory === 'all' && item.extra.category;
+        const showFavoriteOnCard = !!item.extra.isFavorite;
         const currentRoundName = item.extra.rounds[item.extra.currentRound]?.name || '-';
         const displayStatus = getDisplayStatusInfo(item.extra);
         const showRoundTag = currentRoundName && currentRoundName !== '首周目';
@@ -925,10 +1056,17 @@ export default function Library({addr, groupTitle}: LibraryProps) {
                     </div>
                     
                     {/* 顶部标签行（左：分类/周目，右：评分） */}
-                    {(showCategoryOnCard || showRoundTag || showScoreBadge) ? (
+                    {(showFavoriteOnCard || showCategoryOnCard || showRoundTag || showScoreBadge) ? (
                         <div className="library-card-top-row">
                             <div className="library-card-category-badge">
                                 <Space size={4} align="center" style={{height:"100%"}}>
+                                    {showFavoriteOnCard ? (
+                                        // <Tag color="gold" className='library-card-category-tag library-card-favorite-tag'>
+                                            <StarFilled
+                                                style={{color: '#faad14', fontSize: 16}}
+                                            />
+                                        // </Tag>
+                                    ) : null}
                                     {showCategoryOnCard ? <Tag color="blue"
                                         className='library-card-category-tag'
                                     >{item.extra.category}</Tag> : null}
@@ -1074,7 +1212,7 @@ export default function Library({addr, groupTitle}: LibraryProps) {
             </Flex>
 
             {/* 筛选栏 */}
-            <Flex className="library-filter-bar" wrap="wrap" gap={8} style={{marginBottom: 16}}>
+            <Flex className="library-filter-bar" wrap={isMobile ? 'wrap' : 'nowrap'} gap={8} style={{marginBottom: 16}}>
                 <Input
                     className="library-filter-search"
                     placeholder="搜索名称/作者..."
@@ -1103,29 +1241,56 @@ export default function Library({addr, groupTitle}: LibraryProps) {
                     ]}
                 />
                 
-                <Select
-                    className="library-filter-status"
-                    value={statusFilter}
-                    onChange={setStatusFilter}
-                    style={{width: isMobile ? 'calc(50% - 4px)' : 120}}
-                    suffixIcon={<FilterOutlined/>}
-                    options={[
-                        {value: 'all', label: '全部状态'},
-                        {value: 'none', label: '无状态'},
-                        ...Object.entries(LibraryStatusNames).map(([k, v]) => ({
-                            value: Number(k),
-                            label: v,
-                        })),
-                        {value: LIBRARY_WAIT_EXPIRED_FILTER, label: '鸽了'},
-                    ]}
-                />
+                <Dropdown
+                    trigger={['click']}
+                    open={statusFilterOpen}
+                    onOpenChange={setStatusFilterOpen}
+                    dropdownRender={() => (
+                        <div className="library-status-filter-dropdown">
+                            {STATUS_FILTER_OPTIONS.map((status) => (
+                                <div key={String(status)} className="library-status-filter-row">
+                                    <div className="library-status-filter-check">
+                                        <Checkbox
+                                            checked={selectedStatuses.includes(status)}
+                                            onChange={() => toggleStatusFilterOption(status)}
+                                            onClick={(e) => e.stopPropagation()}
+                                        />
+                                    </div>
+                                    <div
+                                        className="library-status-filter-label"
+                                        onClick={() => selectOnlyStatusFilterOption(status)}
+                                    >
+                                        {STATUS_FILTER_LABELS[String(status)]}
+                                    </div>
+                                </div>
+                            ))}
+                            <Divider style={{margin: '8px 0'}} />
+                            <div className="library-status-filter-footer">
+                                <Button
+                                    size="small"
+                                    onClick={() => setSelectedStatuses(DEFAULT_STATUS_FILTER_OPTIONS)}
+                                >
+                                    恢复默认
+                                </Button>
+                            </div>
+                        </div>
+                    )}
+                >
+                    <Button
+                        className="library-filter-status-trigger"
+                        icon={<FilterOutlined/>}
+                        style={{width: isMobile ? '100%' : 'auto'}}
+                    >
+                        {statusFilterSummary}
+                    </Button>
+                </Dropdown>
 
-                {statusFilter === LibraryItemStatus.TODO ? (
+                {selectedStatuses.length === 1 && selectedStatuses.includes(LibraryItemStatus.TODO) ? (
                     <Select
                         className="library-filter-todo-reason"
                         value={todoReasonFilter}
                         onChange={setTodoReasonFilter}
-                        style={{width: isMobile ? '100%' : 220}}
+                        style={{width: isMobile ? '100%' : 'auto'}}
                         options={[
                             {value: 'all', label: '全部等待二级状态'},
                             ...todoReasonOptions.map(reason => ({value: reason, label: reason})),
@@ -1140,11 +1305,12 @@ export default function Library({addr, groupTitle}: LibraryProps) {
                     style={{width: isMobile ? 'calc(50% - 4px)' : 140}}
                     suffixIcon={<SortAscendingOutlined/>}
                     options={[
+                        {value: 'default', label: '默认排序'},
                         {value: 'updatedAt', label: '最近更新'},
                         {value: 'createdAt', label: '添加时间'},
                         {value: 'title', label: '名称'},
                         {value: 'score', label: '评分'},
-                        {value: 'index', label: '默认顺序'},
+                        {value: 'index', label: '原始顺序'},
                     ]}
                 />
             </Flex>
@@ -1417,17 +1583,25 @@ export default function Library({addr, groupTitle}: LibraryProps) {
                     setStatusReasonInput('');
                 }}
             >
-                {pendingStatus === LibraryItemStatus.WAIT ? (
-                    <div style={{marginBottom: 8, color: '#8c8c8c', fontSize: 12}}>
-                        {LIBRARY_WAIT_EXPIRED_RULE_TEXT}
-                    </div>
-                ) : null}
-                <Input.TextArea
-                    rows={3}
-                    placeholder={pendingStatus === LibraryItemStatus.TODO ? '请输入等待原因/二级状态（例如：等字幕、等朋友、片源问题）' : '可选：请输入搁置原因（填写后不会进入“鸽了”）'}
-                    value={statusReasonInput}
-                    onChange={(e) => setStatusReasonInput(e.target.value)}
-                />
+                {pendingStatus === LibraryItemStatus.TODO ? (
+                    <AutoComplete
+                        style={{width: '100%'}}
+                        value={statusReasonInput}
+                        options={todoReasonOptions.map(reason => ({value: reason}))}
+                        onChange={setStatusReasonInput}
+                        filterOption={(inputValue, option) =>
+                            option?.value.toLowerCase().includes(inputValue.toLowerCase()) || false
+                        }
+                    >
+                        <Input placeholder="请输入或选择等待原因（例如：等字幕、等朋友、片源问题）" />
+                    </AutoComplete>
+                ) : (
+                    <Input
+                        value={statusReasonInput}
+                        onChange={(e) => setStatusReasonInput(e.target.value)}
+                        placeholder={LIBRARY_WAIT_EXPIRED_RULE_TEXT}
+                    />
+                )}
             </Modal>
 
             <Modal
@@ -1453,6 +1627,7 @@ export default function Library({addr, groupTitle}: LibraryProps) {
                 item={detailItem}
                 subGroupId={mainSubGroup?.ID || 0}
                 categories={categories}
+                todoReasonOptions={todoReasonOptions}
                 onClose={() => {
                     setShowDetail(false);
                     setDetailItem(null);
@@ -1460,6 +1635,10 @@ export default function Library({addr, groupTitle}: LibraryProps) {
                 onSave={(item) => {
                     handleSaveItem(item);
                     setDetailItem(item);
+                }}
+                onToggleFavorite={(item) => {
+                    handleToggleFavorite(item);
+                    setDetailItem({...item, extra: {...item.extra, isFavorite: !item.extra.isFavorite}});
                 }}
                 onDelete={(item) => {
                     handleDeleteItem(item);
@@ -1471,7 +1650,7 @@ export default function Library({addr, groupTitle}: LibraryProps) {
             {/* 时间线弹窗 */}
             <LibraryTimeline
                 visible={showTimeline}
-                items={allItems}
+                items={allItems.filter((item) => item.extra.status !== LibraryItemStatus.ARCHIVED)}
                 onClose={() => setShowTimeline(false)}
                 onItemClick={(itemId) => {
                     const item = allItems.find(i => i.taskId === itemId);

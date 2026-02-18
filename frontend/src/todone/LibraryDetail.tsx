@@ -1,5 +1,6 @@
 import React, {useEffect, useMemo, useRef, useState} from 'react';
 import {
+    AutoComplete,
     Button,
     Card,
     Col,
@@ -90,12 +91,14 @@ interface LibraryDetailProps {
     item: LibraryItemFull | null;
     subGroupId: number;
     categories?: string[];
+    todoReasonOptions?: string[];
     onClose: () => void;
     onSave: (item: LibraryItemFull) => void;
+    onToggleFavorite?: (item: LibraryItemFull) => void;
     onDelete?: (item: LibraryItemFull) => void;
 }
 
-export default function LibraryDetail({visible, item, subGroupId, categories = [], onClose, onSave, onDelete}: LibraryDetailProps) {
+export default function LibraryDetail({visible, item, subGroupId, categories = [], todoReasonOptions = [], onClose, onSave, onToggleFavorite, onDelete}: LibraryDetailProps) {
     const isMobile = useIsMobile();
     const [editMode, setEditMode] = useState(false);
     const [localItem, setLocalItem] = useState<LibraryItemFull | null>(null);
@@ -112,6 +115,11 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
     const [showEditLogTime, setShowEditLogTime] = useState(false);
     const [editingLogPos, setEditingLogPos] = useState<{roundIndex: number; logIndex: number} | null>(null);
     const [editingLogTime, setEditingLogTime] = useState('');
+    const [showEditLogContent, setShowEditLogContent] = useState(false);
+    const [editingContentPos, setEditingContentPos] = useState<{roundIndex: number; logIndex: number} | null>(null);
+    const [editingContentType, setEditingContentType] = useState<LibraryLogType | null>(null);
+    const [editingContentText, setEditingContentText] = useState('');
+    const [editingScoreText, setEditingScoreText] = useState('合');
     
     // 分享弹窗
     const [showShare, setShowShare] = useState(false);
@@ -367,6 +375,86 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
         setShowEditLogTime(true);
     };
 
+    const openLogContentEditor = (roundIndex: number, logIndex: number, log: LibraryLogEntry) => {
+        setEditingContentPos({roundIndex, logIndex});
+        setEditingContentType(log.type);
+        if (log.type === LibraryLogType.score) {
+            setEditingScoreText(getScoreText(log.score || 0, log.scorePlus, log.scoreSub));
+            setEditingContentText(log.comment || '');
+        } else {
+            setEditingContentText(log.comment || '');
+        }
+        setShowEditLogContent(true);
+    };
+
+    const parseScoreTextToData = (text: string): {score: number; plus: boolean; sub: boolean} | null => {
+        const trimmed = text.trim();
+        if (!trimmed) {
+            return null;
+        }
+        const plus = trimmed.endsWith('+');
+        const sub = trimmed.endsWith('-');
+        const base = plus || sub ? trimmed.slice(0, -1) : trimmed;
+        const index = SCORE_SEQ.findIndex((name) => name === base);
+        if (index < 0) {
+            return null;
+        }
+        return {
+            score: index + 1,
+            plus,
+            sub,
+        };
+    };
+
+    const handleSaveLogContent = () => {
+        if (!localItem || !editingContentPos || !editingContentType) {
+            setShowEditLogContent(false);
+            setEditingContentPos(null);
+            setEditingContentType(null);
+            setEditingContentText('');
+            setEditingScoreText('合');
+            return;
+        }
+
+        const newItem: LibraryItemFull = JSON.parse(JSON.stringify(localItem));
+        const targetRound = newItem.extra.rounds[editingContentPos.roundIndex];
+        const targetLog = targetRound?.logs[editingContentPos.logIndex];
+        if (!targetLog || targetLog.type !== editingContentType) {
+            setShowEditLogContent(false);
+            setEditingContentPos(null);
+            setEditingContentType(null);
+            setEditingContentText('');
+            setEditingScoreText('合');
+            return;
+        }
+
+        if (editingContentType === LibraryLogType.score) {
+            const parsedScore = parseScoreTextToData(editingScoreText);
+            if (!parsedScore) {
+                message.warning('评分格式无效');
+                return;
+            }
+            targetLog.score = parsedScore.score;
+            targetLog.scorePlus = parsedScore.plus;
+            targetLog.scoreSub = parsedScore.sub;
+            const trimmed = editingContentText.trim();
+            targetLog.comment = trimmed || undefined;
+        } else if (editingContentType === LibraryLogType.note) {
+            targetLog.comment = editingContentText;
+        }
+
+        newItem.extra.updatedAt = new Date().toISOString();
+        setLocalItem(newItem);
+        onSave(newItem);
+
+        setShowEditLogContent(false);
+        setEditingContentPos(null);
+        setEditingContentType(null);
+        setEditingContentText('');
+        setEditingScoreText('合');
+        message.success('内容已更新');
+    };
+
     const handleSaveLogTime = () => {
         if (!localItem || !editingLogPos || !editingLogTime) {
             setShowEditLogTime(false);
@@ -433,6 +521,7 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
             {status: LibraryItemStatus.WAIT, icon: <PauseOutlined/>, label: '搁置'},
             {status: LibraryItemStatus.GIVE_UP, icon: <StopOutlined/>, label: '放弃'},
             {status: LibraryItemStatus.DONE, icon: <CheckOutlined/>, label: '完成'},
+            {status: LibraryItemStatus.ARCHIVED, icon: <StopOutlined/>, label: '归档'},
         ];
         
         return (
@@ -555,6 +644,14 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
                 <Flex justify="space-between" align="flex-start">
                     {content}
                     <Space size={2}>
+                        {(log.type === LibraryLogType.score || log.type === LibraryLogType.note) ? (
+                            <Button
+                                type="text"
+                                size="small"
+                                icon={<EditOutlined/>}
+                                onClick={() => openLogContentEditor(roundIndex, logIndex, log)}
+                            />
+                        ) : null}
                         <Popconfirm
                             title="删除该日志？"
                             description="删除后不可恢复"
@@ -573,7 +670,7 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
                         <Button
                             type="text"
                             size="small"
-                            icon={<EditOutlined/>}
+                            icon={<ClockCircleOutlined/>}
                             onClick={() => openLogTimeEditor(roundIndex, logIndex, log.time)}
                         />
                         <Text type="secondary" style={{fontSize: 11, whiteSpace: 'nowrap'}}>
@@ -656,6 +753,14 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
             open={visible}
             extra={
                 <Space>
+                    {onToggleFavorite ? (
+                        <Button
+                            icon={localItem.extra.isFavorite ? <StarFilled/> : <StarOutlined/>}
+                            onClick={() => onToggleFavorite(localItem)}
+                        >
+                            {localItem.extra.isFavorite ? '已收藏' : '收藏'}
+                        </Button>
+                    ) : null}
                     <Button 
                         icon={<ShareAltOutlined/>} 
                         onClick={() => setShowShare(true)}
@@ -897,17 +1002,25 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
                     setPendingStatus(null);
                 }}
             >
-                {pendingStatus === LibraryItemStatus.WAIT ? (
-                    <Text type="secondary" style={{display: 'block', marginBottom: 8}}>
-                        {LIBRARY_WAIT_EXPIRED_RULE_TEXT}
-                    </Text>
-                ) : null}
-                <TextArea
-                    rows={3}
-                    placeholder={pendingStatus === LibraryItemStatus.TODO ? '请输入等待原因/二级状态（例如：等字幕、等朋友、片源问题）' : '可选：请输入搁置原因（填写后不会进入“鸽了”）'}
-                    value={statusReasonInput}
-                    onChange={(e) => setStatusReasonInput(e.target.value)}
-                />
+                {pendingStatus === LibraryItemStatus.TODO ? (
+                    <AutoComplete
+                        style={{width: '100%'}}
+                        value={statusReasonInput}
+                        options={todoReasonOptions.map(reason => ({value: reason}))}
+                        onChange={setStatusReasonInput}
+                        filterOption={(inputValue, option) =>
+                            option?.value.toLowerCase().includes(inputValue.toLowerCase()) || false
+                        }
+                    >
+                        <Input placeholder="请输入或选择等待原因（例如：等字幕、等朋友、片源问题）" />
+                    </AutoComplete>
+                ) : (
+                    <Input
+                        value={statusReasonInput}
+                        onChange={(e) => setStatusReasonInput(e.target.value)}
+                        placeholder={LIBRARY_WAIT_EXPIRED_RULE_TEXT}
+                    />
+                )}
             </Modal>
 
             <Modal
@@ -926,6 +1039,54 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
                     onChange={(value) => setEditingLogTime(value ? value.toISOString() : '')}
                     style={{width: '100%'}}
                 />
+            </Modal>
+
+            <Modal
+                title={editingContentType === LibraryLogType.score ? '编辑评分内容' : '编辑备注内容'}
+                open={showEditLogContent}
+                onOk={handleSaveLogContent}
+                onCancel={() => {
+                    setShowEditLogContent(false);
+                    setEditingContentPos(null);
+                    setEditingContentType(null);
+                    setEditingContentText('');
+                    setEditingScoreText('合');
+                }}
+            >
+                {editingContentType === LibraryLogType.score ? (
+                    <Space direction="vertical" style={{width: '100%'}}>
+                        <div>
+                            <Text>评分</Text>
+                            <div style={{marginTop: 8}}>
+                                <TextRate
+                                    sequence={SCORE_SEQ}
+                                    editable={true}
+                                    initialValue={editingScoreText}
+                                    onChange={setEditingScoreText}
+                                    fontSize={24}
+                                    fontSize2={16}
+                                />
+                            </div>
+                        </div>
+                        <div>
+                            <Text>评价内容（可选）</Text>
+                            <TextArea
+                                rows={3}
+                                value={editingContentText}
+                                onChange={(e) => setEditingContentText(e.target.value)}
+                                placeholder="请输入评分说明"
+                                style={{marginTop: 8}}
+                            />
+                        </div>
+                    </Space>
+                ) : (
+                    <TextArea
+                        rows={4}
+                        value={editingContentText}
+                        onChange={(e) => setEditingContentText(e.target.value)}
+                        placeholder="请输入备注内容"
+                    />
+                )}
             </Modal>
             
             {/* 分享弹窗 */}

@@ -67,6 +67,7 @@ export enum LibraryItemStatus {
     DONE = 2,
     WAIT = 3,
     GIVE_UP = 4,
+    ARCHIVED = 5,
 }
 
 export enum LibraryLogType {
@@ -135,6 +136,7 @@ export interface LibraryExtra {
     todoReason?: string             // 等待二级状态（自由文本）
     todoSince?: string              // 最近一次等待设置时间
     category: string                // 分类（动漫/电影/游戏/小说等）
+    isFavorite?: boolean            // 是否收藏
     status?: LibraryItemStatus      // 当前状态（可空：无状态）
     currentRound: number            // 当前周目索引
     rounds: LibraryRound[]          // 所有周目数据
@@ -201,6 +203,7 @@ export const LibraryStatusNames: Record<LibraryItemStatus, string> = {
     [LibraryItemStatus.DONE]: '已完成',
     [LibraryItemStatus.WAIT]: '搁置',
     [LibraryItemStatus.GIVE_UP]: '放弃',
+    [LibraryItemStatus.ARCHIVED]: '归档',
 }
 
 // 状态颜色映射
@@ -210,6 +213,7 @@ export const LibraryStatusColors: Record<LibraryItemStatus, string> = {
     [LibraryItemStatus.DONE]: '#52c41a',
     [LibraryItemStatus.WAIT]: '#faad14',
     [LibraryItemStatus.GIVE_UP]: '#ff4d4f',
+    [LibraryItemStatus.ARCHIVED]: '#595959',
 }
 
 // GroupType 枚举

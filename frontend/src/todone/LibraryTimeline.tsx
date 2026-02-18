@@ -191,6 +191,10 @@ export default function LibraryTimeline({visible, items, onClose, onItemClick}: 
                 value: LibraryItemStatus.GIVE_UP as TimelineStatusOption,
                 label: LibraryStatusNames[LibraryItemStatus.GIVE_UP],
             },
+            {
+                value: LibraryItemStatus.ARCHIVED as TimelineStatusOption,
+                label: LibraryStatusNames[LibraryItemStatus.ARCHIVED],
+            },
         ],
         []
     );
@@ -318,6 +322,8 @@ export default function LibraryTimeline({visible, items, onClose, onItemClick}: 
                 return <PauseCircleFilled style={{color: LibraryStatusColors[LibraryItemStatus.WAIT]}}/>;
             case LibraryItemStatus.GIVE_UP:
                 return <StopOutlined style={{color: LibraryStatusColors[LibraryItemStatus.GIVE_UP]}}/>;
+            case LibraryItemStatus.ARCHIVED:
+                return <StopOutlined style={{color: LibraryStatusColors[LibraryItemStatus.ARCHIVED]}}/>;
             default:
                 return <ClockCircleFilled/>;
         }
@@ -570,6 +576,7 @@ export default function LibraryTimeline({visible, items, onClose, onItemClick}: 
                             LibraryItemStatus.DONE,
                             LibraryItemStatus.WAIT,
                             'waitExpired' as TimelineStatusOption,
+                            LibraryItemStatus.ARCHIVED,
                         ].map(status => {
                             const count = displayEntries.filter((entry) => getEntryStatusOption(entry) === status).length;
                             if (count === 0) return null;
