@@ -75,6 +75,8 @@ export function parseLibraryExtra(note: string): LibraryExtra {
         parsed.rounds = parsed.rounds.map((round) => ({
             ...round,
             logs: round.logs.map((log) => {
+                // 兼容老版本数据：早期会把“添加到库”记录为 note + comment=“添加到库”。
+                // 这里在解析阶段统一归一化为 addToLibrary，确保时间线可被“添加到库”筛选项正确命中。
                 if (
                     log.type === LibraryLogType.note
                     && (log.comment || '').trim() === '添加到库'

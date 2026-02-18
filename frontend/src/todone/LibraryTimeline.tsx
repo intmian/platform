@@ -46,7 +46,7 @@ import {useIsMobile} from '../common/hooksv2';
 
 const {Text, Title} = Typography;
 const UNCATEGORIZED_KEY = '__uncategorized__';
-type TimelineStatusOption = LibraryItemStatus | 'addToLibrary';
+type TimelineStatusOption = LibraryItemStatus | 'addToLibrary' | 'score' | 'note';
 
 interface LibraryTimelineProps {
     visible: boolean;
@@ -62,6 +62,7 @@ export default function LibraryTimeline({visible, items, onClose, onItemClick}: 
     const exportRef = useRef<HTMLDivElement>(null);
 
     const [selectedStatuses, setSelectedStatuses] = useState<TimelineStatusOption[]>([
+        'score',
         LibraryItemStatus.DOING,
         LibraryItemStatus.DONE,
         LibraryItemStatus.WAIT,
@@ -100,9 +101,11 @@ export default function LibraryTimeline({visible, items, onClose, onItemClick}: 
     const statusOptions = useMemo(
         () => [
             {value: 'addToLibrary' as TimelineStatusOption, label: '添加到库'},
+            {value: 'score' as TimelineStatusOption, label: '评分'},
+            {value: 'note' as TimelineStatusOption, label: '备注'},
             {
                 value: LibraryItemStatus.TODO as TimelineStatusOption,
-                label: '待看',
+                label: '等待',
             },
             {
                 value: LibraryItemStatus.DOING as TimelineStatusOption,
@@ -151,6 +154,14 @@ export default function LibraryTimeline({visible, items, onClose, onItemClick}: 
 
             if (entry.logType === LibraryLogType.addToLibrary) {
                 return selectedStatuses.includes('addToLibrary');
+            }
+
+            if (entry.logType === LibraryLogType.score) {
+                return selectedStatuses.includes('score');
+            }
+
+            if (entry.logType === LibraryLogType.note) {
+                return selectedStatuses.includes('note');
             }
 
             if (entry.logType === LibraryLogType.changeStatus) {
