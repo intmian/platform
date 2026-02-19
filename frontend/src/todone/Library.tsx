@@ -991,7 +991,7 @@ export default function Library({addr, groupTitle}: LibraryProps) {
         const displayStatus = getDisplayStatusInfo(item.extra);
         const showRoundTag = currentRoundName && currentRoundName !== '首周目';
         const showScoreBadge = displayOptions.showScore && !!mainScore;
-        const scoreStarColor = getScoreStarColor(mainScore?.score || 0);
+        const scoreTextColor = getScoreStarColor(mainScore?.score || 1);
         const statusTextColor = getStatusTextColor(displayStatus.color);
         const todoReason = (item.extra.todoReason || '').trim();
         const displayStatusText = item.extra.status === LibraryItemStatus.TODO && todoReason
@@ -1082,8 +1082,7 @@ export default function Library({addr, groupTitle}: LibraryProps) {
                                         setScoreModalItem(item);
                                     }}
                                 >
-                                    <StarFilled className="library-card-score-star" style={{color: scoreStarColor}} />
-                                    <span>{getScoreText(mainScore!.score || 0, mainScore!.scorePlus, mainScore!.scoreSub)}</span>
+                                    <span style={{color: scoreTextColor}}>{getScoreText(mainScore!.score || 0, mainScore!.scorePlus, mainScore!.scoreSub)}</span>
                                 </div>
                             ) : null}
                         </div>
