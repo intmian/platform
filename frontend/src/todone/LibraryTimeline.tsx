@@ -2,7 +2,6 @@ import React, {useEffect, useMemo, useRef, useState} from 'react';
 import {
     Button,
     Checkbox,
-    Avatar,
     Divider,
     Drawer,
     Empty,
@@ -35,10 +34,9 @@ import {
     TimelineEntry,
 } from './net/protocal';
 import {
-    buildLibraryTitleCoverDataUrl,
     extractTimeline,
     formatDate,
-    getLibraryCoverDisplayUrl,
+    getLibraryCoverPaletteByTitle,
     getLogTypeText,
     getScoreText,
     groupTimelineByYear,
@@ -50,6 +48,8 @@ const {Text, Title} = Typography;
 const UNCATEGORIZED_KEY = '__uncategorized__';
 type TimelineStatusOption = LibraryItemStatus | 'addToLibrary' | 'score' | 'note' | 'waitExpired';
 const WAIT_EXPIRED_TIMELINE_COLOR = LibraryStatusColors[LibraryItemStatus.GIVE_UP];
+const LIBRARY_PLACEHOLDER_TEXT_WIDTH_RATIO = 0.1;
+const LIBRARY_PLACEHOLDER_PADDING_WIDTH_RATIO = 0.086;
 
 interface DisplayTimelineEntry extends TimelineEntry {
     mergedStartDone?: boolean;
@@ -469,7 +469,12 @@ export default function LibraryTimeline({visible, items, onClose, onItemClick}: 
 
     // 渲染时间线条目
     const renderTimelineItem = (entry: DisplayTimelineEntry, index: number) => {
-        const thumbUrl = getLibraryCoverDisplayUrl(entry.itemTitle, entry.pictureAddress);
+        const coverWidth = isMobile ? 42 : 48;
+        const coverHeight = isMobile ? 63 : 72;
+        const placeholderFontSize = Math.round(coverWidth * LIBRARY_PLACEHOLDER_TEXT_WIDTH_RATIO);
+        const placeholderPadding = Math.round(coverWidth * LIBRARY_PLACEHOLDER_PADDING_WIDTH_RATIO);
+        const realCoverUrl = entry.pictureAddress?.trim() || '';
+        const placeholderColor = getLibraryCoverPaletteByTitle(entry.itemTitle || '未命名');
         const actionText = isWaitExpiredEntry(entry)
             ? '鸽了'
             : entry.mergedStartDone
@@ -477,8 +482,6 @@ export default function LibraryTimeline({visible, items, onClose, onItemClick}: 
             : entry.logType === LibraryLogType.score
                 ? `评分 ${getScoreText(entry.score || 0)}`
                 : getLogTypeText(entry.logType, entry.status);
-        const fallbackCoverUrl = buildLibraryTitleCoverDataUrl(entry.itemTitle || '未命名');
-        const finalCoverUrl = thumbUrl || fallbackCoverUrl;
 
         return (
             <Timeline.Item
@@ -493,29 +496,60 @@ export default function LibraryTimeline({visible, items, onClose, onItemClick}: 
                     onClick={() => onItemClick?.(entry.itemId)}
                 >
                     {/* 封面缩略图 */}
-                    {finalCoverUrl ? (
-                        <img
-                            src={finalCoverUrl}
-                            width={isMobile ? 42 : 48}
-                            height={isMobile ? 63 : 72}
-                            style={{borderRadius: 4, objectFit: 'cover', objectPosition: 'center'}}
-                            onError={(e) => {
-                                const target = e.currentTarget;
-                                if (target.src !== fallbackCoverUrl) {
-                                    target.src = fallbackCoverUrl;
-                                }
+                    <div
+                        style={{
+                            position: 'relative',
+                            width: coverWidth,
+                            height: coverHeight,
+                            borderRadius: 4,
+                            overflow: 'hidden',
+                            flexShrink: 0,
+                        }}
+                    >
+                        {realCoverUrl ? (
+                            <img
+                                src={realCoverUrl}
+                                width={coverWidth}
+                                height={coverHeight}
+                                style={{objectFit: 'cover', objectPosition: 'center'}}
+                                onError={(e) => {
+                                    (e.target as HTMLImageElement).style.display = 'none';
+                                    const parent = (e.target as HTMLImageElement).parentElement;
+                                    if (parent) {
+                                        const placeholder = parent.querySelector('.library-timeline-cover-placeholder') as HTMLElement;
+                                        if (placeholder) {
+                                            placeholder.style.display = 'flex';
+                                        }
+                                    }
+                                }}
+                                alt={entry.itemTitle}
+                            />
+                        ) : null}
+                        <div
+                            className="library-timeline-cover-placeholder"
+                            style={{
+                                position: 'absolute',
+                                inset: 0,
+                                display: realCoverUrl ? 'none' : 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                padding: placeholderPadding,
+                                boxSizing: 'border-box',
+                                textAlign: 'center',
+                                wordBreak: 'normal',
+                                overflowWrap: 'anywhere',
+                                whiteSpace: 'normal',
+                                overflow: 'hidden',
+                                background: `linear-gradient(140deg, ${placeholderColor.bg} 0%, #ffffff 100%)`,
+                                color: placeholderColor.text,
+                                fontWeight: 600,
+                                fontSize: placeholderFontSize,
+                                lineHeight: 1.25,
                             }}
-                            alt={entry.itemTitle}
-                        />
-                    ) : (
-                        <Avatar
-                            shape="square"
-                            size={isMobile ? 42 : 48}
-                            style={{background: '#f0f0f0', color: '#999'}}
                         >
-                            {entry.itemTitle.slice(0, 1)}
-                        </Avatar>
-                    )}
+                            {entry.itemTitle || '未命名'}
+                        </div>
+                    </div>
                     
                     {/* 内容 */}
                     <Space direction="vertical" size={2} style={{flex: 1}}>

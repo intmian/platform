@@ -35,7 +35,6 @@ import {
     DownloadOutlined,
     EditOutlined,
     PauseOutlined,
-    PictureOutlined,
     PlayCircleOutlined,
     PlusOutlined,
     ShareAltOutlined,
@@ -62,7 +61,7 @@ import {
     addTimelineCutoffLog,
     formatDateTime,
     getDisplayStatusInfo,
-    getLibraryCoverDisplayUrl,
+    getLibraryCoverPaletteByTitle,
     getLogTypeText,
     getMainScore,
     getScoreDisplay,
@@ -88,6 +87,8 @@ const SCORE_SEQ = ["零", "差", "合", "优", "满"];
 const SCORE_OBJ_SEQ = ["垃圾", "低劣", "普通", "优秀", "传奇"];
 const SCORE_SUB_SEQ = ["折磨", "负面", "消磨", "享受", "极致"];
 const SCORE_INNOVATE_SEQ = ["抄袭", "模仿", "沿袭", "创新", "革命"];
+const LIBRARY_PLACEHOLDER_TEXT_WIDTH_RATIO = 0.1;
+const LIBRARY_PLACEHOLDER_PADDING_WIDTH_RATIO = 0.086;
 
 function scoreDataToText(seq: string[], score?: LibraryScoreData): string {
     if (!score) {
@@ -167,6 +168,30 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
     const [editingEnableObjScore, setEditingEnableObjScore] = useState(true);
     const [editingEnableSubScore, setEditingEnableSubScore] = useState(true);
     const [editingEnableInnovateScore, setEditingEnableInnovateScore] = useState(true);
+        const detailCoverRef = useRef<HTMLDivElement>(null);
+        const [detailCoverWidth, setDetailCoverWidth] = useState(180);
+
+        useEffect(() => {
+            const node = detailCoverRef.current;
+            if (!node) {
+                return;
+            }
+
+            const update = () => {
+                setDetailCoverWidth(node.clientWidth || 0);
+            };
+
+            update();
+            const rafId = window.requestAnimationFrame(update);
+            const timer = window.setTimeout(update, 120);
+            const observer = new ResizeObserver(update);
+            observer.observe(node);
+            return () => {
+                window.cancelAnimationFrame(rafId);
+                window.clearTimeout(timer);
+                observer.disconnect();
+            };
+        }, [visible, localItem?.title, isMobile]);
     
     // 分享弹窗
     const [showShare, setShowShare] = useState(false);
@@ -891,7 +916,10 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
 
     if (!localItem) return null;
     const displayTitle = editMode ? (editingTitle.trim() || localItem.title) : localItem.title;
-    const displayCoverUrl = getLibraryCoverDisplayUrl(displayTitle || '', localItem.extra.pictureAddress);
+    const realCoverUrl = localItem.extra.pictureAddress?.trim() || '';
+    const coverPalette = getLibraryCoverPaletteByTitle(displayTitle || '未命名');
+    const placeholderFontSize = Math.round(detailCoverWidth * LIBRARY_PLACEHOLDER_TEXT_WIDTH_RATIO);
+    const placeholderPadding = Math.round(detailCoverWidth * LIBRARY_PLACEHOLDER_PADDING_WIDTH_RATIO);
     const displayStatus = getDisplayStatusInfo(localItem.extra);
 
     return (
@@ -904,6 +932,20 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
             placement="right"
             width={isMobile ? '100%' : 600}
             destroyOnClose
+            afterOpenChange={(open) => {
+                if (!open) {
+                    return;
+                }
+                const measure = () => {
+                    const width = detailCoverRef.current?.clientWidth || 0;
+                    if (width > 0) {
+                        setDetailCoverWidth(width);
+                    }
+                };
+                window.requestAnimationFrame(measure);
+                window.setTimeout(measure, 80);
+                window.setTimeout(measure, 180);
+            }}
             onClose={onClose}
             open={visible}
             extra={
@@ -952,20 +994,21 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
             {/* 封面和基本信息 */}
             <Row gutter={16}>
                 <Col span={isMobile ? 24 : 8}>
-                    {displayCoverUrl ? (
-                        <div
-                            style={{
-                                position: 'relative',
-                                width: '100%',
-                                paddingTop: '150%',
-                                borderRadius: 8,
-                                overflow: 'hidden',
-                                background: '#f5f5f5',
-                                border: '1px solid #d9d9d9',
-                            }}
-                        >
+                    <div
+                        ref={detailCoverRef}
+                        style={{
+                            position: 'relative',
+                            width: '100%',
+                            paddingTop: '150%',
+                            borderRadius: 8,
+                            overflow: 'hidden',
+                            background: '#f5f5f5',
+                            border: '1px solid #d9d9d9',
+                        }}
+                    >
+                        {realCoverUrl ? (
                             <img
-                                src={displayCoverUrl}
+                                src={realCoverUrl}
                                 alt={displayTitle}
                                 style={{
                                     position: 'absolute',
@@ -977,28 +1020,41 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
                                 }}
                                 onError={(e) => {
                                     (e.target as HTMLImageElement).style.display = 'none';
+                                    const parent = (e.target as HTMLImageElement).parentElement;
+                                    if (parent) {
+                                        const placeholder = parent.querySelector('.library-detail-cover-placeholder') as HTMLElement;
+                                        if (placeholder) {
+                                            placeholder.style.display = 'flex';
+                                        }
+                                    }
                                 }}
                             />
-                        </div>
-                    ) : (
-                        <div style={{
-                            width: '100%',
-                            paddingTop: '150%',
-                            background: '#f5f5f5',
-                            borderRadius: 8,
-                            position: 'relative',
-                            border: '1px solid #d9d9d9',
-                        }}>
-                            <PictureOutlined style={{
+                        ) : null}
+                        <div
+                            className="library-detail-cover-placeholder"
+                            style={{
                                 position: 'absolute',
-                                top: '50%',
-                                left: '50%',
-                                transform: 'translate(-50%, -50%)',
-                                fontSize: 32,
-                                color: '#999',
-                            }}/>
+                                inset: 0,
+                                display: realCoverUrl ? 'none' : 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                padding: placeholderPadding,
+                                boxSizing: 'border-box',
+                                textAlign: 'center',
+                                wordBreak: 'normal',
+                                overflowWrap: 'anywhere',
+                                whiteSpace: 'normal',
+                                overflow: 'hidden',
+                                background: `linear-gradient(140deg, ${coverPalette.bg} 0%, #ffffff 100%)`,
+                                color: coverPalette.text,
+                                fontWeight: 600,
+                                fontSize: placeholderFontSize,
+                                lineHeight: 1.35,
+                            }}
+                        >
+                            {displayTitle || '未命名'}
                         </div>
-                    )}
+                    </div>
                 </Col>
                 <Col span={isMobile ? 24 : 16} style={{marginTop: isMobile ? 12 : 0}}>
                     {editMode ? (
