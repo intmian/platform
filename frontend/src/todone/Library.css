@@ -8,15 +8,9 @@
 /* 照片墙网格 */
 .library-grid {
     display: grid;
-    grid-template-columns: repeat(8, minmax(0, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(0, 156px));
     gap: 16px;
     justify-content: flex-start;
-}
-
-@media (min-width: 3000px) {
-    .library-grid {
-        grid-template-columns: repeat(10, minmax(0, 1fr));
-    }
 }
 
 .library-toolbar-actions {
@@ -365,23 +359,16 @@
 }
 
 .library-card-score-badge {
-    background: transparent;
-    color: #ffffff;
-    border: none;
-    padding: 0;
-    border-radius: 0;
-    font-size: 12px;
+    background: rgba(0, 0, 0, 0.62);
+    color: #fff;
+    padding: 3px 7px;
+    border-radius: 4px;
+    font-size: 11px;
     display: flex;
     align-items: center;
+    gap: 4px;
     cursor: pointer;
     flex-shrink: 0;
-}
-
-.library-card-score-badge > span {
-    font-weight: 600;
-    let1ter-spacing: 0.15px;
-    line-height: 1;
-    text-shadow: 0 1px 1px rgba(0, 0, 0, 0.28);
 }
 
 .library-card-score-star {
