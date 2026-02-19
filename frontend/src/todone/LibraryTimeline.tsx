@@ -37,7 +37,7 @@ import {
 import {
     buildLibraryTitleCoverDataUrl,
     extractTimeline,
-    formatDateTime,
+    formatDate,
     getLibraryCoverDisplayUrl,
     getLogTypeText,
     getScoreText,
@@ -51,6 +51,38 @@ const UNCATEGORIZED_KEY = '__uncategorized__';
 type TimelineStatusOption = LibraryItemStatus | 'addToLibrary' | 'score' | 'note' | 'waitExpired';
 const WAIT_EXPIRED_TIMELINE_COLOR = LibraryStatusColors[LibraryItemStatus.GIVE_UP];
 
+interface DisplayTimelineEntry extends TimelineEntry {
+    mergedStartDone?: boolean;
+}
+
+async function waitForImagesLoaded(container: HTMLElement): Promise<void> {
+    const images = Array.from(container.querySelectorAll('img'));
+    const pending = images.filter((img) => !img.complete);
+    if (pending.length === 0) {
+        return;
+    }
+
+    await Promise.race([
+        Promise.all(
+            pending.map((img) => new Promise<void>((resolve) => {
+                img.addEventListener('load', () => resolve(), {once: true});
+                img.addEventListener('error', () => resolve(), {once: true});
+            }))
+        ),
+        new Promise<void>((resolve) => {
+            window.setTimeout(resolve, 3000);
+        }),
+    ]);
+}
+
+function buildRoundKey(entry: TimelineEntry): string {
+    return `${entry.itemId}__${entry.roundName}`;
+}
+
+function buildRoundDayKey(entry: TimelineEntry): string {
+    return `${entry.itemId}__${entry.roundName}__${formatDate(entry.time)}`;
+}
+
 interface LibraryTimelineProps {
     visible: boolean;
     items: LibraryItemFull[];
@@ -63,7 +95,7 @@ export default function LibraryTimeline({visible, items, onClose, onItemClick}: 
     const [selectedYear, setSelectedYear] = useState<number | 'all'>('all');
     const [exporting, setExporting] = useState(false);
     const [showExportPreview, setShowExportPreview] = useState(false);
-    const exportRef = useRef<HTMLDivElement>(null);
+    const exportPreviewRef = useRef<HTMLDivElement>(null);
     const [waitExpiredTick, setWaitExpiredTick] = useState(0);
 
     useEffect(() => {
@@ -74,7 +106,6 @@ export default function LibraryTimeline({visible, items, onClose, onItemClick}: 
     }, []);
 
     const [selectedStatuses, setSelectedStatuses] = useState<TimelineStatusOption[]>([
-        'score',
         LibraryItemStatus.DOING,
         LibraryItemStatus.DONE,
         LibraryItemStatus.WAIT,
@@ -210,20 +241,100 @@ export default function LibraryTimeline({visible, items, onClose, onItemClick}: 
         [selectedCategories, categoryOptions]
     );
 
-    // 当前显示的条目
-    const displayEntries = useMemo(() => {
-        const baseEntries = (selectedYear === 'all'
+    const doingRoundKeySet = useMemo(() => {
+        const set = new Set<string>();
+        allEntries.forEach((entry) => {
+            if (entry.logType === LibraryLogType.changeStatus && entry.status === LibraryItemStatus.DOING) {
+                set.add(buildRoundKey(entry));
+            }
+        });
+        return set;
+    }, [allEntries]);
+
+    const baseEntries = useMemo(() => {
+        const sourceEntries = (selectedYear === 'all'
             ? allEntries
             : entriesByYear.get(selectedYear) || [])
             .slice()
             .sort((a, b) => new Date(a.time).getTime() - new Date(b.time).getTime());
 
-        return baseEntries.filter((entry) => {
+        return sourceEntries.filter((entry) => {
             const category = categoryMap.get(entry.itemId) || UNCATEGORIZED_KEY;
-            if (!selectedCategoriesFinal.includes(category)) {
-                return false;
+            return selectedCategoriesFinal.includes(category);
+        });
+    }, [
+        allEntries,
+        categoryMap,
+        entriesByYear,
+        selectedCategoriesFinal,
+        selectedYear,
+    ]);
+
+    // 当前显示的条目
+    const displayEntries = useMemo<DisplayTimelineEntry[]>(() => {
+        const doingIndexesByDay = new Map<string, number[]>();
+        baseEntries.forEach((entry, index) => {
+            if (entry.logType === LibraryLogType.changeStatus && entry.status === LibraryItemStatus.DOING) {
+                const key = buildRoundDayKey(entry);
+                const list = doingIndexesByDay.get(key) || [];
+                list.push(index);
+                doingIndexesByDay.set(key, list);
+            }
+        });
+
+        const donePairDoingIndexMap = new Map<number, number>();
+        const consumedDoingIndexes = new Set<number>();
+
+        // 第一阶段：先计算 DONE 对应要合并掉的 DOING 索引
+        baseEntries.forEach((entry, index) => {
+            if (entry.logType !== LibraryLogType.changeStatus || entry.status !== LibraryItemStatus.DONE) {
+                return;
+            }
+            const dayKey = buildRoundDayKey(entry);
+            const candidates = doingIndexesByDay.get(dayKey) || [];
+            const pairDoingIndex = candidates.find((candidateIndex) => (
+                candidateIndex < index && !consumedDoingIndexes.has(candidateIndex)
+            ));
+            if (pairDoingIndex !== undefined) {
+                consumedDoingIndexes.add(pairDoingIndex);
+                donePairDoingIndexMap.set(index, pairDoingIndex);
+            }
+        });
+
+        const mergedEntries: DisplayTimelineEntry[] = [];
+
+        // 第二阶段：输出条目，跳过被合并的 DOING
+        baseEntries.forEach((entry, index) => {
+            if (entry.logType !== LibraryLogType.changeStatus) {
+                mergedEntries.push(entry);
+                return;
             }
 
+            if (entry.status === LibraryItemStatus.DOING) {
+                if (consumedDoingIndexes.has(index)) {
+                    return;
+                }
+                mergedEntries.push(entry);
+                return;
+            }
+
+            if (entry.status === LibraryItemStatus.DONE) {
+                if (donePairDoingIndexMap.has(index)) {
+                    mergedEntries.push({...entry, mergedStartDone: true});
+                    return;
+                }
+
+                const roundKey = buildRoundKey(entry);
+                if (!doingRoundKeySet.has(roundKey)) {
+                    mergedEntries.push({...entry, mergedStartDone: true});
+                    return;
+                }
+            }
+
+            mergedEntries.push(entry);
+        });
+
+        return mergedEntries.filter((entry) => {
             const option = getEntryStatusOption(entry);
             if (option === undefined) {
                 return false;
@@ -231,13 +342,10 @@ export default function LibraryTimeline({visible, items, onClose, onItemClick}: 
             return selectedStatuses.includes(option);
         });
     }, [
-        allEntries,
-        categoryMap,
-        entriesByYear,
+        baseEntries,
+        doingRoundKeySet,
         getEntryStatusOption,
-        selectedCategoriesFinal,
         selectedStatuses,
-        selectedYear,
     ]);
 
     const allCategoryChecked =
@@ -260,7 +368,7 @@ export default function LibraryTimeline({visible, items, onClose, onItemClick}: 
     };
 
     const handleExportImage = async () => {
-        if (!exportRef.current) {
+        if (!exportPreviewRef.current) {
             message.warning('暂无可导出内容');
             return;
         }
@@ -268,17 +376,20 @@ export default function LibraryTimeline({visible, items, onClose, onItemClick}: 
         try {
             setExporting(true);
             const html2canvas = (await import('html2canvas')).default;
-            const target = exportRef.current;
+            const target = exportPreviewRef.current;
+            await waitForImagesLoaded(target);
+            const width = Math.max(target.scrollWidth, target.clientWidth, 1);
+            const height = Math.max(target.scrollHeight, target.clientHeight, 1);
             const canvas = await html2canvas(target, {
                 scale: 2,
                 useCORS: true,
                 backgroundColor: '#ffffff',
-                width: target.scrollWidth,
-                height: target.scrollHeight,
-                windowWidth: target.scrollWidth,
-                windowHeight: target.scrollHeight,
+                width,
+                height,
+                windowWidth: width,
+                windowHeight: height,
                 scrollX: 0,
-                scrollY: -window.scrollY,
+                scrollY: 0,
             });
             const dataUrl = canvas.toDataURL('image/png');
             const now = new Date();
@@ -350,10 +461,12 @@ export default function LibraryTimeline({visible, items, onClose, onItemClick}: 
     };
 
     // 渲染时间线条目
-    const renderTimelineItem = (entry: TimelineEntry, index: number) => {
+    const renderTimelineItem = (entry: DisplayTimelineEntry, index: number) => {
         const thumbUrl = getLibraryCoverDisplayUrl(entry.itemTitle, entry.pictureAddress);
         const actionText = isWaitExpiredEntry(entry)
             ? '鸽了'
+            : entry.mergedStartDone
+                ? '开始并完成'
             : entry.logType === LibraryLogType.score
                 ? `评分 ${getScoreText(entry.score || 0)}`
                 : getLogTypeText(entry.logType, entry.status);
@@ -399,14 +512,9 @@ export default function LibraryTimeline({visible, items, onClose, onItemClick}: 
                     
                     {/* 内容 */}
                     <Space direction="vertical" size={2} style={{flex: 1}}>
-                        <Flex justify="space-between" align="center" wrap="wrap" gap={4}>
-                            <Text strong style={{fontSize: isMobile ? 13 : 14}}>
-                                {entry.itemTitle}
-                            </Text>
-                            <Text type="secondary" style={{fontSize: 11}}>
-                                {formatDateTime(entry.time)}
-                            </Text>
-                        </Flex>
+                        <Text strong style={{fontSize: isMobile ? 13 : 14}}>
+                            {entry.itemTitle}
+                        </Text>
                         
                         <Space size={4} wrap>
                             <Tag
@@ -440,29 +548,28 @@ export default function LibraryTimeline({visible, items, onClose, onItemClick}: 
         );
     };
 
-    // 按月份分组渲染（同一月份的合并显示）
+    // 按日期分组渲染（同一天的合并显示）
     const renderGroupedTimeline = () => {
         if (displayEntries.length === 0) {
             return <Empty description="暂无记录"/>;
         }
 
-        let currentMonth = '';
+        let currentDay = '';
         const elements: React.ReactNode[] = [];
 
         displayEntries.forEach((entry, index) => {
-            const date = new Date(entry.time);
-            const entryMonth = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+            const entryDay = formatDate(entry.time);
             
-            if (entryMonth !== currentMonth) {
-                currentMonth = entryMonth;
+            if (entryDay !== currentDay) {
+                currentDay = entryDay;
                 elements.push(
                     <Divider
-                        key={`month-${entryMonth}`}
+                        key={`day-${entryDay}`}
                         orientation="left"
                         style={{margin: '16px 0 8px'}}
                     >
                         <Text type="secondary" style={{fontSize: 12}}>
-                            {entryMonth}
+                            {entryDay}
                         </Text>
                     </Divider>
                 );
@@ -502,7 +609,7 @@ export default function LibraryTimeline({visible, items, onClose, onItemClick}: 
             onClose={onClose}
             open={visible}
         >
-            <div ref={exportRef}>
+            <div>
                 <Space direction="vertical" size={10} style={{width: '100%', marginBottom: 14}}>
                     <Flex gap={8} wrap="wrap" align="center">
                         <Select
@@ -621,7 +728,7 @@ export default function LibraryTimeline({visible, items, onClose, onItemClick}: 
                 width={isMobile ? '100%' : 680}
                 style={{top: 20}}
             >
-                <div ref={exportRef} style={{maxHeight: '70vh', overflowY: 'auto', background: '#fff', paddingBottom: 8}}>
+                <div ref={exportPreviewRef} style={{maxHeight: '70vh', overflowY: 'auto', background: '#fff', paddingBottom: 8}}>
                     <div style={{padding: '0 12px'}}>{renderGroupedTimeline()}</div>
                     <div style={{padding: '8px 12px 0', fontSize: 12, color: '#999'}}>
                         提示：请先确认预览内容，再点击“导出图片”。

@@ -104,6 +104,26 @@ function scoreDataToText(seq: string[], score?: LibraryScoreData): string {
     return base;
 }
 
+async function waitForImagesLoaded(container: HTMLElement): Promise<void> {
+    const images = Array.from(container.querySelectorAll('img'));
+    const pending = images.filter((img) => !img.complete);
+    if (pending.length === 0) {
+        return;
+    }
+
+    await Promise.race([
+        Promise.all(
+            pending.map((img) => new Promise<void>((resolve) => {
+                img.addEventListener('load', () => resolve(), {once: true});
+                img.addEventListener('error', () => resolve(), {once: true});
+            }))
+        ),
+        new Promise<void>((resolve) => {
+            window.setTimeout(resolve, 3000);
+        }),
+    ]);
+}
+
 interface LibraryDetailProps {
     visible: boolean;
     item: LibraryItemFull | null;
@@ -150,6 +170,7 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
     
     // 分享弹窗
     const [showShare, setShowShare] = useState(false);
+    const [shareExporting, setShareExporting] = useState(false);
     const shareCardRef = useRef<HTMLDivElement | null>(null);
     
     // 基本信息编辑表单
@@ -346,11 +367,22 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
             return;
         }
         try {
+            setShareExporting(true);
+            const target = shareCardRef.current;
+            await waitForImagesLoaded(target);
             const html2canvas = (await import('html2canvas')).default;
-            const canvas = await html2canvas(shareCardRef.current, {
+            const width = Math.max(target.scrollWidth, target.clientWidth, 1);
+            const height = Math.max(target.scrollHeight, target.clientHeight, 1);
+            const canvas = await html2canvas(target, {
                 scale: 2,
                 useCORS: true,
                 backgroundColor: '#ffffff',
+                width,
+                height,
+                windowWidth: width,
+                windowHeight: height,
+                scrollX: 0,
+                scrollY: 0,
             });
             const dataUrl = canvas.toDataURL('image/png');
             const link = document.createElement('a');
@@ -361,6 +393,8 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
         } catch (error) {
             console.error(error);
             message.error('导出失败，请稍后重试');
+        } finally {
+            setShareExporting(false);
         }
     };
 
@@ -1330,6 +1364,7 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
                         <Button
                             icon={<DownloadOutlined/>}
                             type="primary"
+                            loading={shareExporting}
                             onClick={handleExportShareImage}
                         >
                             导出图片
@@ -1346,15 +1381,17 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
                 width={isMobile ? '100%' : 650}
                 style={{top: 20}}
             >
-                <div ref={shareCardRef} style={{maxHeight: '70vh', overflowY: 'auto', background: '#fff', paddingBottom: 8}}>
-                    <LibraryShareCard
-                        title={localItem.title}
-                        extra={localItem.extra}
-                        editable={false}
-                    />
-                    
-                    <div style={{padding: '0 10px', fontSize: 12, color: '#999'}}>
-                        提示：可直接点击“导出图片”生成分享图。
+                <div style={{maxHeight: '70vh', overflowY: 'auto', background: '#fff', paddingBottom: 8}}>
+                    <div ref={shareCardRef}>
+                        <LibraryShareCard
+                            title={localItem.title}
+                            extra={localItem.extra}
+                            editable={false}
+                        />
+
+                        <div style={{padding: '0 10px', fontSize: 12, color: '#999'}}>
+                            提示：可直接点击“导出图片”生成分享图。
+                        </div>
                     </div>
                 </div>
             </Modal>
