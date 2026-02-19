@@ -92,7 +92,7 @@ interface LibraryTimelineProps {
 
 export default function LibraryTimeline({visible, items, onClose, onItemClick}: LibraryTimelineProps) {
     const isMobile = useIsMobile();
-    const [selectedYear, setSelectedYear] = useState<number | 'all'>('all');
+    const [selectedYear, setSelectedYear] = useState<number | 'all'>(() => new Date().getFullYear());
     const [exporting, setExporting] = useState(false);
     const [showExportPreview, setShowExportPreview] = useState(false);
     const exportPreviewRef = useRef<HTMLDivElement>(null);
@@ -109,6 +109,7 @@ export default function LibraryTimeline({visible, items, onClose, onItemClick}: 
         LibraryItemStatus.DOING,
         LibraryItemStatus.DONE,
         LibraryItemStatus.WAIT,
+        'waitExpired',
         LibraryItemStatus.GIVE_UP,
     ]);
 
@@ -235,6 +236,12 @@ export default function LibraryTimeline({visible, items, onClose, onItemClick}: 
         const yearList = Array.from(entriesByYear.keys()).sort((a, b) => b - a);
         return yearList;
     }, [entriesByYear]);
+
+    useEffect(() => {
+        if (selectedYear !== 'all' && !years.includes(selectedYear)) {
+            setSelectedYear('all');
+        }
+    }, [selectedYear, years]);
 
     const selectedCategoriesFinal = useMemo(
         () => (selectedCategories.length > 0 ? selectedCategories : categoryOptions),
@@ -685,7 +692,16 @@ export default function LibraryTimeline({visible, items, onClose, onItemClick}: 
                             'waitExpired' as TimelineStatusOption,
                             LibraryItemStatus.ARCHIVED,
                         ].map(status => {
-                            const count = displayEntries.filter((entry) => getEntryStatusOption(entry) === status).length;
+                            const count = displayEntries.reduce((total, entry) => {
+                                const option = getEntryStatusOption(entry);
+                                if (option === status) {
+                                    return total + 1;
+                                }
+                                if (status === LibraryItemStatus.DOING && entry.mergedStartDone) {
+                                    return total + 1;
+                                }
+                                return total;
+                            }, 0);
                             if (count === 0) return null;
                             const color = status === 'waitExpired' ? WAIT_EXPIRED_TIMELINE_COLOR : LibraryStatusColors[status as LibraryItemStatus];
                             const text = status === 'waitExpired'

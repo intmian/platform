@@ -54,6 +54,8 @@ export default function LibraryScorePopover({extra, mainScoreOverride}: LibraryS
         ? getScoreDisplay(mainScore.score || 0, mainScore.scorePlus, mainScore.scoreSub)
         : '';
     const mainScoreComment = mainScore?.comment || '';
+    // 兼容历史数据：旧版本会把复杂评分“总评”写在 extra.comment。
+    const mergedMainComment = (mainScoreComment || extra.comment || '').trim();
     const mainScoreColor = getScoreStarColor(mainScore?.score || 0);
 
     return (
@@ -71,9 +73,9 @@ export default function LibraryScorePopover({extra, mainScoreOverride}: LibraryS
                         <Text type="secondary">-</Text>
                     )}
                 </Space>
-                {mainScoreComment.trim() ? (
+                {mergedMainComment ? (
                     <div style={{marginTop: 2}}>
-                        <Text type="secondary" style={{fontSize: 12}}>{mainScoreComment.trim()}</Text>
+                        <Text type="secondary" style={{fontSize: 12}}>{mergedMainComment}</Text>
                     </div>
                 ) : null}
             </div>
@@ -84,12 +86,6 @@ export default function LibraryScorePopover({extra, mainScoreOverride}: LibraryS
                     <Row label="客观好坏" value={scoreDataToText(SEQ_OBJ, extra.objScore)} comment={extra.objScore?.comment} />
                     <Row label="主观感受" value={scoreDataToText(SEQ_SUB, extra.subScore)} comment={extra.subScore?.comment} />
                     <Row label="艺术创新" value={scoreDataToText(SEQ_INNO, extra.innovateScore)} comment={extra.innovateScore?.comment} />
-                    {extra.comment?.trim() ? (
-                        <>
-                            <Divider style={{margin: '8px 0'}} />
-                            <Row label="总评" value="" comment={extra.comment} />
-                        </>
-                    ) : null}
                 </>
             ) : null}
         </div>

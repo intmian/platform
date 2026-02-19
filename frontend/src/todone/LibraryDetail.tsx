@@ -340,13 +340,11 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
             }
             newExtra.mainScore = {
                 ...payload.mainScore,
-                comment: payload.mainScore.comment || '',
+                comment: scoreLogComment,
             };
-            if (payload.comment?.trim()) {
-                newExtra.comment = payload.comment.trim();
-            } else {
-                delete newExtra.comment;
-            }
+            // 兼容历史数据：旧版本把复杂评分“总评”写在 extra.comment。
+            // 新版本统一读写主评分日志的 comment，不再维护 extra.comment。
+            delete newExtra.comment;
         } else {
             delete newExtra.objScore;
             delete newExtra.subScore;
@@ -477,6 +475,7 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
                 setEditingSubComment(subScore?.comment || '');
                 setEditingInnovateComment(innovateScore?.comment || '');
 
+                // 兼容历史数据：旧版本可能仅存了 extra.comment。
                 if (!log.comment && localItem.extra.comment) {
                     setEditingContentText(localItem.extra.comment);
                 }
@@ -558,7 +557,7 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
                     value: parsedScore.score,
                     plus: parsedScore.plus,
                     sub: parsedScore.sub,
-                    comment: '',
+                    comment: trimmed,
                 };
                 newItem.extra.mainScore = mainScore;
 
@@ -595,11 +594,8 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
                     delete newItem.extra.innovateScore;
                 }
 
-                if (trimmed) {
-                    newItem.extra.comment = trimmed;
-                } else {
-                    delete newItem.extra.comment;
-                }
+                // 兼容历史数据：编辑后统一迁移到主评分备注，清理旧总评字段。
+                delete newItem.extra.comment;
             }
         } else if (editingContentType === LibraryLogType.note) {
             targetLog.comment = editingContentText;
@@ -1328,7 +1324,7 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
                             </>
                         ) : null}
                         <div>
-                            <Text>{localItem?.extra.scoreMode === 'complex' ? '总评（可选）' : '评价内容（可选）'}</Text>
+                            <Text>{localItem?.extra.scoreMode === 'complex' ? '主评分评价（可选）' : '评价内容（可选）'}</Text>
                             <TextArea
                                 rows={3}
                                 value={editingContentText}
@@ -1613,7 +1609,7 @@ function AddScoreModal({visible, onOk, onCancel, initialMode = 'simple'}: AddSco
                 )}
                 
                 <div>
-                    <Text>{mode === 'complex' ? '总评（可选）：' : '评价（可选）：'}</Text>
+                    <Text>{mode === 'complex' ? '主评分评价（可选）：' : '评价（可选）：'}</Text>
                     <TextArea
                         rows={3}
                         placeholder="请输入评价内容..."

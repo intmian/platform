@@ -512,6 +512,7 @@ export default function Library({addr, groupTitle}: LibraryProps) {
     }, []);
 
     const compareByDefaultSort = useCallback((a: LibraryItemFull, b: LibraryItemFull) => {
+        // 默认排序口径：先按状态分组，再在“同状态 + 同分类”内让收藏条目置顶。
         const statusA = getItemStatusForFilter(a);
         const statusB = getItemStatusForFilter(b);
         const rankA = DEFAULT_SORT_STATUS_ORDER[String(statusA)] ?? Number.MAX_SAFE_INTEGER;
