@@ -907,6 +907,7 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
             }
             placement="right"
             width={isMobile ? '100%' : 600}
+            destroyOnClose
             onClose={onClose}
             open={visible}
             extra={

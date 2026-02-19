@@ -96,9 +96,10 @@ const STATUS_FILTER_OPTIONS: StatusFilterOption[] = [
     LibraryItemStatus.ARCHIVED,
 ];
 
-const DEFAULT_STATUS_FILTER_OPTIONS: StatusFilterOption[] = STATUS_FILTER_OPTIONS.filter(
-    (status) => status !== LibraryItemStatus.ARCHIVED
-);
+const DEFAULT_STATUS_FILTER_OPTIONS: StatusFilterOption[] = [
+    LibraryItemStatus.DOING,
+    LibraryItemStatus.WAIT,
+];
 
 const STATUS_FILTER_LABELS: Record<string, string> = {
     [LibraryItemStatus.DOING]: '进行中',
@@ -491,6 +492,10 @@ export default function Library({addr, groupTitle}: LibraryProps) {
     const selectOnlyStatusFilterOption = useCallback((status: StatusFilterOption) => {
         setSelectedStatuses([status]);
         setStatusFilterOpen(false);
+    }, []);
+
+    const selectAllStatusFilterOptions = useCallback(() => {
+        setSelectedStatuses([...STATUS_FILTER_OPTIONS]);
     }, []);
 
     const getItemStatusForFilter = useCallback((item: LibraryItemFull): StatusFilterOption => {
@@ -1266,12 +1271,20 @@ export default function Library({addr, groupTitle}: LibraryProps) {
                             ))}
                             <Divider style={{margin: '8px 0'}} />
                             <div className="library-status-filter-footer">
-                                <Button
-                                    size="small"
-                                    onClick={() => setSelectedStatuses(DEFAULT_STATUS_FILTER_OPTIONS)}
-                                >
-                                    恢复默认
-                                </Button>
+                                <Space size={8}>
+                                    <Button
+                                        size="small"
+                                        onClick={() => setSelectedStatuses(DEFAULT_STATUS_FILTER_OPTIONS)}
+                                    >
+                                        恢复默认
+                                    </Button>
+                                    <Button
+                                        size="small"
+                                        onClick={selectAllStatusFilterOptions}
+                                    >
+                                        选择全部
+                                    </Button>
+                                </Space>
                             </div>
                         </div>
                     )}
