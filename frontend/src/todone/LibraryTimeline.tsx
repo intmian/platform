@@ -34,6 +34,7 @@ import {
     TimelineEntry,
 } from './net/protocal';
 import {
+    buildLibraryTitleCoverDataUrl,
     extractTimeline,
     formatDate,
     getLibraryCoverPaletteByTitle,
@@ -73,6 +74,43 @@ async function waitForImagesLoaded(container: HTMLElement): Promise<void> {
             window.setTimeout(resolve, 3000);
         }),
     ]);
+}
+
+function blobToDataUrl(blob: Blob): Promise<string> {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result || ''));
+        reader.onerror = () => reject(reader.error || new Error('read blob failed'));
+        reader.readAsDataURL(blob);
+    });
+}
+
+async function inlineExportImages(container: HTMLElement): Promise<void> {
+    const imgs = Array.from(container.querySelectorAll('img'));
+    await Promise.all(imgs.map(async (img) => {
+        const src = img.getAttribute('src') || '';
+        if (!src || src.startsWith('data:') || src.startsWith('blob:')) {
+            return;
+        }
+        try {
+            const response = await fetch(src, {credentials: 'include'});
+            if (!response.ok) {
+                throw new Error(`fetch image failed: ${response.status}`);
+            }
+            const blob = await response.blob();
+            const dataUrl = await blobToDataUrl(blob);
+            if (dataUrl) {
+                img.setAttribute('src', dataUrl);
+            }
+        } catch {
+            const fallback = buildLibraryTitleCoverDataUrl((img.getAttribute('alt') || '').trim() || '未命名');
+            if (fallback) {
+                img.setAttribute('src', fallback);
+            } else {
+                (img as HTMLImageElement).style.display = 'none';
+            }
+        }
+    }));
 }
 
 function buildRoundKey(entry: TimelineEntry): string {
@@ -380,10 +418,27 @@ export default function LibraryTimeline({visible, items, onClose, onItemClick}: 
             return;
         }
 
+        let wrapper: HTMLDivElement | null = null;
         try {
             setExporting(true);
             const html2canvas = (await import('html2canvas')).default;
-            const target = exportPreviewRef.current;
+            const source = exportPreviewRef.current;
+            const sourceWidth = Math.max(source.scrollWidth, source.clientWidth, 1);
+            wrapper = document.createElement('div');
+            wrapper.style.position = 'fixed';
+            wrapper.style.left = '-100000px';
+            wrapper.style.top = '0';
+            wrapper.style.zIndex = '-1';
+            wrapper.style.pointerEvents = 'none';
+            wrapper.style.width = `${sourceWidth}px`;
+            wrapper.style.background = '#ffffff';
+            const target = source.cloneNode(true) as HTMLDivElement;
+            target.style.maxHeight = 'none';
+            target.style.overflow = 'visible';
+            target.style.height = 'auto';
+            wrapper.appendChild(target);
+            document.body.appendChild(wrapper);
+            await inlineExportImages(target);
             await waitForImagesLoaded(target);
             const width = Math.max(target.scrollWidth, target.clientWidth, 1);
             const height = Math.max(target.scrollHeight, target.clientHeight, 1);
@@ -410,6 +465,9 @@ export default function LibraryTimeline({visible, items, onClose, onItemClick}: 
             console.error(error);
             message.error('导出失败，请稍后重试');
         } finally {
+            if (wrapper && wrapper.parentNode) {
+                wrapper.parentNode.removeChild(wrapper);
+            }
             setExporting(false);
         }
     };
@@ -778,10 +836,9 @@ export default function LibraryTimeline({visible, items, onClose, onItemClick}: 
                 width={isMobile ? '100%' : 680}
                 style={{top: 20}}
             >
-                <div ref={exportPreviewRef} style={{maxHeight: '70vh', overflowY: 'auto', background: '#fff', paddingBottom: 8}}>
-                    <div style={{padding: '0 12px'}}>{renderGroupedTimeline()}</div>
-                    <div style={{padding: '8px 12px 0', fontSize: 12, color: '#999'}}>
-                        提示：请先确认预览内容，再点击“导出图片”。
+                <div style={{maxHeight: '70vh', overflowY: 'auto', background: '#fff', paddingBottom: 8}}>
+                    <div ref={exportPreviewRef} style={{padding: '0 12px'}}>
+                        {renderGroupedTimeline()}
                     </div>
                 </div>
             </Modal>

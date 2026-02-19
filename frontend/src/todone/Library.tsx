@@ -1407,6 +1407,20 @@ export default function Library({addr, groupTitle}: LibraryProps) {
                                 </div>
                             )}
                         </div>
+                        <div style={{marginTop: 8, display: 'flex', justifyContent: 'center'}}>
+                            <Button
+                                danger
+                                size="small"
+                                icon={<DeleteOutlined/>}
+                                disabled={!addCoverUrl.trim()}
+                                onClick={() => {
+                                    setAddCoverUrl('');
+                                    message.success('已删除封面，恢复默认占位图');
+                                }}
+                            >
+                                删除封面
+                            </Button>
+                        </div>
                     </div>
 
                     <Form form={addForm} layout="vertical" className="library-add-form">

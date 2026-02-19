@@ -59,6 +59,7 @@ import {
     addScoreLog,
     addStatusLog,
     addTimelineCutoffLog,
+    buildLibraryTitleCoverDataUrl,
     formatDateTime,
     getDisplayStatusInfo,
     getLibraryCoverPaletteByTitle,
@@ -123,6 +124,43 @@ async function waitForImagesLoaded(container: HTMLElement): Promise<void> {
             window.setTimeout(resolve, 3000);
         }),
     ]);
+}
+
+function blobToDataUrl(blob: Blob): Promise<string> {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result || ''));
+        reader.onerror = () => reject(reader.error || new Error('read blob failed'));
+        reader.readAsDataURL(blob);
+    });
+}
+
+async function inlineExportImages(container: HTMLElement): Promise<void> {
+    const imgs = Array.from(container.querySelectorAll('img'));
+    await Promise.all(imgs.map(async (img) => {
+        const src = img.getAttribute('src') || '';
+        if (!src || src.startsWith('data:') || src.startsWith('blob:')) {
+            return;
+        }
+        try {
+            const response = await fetch(src, {credentials: 'include'});
+            if (!response.ok) {
+                throw new Error(`fetch image failed: ${response.status}`);
+            }
+            const blob = await response.blob();
+            const dataUrl = await blobToDataUrl(blob);
+            if (dataUrl) {
+                img.setAttribute('src', dataUrl);
+            }
+        } catch {
+            const fallback = buildLibraryTitleCoverDataUrl((img.getAttribute('alt') || '').trim() || '未命名');
+            if (fallback) {
+                img.setAttribute('src', fallback);
+            } else {
+                (img as HTMLImageElement).style.display = 'none';
+            }
+        }
+    }));
 }
 
 interface LibraryDetailProps {
@@ -389,11 +427,28 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
             message.warning('暂无可导出的分享内容');
             return;
         }
+        let wrapper: HTMLDivElement | null = null;
         try {
             setShareExporting(true);
-            const target = shareCardRef.current;
-            await waitForImagesLoaded(target);
             const html2canvas = (await import('html2canvas')).default;
+            const source = shareCardRef.current;
+            const sourceWidth = Math.max(source.scrollWidth, source.clientWidth, 1);
+            wrapper = document.createElement('div');
+            wrapper.style.position = 'fixed';
+            wrapper.style.left = '-100000px';
+            wrapper.style.top = '0';
+            wrapper.style.zIndex = '-1';
+            wrapper.style.pointerEvents = 'none';
+            wrapper.style.width = `${sourceWidth}px`;
+            wrapper.style.background = '#ffffff';
+            const target = source.cloneNode(true) as HTMLDivElement;
+            target.style.maxHeight = 'none';
+            target.style.overflow = 'visible';
+            target.style.height = 'auto';
+            wrapper.appendChild(target);
+            document.body.appendChild(wrapper);
+            await inlineExportImages(target);
+            await waitForImagesLoaded(target);
             const width = Math.max(target.scrollWidth, target.clientWidth, 1);
             const height = Math.max(target.scrollHeight, target.clientHeight, 1);
             const canvas = await html2canvas(target, {
@@ -417,6 +472,9 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
             console.error(error);
             message.error('导出失败，请稍后重试');
         } finally {
+            if (wrapper && wrapper.parentNode) {
+                wrapper.parentNode.removeChild(wrapper);
+            }
             setShareExporting(false);
         }
     };
@@ -1084,13 +1142,33 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
                                 />
                             </Form.Item>
                             <Form.Item label="封面">
-                                <Button
-                                    icon={<UploadOutlined/>}
-                                    loading={coverUploading}
-                                    onClick={() => checkCoverClipboard(false)}
-                                >
-                                    上传（先读剪贴板）
-                                </Button>
+                                <Space>
+                                    <Button
+                                        icon={<UploadOutlined/>}
+                                        loading={coverUploading}
+                                        onClick={() => checkCoverClipboard(false)}
+                                    >
+                                        上传（先读剪贴板）
+                                    </Button>
+                                    <Button
+                                        danger
+                                        icon={<DeleteOutlined/>}
+                                        disabled={!localItem.extra.pictureAddress?.trim()}
+                                        onClick={() => {
+                                            const nextItem: LibraryItemFull = {
+                                                ...localItem,
+                                                extra: {
+                                                    ...localItem.extra,
+                                                    pictureAddress: '',
+                                                },
+                                            };
+                                            setLocalItem(nextItem);
+                                            message.success('已删除封面，恢复默认占位图');
+                                        }}
+                                    >
+                                        删除封面
+                                    </Button>
+                                </Space>
                                 <Space style={{marginTop: 8}}>
                                     <Text type="secondary">检测到剪贴板图片会先询问使用，取消后可自行选择本地图片</Text>
                                 </Space>
@@ -1441,10 +1519,6 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
                             extra={localItem.extra}
                             editable={false}
                         />
-
-                        <div style={{padding: '0 10px', fontSize: 12, color: '#999'}}>
-                            提示：可直接点击“导出图片”生成分享图。
-                        </div>
                     </div>
                 </div>
             </Modal>
