@@ -5,12 +5,18 @@
     min-height: 100%;
 }
 
-/* 照片墙网格 */
 .library-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(0, 156px));
+    grid-template-columns: repeat(8, minmax(0, 1fr));
     gap: 16px;
     justify-content: flex-start;
+}
+
+@media (min-width: 1500px) {
+    .library-grid {
+        grid-template-columns: repeat(10, minmax(0, 1fr));
+        gap: 24px;
+    }
 }
 
 .library-toolbar-actions {
