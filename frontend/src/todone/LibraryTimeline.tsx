@@ -547,6 +547,12 @@ export default function LibraryTimeline({visible, items, onClose, onItemClick}: 
             : entry.logType === LibraryLogType.score
                 ? `评分 ${getScoreText(entry.score || 0)}`
                 : getLogTypeText(entry.logType, entry.status);
+        const trimmedComment = (entry.comment || '').trim();
+        const shouldHideComment = (
+            entry.logType === LibraryLogType.changeStatus
+            && entry.status === LibraryItemStatus.DOING
+            && trimmedComment === `开始${entry.roundName}`
+        ) || trimmedComment === actionText;
 
         return (
             <Timeline.Item
@@ -634,7 +640,7 @@ export default function LibraryTimeline({visible, items, onClose, onItemClick}: 
                             )}
                         </Space>
                         
-                        {entry.comment && (
+                        {trimmedComment && !shouldHideComment && (
                             <Text
                                 type="secondary"
                                 style={{
@@ -645,7 +651,7 @@ export default function LibraryTimeline({visible, items, onClose, onItemClick}: 
                                     overflow: 'hidden',
                                 }}
                             >
-                                {entry.comment}
+                                {trimmedComment}
                             </Text>
                         )}
                     </Space>
