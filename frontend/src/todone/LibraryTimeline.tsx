@@ -130,7 +130,7 @@ interface LibraryTimelineProps {
 
 export default function LibraryTimeline({visible, items, onClose, onItemClick}: LibraryTimelineProps) {
     const isMobile = useIsMobile();
-    const [selectedYear, setSelectedYear] = useState<number | 'all'>(() => new Date().getFullYear());
+    const [selectedYear, setSelectedYear] = useState<number | 'all'>('all');
     const [exporting, setExporting] = useState(false);
     const [showExportPreview, setShowExportPreview] = useState(false);
     const exportPreviewRef = useRef<HTMLDivElement>(null);
@@ -276,8 +276,15 @@ export default function LibraryTimeline({visible, items, onClose, onItemClick}: 
     }, [entriesByYear]);
 
     useEffect(() => {
+        if (!visible) {
+            return;
+        }
+        setSelectedYear(years[0] ?? 'all');
+    }, [visible, years]);
+
+    useEffect(() => {
         if (selectedYear !== 'all' && !years.includes(selectedYear)) {
-            setSelectedYear('all');
+            setSelectedYear(years[0] ?? 'all');
         }
     }, [selectedYear, years]);
 

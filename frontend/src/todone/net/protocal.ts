@@ -131,7 +131,7 @@ export interface LibraryExtra {
     author: string                  // 作者/制作方
     year?: number                   // 作品年份
     remark?: string                 // 作品备注
-    waitReason?: string             // 搁置原因
+    waitReason?: string             // [deprecated] 项目层搁置原因（已停用，统一使用最新搁置日志）
     waitSince?: string              // 最近一次搁置开始时间
     todoReason?: string             // 等待二级状态（自由文本）
     todoSince?: string              // 最近一次等待设置时间

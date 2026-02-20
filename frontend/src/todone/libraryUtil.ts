@@ -21,7 +21,6 @@ export function createDefaultLibraryExtra(): LibraryExtra {
         author: '',
         year: undefined,
         remark: '',
-        waitReason: '',
         waitSince: undefined,
         todoReason: '',
         todoSince: undefined,
@@ -66,15 +65,15 @@ export function parseLibraryExtra(note: string): LibraryExtra {
         if (parsed.remark === undefined) {
             parsed.remark = '';
         }
-        if (parsed.waitReason === undefined) {
-            parsed.waitReason = '';
-        }
         if (parsed.todoReason === undefined) {
             parsed.todoReason = '';
         }
         if (parsed.isFavorite === undefined) {
             parsed.isFavorite = false;
         }
+        // `waitReason` 已废弃：统一改为读取最新搁置日志 comment。
+        // 为避免继续使用历史项目层字段，这里解析后主动清理。
+        delete parsed.waitReason;
 
         parsed.rounds = parsed.rounds.map((round) => ({
             ...round,
@@ -105,8 +104,19 @@ export function parseLibraryExtra(note: string): LibraryExtra {
  * 将 LibraryExtra 序列化为 JSON 字符串存入 Task.Note
  */
 export function serializeLibraryExtra(extra: LibraryExtra): string {
+    const now = new Date().toISOString();
+    const normalizedExtra = {
+        ...extra,
+        updatedAt: now,
+    } as LibraryExtra;
+    // `waitReason` 已废弃：不再写入项目层字段，保存时清空。
+    delete normalizedExtra.waitReason;
+    return JSON.stringify(normalizedExtra);
+}
+
+export function touchLibraryUpdatedAt(extra: LibraryExtra): LibraryExtra {
     extra.updatedAt = new Date().toISOString();
-    return JSON.stringify(extra);
+    return extra;
 }
 
 /**
@@ -154,15 +164,12 @@ export function addStatusLog(extra: LibraryExtra, newStatus?: LibraryItemStatus,
         extra.todoSince = now;
         extra.todoReason = comment?.trim() || '';
         extra.waitSince = undefined;
-        extra.waitReason = '';
     } else if (newStatus === LibraryItemStatus.WAIT) {
         extra.waitSince = now;
-        extra.waitReason = comment?.trim() || '';
         extra.todoSince = undefined;
         extra.todoReason = '';
     } else {
         extra.waitSince = undefined;
-        extra.waitReason = '';
         extra.todoSince = undefined;
         extra.todoReason = '';
     }
@@ -174,6 +181,31 @@ export function addStatusLog(extra: LibraryExtra, newStatus?: LibraryItemStatus,
     }
     
     return extra;
+}
+
+export function getLatestWaitReason(extra: LibraryExtra): string {
+    let latestWaitReason = '';
+    let latestTimeMs = Number.MIN_SAFE_INTEGER;
+
+    extra.rounds.forEach((round) => {
+        round.logs.forEach((log) => {
+            if (log.type !== LibraryLogType.changeStatus || log.status !== LibraryItemStatus.WAIT) {
+                return;
+            }
+
+            const timeMs = new Date(log.time).getTime();
+            if (Number.isNaN(timeMs)) {
+                return;
+            }
+
+            if (timeMs >= latestTimeMs) {
+                latestTimeMs = timeMs;
+                latestWaitReason = (log.comment || '').trim();
+            }
+        });
+    });
+
+    return latestWaitReason;
 }
 
 export const LIBRARY_WAIT_EXPIRED_FILTER = 'wait_expired' as const;

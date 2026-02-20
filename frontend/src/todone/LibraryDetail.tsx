@@ -37,6 +37,7 @@ import {
     PauseOutlined,
     PlayCircleOutlined,
     PlusOutlined,
+    ReloadOutlined,
     ShareAltOutlined,
     StarFilled,
     StarOutlined,
@@ -62,6 +63,7 @@ import {
     buildLibraryTitleCoverDataUrl,
     formatDateTime,
     getDisplayStatusInfo,
+    getLatestWaitReason,
     getLibraryCoverPaletteByTitle,
     getLogTypeText,
     getMainScore,
@@ -72,6 +74,7 @@ import {
     normalizeMainScoreSelection,
     setMainScore,
     startNewRound,
+    touchLibraryUpdatedAt,
 } from './libraryUtil';
 import {useIsMobile} from '../common/hooksv2';
 import TextRate from '../library/TextRate';
@@ -189,6 +192,9 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
     const [showStatusReason, setShowStatusReason] = useState(false);
     const [statusReasonInput, setStatusReasonInput] = useState('');
     const [pendingStatus, setPendingStatus] = useState<LibraryItemStatus | null>(null);
+    const [showRenameRound, setShowRenameRound] = useState(false);
+    const [renameRoundIndex, setRenameRoundIndex] = useState<number | null>(null);
+    const [renameRoundName, setRenameRoundName] = useState('');
     const [showEditLogTime, setShowEditLogTime] = useState(false);
     const [editingLogPos, setEditingLogPos] = useState<{roundIndex: number; logIndex: number} | null>(null);
     const [editingLogTime, setEditingLogTime] = useState('');
@@ -326,9 +332,57 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
         if (status === LibraryItemStatus.TODO) {
             setStatusReasonInput(localItem.extra.todoReason || '');
         } else {
-            setStatusReasonInput(localItem.extra.waitReason || '');
+            setStatusReasonInput(getLatestWaitReason(localItem.extra));
         }
         setShowStatusReason(true);
+    };
+
+    const handleRefreshUpdatedAt = () => {
+        if (!localItem) return;
+        const newExtra = touchLibraryUpdatedAt({...localItem.extra});
+        const newItem = {...localItem, extra: newExtra};
+        setLocalItem(newItem);
+        onSave(newItem);
+    };
+
+    const openRenameRound = (roundIndex: number) => {
+        if (!localItem) return;
+        const round = localItem.extra.rounds[roundIndex];
+        if (!round) {
+            return;
+        }
+        setRenameRoundIndex(roundIndex);
+        setRenameRoundName(round.name || '');
+        setShowRenameRound(true);
+    };
+
+    const handleRenameRound = () => {
+        if (!localItem || renameRoundIndex === null) {
+            return;
+        }
+        const finalName = renameRoundName.trim();
+        if (!finalName) {
+            message.warning('请输入周目名称');
+            return;
+        }
+
+        const newExtra: LibraryExtra = {
+            ...localItem.extra,
+            rounds: localItem.extra.rounds.map((round, index) => (
+                index === renameRoundIndex
+                    ? {...round, name: finalName}
+                    : round
+            )),
+            updatedAt: new Date().toISOString(),
+        };
+
+        const newItem = {...localItem, extra: newExtra};
+        setLocalItem(newItem);
+        onSave(newItem);
+        setShowRenameRound(false);
+        setRenameRoundIndex(null);
+        setRenameRoundName('');
+        message.success('周目名称已更新');
     };
 
     const handleSetStatusWithReason = () => {
@@ -929,6 +983,17 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
                 header={
                     <Space>
                         <Text strong>{round.name}</Text>
+                        <Button
+                            type="text"
+                            size="small"
+                            icon={<EditOutlined/>}
+                            onClick={(event) => {
+                                event.stopPropagation();
+                                openRenameRound(roundIndex);
+                            }}
+                        >
+                            重命名
+                        </Button>
                         {isCurrentRound && <Tag color="blue">当前</Tag>}
                         <Text type="secondary" style={{fontSize: 12}}>
                             {formatDateTime(round.startTime)}
@@ -1016,6 +1081,12 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
                             {localItem.extra.isFavorite ? '已收藏' : '收藏'}
                         </Button>
                     ) : null}
+                    <Button 
+                        icon={<ReloadOutlined/>}
+                        onClick={handleRefreshUpdatedAt}
+                    >
+                        刷新
+                    </Button>
                     <Button 
                         icon={<ShareAltOutlined/>} 
                         onClick={() => setShowShare(true)}
@@ -1190,7 +1261,7 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
                                 <Descriptions.Item label="等待原因">{localItem.extra.todoReason || '-'}</Descriptions.Item>
                             )}
                             {localItem.extra.status === LibraryItemStatus.WAIT && (
-                                <Descriptions.Item label="搁置原因">{localItem.extra.waitReason || '-'}</Descriptions.Item>
+                                <Descriptions.Item label="搁置原因">{getLatestWaitReason(localItem.extra) || '-'}</Descriptions.Item>
                             )}
                             <Descriptions.Item label="主评分">
                                 {mainScoreEntry ? (
@@ -1253,6 +1324,23 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
                     placeholder="请输入周目名称，如：二周目、DLC1、重温等"
                     value={newRoundName}
                     onChange={(e) => setNewRoundName(e.target.value)}
+                />
+            </Modal>
+
+            <Modal
+                title="重命名周目"
+                open={showRenameRound}
+                onOk={handleRenameRound}
+                onCancel={() => {
+                    setShowRenameRound(false);
+                    setRenameRoundIndex(null);
+                    setRenameRoundName('');
+                }}
+            >
+                <Input
+                    placeholder="请输入新的周目名称"
+                    value={renameRoundName}
+                    onChange={(e) => setRenameRoundName(e.target.value)}
                 />
             </Modal>
             

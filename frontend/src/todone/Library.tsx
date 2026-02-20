@@ -60,6 +60,7 @@ import {
     addStatusLog,
     buildLibraryTitleCoverDataUrl,
     createDefaultLibraryExtra,
+    getLatestWaitReason,
     getDisplayStatusInfo,
     LIBRARY_CARD_HOVER_EFFECT_CONFIG,
     isWaitExpired,
@@ -72,6 +73,7 @@ import {
     parseLibraryFromTask,
     serializeLibraryExtra,
     startNewRound,
+    touchLibraryUpdatedAt,
 } from './libraryUtil';
 import {useIsMobile} from '../common/hooksv2';
 import LibraryDetail from './LibraryDetail';
@@ -624,7 +626,7 @@ export default function Library({addr, groupTitle}: LibraryProps) {
         if (status === LibraryItemStatus.TODO || status === LibraryItemStatus.WAIT) {
             setPendingStatusItem(item);
             setPendingStatus(status);
-            setStatusReasonInput(status === LibraryItemStatus.TODO ? (item.extra.todoReason || '') : (item.extra.waitReason || ''));
+            setStatusReasonInput(status === LibraryItemStatus.TODO ? (item.extra.todoReason || '') : getLatestWaitReason(item.extra));
             setShowStatusReasonModal(true);
             return;
         }
@@ -632,6 +634,12 @@ export default function Library({addr, groupTitle}: LibraryProps) {
             return;
         }
         const newExtra = addStatusLog({...item.extra}, status);
+        const newItem = {...item, extra: newExtra};
+        handleSaveItem(newItem);
+    }, [handleSaveItem]);
+
+    const handleRefreshItem = useCallback((item: LibraryItemFull) => {
+        const newExtra = touchLibraryUpdatedAt({...item.extra});
         const newItem = {...item, extra: newExtra};
         handleSaveItem(newItem);
     }, [handleSaveItem]);
@@ -740,6 +748,12 @@ export default function Library({addr, groupTitle}: LibraryProps) {
             return;
         }
 
+        if (key === 'refresh') {
+            handleRefreshItem(item);
+            setCardMenuVisible(false);
+            return;
+        }
+
         if (key === 'favorite') {
             handleToggleFavorite(item);
             setCardMenuVisible(false);
@@ -791,6 +805,10 @@ export default function Library({addr, groupTitle}: LibraryProps) {
             {
                 key: 'favorite',
                 label: item.extra.isFavorite ? '取消收藏' : '收藏',
+            },
+            {
+                key: 'refresh',
+                label: '刷新',
             },
             {type: 'divider' as const},
             {
