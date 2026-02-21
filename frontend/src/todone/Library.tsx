@@ -30,14 +30,12 @@ import {
     SettingOutlined,
     SortAscendingOutlined,
     StarFilled,
-    StarOutlined,
     UploadOutlined,
 } from '@ant-design/icons';
 import {Addr} from './addr';
 import {
     LibraryItemFull,
     LibraryItemStatus,
-    LibraryStatusColors,
     LibraryStatusNames,
     PSubGroup,
     PTask,
@@ -55,6 +53,8 @@ import {
     sendDelTask,
     sendGetSubGroup,
     sendGetTasks,
+    sendTaskMove,
+    TaskMoveReq,
 } from './net/send_back';
 import {
     addStatusLog,
@@ -130,6 +130,19 @@ const DEFAULT_SORT_STATUS_ORDER: Record<string, number> = {
 
 // 默认的 SubGroup 名称（用于存储所有 Library 条目）
 const DEFAULT_SUBGROUP_NAME = '_library_items_';
+const ARCHIVED_SUBGROUP_NAME = '_library_items_archive_';
+
+function isArchivedStatus(status?: LibraryItemStatus): boolean {
+    return status === LibraryItemStatus.DONE
+        || status === LibraryItemStatus.GIVE_UP
+        || status === LibraryItemStatus.ARCHIVED;
+}
+
+function isArchivedFilterStatus(status: StatusFilterOption): boolean {
+    return status === LibraryItemStatus.DONE
+        || status === LibraryItemStatus.GIVE_UP
+        || status === LibraryItemStatus.ARCHIVED;
+}
 
 interface LibraryProps {
     addr: Addr | null;
@@ -264,7 +277,11 @@ export default function Library({addr, groupTitle}: LibraryProps) {
     
     // 数据状态
     const [mainSubGroup, setMainSubGroup] = useState<PSubGroup | null>(null);
-    const [tasks, setTasks] = useState<PTask[]>([]);
+    const [archivedSubGroup, setArchivedSubGroup] = useState<PSubGroup | null>(null);
+    const [mainTasks, setMainTasks] = useState<PTask[]>([]);
+    const [archivedTasks, setArchivedTasks] = useState<PTask[]>([]);
+    const [archivedTasksLoaded, setArchivedTasksLoaded] = useState(false);
+    const [archivedTasksLoading, setArchivedTasksLoading] = useState(false);
     const [loading, setLoading] = useState(false);
     
     // 当前选中的分类 (extra.category)
@@ -348,13 +365,49 @@ export default function Library({addr, groupTitle}: LibraryProps) {
         return () => window.clearInterval(timer);
     }, []);
 
-    // 加载 Tasks
-    const loadTasks = useCallback((subGroupId: number) => {
-        if (!addr) {
-            setLoading(false);
-            return;
+    const fetchSubGroups = useCallback((): Promise<PSubGroup[] | null> => {
+        if (!addr || addr.userID === '') {
+            return Promise.resolve(null);
         }
-        
+        const req: GetSubGroupReq = {
+            UserID: addr.userID,
+            ParentDirID: addr.getLastDirID(),
+            GroupID: addr.getLastGroupID(),
+        };
+        return new Promise((resolve) => {
+            sendGetSubGroup(req, (ret) => {
+                if (!ret.ok) {
+                    resolve(null);
+                    return;
+                }
+                resolve(ret.data.SubGroups || []);
+            });
+        });
+    }, [addr]);
+
+    const createSubGroup = useCallback((title: string, note: string): Promise<boolean> => {
+        if (!addr || addr.userID === '') {
+            return Promise.resolve(false);
+        }
+        const createReq: CreateSubGroupReq = {
+            UserID: addr.userID,
+            ParentDirID: addr.getLastDirID(),
+            GroupID: addr.getLastGroupID(),
+            Title: title,
+            Note: note,
+            AfterID: 0,
+        };
+        return new Promise((resolve) => {
+            sendCreateSubGroup(createReq, (ret) => {
+                resolve(ret.ok);
+            });
+        });
+    }, [addr]);
+
+    const loadSubGroupTasks = useCallback((subGroupId: number): Promise<PTask[] | null> => {
+        if (!addr) {
+            return Promise.resolve(null);
+        }
         const req: GetTasksReq = {
             UserID: addr.userID,
             ParentDirID: addr.getLastDirID(),
@@ -362,73 +415,184 @@ export default function Library({addr, groupTitle}: LibraryProps) {
             SubGroupID: subGroupId,
             ContainDone: true,
         };
-        
-        sendGetTasks(req, (ret) => {
-            if (ret.ok) {
-                setTasks(ret.data.Tasks || []);
-            }
-            setLoading(false);
+        return new Promise((resolve) => {
+            sendGetTasks(req, (ret) => {
+                if (!ret.ok) {
+                    resolve(null);
+                    return;
+                }
+                resolve(ret.data.Tasks || []);
+            });
         });
     }, [addr]);
 
-    // 加载或创建主 SubGroup
-    const loadOrCreateMainSubGroup = useCallback(() => {
-        if (!addr || addr.userID === '') return;
-        
-        const req: GetSubGroupReq = {
-            UserID: addr.userID,
-            ParentDirID: addr.getLastDirID(),
-            GroupID: addr.getLastGroupID(),
-        };
-        
+    const loadMainTasks = useCallback(async () => {
+        if (!mainSubGroup) {
+            return false;
+        }
+        const list = await loadSubGroupTasks(mainSubGroup.ID);
+        if (list === null) {
+            return false;
+        }
+        setMainTasks(list);
+        return true;
+    }, [mainSubGroup, loadSubGroupTasks]);
+
+    const ensureArchivedTasksLoaded = useCallback(async (force = false) => {
+        if (!archivedSubGroup) {
+            return;
+        }
+        if (archivedTasksLoading) {
+            return;
+        }
+        if (archivedTasksLoaded && !force) {
+            return;
+        }
+        setArchivedTasksLoading(true);
         setLoading(true);
-        sendGetSubGroup(req, (ret) => {
-            if (ret.ok && ret.data.SubGroups && ret.data.SubGroups.length > 0) {
-                // 优先查找名为 DEFAULT_SUBGROUP_NAME 的 SubGroup
-                let sg = ret.data.SubGroups.find((g: any) => g.Title === DEFAULT_SUBGROUP_NAME);
-                if (!sg) {
-                    // 没找到则回退到第一个（兼容旧数据）
-                    sg = ret.data.SubGroups[0];
-                }
-                
-                setMainSubGroup(sg);
-                loadTasks(sg.ID);
-            } else {
-                // 创建默认 SubGroup
-                const createReq: CreateSubGroupReq = {
-                    UserID: addr.userID,
-                    ParentDirID: addr.getLastDirID(),
-                    GroupID: addr.getLastGroupID(),
-                    Title: DEFAULT_SUBGROUP_NAME,
-                    Note: 'Library 条目存储',
-                    AfterID: 0,
-                };
-                
-                sendCreateSubGroup(createReq, (createRet) => {
-                    if (createRet.ok) {
-                        // 重新加载
-                        sendGetSubGroup(req, (ret2) => {
-                            if (ret2.ok && ret2.data.SubGroups && ret2.data.SubGroups.length > 0) {
-                                const sg = ret2.data.SubGroups.find((g: any) => g.Title === DEFAULT_SUBGROUP_NAME) || ret2.data.SubGroups[0];
-                                setMainSubGroup(sg);
-                                loadTasks(sg.ID);
-                            } else {
-                                setLoading(false);
-                            }
-                        });
-                    } else {
-                        message.error('初始化失败');
-                        setLoading(false);
-                    }
-                });
+        const list = await loadSubGroupTasks(archivedSubGroup.ID);
+        if (list === null) {
+            message.error('加载历史条目失败');
+        } else {
+            setArchivedTasks(list);
+            setArchivedTasksLoaded(true);
+        }
+        setArchivedTasksLoading(false);
+        setLoading(false);
+    }, [archivedSubGroup, archivedTasksLoaded, archivedTasksLoading, loadSubGroupTasks]);
+
+    const reloadLoadedTasks = useCallback(async () => {
+        if (!mainSubGroup) {
+            return;
+        }
+        setLoading(true);
+        const mainList = await loadSubGroupTasks(mainSubGroup.ID);
+        if (mainList !== null) {
+            setMainTasks(mainList);
+        }
+        if (archivedTasksLoaded && archivedSubGroup) {
+            const archiveList = await loadSubGroupTasks(archivedSubGroup.ID);
+            if (archiveList !== null) {
+                setArchivedTasks(archiveList);
             }
+        }
+        setLoading(false);
+    }, [archivedSubGroup, archivedTasksLoaded, loadSubGroupTasks, mainSubGroup]);
+
+    const migrateArchivedTasksFromMain = useCallback(async (
+        sourceTasks: PTask[],
+        sourceSubGroupID: number,
+        targetSubGroupID: number
+    ): Promise<PTask[]> => {
+        if (!addr || sourceTasks.length === 0) {
+            return sourceTasks;
+        }
+        const archivedTaskIDs = sourceTasks
+            .filter((task) => isArchivedStatus(getCurrentStatus(parseLibraryFromTask(task).extra)))
+            .map((task) => task.ID);
+        if (archivedTaskIDs.length === 0) {
+            return sourceTasks;
+        }
+
+        const moveReq: TaskMoveReq = {
+            UserID: addr.userID,
+            DirID: addr.getLastDirID(),
+            GroupID: addr.getLastGroupID(),
+            SubGroupID: sourceSubGroupID,
+            TaskIDs: archivedTaskIDs,
+            TrgDir: addr.getLastDirID(),
+            TrgGroup: addr.getLastGroupID(),
+            TrgSubGroup: targetSubGroupID,
+            TrgParentID: 0,
+            TrgTaskID: 0,
+            After: true,
+        };
+
+        const moved = await new Promise<boolean>((resolve) => {
+            sendTaskMove(moveReq, (ret) => {
+                resolve(ret.ok);
+            });
         });
-    }, [addr, loadTasks]);
+        if (!moved) {
+            message.warning('历史条目自动迁移失败，请稍后重试');
+            return sourceTasks;
+        }
+        message.success(`已将 ${archivedTaskIDs.length} 个历史条目迁移到独立分组`);
+        const archivedSet = new Set<number>(archivedTaskIDs);
+        return sourceTasks.filter((task) => !archivedSet.has(task.ID));
+    }, [addr]);
+
+    // 加载并初始化 Library 使用的 SubGroup
+    const loadOrCreateLibrarySubGroups = useCallback(async () => {
+        if (!addr || addr.userID === '') {
+            return;
+        }
+        setLoading(true);
+
+        let groups = await fetchSubGroups();
+        if (groups === null) {
+            message.error('初始化失败');
+            setLoading(false);
+            return;
+        }
+
+        let main = groups.find((g) => g.Title === DEFAULT_SUBGROUP_NAME);
+        if (!main && groups.length > 0) {
+            main = groups[0];
+        }
+
+        if (!main) {
+            const created = await createSubGroup(DEFAULT_SUBGROUP_NAME, 'Library 活跃条目');
+            if (!created) {
+                message.error('初始化失败');
+                setLoading(false);
+                return;
+            }
+            groups = await fetchSubGroups();
+            if (groups === null || groups.length === 0) {
+                message.error('初始化失败');
+                setLoading(false);
+                return;
+            }
+            main = groups.find((g) => g.Title === DEFAULT_SUBGROUP_NAME) || groups[0];
+        }
+
+        let archive = groups.find((g) => g.Title === ARCHIVED_SUBGROUP_NAME);
+        if (!archive) {
+            const created = await createSubGroup(ARCHIVED_SUBGROUP_NAME, 'Library 完成/放弃/归档条目');
+            if (created) {
+                const latestGroups = await fetchSubGroups();
+                if (latestGroups) {
+                    groups = latestGroups;
+                    archive = groups.find((g) => g.Title === ARCHIVED_SUBGROUP_NAME) || null;
+                    main = groups.find((g) => g.ID === main.ID) || main;
+                }
+            }
+        }
+
+        setMainSubGroup(main);
+        setArchivedSubGroup(archive || null);
+        setArchivedTasks([]);
+        setArchivedTasksLoaded(false);
+
+        const mainList = await loadSubGroupTasks(main.ID);
+        if (mainList === null) {
+            message.error('加载条目失败');
+            setLoading(false);
+            return;
+        }
+        let nextMainTasks = mainList;
+        if (archive) {
+            nextMainTasks = await migrateArchivedTasksFromMain(mainList, main.ID, archive.ID);
+        }
+        setMainTasks(nextMainTasks);
+        setLoading(false);
+    }, [addr, createSubGroup, fetchSubGroups, loadSubGroupTasks, migrateArchivedTasksFromMain]);
 
     // 初始加载
     useEffect(() => {
-        loadOrCreateMainSubGroup();
-    }, [loadOrCreateMainSubGroup]);
+        void loadOrCreateLibrarySubGroups();
+    }, [loadOrCreateLibrarySubGroups]);
 
     useEffect(() => {
         if (!selectedStatuses.includes(LibraryItemStatus.TODO)) {
@@ -436,10 +600,44 @@ export default function Library({addr, groupTitle}: LibraryProps) {
         }
     }, [selectedStatuses]);
 
+    const shouldLoadArchivedByStatusFilter = useMemo(() => {
+        return selectedStatuses.some((status) => isArchivedFilterStatus(status));
+    }, [selectedStatuses]);
+
+    useEffect(() => {
+        if (shouldLoadArchivedByStatusFilter) {
+            void ensureArchivedTasksLoaded();
+        }
+    }, [ensureArchivedTasksLoaded, shouldLoadArchivedByStatusFilter]);
+
+    useEffect(() => {
+        if (showCategoryManager || showTimeline) {
+            void ensureArchivedTasksLoaded();
+        }
+    }, [ensureArchivedTasksLoaded, showCategoryManager, showTimeline]);
+
+    const allTasks = useMemo(() => {
+        if (!archivedTasksLoaded) {
+            return mainTasks;
+        }
+        return [...mainTasks, ...archivedTasks];
+    }, [archivedTasks, archivedTasksLoaded, mainTasks]);
+
+    const taskSubGroupMap = useMemo(() => {
+        const map = new Map<number, number>();
+        if (mainSubGroup) {
+            mainTasks.forEach((task) => map.set(task.ID, mainSubGroup.ID));
+        }
+        if (archivedSubGroup && archivedTasksLoaded) {
+            archivedTasks.forEach((task) => map.set(task.ID, archivedSubGroup.ID));
+        }
+        return map;
+    }, [archivedSubGroup, archivedTasks, archivedTasksLoaded, mainSubGroup, mainTasks]);
+
     // 转换为 LibraryItemFull 列表
     const allItems: LibraryItemFull[] = useMemo(() => {
-        return tasks.map(task => parseLibraryFromTask(task));
-    }, [tasks]);
+        return allTasks.map(task => parseLibraryFromTask(task));
+    }, [allTasks]);
 
     // 提取所有分类（从 extra.category 字段）
     const categories: string[] = useMemo(() => {
@@ -538,6 +736,7 @@ export default function Library({addr, groupTitle}: LibraryProps) {
 
     // 应用筛选和排序
     const filteredItems = useMemo(() => {
+        void waitExpiredTick;
         let result = [...allItems];
         
         if (selectedCategory !== 'all') {
@@ -594,37 +793,114 @@ export default function Library({addr, groupTitle}: LibraryProps) {
 
     // 保存 item 变更
     const handleSaveItem = useCallback((item: LibraryItemFull) => {
-        if (!addr || !mainSubGroup) return;
-        
-        const originalTask = tasks.find(t => t.ID === item.taskId);
-        if (!originalTask) return;
-        
+        if (!addr || !mainSubGroup) {
+            return;
+        }
+
+        const originalTask = allTasks.find((task) => task.ID === item.taskId);
+        if (!originalTask) {
+            return;
+        }
+
+        const sourceSubGroupID = taskSubGroupMap.get(item.taskId) || mainSubGroup.ID;
+        const targetSubGroupID = (
+            isArchivedStatus(getCurrentStatus(item.extra))
+            && archivedSubGroup
+        )
+            ? archivedSubGroup.ID
+            : mainSubGroup.ID;
+
         const updatedTask: PTask = {
             ...originalTask,
             Title: item.title,
             Note: serializeLibraryExtra(item.extra),
             Tags: item.tags,
         };
-        
-        const req: ChangeTaskReq = {
+
+        const changeReq: ChangeTaskReq = {
             DirID: addr.getLastDirID(),
             GroupID: addr.getLastGroupID(),
-            SubGroupID: mainSubGroup.ID,
+            SubGroupID: sourceSubGroupID,
             UserID: addr.userID,
             Data: updatedTask,
         };
-        
-        sendChangeTask(req, (ret) => {
-            if (ret.ok) {
-                setTasks(prev => prev.map(t => t.ID === item.taskId ? updatedTask : t));
-                const savedItem = parseLibraryFromTask(updatedTask);
-                setDetailItem(prev => prev && prev.taskId === item.taskId ? savedItem : prev);
-                message.success('保存成功');
-            } else {
-                message.error('保存失败');
+
+        const applyLocalUpdate = () => {
+            const savedItem = parseLibraryFromTask(updatedTask);
+            setDetailItem((prev) => prev && prev.taskId === item.taskId ? savedItem : prev);
+            if (sourceSubGroupID === targetSubGroupID) {
+                if (sourceSubGroupID === mainSubGroup.ID) {
+                    setMainTasks((prev) => prev.map((task) => task.ID === item.taskId ? updatedTask : task));
+                } else if (archivedSubGroup && sourceSubGroupID === archivedSubGroup.ID) {
+                    setArchivedTasks((prev) => prev.map((task) => task.ID === item.taskId ? updatedTask : task));
+                }
+                return;
             }
+
+            if (sourceSubGroupID === mainSubGroup.ID) {
+                setMainTasks((prev) => prev.filter((task) => task.ID !== item.taskId));
+                if (archivedTasksLoaded) {
+                    setArchivedTasks((prev) => {
+                        const next = prev.filter((task) => task.ID !== item.taskId);
+                        next.unshift(updatedTask);
+                        return next;
+                    });
+                }
+            } else if (archivedSubGroup && sourceSubGroupID === archivedSubGroup.ID) {
+                setArchivedTasks((prev) => prev.filter((task) => task.ID !== item.taskId));
+                setMainTasks((prev) => {
+                    const next = prev.filter((task) => task.ID !== item.taskId);
+                    next.unshift(updatedTask);
+                    return next;
+                });
+            }
+        };
+
+        sendChangeTask(changeReq, (changeRet) => {
+            if (!changeRet.ok) {
+                message.error('保存失败');
+                return;
+            }
+
+            if (sourceSubGroupID === targetSubGroupID) {
+                applyLocalUpdate();
+                message.success('保存成功');
+                return;
+            }
+
+            const moveReq: TaskMoveReq = {
+                UserID: addr.userID,
+                DirID: addr.getLastDirID(),
+                GroupID: addr.getLastGroupID(),
+                SubGroupID: sourceSubGroupID,
+                TaskIDs: [item.taskId],
+                TrgDir: addr.getLastDirID(),
+                TrgGroup: addr.getLastGroupID(),
+                TrgSubGroup: targetSubGroupID,
+                TrgParentID: 0,
+                TrgTaskID: 0,
+                After: true,
+            };
+
+            sendTaskMove(moveReq, (moveRet) => {
+                if (!moveRet.ok) {
+                    message.error('状态迁移失败');
+                    void reloadLoadedTasks();
+                    return;
+                }
+                applyLocalUpdate();
+                message.success('保存成功');
+            });
         });
-    }, [addr, mainSubGroup, tasks]);
+    }, [
+        addr,
+        allTasks,
+        archivedSubGroup,
+        archivedTasksLoaded,
+        mainSubGroup,
+        reloadLoadedTasks,
+        taskSubGroupMap,
+    ]);
 
     const handleQuickStatusChange = useCallback((item: LibraryItemFull, status?: LibraryItemStatus) => {
         if (status === LibraryItemStatus.TODO || status === LibraryItemStatus.WAIT) {
@@ -848,24 +1124,29 @@ export default function Library({addr, groupTitle}: LibraryProps) {
     // 删除条目
     const handleDeleteItem = useCallback((item: LibraryItemFull) => {
         if (!addr || !mainSubGroup) return;
-        
+
+        const subGroupID = taskSubGroupMap.get(item.taskId) || mainSubGroup.ID;
         const req: DelTaskReq = {
             UserID: addr.userID,
             DirID: addr.getLastDirID(),
             GroupID: addr.getLastGroupID(),
-            SubGroupID: mainSubGroup.ID,
+            SubGroupID: subGroupID,
             TaskID: [item.taskId],
         };
         
         sendDelTask(req, (ret) => {
             if (ret.ok) {
-                setTasks(prev => prev.filter(t => t.ID !== item.taskId));
+                if (subGroupID === mainSubGroup.ID) {
+                    setMainTasks((prev) => prev.filter((task) => task.ID !== item.taskId));
+                } else {
+                    setArchivedTasks((prev) => prev.filter((task) => task.ID !== item.taskId));
+                }
                 message.success('删除成功');
             } else {
                 message.error('删除失败');
             }
         });
-    }, [addr, mainSubGroup]);
+    }, [addr, mainSubGroup, taskSubGroupMap]);
 
     // 添加新条目
     const handleAdd = useCallback(() => {
@@ -909,13 +1190,13 @@ export default function Library({addr, groupTitle}: LibraryProps) {
                     setShowAdd(false);
                     setAddCoverUrl('');
                     addForm.resetFields();
-                    loadTasks(mainSubGroup.ID);
+                    void loadMainTasks();
                 } else {
                     message.error('添加失败');
                 }
             });
         });
-    }, [addr, addCoverUrl, addForm, mainSubGroup, loadTasks]);
+    }, [addr, addCoverUrl, addForm, mainSubGroup, loadMainTasks]);
 
     // 批量修改分类名称
     const handleRenameCategory = useCallback((oldName: string, newName: string) => {
@@ -928,7 +1209,7 @@ export default function Library({addr, groupTitle}: LibraryProps) {
         let errorCount = 0;
         
         itemsToUpdate.forEach(item => {
-            const originalTask = tasks.find(t => t.ID === item.taskId);
+            const originalTask = allTasks.find((task) => task.ID === item.taskId);
             if (!originalTask) return;
             
             const newExtra = {...item.extra, category: newName.trim()};
@@ -937,10 +1218,11 @@ export default function Library({addr, groupTitle}: LibraryProps) {
                 Note: serializeLibraryExtra(newExtra),
             };
             
+            const subGroupID = taskSubGroupMap.get(item.taskId) || mainSubGroup.ID;
             const req: ChangeTaskReq = {
                 DirID: addr.getLastDirID(),
                 GroupID: addr.getLastGroupID(),
-                SubGroupID: mainSubGroup.ID,
+                SubGroupID: subGroupID,
                 UserID: addr.userID,
                 Data: updatedTask,
             };
@@ -955,17 +1237,17 @@ export default function Library({addr, groupTitle}: LibraryProps) {
                 if (successCount + errorCount === itemsToUpdate.length) {
                     if (errorCount === 0) {
                         message.success(`已将 ${successCount} 个条目的分类改为 "${newName}"`);
-                        loadTasks(mainSubGroup.ID);
+                        void reloadLoadedTasks();
                     } else {
                         message.warning(`${successCount} 个成功，${errorCount} 个失败`);
-                        loadTasks(mainSubGroup.ID);
+                        void reloadLoadedTasks();
                     }
                     setEditingCategoryOld(null);
                     setEditingCategoryNew('');
                 }
             });
         });
-    }, [addr, mainSubGroup, allItems, tasks, loadTasks]);
+    }, [addr, allItems, allTasks, mainSubGroup, reloadLoadedTasks, taskSubGroupMap]);
 
     // 删除分类（清空该分类下所有条目的分类字段）
     const handleClearCategory = useCallback((categoryName: string) => {
@@ -978,7 +1260,7 @@ export default function Library({addr, groupTitle}: LibraryProps) {
         let errorCount = 0;
         
         itemsToUpdate.forEach(item => {
-            const originalTask = tasks.find(t => t.ID === item.taskId);
+            const originalTask = allTasks.find((task) => task.ID === item.taskId);
             if (!originalTask) return;
             
             const newExtra = {...item.extra, category: ''};
@@ -987,10 +1269,11 @@ export default function Library({addr, groupTitle}: LibraryProps) {
                 Note: serializeLibraryExtra(newExtra),
             };
             
+            const subGroupID = taskSubGroupMap.get(item.taskId) || mainSubGroup.ID;
             const req: ChangeTaskReq = {
                 DirID: addr.getLastDirID(),
                 GroupID: addr.getLastGroupID(),
-                SubGroupID: mainSubGroup.ID,
+                SubGroupID: subGroupID,
                 UserID: addr.userID,
                 Data: updatedTask,
             };
@@ -1005,15 +1288,15 @@ export default function Library({addr, groupTitle}: LibraryProps) {
                 if (successCount + errorCount === itemsToUpdate.length) {
                     if (errorCount === 0) {
                         message.success(`已清除 ${successCount} 个条目的分类`);
-                        loadTasks(mainSubGroup.ID);
+                        void reloadLoadedTasks();
                     } else {
                         message.warning(`${successCount} 个成功，${errorCount} 个失败`);
-                        loadTasks(mainSubGroup.ID);
+                        void reloadLoadedTasks();
                     }
                 }
             });
         });
-    }, [addr, mainSubGroup, allItems, tasks, loadTasks]);
+    }, [addr, allItems, allTasks, mainSubGroup, reloadLoadedTasks, taskSubGroupMap]);
 
     // 快速状态变更菜单
     const getStatusMenuItems = (item: LibraryItemFull) => {
@@ -1773,7 +2056,7 @@ export default function Library({addr, groupTitle}: LibraryProps) {
             <LibraryDetail
                 visible={showDetail}
                 item={detailItem}
-                subGroupId={mainSubGroup?.ID || 0}
+                subGroupId={detailItem ? (taskSubGroupMap.get(detailItem.taskId) || mainSubGroup?.ID || 0) : (mainSubGroup?.ID || 0)}
                 categories={categories}
                 todoReasonOptions={todoReasonOptions}
                 onClose={() => {
