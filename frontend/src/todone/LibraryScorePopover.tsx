@@ -1,8 +1,8 @@
 import React from 'react';
 import {StarFilled} from '@ant-design/icons';
 import {Divider, Space, Typography} from 'antd';
-import {LibraryExtra, LibraryScoreData} from './net/protocal';
-import {getMainScore, getScoreDisplay, getScoreStarColor, getScoreText} from './libraryUtil';
+import {LibraryExtra, LibraryLogEntry, LibraryScoreData} from './net/protocal';
+import {getComplexScoreSnapshot, getMainScore, getScoreDisplay, getScoreStarColor, getScoreText} from './libraryUtil';
 
 const {Text} = Typography;
 
@@ -45,8 +45,9 @@ interface LibraryScorePopoverProps {
 }
 
 export default function LibraryScorePopover({extra, mainScoreOverride}: LibraryScorePopoverProps) {
-    const isComplex = extra.scoreMode === 'complex';
-    const mainScore = mainScoreOverride || getMainScore(extra);
+    const mainScore = (mainScoreOverride as LibraryLogEntry | undefined) || getMainScore(extra);
+    const scoreSnapshot = getComplexScoreSnapshot(extra, mainScore);
+    const isComplex = scoreSnapshot.mode === 'complex';
     const mainScoreText = mainScore
         ? getScoreText(mainScore.score || 0, mainScore.scorePlus, mainScore.scoreSub)
         : '-';
@@ -83,9 +84,9 @@ export default function LibraryScorePopover({extra, mainScoreOverride}: LibraryS
             {isComplex ? (
                 <>
                     <Divider style={{margin: '8px 0'}} />
-                    <Row label="客观好坏" value={scoreDataToText(SEQ_OBJ, extra.objScore)} comment={extra.objScore?.comment} />
-                    <Row label="主观感受" value={scoreDataToText(SEQ_SUB, extra.subScore)} comment={extra.subScore?.comment} />
-                    <Row label="艺术创新" value={scoreDataToText(SEQ_INNO, extra.innovateScore)} comment={extra.innovateScore?.comment} />
+                    <Row label="客观好坏" value={scoreDataToText(SEQ_OBJ, scoreSnapshot.objScore)} comment={scoreSnapshot.objScore?.comment} />
+                    <Row label="主观感受" value={scoreDataToText(SEQ_SUB, scoreSnapshot.subScore)} comment={scoreSnapshot.subScore?.comment} />
+                    <Row label="艺术创新" value={scoreDataToText(SEQ_INNO, scoreSnapshot.innovateScore)} comment={scoreSnapshot.innovateScore?.comment} />
                 </>
             ) : null}
         </div>

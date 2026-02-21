@@ -61,6 +61,8 @@ import {
     buildLibraryTitleCoverDataUrl,
     canUpdateReasonOnSameStatus,
     createDefaultLibraryExtra,
+    getCurrentStatus,
+    getCurrentTodoReason,
     getLatestWaitReason,
     getDisplayStatusInfo,
     LIBRARY_CARD_HOVER_EFFECT_CONFIG,
@@ -463,8 +465,8 @@ export default function Library({addr, groupTitle}: LibraryProps) {
     const todoReasonOptions: string[] = useMemo(() => {
         const reasonSet = new Set<string>();
         allItems.forEach(item => {
-            if (item.extra.status === LibraryItemStatus.TODO) {
-                const reason = item.extra.todoReason?.trim() || '';
+            if (getCurrentStatus(item.extra) === LibraryItemStatus.TODO) {
+                const reason = getCurrentTodoReason(item.extra);
                 if (reason) {
                     reasonSet.add(reason);
                 }
@@ -502,16 +504,17 @@ export default function Library({addr, groupTitle}: LibraryProps) {
     }, []);
 
     const getItemStatusForFilter = useCallback((item: LibraryItemFull): StatusFilterOption => {
-        if (item.extra.status === LibraryItemStatus.ARCHIVED) {
+        const currentStatus = getCurrentStatus(item.extra);
+        if (currentStatus === LibraryItemStatus.ARCHIVED) {
             return LibraryItemStatus.ARCHIVED;
         }
         if (isWaitExpired(item.extra)) {
             return LIBRARY_WAIT_EXPIRED_FILTER;
         }
-        if (item.extra.status === undefined) {
+        if (currentStatus === undefined) {
             return 'none';
         }
-        return item.extra.status;
+        return currentStatus;
     }, []);
 
     const compareByDefaultSort = useCallback((a: LibraryItemFull, b: LibraryItemFull) => {
@@ -552,7 +555,7 @@ export default function Library({addr, groupTitle}: LibraryProps) {
         }
 
         if (selectedStatuses.includes(LibraryItemStatus.TODO) && todoReasonFilter !== 'all') {
-            result = result.filter(item => (item.extra.todoReason?.trim() || '') === todoReasonFilter);
+            result = result.filter(item => getCurrentTodoReason(item.extra) === todoReasonFilter);
         }
         
         if (searchText.trim()) {
@@ -627,12 +630,12 @@ export default function Library({addr, groupTitle}: LibraryProps) {
         if (status === LibraryItemStatus.TODO || status === LibraryItemStatus.WAIT) {
             setPendingStatusItem(item);
             setPendingStatus(status);
-            setStatusReasonInput(status === LibraryItemStatus.TODO ? (item.extra.todoReason || '') : getLatestWaitReason(item.extra));
+            setStatusReasonInput(status === LibraryItemStatus.TODO ? getCurrentTodoReason(item.extra) : getLatestWaitReason(item.extra));
             setShowStatusReasonModal(true);
             return;
         }
         // 防止重复操作
-        if (item.extra.status === status && !canUpdateReasonOnSameStatus(status)) {
+        if (getCurrentStatus(item.extra) === status && !canUpdateReasonOnSameStatus(status)) {
             return;
         }
         // 如果当前周目已结束，再次开始需要确认并建议新周目
@@ -1046,8 +1049,9 @@ export default function Library({addr, groupTitle}: LibraryProps) {
         const showScoreBadge = displayOptions.showScore && !!mainScore;
         const scoreStarColor = getScoreStarColor(mainScore?.score || 0);
         const statusTextColor = getStatusTextColor(displayStatus.color);
-        const todoReason = (item.extra.todoReason || '').trim();
-        const displayStatusText = item.extra.status === LibraryItemStatus.TODO && todoReason
+        const currentStatus = getCurrentStatus(item.extra);
+        const todoReason = getCurrentTodoReason(item.extra);
+        const displayStatusText = currentStatus === LibraryItemStatus.TODO && todoReason
             ? `等待:${todoReason}`
             : displayStatus.name;
         const cardClassName = `library-card ${isPlaceholderCover ? 'is-placeholder' : 'is-real-cover'}`;
@@ -1794,7 +1798,7 @@ export default function Library({addr, groupTitle}: LibraryProps) {
             {/* 时间线弹窗 */}
             <LibraryTimeline
                 visible={showTimeline}
-                items={allItems.filter((item) => item.extra.status !== LibraryItemStatus.ARCHIVED)}
+                items={allItems.filter((item) => getCurrentStatus(item.extra) !== LibraryItemStatus.ARCHIVED)}
                 onClose={() => setShowTimeline(false)}
                 onItemClick={(itemId) => {
                     const item = allItems.find(i => i.taskId === itemId);

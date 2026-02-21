@@ -62,6 +62,9 @@ import {
     addTimelineCutoffLog,
     buildLibraryTitleCoverDataUrl,
     canUpdateReasonOnSameStatus,
+    getCurrentStatus,
+    getCurrentTodoReason,
+    getComplexScoreSnapshot,
     formatDateTime,
     getDisplayStatusInfo,
     getLatestWaitReason,
@@ -75,7 +78,6 @@ import {
     normalizeMainScoreSelection,
     setMainScore,
     startNewRound,
-    syncStatusCacheFromLogs,
     touchLibraryUpdatedAt,
 } from './libraryUtil';
 import {useIsMobile} from '../common/hooksv2';
@@ -214,6 +216,7 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
     const [editingEnableObjScore, setEditingEnableObjScore] = useState(true);
     const [editingEnableSubScore, setEditingEnableSubScore] = useState(true);
     const [editingEnableInnovateScore, setEditingEnableInnovateScore] = useState(true);
+    const [editingScoreMode, setEditingScoreMode] = useState<'simple' | 'complex'>('simple');
         const detailCoverRef = useRef<HTMLDivElement>(null);
         const [detailCoverWidth, setDetailCoverWidth] = useState(180);
 
@@ -322,7 +325,7 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
     const handleStatusChange = (newStatus: LibraryItemStatus, comment?: string) => {
         if (!localItem) return;
 
-        const currentStatus = localItem.extra.status;
+        const currentStatus = getCurrentStatus(localItem.extra);
         const currentRound = localItem.extra.rounds[localItem.extra.currentRound];
         const roundEnded = !!currentRound?.endTime;
 
@@ -367,7 +370,7 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
         if (!localItem) return;
         setPendingStatus(status);
         if (status === LibraryItemStatus.TODO) {
-            setStatusReasonInput(localItem.extra.todoReason || '');
+            setStatusReasonInput(getCurrentTodoReason(localItem.extra));
         } else {
             setStatusReasonInput(getLatestWaitReason(localItem.extra));
         }
@@ -462,50 +465,21 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
             payload.mainScore.value,
             payload.mainScore.plus,
             payload.mainScore.sub,
-            scoreLogComment
+            scoreLogComment,
+            {
+                mode: payload.mode,
+                objScore: payload.objScore,
+                subScore: payload.subScore,
+                innovateScore: payload.innovateScore,
+            }
         );
-
-        newExtra.scoreMode = payload.mode;
-
-        if (payload.mode === 'complex') {
-            if (payload.objScore) {
-                newExtra.objScore = {
-                    ...payload.objScore,
-                    comment: payload.objComment?.trim() || payload.objScore.comment || '',
-                };
-            } else {
-                delete newExtra.objScore;
-            }
-            if (payload.subScore) {
-                newExtra.subScore = {
-                    ...payload.subScore,
-                    comment: payload.subComment?.trim() || payload.subScore.comment || '',
-                };
-            } else {
-                delete newExtra.subScore;
-            }
-            if (payload.innovateScore) {
-                newExtra.innovateScore = {
-                    ...payload.innovateScore,
-                    comment: payload.innovateComment?.trim() || payload.innovateScore.comment || '',
-                };
-            } else {
-                delete newExtra.innovateScore;
-            }
-            newExtra.mainScore = {
-                ...payload.mainScore,
-                comment: scoreLogComment,
-            };
-            // 兼容历史数据：旧版本把复杂评分“总评”写在 extra.comment。
-            // 新版本统一读写主评分日志的 comment，不再维护 extra.comment。
-            delete newExtra.comment;
-        } else {
-            delete newExtra.objScore;
-            delete newExtra.subScore;
-            delete newExtra.innovateScore;
-            delete newExtra.mainScore;
-            delete newExtra.comment;
-        }
+        // 已废弃字段：仅保底读取，不再持久化维护（复杂评分改为写入评分日志）。
+        delete newExtra.scoreMode;
+        delete newExtra.objScore;
+        delete newExtra.subScore;
+        delete newExtra.innovateScore;
+        delete newExtra.mainScore;
+        delete newExtra.comment;
 
         const newItem = {...localItem, extra: newExtra};
         setLocalItem(newItem);
@@ -617,6 +591,7 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
         setEditingEnableObjScore(true);
         setEditingEnableSubScore(true);
         setEditingEnableInnovateScore(true);
+        setEditingScoreMode('simple');
     };
 
     const openLogTimeEditor = (roundIndex: number, logIndex: number, time: string) => {
@@ -631,11 +606,13 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
         if (log.type === LibraryLogType.score) {
             setEditingScoreText(getScoreText(log.score || 0, log.scorePlus, log.scoreSub));
             setEditingContentText(log.comment || '');
-            const isComplexScore = localItem?.extra.scoreMode === 'complex';
+            const scoreSnapshot = localItem ? getComplexScoreSnapshot(localItem.extra, log) : {mode: 'simple' as const};
+            const isComplexScore = scoreSnapshot.mode === 'complex';
+            setEditingScoreMode(scoreSnapshot.mode);
             if (isComplexScore && localItem) {
-                const objScore = localItem.extra.objScore;
-                const subScore = localItem.extra.subScore;
-                const innovateScore = localItem.extra.innovateScore;
+                const objScore = scoreSnapshot.objScore;
+                const subScore = scoreSnapshot.subScore;
+                const innovateScore = scoreSnapshot.innovateScore;
 
                 setEditingEnableObjScore(!!objScore);
                 setEditingEnableSubScore(!!subScore);
@@ -653,6 +630,10 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
                 if (!log.comment && localItem.extra.comment) {
                     setEditingContentText(localItem.extra.comment);
                 }
+            } else {
+                setEditingEnableObjScore(false);
+                setEditingEnableSubScore(false);
+                setEditingEnableInnovateScore(false);
             }
         } else {
             setEditingContentText(log.comment || '');
@@ -726,24 +707,17 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
             const trimmed = editingContentText.trim();
             targetLog.comment = trimmed || undefined;
 
-            if (newItem.extra.scoreMode === 'complex') {
-                const mainScore: LibraryScoreData = {
-                    value: parsedScore.score,
-                    plus: parsedScore.plus,
-                    sub: parsedScore.sub,
-                    comment: trimmed,
-                };
-                newItem.extra.mainScore = mainScore;
-
+            if (editingScoreMode === 'complex') {
+                targetLog.scoreMode = 'complex';
                 if (editingEnableObjScore) {
                     const objData = parseRateTextToData(SCORE_OBJ_SEQ, editingObjScoreText, editingObjComment);
                     if (!objData) {
                         message.warning('客观评分格式无效');
                         return;
                     }
-                    newItem.extra.objScore = objData;
+                    targetLog.objScore = objData;
                 } else {
-                    delete newItem.extra.objScore;
+                    delete targetLog.objScore;
                 }
 
                 if (editingEnableSubScore) {
@@ -752,9 +726,9 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
                         message.warning('主观评分格式无效');
                         return;
                     }
-                    newItem.extra.subScore = subData;
+                    targetLog.subScore = subData;
                 } else {
-                    delete newItem.extra.subScore;
+                    delete targetLog.subScore;
                 }
 
                 if (editingEnableInnovateScore) {
@@ -763,14 +737,23 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
                         message.warning('创新评分格式无效');
                         return;
                     }
-                    newItem.extra.innovateScore = innovateData;
+                    targetLog.innovateScore = innovateData;
                 } else {
-                    delete newItem.extra.innovateScore;
+                    delete targetLog.innovateScore;
                 }
-
-                // 兼容历史数据：编辑后统一迁移到主评分备注，清理旧总评字段。
-                delete newItem.extra.comment;
+            } else {
+                targetLog.scoreMode = 'simple';
+                delete targetLog.objScore;
+                delete targetLog.subScore;
+                delete targetLog.innovateScore;
             }
+            // 已废弃字段：仅保底读取，不再持久化维护。
+            delete newItem.extra.scoreMode;
+            delete newItem.extra.objScore;
+            delete newItem.extra.subScore;
+            delete newItem.extra.innovateScore;
+            delete newItem.extra.mainScore;
+            delete newItem.extra.comment;
         } else if (editingContentType === LibraryLogType.note) {
             targetLog.comment = editingContentText;
         }
@@ -802,7 +785,6 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
         }
 
         targetLog.time = editingLogTime;
-        syncStatusCacheFromLogs(newItem.extra);
         newItem.extra.updatedAt = new Date().toISOString();
 
         setLocalItem(newItem);
@@ -823,7 +805,6 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
 
         targetRound.logs.splice(logIndex, 1);
         normalizeMainScoreSelection(newItem.extra);
-        syncStatusCacheFromLogs(newItem.extra);
         newItem.extra.updatedAt = new Date().toISOString();
 
         setLocalItem(newItem);
@@ -843,7 +824,7 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
     // 渲染状态快捷按钮
     const renderStatusButtons = () => {
         if (!localItem) return null;
-        const currentStatus = localItem.extra.status;
+        const currentStatus = getCurrentStatus(localItem.extra);
 
         // helper for deciding whether a status button should be disabled
         const isStatusButtonDisabled = (btnStatus: LibraryItemStatus): boolean => {
@@ -933,7 +914,7 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
                 break;
             case LibraryLogType.score:
                 color = '#faad14';
-                const isComplexScore = localItem?.extra.scoreMode === 'complex';
+                const isComplexScore = localItem ? getComplexScoreSnapshot(localItem.extra, log).mode === 'complex' : false;
                 const scoreStarColor = getScoreStarColor(log.score || 0);
                 const scoreContent = (
                     <Space>
@@ -1087,6 +1068,7 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
 
     // 主评分显示
     const mainScoreEntry = localItem ? getMainScore(localItem.extra) : null;
+    const mainScoreSnapshot = localItem ? getComplexScoreSnapshot(localItem.extra, mainScoreEntry) : {mode: 'simple' as const};
 
     if (!localItem) return null;
     const displayTitle = editMode ? (editingTitle.trim() || localItem.title) : localItem.title;
@@ -1324,10 +1306,10 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
                             <Descriptions.Item label="添加时间">{formatDateTime(localItem.extra.createdAt)}</Descriptions.Item>
                             <Descriptions.Item label="年份">{localItem.extra.year || '-'}</Descriptions.Item>
                             <Descriptions.Item label="备注">{localItem.extra.remark || '-'}</Descriptions.Item>
-                            {localItem.extra.status === LibraryItemStatus.TODO && (
-                                <Descriptions.Item label="等待原因">{localItem.extra.todoReason || '-'}</Descriptions.Item>
+                            {getCurrentStatus(localItem.extra) === LibraryItemStatus.TODO && (
+                                <Descriptions.Item label="等待原因">{getCurrentTodoReason(localItem.extra) || '-'}</Descriptions.Item>
                             )}
-                            {localItem.extra.status === LibraryItemStatus.WAIT && (
+                            {getCurrentStatus(localItem.extra) === LibraryItemStatus.WAIT && (
                                 <Descriptions.Item label="搁置原因">{getLatestWaitReason(localItem.extra) || '-'}</Descriptions.Item>
                             )}
                             <Descriptions.Item label="主评分">
@@ -1416,7 +1398,7 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
                 visible={showAddScore}
                 onOk={handleAddScore}
                 onCancel={() => setShowAddScore(false)}
-                initialMode={localItem.extra.scoreMode || 'simple'}
+                initialMode={mainScoreSnapshot.mode}
             />
             
             {/* 添加备注弹窗 */}
@@ -1495,7 +1477,7 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
                 {editingContentType === LibraryLogType.score ? (
                     <Space direction="vertical" style={{width: '100%'}}>
                         <div>
-                            <Text>{localItem?.extra.scoreMode === 'complex' ? '主评分' : '评分'}</Text>
+                            <Text>{editingScoreMode === 'complex' ? '主评分' : '评分'}</Text>
                             <div style={{marginTop: 8}}>
                                 <TextRate
                                     sequence={SCORE_SEQ}
@@ -1507,7 +1489,7 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
                                 />
                             </div>
                         </div>
-                        {localItem?.extra.scoreMode === 'complex' ? (
+                        {editingScoreMode === 'complex' ? (
                             <>
                                 <div>
                                     <Flex justify="space-between" align="center">
@@ -1613,7 +1595,7 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
                             </>
                         ) : null}
                         <div>
-                            <Text>{localItem?.extra.scoreMode === 'complex' ? '主评分评价（可选）' : '评价内容（可选）'}</Text>
+                            <Text>{editingScoreMode === 'complex' ? '主评分评价（可选）' : '评价内容（可选）'}</Text>
                             <TextArea
                                 rows={3}
                                 value={editingContentText}

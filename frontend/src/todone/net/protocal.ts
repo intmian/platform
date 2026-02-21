@@ -132,12 +132,12 @@ export interface LibraryExtra {
     year?: number                   // 作品年份
     remark?: string                 // 作品备注
     waitReason?: string             // [deprecated] 项目层搁置原因（已停用，统一使用最新搁置日志）
-    waitSince?: string              // 最近一次搁置开始时间
-    todoReason?: string             // 等待二级状态（自由文本）
-    todoSince?: string              // 最近一次等待设置时间
+    waitSince?: string              // [deprecated] 最近一次搁置开始时间（改为从最新状态日志推导）
+    todoReason?: string             // [deprecated] 等待二级状态（改为从最新状态日志推导）
+    todoSince?: string              // [deprecated] 最近一次等待设置时间（改为从最新状态日志推导）
     category: string                // 分类（动漫/电影/游戏/小说等）
     isFavorite?: boolean            // 是否收藏
-    status?: LibraryItemStatus      // 当前状态（可空：无状态）
+    status?: LibraryItemStatus      // [deprecated] 当前状态（改为从最新状态日志推导）
     currentRound: number            // 当前周目索引
     rounds: LibraryRound[]          // 所有周目数据
     mainScoreRoundIndex?: number    // 主评分所在周目索引
@@ -146,13 +146,13 @@ export interface LibraryExtra {
     updatedAt: string               // 更新时间
     
     // 复杂评分模式字段（可选）
-    scoreMode?: 'simple' | 'complex'  // 评分模式：简单(仅主评分) / 复杂(多维度)
-    objScore?: LibraryScoreData       // 客观评分
-    subScore?: LibraryScoreData       // 主观评分
-    innovateScore?: LibraryScoreData  // 创新评分
-    mainScore?: LibraryScoreData      // 主评分（复杂模式下的总分）
-    comment?: string                  // 总评（用于分享）
-    timelineCutoffTime?: string       // 时间线截断时间（此前历史不进入总时间线）
+    scoreMode?: 'simple' | 'complex'  // [deprecated] 评分模式（改为从评分日志推导）
+    objScore?: LibraryScoreData       // [deprecated] 客观评分（改为从评分日志推导）
+    subScore?: LibraryScoreData       // [deprecated] 主观评分（改为从评分日志推导）
+    innovateScore?: LibraryScoreData  // [deprecated] 创新评分（改为从评分日志推导）
+    mainScore?: LibraryScoreData      // [deprecated] 主评分快照（改为从评分日志推导）
+    comment?: string                  // [deprecated] 总评（改为从主评分日志 comment 读取）
+    timelineCutoffTime?: string       // [deprecated] 时间线截断时间（改为从 timelineCutoff 日志推导）
 }
 
 // 单个周目
@@ -172,6 +172,10 @@ export interface LibraryLogEntry {
     scorePlus?: boolean             // 评分加分
     scoreSub?: boolean              // 评分减分
     comment?: string                // 备注/评论
+    scoreMode?: 'simple' | 'complex' // 评分模式（仅 score 日志）
+    objScore?: LibraryScoreData      // 客观评分（仅 complex score 日志）
+    subScore?: LibraryScoreData      // 主观评分（仅 complex score 日志）
+    innovateScore?: LibraryScoreData // 创新评分（仅 complex score 日志）
 }
 
 // 从 Task 解析出的 Library 完整数据
@@ -221,5 +225,3 @@ export enum GroupType {
     Normal = 0,
     Library = 1,
 }
-
-

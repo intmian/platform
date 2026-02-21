@@ -21,12 +21,8 @@ export function createDefaultLibraryExtra(): LibraryExtra {
         author: '',
         year: undefined,
         remark: '',
-        waitSince: undefined,
-        todoReason: '',
-        todoSince: undefined,
         category: '',
         isFavorite: false,
-        status: undefined,
         currentRound: 0,
         rounds: [{
             name: '首周目',
@@ -64,9 +60,6 @@ export function parseLibraryExtra(note: string): LibraryExtra {
         }
         if (parsed.remark === undefined) {
             parsed.remark = '';
-        }
-        if (parsed.todoReason === undefined) {
-            parsed.todoReason = '';
         }
         if (parsed.isFavorite === undefined) {
             parsed.isFavorite = false;
@@ -109,7 +102,19 @@ export function serializeLibraryExtra(extra: LibraryExtra): string {
         ...extra,
         updatedAt: now,
     } as LibraryExtra;
-    // `waitReason` 已废弃：不再写入项目层字段，保存时清空。
+    migrateLegacyComplexScoreFields(normalizedExtra);
+    // 兼容历史数据：以下字段已废弃，运行时可兜底读取，但保存时统一清空。
+    delete normalizedExtra.status;
+    delete normalizedExtra.todoReason;
+    delete normalizedExtra.waitSince;
+    delete normalizedExtra.todoSince;
+    delete normalizedExtra.timelineCutoffTime;
+    delete normalizedExtra.scoreMode;
+    delete normalizedExtra.objScore;
+    delete normalizedExtra.subScore;
+    delete normalizedExtra.innovateScore;
+    delete normalizedExtra.mainScore;
+    delete normalizedExtra.comment;
     delete normalizedExtra.waitReason;
     return JSON.stringify(normalizedExtra);
 }
@@ -152,11 +157,76 @@ export function canUpdateReasonOnSameStatus(status?: LibraryItemStatus): boolean
     return status === LibraryItemStatus.WAIT || status === LibraryItemStatus.TODO;
 }
 
+export interface LibraryStatusSnapshot {
+    status?: LibraryItemStatus;
+    todoReason: string;
+    waitSince?: string;
+    todoSince?: string;
+}
+
+/**
+ * 当前状态统一从历史日志推导。
+ * 若历史日志不存在，则兜底读取已废弃字段，保证旧数据可读。
+ */
+export function getCurrentStatusSnapshot(extra: LibraryExtra): LibraryStatusSnapshot {
+    const latestStatusLog = getLatestStatusLog(extra);
+    if (latestStatusLog && latestStatusLog.status !== undefined) {
+        if (latestStatusLog.status === LibraryItemStatus.TODO) {
+            const logReason = (latestStatusLog.comment || '').trim();
+            return {
+                status: latestStatusLog.status,
+                todoReason: logReason || (extra.todoReason || '').trim(),
+                todoSince: latestStatusLog.time,
+            };
+        }
+        if (latestStatusLog.status === LibraryItemStatus.WAIT) {
+            return {
+                status: latestStatusLog.status,
+                todoReason: '',
+                waitSince: latestStatusLog.time,
+            };
+        }
+        return {
+            status: latestStatusLog.status,
+            todoReason: '',
+        };
+    }
+
+    // 兼容历史存量：当尚无状态日志时，回退到旧字段。
+    if (extra.status === LibraryItemStatus.TODO) {
+        return {
+            status: extra.status,
+            todoReason: (extra.todoReason || '').trim(),
+            todoSince: extra.todoSince,
+        };
+    }
+    if (extra.status === LibraryItemStatus.WAIT) {
+        return {
+            status: extra.status,
+            todoReason: '',
+            waitSince: extra.waitSince,
+        };
+    }
+    return {
+        status: extra.status,
+        todoReason: '',
+    };
+}
+
+export function getCurrentStatus(extra: LibraryExtra): LibraryItemStatus | undefined {
+    return getCurrentStatusSnapshot(extra).status;
+}
+
+export function getCurrentTodoReason(extra: LibraryExtra): string {
+    return getCurrentStatusSnapshot(extra).todoReason;
+}
+
 /**
  * 添加状态变更日志
  */
 export function addStatusLog(extra: LibraryExtra, newStatus?: LibraryItemStatus, comment?: string): LibraryExtra {
-    const isSameStatus = newStatus === extra.status;
+    const currentSnapshot = getCurrentStatusSnapshot(extra);
+    const isSameStatus = newStatus === currentSnapshot.status;
     if (isSameStatus && !canUpdateReasonOnSameStatus(newStatus)) {
         return extra;
     }
@@ -165,7 +235,7 @@ export function addStatusLog(extra: LibraryExtra, newStatus?: LibraryItemStatus,
         : comment;
 
     if (isSameStatus && newStatus === LibraryItemStatus.TODO) {
-        const prevReason = (extra.todoReason || '').trim();
+        const prevReason = currentSnapshot.todoReason;
         if (prevReason === normalizedComment) {
             return extra;
         }
@@ -186,20 +256,6 @@ export function addStatusLog(extra: LibraryExtra, newStatus?: LibraryItemStatus,
             status: newStatus,
             comment: normalizedComment,
         });
-    }
-    extra.status = newStatus;
-    if (newStatus === LibraryItemStatus.TODO) {
-        extra.todoSince = now;
-        extra.todoReason = normalizedComment || '';
-        extra.waitSince = undefined;
-    } else if (newStatus === LibraryItemStatus.WAIT) {
-        extra.waitSince = now;
-        extra.todoSince = undefined;
-        extra.todoReason = '';
-    } else {
-        extra.waitSince = undefined;
-        extra.todoSince = undefined;
-        extra.todoReason = '';
     }
     extra.updatedAt = now;
     
@@ -233,7 +289,11 @@ export function getLatestWaitReason(extra: LibraryExtra): string {
         });
     });
 
-    return latestWaitReason;
+    if (latestWaitReason) {
+        return latestWaitReason;
+    }
+    // 兼容历史存量：旧版本等待原因写在项目层 waitReason。
+    return (extra.waitReason || '').trim();
 }
 
 export const LIBRARY_WAIT_EXPIRED_FILTER = 'wait_expired' as const;
@@ -268,41 +328,36 @@ export function isWaitExpired(extra: LibraryExtra): boolean {
     // 规则：仅“搁置超过30天且未填写搁置原因”才视为“鸽了”。
     // 若填写了搁置原因，则一直保持“搁置”，不会进入“鸽了”。
     const latestStatusLog = getLatestStatusLog(extra);
-    if (!latestStatusLog || latestStatusLog.status !== LibraryItemStatus.WAIT) return false;
-    const reason = (latestStatusLog.comment || '').trim();
+    if (latestStatusLog) {
+        if (latestStatusLog.status !== LibraryItemStatus.WAIT) return false;
+        const reason = (latestStatusLog.comment || '').trim();
+        if (reason) return false;
+        const start = new Date(latestStatusLog.time).getTime();
+        if (Number.isNaN(start)) return false;
+        const monthMs = 30 * 24 * 60 * 60 * 1000;
+        return (Date.now() - start) >= monthMs;
+    }
+
+    // 兼容历史存量：无状态日志时，回退旧字段。
+    if (extra.status !== LibraryItemStatus.WAIT) return false;
+    const reason = (extra.waitReason || '').trim();
     if (reason) return false;
-    const start = new Date(latestStatusLog.time).getTime();
+    const start = new Date(extra.waitSince || '').getTime();
     if (Number.isNaN(start)) return false;
     const monthMs = 30 * 24 * 60 * 60 * 1000;
     return (Date.now() - start) >= monthMs;
 }
 
+/**
+ * @deprecated 状态缓存字段已废弃，状态改为从历史日志实时推导。
+ */
 export function syncStatusCacheFromLogs(extra: LibraryExtra): LibraryExtra {
-    const latestStatusLog = getLatestStatusLog(extra);
-    const latestStatus = latestStatusLog?.status;
-    extra.status = latestStatus;
-
-    if (latestStatus === LibraryItemStatus.TODO) {
-        extra.todoSince = latestStatusLog?.time;
-        extra.todoReason = (latestStatusLog?.comment || '').trim();
-        extra.waitSince = undefined;
-        return extra;
-    }
-    if (latestStatus === LibraryItemStatus.WAIT) {
-        extra.waitSince = latestStatusLog?.time;
-        extra.todoSince = undefined;
-        extra.todoReason = '';
-        return extra;
-    }
-
-    extra.waitSince = undefined;
-    extra.todoSince = undefined;
-    extra.todoReason = '';
     return extra;
 }
 
 export function getDisplayStatusInfo(extra: LibraryExtra): {name: string; color: string; isExpiredWait: boolean} {
-    if (extra.status === LibraryItemStatus.ARCHIVED) {
+    const currentStatus = getCurrentStatus(extra);
+    if (currentStatus === LibraryItemStatus.ARCHIVED) {
         return {
             name: LibraryStatusNames[LibraryItemStatus.ARCHIVED],
             color: LibraryStatusColors[LibraryItemStatus.ARCHIVED],
@@ -316,7 +371,7 @@ export function getDisplayStatusInfo(extra: LibraryExtra): {name: string; color:
             isExpiredWait: true,
         };
     }
-    if (extra.status === undefined) {
+    if (currentStatus === undefined) {
         return {
             name: '无状态',
             color: '#bfbfbf',
@@ -324,8 +379,8 @@ export function getDisplayStatusInfo(extra: LibraryExtra): {name: string; color:
         };
     }
     return {
-        name: LibraryStatusNames[extra.status],
-        color: LibraryStatusColors[extra.status],
+        name: LibraryStatusNames[currentStatus],
+        color: LibraryStatusColors[currentStatus],
         isExpiredWait: false,
     };
 }
@@ -350,7 +405,6 @@ export function addTimelineCutoffLog(extra: LibraryExtra, comment?: string): Lib
         });
     }
 
-    extra.timelineCutoffTime = now;
     extra.updatedAt = now;
     return extra;
 }
@@ -363,11 +417,18 @@ export function addScoreLog(
     score: number,
     plus: boolean = false,
     sub: boolean = false,
-    comment?: string
+    comment?: string,
+    options?: {
+        mode?: 'simple' | 'complex';
+        objScore?: LibraryExtra['objScore'];
+        subScore?: LibraryExtra['subScore'];
+        innovateScore?: LibraryExtra['innovateScore'];
+    }
 ): LibraryExtra {
     const now = new Date().toISOString();
     const currentRound = extra.rounds[extra.currentRound];
     if (currentRound) {
+        const resolvedMode = options?.mode === 'complex' ? 'complex' : 'simple';
         currentRound.logs.push({
             type: LibraryLogType.score,
             time: now,
@@ -375,6 +436,10 @@ export function addScoreLog(
             scorePlus: plus,
             scoreSub: sub,
             comment: comment,
+            scoreMode: resolvedMode,
+            objScore: resolvedMode === 'complex' ? options?.objScore : undefined,
+            subScore: resolvedMode === 'complex' ? options?.subScore : undefined,
+            innovateScore: resolvedMode === 'complex' ? options?.innovateScore : undefined,
         });
     }
     extra.updatedAt = now;
@@ -424,7 +489,6 @@ export function startNewRound(extra: LibraryExtra, roundName: string): LibraryEx
     
     extra.rounds.push(newRound);
     extra.currentRound = extra.rounds.length - 1;
-    extra.status = LibraryItemStatus.DOING;
     extra.updatedAt = now;
     
     return extra;
@@ -505,11 +569,58 @@ export function getMainScore(extra: LibraryExtra): LibraryLogEntry | null {
                 }
             }
         }
-        return null;
+        return legacyMainScoreToLog(extra);
     }
     const round = extra.rounds[extra.mainScoreRoundIndex];
-    if (!round) return null;
-    return round.logs[extra.mainScoreLogIndex] || null;
+    if (!round) return legacyMainScoreToLog(extra);
+    const scoreLog = round.logs[extra.mainScoreLogIndex];
+    if (scoreLog?.type === LibraryLogType.score) {
+        return scoreLog;
+    }
+    return legacyMainScoreToLog(extra);
+}
+
+export interface LibraryComplexScoreSnapshot {
+    mode: 'simple' | 'complex';
+    objScore?: LibraryExtra['objScore'];
+    subScore?: LibraryExtra['subScore'];
+    innovateScore?: LibraryExtra['innovateScore'];
+}
+
+/**
+ * 复杂评分相关数据优先从评分日志读取；
+ * 若日志中不存在（历史数据），再兜底读取已废弃的 extra 字段。
+ */
+export function getComplexScoreSnapshot(extra: LibraryExtra, scoreLog?: LibraryLogEntry | null): LibraryComplexScoreSnapshot {
+    const targetScoreLog = scoreLog || getMainScore(extra);
+    if (targetScoreLog?.type === LibraryLogType.score) {
+        let mode = targetScoreLog.scoreMode;
+        if (!mode && (targetScoreLog.objScore || targetScoreLog.subScore || targetScoreLog.innovateScore)) {
+            mode = 'complex';
+        }
+        if (mode === 'complex') {
+            return {
+                mode: 'complex',
+                objScore: targetScoreLog.objScore,
+                subScore: targetScoreLog.subScore,
+                innovateScore: targetScoreLog.innovateScore,
+            };
+        }
+        if (mode === 'simple') {
+            return {mode: 'simple'};
+        }
+    }
+
+    const legacyMode = extra.scoreMode === 'complex' ? 'complex' : 'simple';
+    if (legacyMode === 'complex') {
+        return {
+            mode: 'complex',
+            objScore: extra.objScore,
+            subScore: extra.subScore,
+            innovateScore: extra.innovateScore,
+        };
+    }
+    return {mode: 'simple'};
 }
 
 /**
@@ -766,6 +877,7 @@ function getTimelineCutoffTime(extra: LibraryExtra): number | undefined {
     if (latestMs !== undefined) {
         return latestMs;
     }
+    // 兼容历史存量：早期仅写项目层 timelineCutoffTime。
     if (extra.timelineCutoffTime) {
         const value = new Date(extra.timelineCutoffTime).getTime();
         if (!Number.isNaN(value)) {
@@ -773,4 +885,60 @@ function getTimelineCutoffTime(extra: LibraryExtra): number | undefined {
         }
     }
     return undefined;
+}
+
+function legacyMainScoreToLog(extra: LibraryExtra): LibraryLogEntry | null {
+    // 兼容历史存量：无评分日志时，兜底读取已废弃的 extra.mainScore / extra.comment。
+    if (!extra.mainScore || extra.mainScore.value <= 0) {
+        return null;
+    }
+    const legacyMode = extra.scoreMode === 'complex' ? 'complex' : 'simple';
+    return {
+        type: LibraryLogType.score,
+        time: extra.updatedAt || extra.createdAt,
+        score: extra.mainScore.value,
+        scorePlus: extra.mainScore.plus,
+        scoreSub: extra.mainScore.sub,
+        comment: (extra.mainScore.comment || extra.comment || '').trim() || undefined,
+        scoreMode: legacyMode,
+        objScore: legacyMode === 'complex' ? extra.objScore : undefined,
+        subScore: legacyMode === 'complex' ? extra.subScore : undefined,
+        innovateScore: legacyMode === 'complex' ? extra.innovateScore : undefined,
+    };
+}
+
+function migrateLegacyComplexScoreFields(extra: LibraryExtra): void {
+    if (extra.scoreMode !== 'complex') {
+        return;
+    }
+    if (!extra.objScore && !extra.subScore && !extra.innovateScore) {
+        return;
+    }
+
+    const selectedRoundIndex = extra.mainScoreRoundIndex;
+    const selectedLogIndex = extra.mainScoreLogIndex;
+    if (selectedRoundIndex !== undefined && selectedLogIndex !== undefined) {
+        const selectedLog = extra.rounds[selectedRoundIndex]?.logs[selectedLogIndex];
+        if (selectedLog?.type === LibraryLogType.score) {
+            selectedLog.scoreMode = 'complex';
+            if (selectedLog.objScore === undefined) selectedLog.objScore = extra.objScore;
+            if (selectedLog.subScore === undefined) selectedLog.subScore = extra.subScore;
+            if (selectedLog.innovateScore === undefined) selectedLog.innovateScore = extra.innovateScore;
+            return;
+        }
+    }
+
+    // 没有主评分索引时，回填到最新一条评分日志，避免保存时丢失历史复杂评分信息。
+    for (let i = extra.rounds.length - 1; i >= 0; i--) {
+        const round = extra.rounds[i];
+        for (let j = round.logs.length - 1; j >= 0; j--) {
+            const log = round.logs[j];
+            if (log.type !== LibraryLogType.score) continue;
+            log.scoreMode = 'complex';
+            if (log.objScore === undefined) log.objScore = extra.objScore;
+            if (log.subScore === undefined) log.subScore = extra.subScore;
+            if (log.innovateScore === undefined) log.innovateScore = extra.innovateScore;
+            return;
+        }
+    }
 }
