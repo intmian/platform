@@ -7,11 +7,7 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint . --ext js,jsx --report-unused-disable-directives --max-warnings 0",
-    "preview": "vite preview",
-    "test:e2e": "playwright test",
-    "test:e2e:headed": "playwright test --headed",
-    "test:e2e:ui": "playwright test --ui",
-    "test:e2e:todone:library": "playwright test -c playwright.todone-library.config.js"
+    "preview": "vite preview"
   },
   "dependencies": {
     "@ant-design/icons": "^5.3.0",
@@ -41,7 +37,6 @@
     "styled-components": "^6.1.13"
   },
   "devDependencies": {
-    "@playwright/test": "^1.58.2",
     "@types/react": "^18.3.9",
     "@types/react-dom": "^18.3.0",
     "@typescript-eslint/eslint-plugin": "^8.7.0",
