@@ -1201,37 +1201,93 @@ export default function Library({addr, groupTitle}: LibraryProps) {
                 </Space>
                 
                 <div className="library-toolbar-actions">
-                    <Popover
-                        content={displayOptionsContent}
-                        trigger="click"
-                        placement="bottomRight"
-                    >
-                        <Button className="library-toolbar-btn" icon={<EyeOutlined/>}>
-                            显示
-                        </Button>
-                    </Popover>
-                    <Button
-                        className="library-toolbar-btn"
-                        icon={<ClockCircleOutlined/>}
-                        onClick={() => setShowTimeline(true)}
-                    >
-                        时间线
-                    </Button>
-                    <Button
-                        className="library-toolbar-btn"
-                        icon={<SettingOutlined/>}
-                        onClick={() => setShowCategoryManager(true)}
-                    >
-                        分类管理
-                    </Button>
-                    <Button
-                        className="library-toolbar-btn"
-                        type="primary"
-                        icon={<PlusOutlined/>}
-                        onClick={() => setShowAdd(true)}
-                    >
-                        添加
-                    </Button>
+                    {isMobile ? (
+                        <>
+                            <Dropdown
+                                trigger={['click']}
+                                placement="bottomLeft"
+                                menu={{
+                                    items: [
+                                        {key: 'display', icon: <EyeOutlined/>, label: '显示'},
+                                        {key: 'timeline', icon: <ClockCircleOutlined/>, label: '时间线'},
+                                        {key: 'category', icon: <SettingOutlined/>, label: '分类管理'},
+                                    ],
+                                    onClick: ({key}) => {
+                                        if (key === 'timeline') {
+                                            setShowTimeline(true);
+                                            return;
+                                        }
+                                        if (key === 'category') {
+                                            setShowCategoryManager(true);
+                                            return;
+                                        }
+                                        if (key === 'display') {
+                                            setShowDisplayOptions(true);
+                                        }
+                                    },
+                                }}
+                                dropdownRender={(menuNode) => (
+                                    <>
+                                        {menuNode}
+                                        {showDisplayOptions ? (
+                                            <div style={{padding: 8, borderTop: '1px solid #f0f0f0'}}>
+                                                {displayOptionsContent}
+                                            </div>
+                                        ) : null}
+                                    </>
+                                )}
+                                onOpenChange={(open) => {
+                                    if (!open) {
+                                        setShowDisplayOptions(false);
+                                    }
+                                }}
+                            >
+                                <Button className="library-toolbar-btn">更多</Button>
+                            </Dropdown>
+                            <Button
+                                className="library-toolbar-btn"
+                                type="primary"
+                                icon={<PlusOutlined/>}
+                                onClick={() => setShowAdd(true)}
+                            >
+                                添加
+                            </Button>
+                        </>
+                    ) : (
+                        <>
+                            <Popover
+                                content={displayOptionsContent}
+                                trigger="click"
+                                placement="bottomRight"
+                            >
+                                <Button className="library-toolbar-btn" icon={<EyeOutlined/>}>
+                                    显示
+                                </Button>
+                            </Popover>
+                            <Button
+                                className="library-toolbar-btn"
+                                icon={<ClockCircleOutlined/>}
+                                onClick={() => setShowTimeline(true)}
+                            >
+                                时间线
+                            </Button>
+                            <Button
+                                className="library-toolbar-btn"
+                                icon={<SettingOutlined/>}
+                                onClick={() => setShowCategoryManager(true)}
+                            >
+                                分类管理
+                            </Button>
+                            <Button
+                                className="library-toolbar-btn"
+                                type="primary"
+                                icon={<PlusOutlined/>}
+                                onClick={() => setShowAdd(true)}
+                            >
+                                添加
+                            </Button>
+                        </>
+                    )}
                 </div>
             </Flex>
 

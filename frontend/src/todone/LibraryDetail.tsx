@@ -1044,16 +1044,62 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
     const placeholderFontSize = Math.round(detailCoverWidth * LIBRARY_PLACEHOLDER_TEXT_WIDTH_RATIO);
     const placeholderPadding = Math.round(detailCoverWidth * LIBRARY_PLACEHOLDER_PADDING_WIDTH_RATIO);
     const displayStatus = getDisplayStatusInfo(localItem.extra);
+    const actionButtonSize = isMobile ? 'small' : 'middle';
+    const useMobileSplitLayout = isMobile && !editMode;
+    const drawerActions = (
+        <Space size={8} wrap>
+            {onToggleFavorite ? (
+                <Button
+                    size={actionButtonSize}
+                    icon={localItem.extra.isFavorite ? <StarFilled/> : <StarOutlined/>}
+                    onClick={() => onToggleFavorite(localItem)}
+                >
+                    {localItem.extra.isFavorite ? '已收藏' : '收藏'}
+                </Button>
+            ) : null}
+            <Button
+                size={actionButtonSize}
+                icon={<ReloadOutlined/>}
+                onClick={handleRefreshUpdatedAt}
+            >
+                刷新
+            </Button>
+            <Button
+                size={actionButtonSize}
+                icon={<ShareAltOutlined/>}
+                onClick={() => setShowShare(true)}
+            >
+                分享
+            </Button>
+            {editMode ? (
+                <>
+                    <Button size={actionButtonSize} onClick={() => setEditMode(false)}>取消</Button>
+                    <Button size={actionButtonSize} type="primary" onClick={handleSaveBasicInfo}>保存</Button>
+                </>
+            ) : (
+                <Button size={actionButtonSize} icon={<EditOutlined/>} onClick={() => setEditMode(true)}>编辑</Button>
+            )}
+        </Space>
+    );
 
     return (
         <Drawer
             title={
-                <Flex justify="space-between" align="center">
-                    <span>{displayTitle}</span>
-                </Flex>
+                <span
+                    style={{
+                        display: 'block',
+                        maxWidth: isMobile ? 'calc(100vw - 120px)' : '100%',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                    }}
+                >
+                    {displayTitle || '未命名'}
+                </span>
             }
             placement="right"
             width={isMobile ? '100%' : 600}
+            styles={isMobile ? {header: {paddingInline: 12}, body: {paddingInline: 12}} : undefined}
             destroyOnClose
             afterOpenChange={(open) => {
                 if (!open) {
@@ -1071,38 +1117,7 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
             }}
             onClose={onClose}
             open={visible}
-            extra={
-                <Space>
-                    {onToggleFavorite ? (
-                        <Button
-                            icon={localItem.extra.isFavorite ? <StarFilled/> : <StarOutlined/>}
-                            onClick={() => onToggleFavorite(localItem)}
-                        >
-                            {localItem.extra.isFavorite ? '已收藏' : '收藏'}
-                        </Button>
-                    ) : null}
-                    <Button 
-                        icon={<ReloadOutlined/>}
-                        onClick={handleRefreshUpdatedAt}
-                    >
-                        刷新
-                    </Button>
-                    <Button 
-                        icon={<ShareAltOutlined/>} 
-                        onClick={() => setShowShare(true)}
-                    >
-                        分享
-                    </Button>
-                    {editMode ? (
-                        <>
-                            <Button onClick={() => setEditMode(false)}>取消</Button>
-                            <Button type="primary" onClick={handleSaveBasicInfo}>保存</Button>
-                        </>
-                    ) : (
-                        <Button icon={<EditOutlined/>} onClick={() => setEditMode(true)}>编辑</Button>
-                    )}
-                </Space>
-            }
+            extra={isMobile ? undefined : drawerActions}
             footer={
                 onDelete && (
                     <Flex justify="flex-start">
@@ -1120,14 +1135,22 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
                 )
             }
         >
+            {isMobile ? (
+                <div style={{marginBottom: 12, overflowX: 'auto'}}>
+                    <Space size={8} wrap={false} style={{paddingBottom: 2}}>
+                        {drawerActions}
+                    </Space>
+                </div>
+            ) : null}
             {/* 封面和基本信息 */}
-            <Row gutter={16}>
-                <Col span={isMobile ? 24 : 8}>
+            <Row gutter={16} wrap={!useMobileSplitLayout}>
+                <Col span={useMobileSplitLayout ? 10 : (isMobile ? 24 : 8)}>
                     <div
                         ref={detailCoverRef}
                         style={{
                             position: 'relative',
-                            width: '100%',
+                            width: useMobileSplitLayout ? '100%' : (isMobile ? 'min(42vw, 170px)' : '100%'),
+                            margin: isMobile ? '0 auto' : undefined,
                             paddingTop: '150%',
                             borderRadius: 8,
                             overflow: 'hidden',
@@ -1185,7 +1208,7 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
                         </div>
                     </div>
                 </Col>
-                <Col span={isMobile ? 24 : 16} style={{marginTop: isMobile ? 12 : 0}}>
+                <Col span={useMobileSplitLayout ? 14 : (isMobile ? 24 : 16)} style={{marginTop: useMobileSplitLayout ? 0 : (isMobile ? 12 : 0)}}>
                     {editMode ? (
                         <Form form={form} layout="vertical" size="small">
                             <Form.Item name="title" label="名称" rules={[{required: true}]}>
