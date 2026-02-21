@@ -1084,16 +1084,9 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
 
     return (
         <Drawer
+            className="library-detail-drawer"
             title={
-                <span
-                    style={{
-                        display: 'block',
-                        maxWidth: isMobile ? 'calc(100vw - 120px)' : '100%',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        whiteSpace: 'nowrap',
-                    }}
-                >
+                <span className="library-detail-drawer-title" title={displayTitle || '未命名'}>
                     {displayTitle || '未命名'}
                 </span>
             }

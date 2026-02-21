@@ -604,3 +604,25 @@
         gap: 8px;
     }
 }
+
+.library-detail-drawer .ant-drawer-header-title {
+    min-width: 0;
+    flex: 1;
+}
+
+.library-detail-drawer .ant-drawer-title {
+    min-width: 0;
+    flex: 1;
+}
+
+.library-detail-drawer .library-detail-drawer-title {
+    display: block;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.library-detail-drawer .ant-drawer-extra {
+    flex-shrink: 0;
+}

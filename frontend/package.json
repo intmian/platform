@@ -10,7 +10,8 @@
     "preview": "vite preview",
     "test:e2e": "playwright test",
     "test:e2e:headed": "playwright test --headed",
-    "test:e2e:ui": "playwright test --ui"
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:todone:library": "playwright test -c playwright.todone-library.config.js"
   },
   "dependencies": {
     "@ant-design/icons": "^5.3.0",
