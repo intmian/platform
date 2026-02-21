@@ -630,9 +630,32 @@ export default function Library({addr, groupTitle}: LibraryProps) {
             setShowStatusReasonModal(true);
             return;
         }
+        // 防止重复操作
         if (item.extra.status === status) {
             return;
         }
+        // 如果当前周目已结束，再次开始需要确认并建议新周目
+        const currentRound = item.extra.rounds[item.extra.currentRound];
+        const roundEnded = !!currentRound?.endTime;
+        if (roundEnded && status === LibraryItemStatus.DOING) {
+            Modal.confirm({
+                title: '本周目已结束',
+                content: (
+                    <div>
+                        当前周目已在 {currentRound?.endTime} 完成。
+                        <br />建议通过“新周目”按钮创建新周目，然后再开始。
+                        <br />确定要继续在本周目内开始吗？
+                    </div>
+                ),
+                onOk: () => {
+                    const newExtra = addStatusLog({...item.extra}, status);
+                    const newItem = {...item, extra: newExtra};
+                    handleSaveItem(newItem);
+                },
+            });
+            return;
+        }
+
         const newExtra = addStatusLog({...item.extra}, status);
         const newItem = {...item, extra: newExtra};
         handleSaveItem(newItem);

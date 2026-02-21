@@ -319,7 +319,41 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
     // 快速状态变更
     const handleStatusChange = (newStatus: LibraryItemStatus, comment?: string) => {
         if (!localItem) return;
-        
+
+        const currentStatus = localItem.extra.status;
+        const currentRound = localItem.extra.rounds[localItem.extra.currentRound];
+        const roundEnded = !!currentRound?.endTime;
+
+        // 防止重复操作（双重开始/搁置/完成等）
+        if (newStatus === currentStatus) {
+            message.warning(`当前已经是“${LibraryStatusNames[currentStatus] || ''}”状态，无需重复操作`);
+            return;
+        }
+
+        // 如果本周目已经结束，再次点击“开始”需要二次确认，并提示建议新周目
+        if (roundEnded && newStatus === LibraryItemStatus.DOING) {
+            Modal.confirm({
+                title: '本周目已结束',
+                content: (
+                    <div>
+                        当前周目已在 {currentRound?.endTime} 完成。
+                        <br />
+                        继续“开始”会在本周目上追加日志，建议先通过“新周目”按钮创建新周目。
+                        <br />
+                        确定要继续在本周目内开始吗？
+                    </div>
+                ),
+                onOk: () => {
+                    const newExtra = addStatusLog({...localItem.extra}, newStatus, comment);
+                    const newItem = {...localItem, extra: newExtra};
+                    setLocalItem(newItem);
+                    onSave(newItem);
+                },
+            });
+            return;
+        }
+
+        // 正常更新状态
         const newExtra = addStatusLog({...localItem.extra}, newStatus, comment);
         const newItem = {...localItem, extra: newExtra};
         setLocalItem(newItem);
@@ -817,23 +851,27 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
         
         return (
             <Space wrap>
-                {buttons.map(btn => (
-                    <Button
-                        key={btn.status}
-                        type={currentStatus === btn.status ? 'primary' : 'default'}
-                        icon={btn.icon}
-                        onClick={() => {
-                            if (btn.status === LibraryItemStatus.WAIT || btn.status === LibraryItemStatus.TODO) {
-                                openStatusReason(btn.status);
-                                return;
-                            }
-                            handleStatusChange(btn.status);
-                        }}
-                        size="small"
-                    >
-                        {btn.label}
-                    </Button>
-                ))}
+                {buttons.map(btn => {
+                    const disabled = btn.status === currentStatus;
+                    return (
+                        <Button
+                            key={btn.status}
+                            disabled={disabled}
+                            type={currentStatus === btn.status ? 'primary' : 'default'}
+                            icon={btn.icon}
+                            onClick={() => {
+                                if (btn.status === LibraryItemStatus.WAIT || btn.status === LibraryItemStatus.TODO) {
+                                    openStatusReason(btn.status);
+                                    return;
+                                }
+                                handleStatusChange(btn.status);
+                            }}
+                            size="small"
+                        >
+                            {btn.label}
+                        </Button>
+                    );
+                })}
                 <Button
                     icon={<PlusOutlined/>}
                     onClick={() => setShowNewRound(true)}

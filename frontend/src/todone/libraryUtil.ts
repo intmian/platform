@@ -149,6 +149,11 @@ export function libraryToTask(item: LibraryItemFull, originalTask: PTask): PTask
  * 添加状态变更日志
  */
 export function addStatusLog(extra: LibraryExtra, newStatus?: LibraryItemStatus, comment?: string): LibraryExtra {
+    // 如果状态未变化，直接返回原数据（避免双重操作）
+    if (newStatus !== undefined && newStatus === extra.status) {
+        return extra;
+    }
+
     const now = new Date().toISOString();
     const currentRound = extra.rounds[extra.currentRound];
     if (currentRound) {
