@@ -85,6 +85,15 @@ function blobToDataUrl(blob: Blob): Promise<string> {
     });
 }
 
+function getImageFetchCredentials(src: string): RequestCredentials {
+    try {
+        const url = new URL(src, window.location.href);
+        return url.origin === window.location.origin ? 'include' : 'omit';
+    } catch {
+        return 'omit';
+    }
+}
+
 async function inlineExportImages(container: HTMLElement): Promise<void> {
     const imgs = Array.from(container.querySelectorAll('img'));
     await Promise.all(imgs.map(async (img) => {
@@ -93,7 +102,7 @@ async function inlineExportImages(container: HTMLElement): Promise<void> {
             return;
         }
         try {
-            const response = await fetch(src, {credentials: 'include'});
+            const response = await fetch(src, {credentials: getImageFetchCredentials(src)});
             if (!response.ok) {
                 throw new Error(`fetch image failed: ${response.status}`);
             }
