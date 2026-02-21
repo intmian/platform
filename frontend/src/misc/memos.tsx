@@ -560,7 +560,9 @@ function HideInput({
             onPaste={e => {
                 if (onPasteFile && e.clipboardData && e.clipboardData.files && e.clipboardData.files.length > 0) {
                     e.preventDefault();
-                    onPasteFile(e.clipboardData.files[0]);
+                    // support pasting multiple files, call upload for each
+                    const files = Array.from(e.clipboardData.files);
+                    files.forEach(f => onPasteFile(f));
                 }
             }}
         /></div>}
@@ -736,7 +738,8 @@ function Memos() {
 
     function UpdateFileWith() {
         const triggerUpload = () => {
-            selectLocalFile();
+            // allow selecting multiple files for upload (previously only single file)
+            selectLocalFile(true);
         };
 
         // 如果剪切板里面有图片，则询问是否上传剪切板图片，否则
