@@ -1,0 +1,4 @@
+interface:
+  display_name: "Frontend Expert"
+  short_description: "Debug and develop this repo's frontend"
+  default_prompt: "Use $frontend-expert to diagnose and fix a frontend issue in this repository."
