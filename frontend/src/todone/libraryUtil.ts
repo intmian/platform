@@ -146,12 +146,35 @@ export function libraryToTask(item: LibraryItemFull, originalTask: PTask): PTask
 }
 
 /**
+ * 是否允许在同状态下继续写入原因日志
+ */
+export function canUpdateReasonOnSameStatus(status?: LibraryItemStatus): boolean {
+    return status === LibraryItemStatus.WAIT || status === LibraryItemStatus.TODO;
+}
+
+/**
  * 添加状态变更日志
  */
 export function addStatusLog(extra: LibraryExtra, newStatus?: LibraryItemStatus, comment?: string): LibraryExtra {
-    // 如果状态未变化，直接返回原数据（避免双重操作）
-    if (newStatus !== undefined && newStatus === extra.status) {
+    const isSameStatus = newStatus === extra.status;
+    if (isSameStatus && !canUpdateReasonOnSameStatus(newStatus)) {
         return extra;
+    }
+    const normalizedComment = canUpdateReasonOnSameStatus(newStatus)
+        ? (comment?.trim() || '')
+        : comment;
+
+    if (isSameStatus && newStatus === LibraryItemStatus.TODO) {
+        const prevReason = (extra.todoReason || '').trim();
+        if (prevReason === normalizedComment) {
+            return extra;
+        }
+    }
+    if (isSameStatus && newStatus === LibraryItemStatus.WAIT) {
+        const prevReason = getLatestWaitReason(extra);
+        if (prevReason === normalizedComment) {
+            return extra;
+        }
     }
 
     const now = new Date().toISOString();
@@ -161,13 +184,13 @@ export function addStatusLog(extra: LibraryExtra, newStatus?: LibraryItemStatus,
             type: LibraryLogType.changeStatus,
             time: now,
             status: newStatus,
-            comment: comment,
+            comment: normalizedComment,
         });
     }
     extra.status = newStatus;
     if (newStatus === LibraryItemStatus.TODO) {
         extra.todoSince = now;
-        extra.todoReason = comment?.trim() || '';
+        extra.todoReason = normalizedComment || '';
         extra.waitSince = undefined;
     } else if (newStatus === LibraryItemStatus.WAIT) {
         extra.waitSince = now;
@@ -252,6 +275,30 @@ export function isWaitExpired(extra: LibraryExtra): boolean {
     if (Number.isNaN(start)) return false;
     const monthMs = 30 * 24 * 60 * 60 * 1000;
     return (Date.now() - start) >= monthMs;
+}
+
+export function syncStatusCacheFromLogs(extra: LibraryExtra): LibraryExtra {
+    const latestStatusLog = getLatestStatusLog(extra);
+    const latestStatus = latestStatusLog?.status;
+    extra.status = latestStatus;
+
+    if (latestStatus === LibraryItemStatus.TODO) {
+        extra.todoSince = latestStatusLog?.time;
+        extra.todoReason = (latestStatusLog?.comment || '').trim();
+        extra.waitSince = undefined;
+        return extra;
+    }
+    if (latestStatus === LibraryItemStatus.WAIT) {
+        extra.waitSince = latestStatusLog?.time;
+        extra.todoSince = undefined;
+        extra.todoReason = '';
+        return extra;
+    }
+
+    extra.waitSince = undefined;
+    extra.todoSince = undefined;
+    extra.todoReason = '';
+    return extra;
 }
 
 export function getDisplayStatusInfo(extra: LibraryExtra): {name: string; color: string; isExpiredWait: boolean} {

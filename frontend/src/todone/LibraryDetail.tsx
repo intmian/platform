@@ -61,6 +61,7 @@ import {
     addStatusLog,
     addTimelineCutoffLog,
     buildLibraryTitleCoverDataUrl,
+    canUpdateReasonOnSameStatus,
     formatDateTime,
     getDisplayStatusInfo,
     getLatestWaitReason,
@@ -74,6 +75,7 @@ import {
     normalizeMainScoreSelection,
     setMainScore,
     startNewRound,
+    syncStatusCacheFromLogs,
     touchLibraryUpdatedAt,
 } from './libraryUtil';
 import {useIsMobile} from '../common/hooksv2';
@@ -326,10 +328,7 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
 
         // 防止重复操作（双重开始/完成等）。
         // 注意：等待和搁置状态允许在同状态下更新原因，因此不阻止。
-        if (newStatus === currentStatus
-            && newStatus !== LibraryItemStatus.WAIT
-            && newStatus !== LibraryItemStatus.TODO
-        ) {
+        if (newStatus === currentStatus && !canUpdateReasonOnSameStatus(newStatus)) {
             message.warning(`当前已经是“${LibraryStatusNames[currentStatus] || ''}”状态，无需重复操作`);
             return;
         }
@@ -803,6 +802,7 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
         }
 
         targetLog.time = editingLogTime;
+        syncStatusCacheFromLogs(newItem.extra);
         newItem.extra.updatedAt = new Date().toISOString();
 
         setLocalItem(newItem);
@@ -823,6 +823,7 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
 
         targetRound.logs.splice(logIndex, 1);
         normalizeMainScoreSelection(newItem.extra);
+        syncStatusCacheFromLogs(newItem.extra);
         newItem.extra.updatedAt = new Date().toISOString();
 
         setLocalItem(newItem);
@@ -847,11 +848,7 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
         // helper for deciding whether a status button should be disabled
         const isStatusButtonDisabled = (btnStatus: LibraryItemStatus): boolean => {
             if (btnStatus === currentStatus) {
-                // 不对“等待/搁置”状态禁用按钮，允许用户在同状态下更新原因
-                if (btnStatus === LibraryItemStatus.WAIT || btnStatus === LibraryItemStatus.TODO) {
-                    return false;
-                }
-                return true;
+                return !canUpdateReasonOnSameStatus(btnStatus);
             }
             return false;
         };

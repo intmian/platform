@@ -59,6 +59,7 @@ import {
 import {
     addStatusLog,
     buildLibraryTitleCoverDataUrl,
+    canUpdateReasonOnSameStatus,
     createDefaultLibraryExtra,
     getLatestWaitReason,
     getDisplayStatusInfo,
@@ -631,7 +632,7 @@ export default function Library({addr, groupTitle}: LibraryProps) {
             return;
         }
         // 防止重复操作
-        if (item.extra.status === status) {
+        if (item.extra.status === status && !canUpdateReasonOnSameStatus(status)) {
             return;
         }
         // 如果当前周目已结束，再次开始需要确认并建议新周目
