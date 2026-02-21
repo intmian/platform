@@ -324,8 +324,12 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
         const currentRound = localItem.extra.rounds[localItem.extra.currentRound];
         const roundEnded = !!currentRound?.endTime;
 
-        // 防止重复操作（双重开始/搁置/完成等）
-        if (newStatus === currentStatus) {
+        // 防止重复操作（双重开始/完成等）。
+        // 注意：等待和搁置状态允许在同状态下更新原因，因此不阻止。
+        if (newStatus === currentStatus
+            && newStatus !== LibraryItemStatus.WAIT
+            && newStatus !== LibraryItemStatus.TODO
+        ) {
             message.warning(`当前已经是“${LibraryStatusNames[currentStatus] || ''}”状态，无需重复操作`);
             return;
         }
@@ -839,7 +843,19 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
     const renderStatusButtons = () => {
         if (!localItem) return null;
         const currentStatus = localItem.extra.status;
-        
+
+        // helper for deciding whether a status button should be disabled
+        const isStatusButtonDisabled = (btnStatus: LibraryItemStatus): boolean => {
+            if (btnStatus === currentStatus) {
+                // 不对“等待/搁置”状态禁用按钮，允许用户在同状态下更新原因
+                if (btnStatus === LibraryItemStatus.WAIT || btnStatus === LibraryItemStatus.TODO) {
+                    return false;
+                }
+                return true;
+            }
+            return false;
+        };
+
         const buttons = [
             {status: LibraryItemStatus.TODO, icon: <ClockCircleOutlined/>, label: '等待'},
             {status: LibraryItemStatus.DOING, icon: <PlayCircleOutlined/>, label: '开始'},
@@ -852,7 +868,7 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
         return (
             <Space wrap>
                 {buttons.map(btn => {
-                    const disabled = btn.status === currentStatus;
+                    const disabled = isStatusButtonDisabled(btn.status);
                     return (
                         <Button
                             key={btn.status}
