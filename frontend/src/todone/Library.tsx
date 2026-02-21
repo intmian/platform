@@ -871,7 +871,7 @@ export default function Library({addr, groupTitle}: LibraryProps) {
             setAddLoading(true);
             
             const title = values.title?.trim() || '';
-            const extra = createDefaultLibraryExtra();
+            let extra = createDefaultLibraryExtra();
             extra.pictureAddress = addCoverUrl.trim() || '';
             extra.author = values.author || '';
             extra.year = values.year !== undefined && values.year !== null && values.year !== ''
@@ -879,6 +879,11 @@ export default function Library({addr, groupTitle}: LibraryProps) {
                 : undefined;
             extra.remark = values.remark?.trim() || '';
             extra.category = values.category?.trim() || '';
+            // 如果输入了等待原因，直接设置为 todo 并记录原因
+            const inputReason = values.todoReason?.trim() || '';
+            if (inputReason) {
+                extra = addStatusLog(extra, LibraryItemStatus.TODO, inputReason);
+            }
             
             const req: CreateTaskReq = {
                 UserID: addr.userID,
@@ -1557,6 +1562,19 @@ export default function Library({addr, groupTitle}: LibraryProps) {
 
                         <Form.Item name="remark" label="备注">
                             <Input.TextArea rows={2} placeholder="作品备注（如国家、平台、版本）"/>
+                        </Form.Item>
+
+                        {/* 添加等待原因，若填写则创建后状态为等待 */}
+                        <Form.Item name="todoReason" label="等待原因">
+                            <AutoComplete
+                                style={{width: '100%'}}
+                                options={todoReasonOptions.map(reason => ({value: reason}))}
+                                filterOption={(inputValue, option) =>
+                                    option?.value.toLowerCase().includes(inputValue.toLowerCase()) || false
+                                }
+                            >
+                                <Input placeholder="请输入或选择等待原因（可选）" />
+                            </AutoComplete>
                         </Form.Item>
                     </Form>
                 </div>
