@@ -39,6 +39,17 @@ Last verified: 2026-02-22
    - `backend/test/gin.log`
    - `backend/test/sql.log`
 3. If backend startup fails due external network dependency, record exact error and continue with reachable runtime path when feasible (for example existing service responding to `/api/check`).
+4. Codex sandbox note (`verified via interaction`):
+   - `dlv debug` may fail with `listen tcp 127.0.0.1:*: bind: operation not permitted`.
+   - Root cause is sandbox socket binding restriction, not `.vscode` `launch.json` mismatch.
+   - Re-run debug command outside sandbox when debugging is required.
+5. Codex sandbox network note (`verified via interaction`):
+   - `go run ../main/main.go` may fail with `lookup api.cloudflare.com: no such host`.
+   - This is an environment/network restriction; validate startup once outside sandbox before changing code.
+6. Codex backend debug execution policy:
+   - For backend debug in Codex, treat non-sandbox execution as default path (not fallback).
+   - Run `dlv` and backend `go run` with elevated execution first, then continue debugging.
+   - Use fixed baseline: `program=backend/main/main.go`, `cwd=backend/test`, `GOWORK=${workspaceFolder}/backend/go.work`.
 
 ## Conflict handling
 
