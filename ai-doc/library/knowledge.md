@@ -17,6 +17,12 @@ Last verified: 2026-02-22
    - empty or parse fail => default `LibraryExtra`
    - missing rounds => create `首周目`
 4. Serialize cleans deprecated fields and updates `updatedAt`.
+5. List page derives runtime meta via `deriveLibraryMeta(extra)` with one log scan per item:
+   - status snapshot (`status`, `todoReason`)
+   - wait-expired flag (`鸽了`)
+   - main score
+   - parsed `createdAt/updatedAt` timestamps for sort
+6. Derived meta is in-memory only and must not add new backend/database fields.
 
 ## Subgroup convention
 
@@ -95,3 +101,4 @@ Timeline rules:
 4. `user not exist`
 5. `no permission`
 6. `user err`
+7. `TODO-verify`: direct `/todone/:group` open may occasionally render empty list while API is healthy; reselecting same group from left tree can recover expected items.

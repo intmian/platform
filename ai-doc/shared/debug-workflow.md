@@ -21,6 +21,12 @@ Last verified: 2026-02-22
 3. Confirm request payload and API response shape.
 4. Confirm render conditions and fallback paths.
 
+## MCP/browser troubleshooting
+
+1. If Playwright MCP fails to launch Chrome with message indicating existing browser session, close local Chrome processes and retry MCP launch.
+2. Keep one stable dev server URL for the full pre/post comparison path (`127.0.0.1` preferred when explicitly specified).
+3. Treat framework deprecation warnings (for example AntD/rc component deprecations) as non-regression unless new runtime errors or behavior drift appears.
+
 ## Backend-first checks
 
 1. Classify failing layer:
@@ -32,6 +38,7 @@ Last verified: 2026-02-22
    - `backend/test/log`
    - `backend/test/gin.log`
    - `backend/test/sql.log`
+3. If backend startup fails due external network dependency, record exact error and continue with reachable runtime path when feasible (for example existing service responding to `/api/check`).
 
 ## Conflict handling
 

@@ -7,6 +7,9 @@ Last verified: 2026-02-22
 1. Use group type `Library` (`type=1` in `/todone/:group`).
 2. Backend auth must satisfy `admin|todone` and user identity match.
 3. Ensure subgroup path is valid (`_library_items_` preferred).
+4. Local login baseline:
+   - username: `admin`
+   - password source: `backend/test/base_setting.toml` -> `admin_pwd`
 
 ## Core matrix
 
@@ -50,6 +53,7 @@ Last verified: 2026-02-22
 1. No data:
    - check `getSubGroup` response
    - check subgroup ID used by `getTasks`
+   - if direct route shows empty but known data exists, reselect the group once from left tree and re-check (`TODO-verify` root cause)
 2. Data shape issue:
    - inspect `Task.Note` parse fallback
 3. Save failed:
@@ -62,3 +66,20 @@ Last verified: 2026-02-22
 
 1. Re-run target scenario with pre/post evidence.
 2. Switch to non-library group and confirm normal task board still works.
+
+## Performance check (list path)
+
+1. In dev mode, use browser console metric `[LibraryPerf]`.
+2. Compare identical interaction path before/after:
+   - initial list load
+   - status/category/search filter changes
+   - sort changes (`default` and `score` at minimum)
+3. Verify no behavior drift while perf probe improves or remains stable.
+
+## Known non-blocking console warnings
+
+1. Existing AntD/rc deprecation warnings may appear during regression:
+   - `Select.Option` / `option`
+   - `rc-collapse children`
+   - `Timeline.Item`
+2. Treat them as non-blocking for this module unless new functional errors are introduced.
