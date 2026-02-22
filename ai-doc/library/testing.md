@@ -38,6 +38,11 @@ Last verified: 2026-02-22
 3. Category filter (`all`, specific, `_uncategorized_`).
 4. Search over title/author/category.
 5. Sort modes (`default/index/createdAt/updatedAt/title/score`).
+6. `default` sort regression:
+   - same status (for example `WAIT`) + different categories
+   - mark item A favorite
+   - edit item B to refresh `updatedAt`
+   - expect A still ranked before B.
 
 ## Status and timeline checks
 

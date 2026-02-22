@@ -26,6 +26,7 @@ Last verified: 2026-02-22
 5. Run at least one adjacent regression path.
 6. For performance tasks, compare pre/post with the same interaction path and same dataset context.
 7. Report repro, evidence, patch summary, regression, residual risk.
+8. UI behavior fixes (including sort/filter/display order) must include MCP pre/post interaction evidence; compile/build success cannot replace this requirement.
 
 ## Frontend-first checks
 
@@ -81,6 +82,7 @@ Last verified: 2026-02-22
 ## Completion gate
 
 1. Do not declare completion without evidence summary and regression result.
+2. For UI behavior fixes, if MCP pre/post interaction evidence is missing, task is not complete.
 
 ## Conflict handling
 

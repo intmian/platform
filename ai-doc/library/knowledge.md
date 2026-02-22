@@ -67,10 +67,11 @@ Default sort rank:
 7. `GIVE_UP`
 8. `ARCHIVED`
 
-Within same status+category:
+Within same status:
 
 1. favorite first
 2. then `updatedAt` descending
+3. verified via interaction (2026-02-22): when two items are both `WAIT` and in different categories, a favorited item still stays ahead after the non-favorited item is edited.
 
 ## Status and timeline rules
 

@@ -544,7 +544,7 @@ export default function Library({addr, groupTitle}: LibraryProps) {
     }, []);
 
     const compareByDefaultSort = useCallback((a: LibraryItemWithDerived, b: LibraryItemWithDerived) => {
-        // 默认排序口径：先按状态分组，再在“同状态 + 同分类”内让收藏条目置顶。
+        // 默认排序口径：先按状态分组；同状态下收藏条目全局置顶，再按更新时间。
         const statusA = getItemStatusForFilter(a);
         const statusB = getItemStatusForFilter(b);
         const rankA = DEFAULT_SORT_STATUS_ORDER[String(statusA)] ?? Number.MAX_SAFE_INTEGER;
@@ -553,9 +553,7 @@ export default function Library({addr, groupTitle}: LibraryProps) {
             return rankA - rankB;
         }
 
-        const categoryA = a.normalizedCategory;
-        const categoryB = b.normalizedCategory;
-        if (categoryA === categoryB && !!a.extra.isFavorite !== !!b.extra.isFavorite) {
+        if (!!a.extra.isFavorite !== !!b.extra.isFavorite) {
             return a.extra.isFavorite ? -1 : 1;
         }
 

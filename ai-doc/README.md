@@ -9,6 +9,7 @@ Last verified: 2026-02-22
 1. Solve user tasks with minimal safe changes.
 2. Keep before/after evidence for behavior-impacting fixes and run at least one adjacent regression path.
 3. When stable facts change, update matching `ai-doc` files in the same turn.
+4. UI behavior-impacting fixes require interaction evidence (MCP pre/post); build/test output alone is insufficient.
 
 ## Loading rules
 
