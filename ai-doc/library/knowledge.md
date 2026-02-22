@@ -16,13 +16,16 @@ Last verified: 2026-02-22
 3. Parse fallback:
    - empty or parse fail => default `LibraryExtra`
    - missing rounds => create `首周目`
-4. Serialize cleans deprecated fields and updates `updatedAt`.
-5. List page derives runtime meta via `deriveLibraryMeta(extra)` with one log scan per item:
+4. Serialize cleans deprecated fields but does not auto-refresh `updatedAt`.
+5. `updatedAt` refresh trigger:
+   - manual `刷新` button
+   - latest non-note/non-`timelineCutoff` log change (time-based sync)
+6. List page derives runtime meta via `deriveLibraryMeta(extra)` with one log scan per item:
    - status snapshot (`status`, `todoReason`)
    - wait-expired flag (`鸽了`)
    - main score
    - parsed `createdAt/updatedAt` timestamps for sort
-6. Derived meta is in-memory only and must not add new backend/database fields.
+7. Derived meta is in-memory only and must not add new backend/database fields.
 
 ## Subgroup convention
 

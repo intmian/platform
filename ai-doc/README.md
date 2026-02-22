@@ -21,10 +21,11 @@ Last verified: 2026-02-22
 
 ## Routing
 
-1. Cross-module debugging/process: `shared/debug-workflow.md`
-2. Library domain logic: `library/knowledge.md`
-3. Library testing matrix: `library/testing.md`
-4. Library interactive UI map: `library/ui-locator.md`
+1. Cross-module engineering default workflow: `shared/engineering-workflow.md`
+2. Cross-module debugging specialized workflow: `shared/debug-workflow.md`
+3. Library domain logic: `library/knowledge.md`
+4. Library testing matrix: `library/testing.md`
+5. Library interactive UI map: `library/ui-locator.md`
 
 ## Completion gate
 

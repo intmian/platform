@@ -74,10 +74,12 @@ import {
     getScoreDisplay,
     getScoreStarColor,
     getScoreText,
+    isUpdatedAtDrivenLogType,
     LIBRARY_WAIT_EXPIRED_RULE_TEXT,
     normalizeMainScoreSelection,
     setMainScore,
     startNewRound,
+    syncLibraryUpdatedAtFromLatestLog,
     touchLibraryUpdatedAt,
 } from './libraryUtil';
 import {useIsMobile} from '../common/hooksv2';
@@ -329,7 +331,6 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
                     year: typeof values.year === 'number' ? values.year : undefined,
                     remark: values.remark?.trim() || '',
                     category: values.category || '',
-                    updatedAt: new Date().toISOString(),
                 },
             };
             
@@ -430,8 +431,7 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
                 index === renameRoundIndex
                     ? {...round, name: finalName}
                     : round
-            )),
-            updatedAt: new Date().toISOString(),
+                )),
         };
 
         const newItem = {...localItem, extra: newExtra};
@@ -777,7 +777,9 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
             targetLog.comment = editingContentText;
         }
 
-        newItem.extra.updatedAt = new Date().toISOString();
+        if (isUpdatedAtDrivenLogType(targetLog.type)) {
+            syncLibraryUpdatedAtFromLatestLog(newItem.extra);
+        }
         setLocalItem(newItem);
         onSave(newItem);
 
@@ -804,7 +806,9 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
         }
 
         targetLog.time = editingLogTime;
-        newItem.extra.updatedAt = new Date().toISOString();
+        if (isUpdatedAtDrivenLogType(targetLog.type)) {
+            syncLibraryUpdatedAtFromLatestLog(newItem.extra);
+        }
 
         setLocalItem(newItem);
         onSave(newItem);
@@ -822,9 +826,12 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
             return;
         }
 
+        const removedLogType = targetRound.logs[logIndex].type;
         targetRound.logs.splice(logIndex, 1);
         normalizeMainScoreSelection(newItem.extra);
-        newItem.extra.updatedAt = new Date().toISOString();
+        if (isUpdatedAtDrivenLogType(removedLogType)) {
+            syncLibraryUpdatedAtFromLatestLog(newItem.extra);
+        }
 
         setLocalItem(newItem);
         onSave(newItem);

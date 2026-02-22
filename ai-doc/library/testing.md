@@ -52,6 +52,10 @@ Last verified: 2026-02-22
 4. Wait-expired rule validation.
 5. New round prompt when restarting DOING after round end.
 6. Timeline order and cutoff behavior.
+7. `updatedAt` trigger regression:
+   - click detail `刷新` => `updatedAt` changes
+   - add/edit only `备注` or set `时间线断点` => `updatedAt` unchanged
+   - add status/score log and ensure it becomes latest non-note/non-cutoff log => `updatedAt` follows latest log time
 
 ## Failure isolation
 

@@ -58,6 +58,12 @@ export function parseLibraryExtra(note: string): LibraryExtra {
         if (parsed.currentRound === undefined) {
             parsed.currentRound = 0;
         }
+        if (!parsed.createdAt) {
+            parsed.createdAt = new Date().toISOString();
+        }
+        if (!parsed.updatedAt) {
+            parsed.updatedAt = parsed.createdAt;
+        }
         if (parsed.remark === undefined) {
             parsed.remark = '';
         }
@@ -97,11 +103,15 @@ export function parseLibraryExtra(note: string): LibraryExtra {
  * 将 LibraryExtra 序列化为 JSON 字符串存入 Task.Note
  */
 export function serializeLibraryExtra(extra: LibraryExtra): string {
-    const now = new Date().toISOString();
     const normalizedExtra = {
         ...extra,
-        updatedAt: now,
     } as LibraryExtra;
+    if (!normalizedExtra.createdAt) {
+        normalizedExtra.createdAt = new Date().toISOString();
+    }
+    if (!normalizedExtra.updatedAt) {
+        normalizedExtra.updatedAt = normalizedExtra.createdAt;
+    }
     migrateLegacyComplexScoreFields(normalizedExtra);
     // 兼容历史数据：以下字段已废弃，运行时可兜底读取，但保存时统一清空。
     delete normalizedExtra.status;
@@ -121,6 +131,45 @@ export function serializeLibraryExtra(extra: LibraryExtra): string {
 
 export function touchLibraryUpdatedAt(extra: LibraryExtra): LibraryExtra {
     extra.updatedAt = new Date().toISOString();
+    return extra;
+}
+
+export function isUpdatedAtDrivenLogType(logType: LibraryLogType): boolean {
+    return logType !== LibraryLogType.timelineCutoff && logType !== LibraryLogType.note;
+}
+
+function getLatestUpdatedAtLogTime(extra: LibraryExtra): string | undefined {
+    let latestTime: string | undefined;
+    let latestMs = Number.MIN_SAFE_INTEGER;
+
+    for (const round of extra.rounds) {
+        for (const log of round.logs) {
+            if (!isUpdatedAtDrivenLogType(log.type)) {
+                continue;
+            }
+            const timeMs = parseTimeMs(log.time);
+            if (Number.isNaN(timeMs)) {
+                continue;
+            }
+            if (timeMs >= latestMs) {
+                latestMs = timeMs;
+                latestTime = log.time;
+            }
+        }
+    }
+
+    return latestTime;
+}
+
+export function syncLibraryUpdatedAtFromLatestLog(extra: LibraryExtra): LibraryExtra {
+    const latestTime = getLatestUpdatedAtLogTime(extra);
+    if (latestTime) {
+        extra.updatedAt = latestTime;
+        return extra;
+    }
+    if (extra.createdAt) {
+        extra.updatedAt = extra.createdAt;
+    }
     return extra;
 }
 
@@ -452,14 +501,12 @@ export function addStatusLog(extra: LibraryExtra, newStatus?: LibraryItemStatus,
             comment: normalizedComment,
         });
     }
-    extra.updatedAt = now;
-    
     // 如果状态变为完成，设置周目结束时间
     if (newStatus === LibraryItemStatus.DONE && currentRound) {
         currentRound.endTime = now;
     }
-    
-    return extra;
+
+    return syncLibraryUpdatedAtFromLatestLog(extra);
 }
 
 export function getLatestWaitReason(extra: LibraryExtra): string {
@@ -600,7 +647,6 @@ export function addTimelineCutoffLog(extra: LibraryExtra, comment?: string): Lib
         });
     }
 
-    extra.updatedAt = now;
     return extra;
 }
 
@@ -637,8 +683,7 @@ export function addScoreLog(
             innovateScore: resolvedMode === 'complex' ? options?.innovateScore : undefined,
         });
     }
-    extra.updatedAt = now;
-    return extra;
+    return syncLibraryUpdatedAtFromLatestLog(extra);
 }
 
 /**
@@ -654,7 +699,6 @@ export function addNoteLog(extra: LibraryExtra, comment: string): LibraryExtra {
             comment: comment,
         });
     }
-    extra.updatedAt = now;
     return extra;
 }
 
@@ -684,9 +728,8 @@ export function startNewRound(extra: LibraryExtra, roundName: string): LibraryEx
     
     extra.rounds.push(newRound);
     extra.currentRound = extra.rounds.length - 1;
-    extra.updatedAt = now;
-    
-    return extra;
+
+    return syncLibraryUpdatedAtFromLatestLog(extra);
 }
 
 /**
@@ -695,7 +738,6 @@ export function startNewRound(extra: LibraryExtra, roundName: string): LibraryEx
 export function setMainScore(extra: LibraryExtra, roundIndex: number, logIndex: number): LibraryExtra {
     extra.mainScoreRoundIndex = roundIndex;
     extra.mainScoreLogIndex = logIndex;
-    extra.updatedAt = new Date().toISOString();
     return extra;
 }
 
