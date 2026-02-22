@@ -37,7 +37,6 @@ import {Addr} from './addr';
 import {
     LibraryItemFull,
     LibraryItemStatus,
-    LibraryStatusColors,
     LibraryStatusNames,
     PSubGroup,
     PTask,
@@ -61,15 +60,11 @@ import {
     buildLibraryTitleCoverDataUrl,
     canUpdateReasonOnSameStatus,
     createDefaultLibraryExtra,
-    getCurrentStatus,
-    getCurrentTodoReason,
-    getLatestWaitReason,
-    getDisplayStatusInfo,
+    deriveLibraryMeta,
+    LibraryDerivedMeta,
     LIBRARY_CARD_HOVER_EFFECT_CONFIG,
-    isWaitExpired,
     LIBRARY_WAIT_EXPIRED_FILTER,
     LIBRARY_WAIT_EXPIRED_RULE_TEXT,
-    getMainScore,
     getLibraryCoverPaletteByTitle,
     getScoreStarColor,
     getScoreText,
@@ -136,6 +131,12 @@ interface LibraryProps {
     groupTitle: string;
 }
 
+interface LibraryItemWithDerived extends LibraryItemFull {
+    derived: LibraryDerivedMeta;
+    normalizedCategory: string;
+    searchIndex: string;
+}
+
 function getStatusTextColor(bg: string): string {
     const hex = bg.replace('#', '').trim();
     if (hex.length !== 6) {
@@ -149,6 +150,11 @@ function getStatusTextColor(bg: string): string {
     }
     const brightness = (r * 299 + g * 587 + b * 114) / 1000;
     return brightness >= 160 ? '#1f1f1f' : '#ffffff';
+}
+
+function getItemDerivedMeta(item: LibraryItemFull): LibraryDerivedMeta {
+    const maybeWithDerived = item as LibraryItemFull & {derived?: LibraryDerivedMeta};
+    return maybeWithDerived.derived || deriveLibraryMeta(item.extra);
 }
 
 function AutoScrollTitle({text}: {text: string}) {
@@ -340,6 +346,7 @@ export default function Library({addr, groupTitle}: LibraryProps) {
         showAuthor: false,      // 显示作者
     });
     const [waitExpiredTick, setWaitExpiredTick] = useState(0);
+    const listPerfRef = useRef({filterComputeMs: 0, filterComputeDoneAt: 0});
 
     useEffect(() => {
         const timer = window.setInterval(() => {
@@ -436,17 +443,36 @@ export default function Library({addr, groupTitle}: LibraryProps) {
         }
     }, [selectedStatuses]);
 
-    // 转换为 LibraryItemFull 列表
-    const allItems: LibraryItemFull[] = useMemo(() => {
-        return tasks.map(task => parseLibraryFromTask(task));
+    // 转换为带派生元数据的条目列表（单条仅一次日志扫描）
+    const allItems: LibraryItemWithDerived[] = useMemo(() => {
+        const nowMs = Date.now();
+        return tasks.map((task) => {
+            const item = parseLibraryFromTask(task);
+            const normalizedCategory = item.extra.category?.trim() || '';
+            const normalizedAuthor = item.extra.author?.trim() || '';
+            return {
+                ...item,
+                derived: deriveLibraryMeta(item.extra, nowMs),
+                normalizedCategory,
+                searchIndex: `${item.title}\n${normalizedAuthor}\n${normalizedCategory}`.toLowerCase(),
+            };
+        });
+    }, [tasks, waitExpiredTick]);
+
+    const taskById = useMemo(() => {
+        const result = new Map<number, PTask>();
+        tasks.forEach((task) => {
+            result.set(task.ID, task);
+        });
+        return result;
     }, [tasks]);
 
     // 提取所有分类（从 extra.category 字段）
     const categories: string[] = useMemo(() => {
         const categorySet = new Set<string>();
         allItems.forEach(item => {
-            if (item.extra.category && item.extra.category.trim()) {
-                categorySet.add(item.extra.category.trim());
+            if (item.normalizedCategory) {
+                categorySet.add(item.normalizedCategory);
             }
         });
         return Array.from(categorySet).sort((a, b) => a.localeCompare(b, 'zh-CN'));
@@ -456,7 +482,7 @@ export default function Library({addr, groupTitle}: LibraryProps) {
     const categoryCount: Map<string, number> = useMemo(() => {
         const countMap = new Map<string, number>();
         allItems.forEach(item => {
-            const cat = item.extra.category?.trim() || '未分类';
+            const cat = item.normalizedCategory || '未分类';
             countMap.set(cat, (countMap.get(cat) || 0) + 1);
         });
         return countMap;
@@ -465,8 +491,8 @@ export default function Library({addr, groupTitle}: LibraryProps) {
     const todoReasonOptions: string[] = useMemo(() => {
         const reasonSet = new Set<string>();
         allItems.forEach(item => {
-            if (getCurrentStatus(item.extra) === LibraryItemStatus.TODO) {
-                const reason = getCurrentTodoReason(item.extra);
+            if (item.derived.statusSnapshot.status === LibraryItemStatus.TODO) {
+                const reason = item.derived.statusSnapshot.todoReason;
                 if (reason) {
                     reasonSet.add(reason);
                 }
@@ -503,12 +529,12 @@ export default function Library({addr, groupTitle}: LibraryProps) {
         setSelectedStatuses([...STATUS_FILTER_OPTIONS]);
     }, []);
 
-    const getItemStatusForFilter = useCallback((item: LibraryItemFull): StatusFilterOption => {
-        const currentStatus = getCurrentStatus(item.extra);
+    const getItemStatusForFilter = useCallback((item: LibraryItemWithDerived): StatusFilterOption => {
+        const currentStatus = item.derived.statusSnapshot.status;
         if (currentStatus === LibraryItemStatus.ARCHIVED) {
             return LibraryItemStatus.ARCHIVED;
         }
-        if (isWaitExpired(item.extra)) {
+        if (item.derived.isWaitExpired) {
             return LIBRARY_WAIT_EXPIRED_FILTER;
         }
         if (currentStatus === undefined) {
@@ -517,7 +543,7 @@ export default function Library({addr, groupTitle}: LibraryProps) {
         return currentStatus;
     }, []);
 
-    const compareByDefaultSort = useCallback((a: LibraryItemFull, b: LibraryItemFull) => {
+    const compareByDefaultSort = useCallback((a: LibraryItemWithDerived, b: LibraryItemWithDerived) => {
         // 默认排序口径：先按状态分组，再在“同状态 + 同分类”内让收藏条目置顶。
         const statusA = getItemStatusForFilter(a);
         const statusB = getItemStatusForFilter(b);
@@ -527,24 +553,25 @@ export default function Library({addr, groupTitle}: LibraryProps) {
             return rankA - rankB;
         }
 
-        const categoryA = a.extra.category?.trim() || '';
-        const categoryB = b.extra.category?.trim() || '';
+        const categoryA = a.normalizedCategory;
+        const categoryB = b.normalizedCategory;
         if (categoryA === categoryB && !!a.extra.isFavorite !== !!b.extra.isFavorite) {
             return a.extra.isFavorite ? -1 : 1;
         }
 
-        return new Date(b.extra.updatedAt).getTime() - new Date(a.extra.updatedAt).getTime();
+        return b.derived.updatedAtMs - a.derived.updatedAtMs;
     }, [getItemStatusForFilter]);
 
     // 应用筛选和排序
     const filteredItems = useMemo(() => {
+        const computeStart = performance.now();
         let result = [...allItems];
         
         if (selectedCategory !== 'all') {
             if (selectedCategory === '_uncategorized_') {
-                result = result.filter(item => !item.extra.category || !item.extra.category.trim());
+                result = result.filter(item => !item.normalizedCategory);
             } else {
-                result = result.filter(item => item.extra.category?.trim() === selectedCategory);
+                result = result.filter(item => item.normalizedCategory === selectedCategory);
             }
         }
         
@@ -555,16 +582,12 @@ export default function Library({addr, groupTitle}: LibraryProps) {
         }
 
         if (selectedStatuses.includes(LibraryItemStatus.TODO) && todoReasonFilter !== 'all') {
-            result = result.filter(item => getCurrentTodoReason(item.extra) === todoReasonFilter);
+            result = result.filter(item => item.derived.statusSnapshot.todoReason === todoReasonFilter);
         }
         
         if (searchText.trim()) {
             const search = searchText.toLowerCase();
-            result = result.filter(item =>
-                item.title.toLowerCase().includes(search) ||
-                item.extra.author.toLowerCase().includes(search) ||
-                item.extra.category.toLowerCase().includes(search)
-            );
+            result = result.filter(item => item.searchIndex.includes(search));
         }
         
         result.sort((a, b) => {
@@ -574,14 +597,14 @@ export default function Library({addr, groupTitle}: LibraryProps) {
                 case 'index':
                     return a.index - b.index;
                 case 'createdAt':
-                    return new Date(b.extra.createdAt).getTime() - new Date(a.extra.createdAt).getTime();
+                    return b.derived.createdAtMs - a.derived.createdAtMs;
                 case 'updatedAt':
-                    return new Date(b.extra.updatedAt).getTime() - new Date(a.extra.updatedAt).getTime();
+                    return b.derived.updatedAtMs - a.derived.updatedAtMs;
                 case 'title':
                     return a.title.localeCompare(b.title, 'zh-CN');
                 case 'score': {
-                    const scoreA = getMainScore(a.extra)?.score || 0;
-                    const scoreB = getMainScore(b.extra)?.score || 0;
+                    const scoreA = a.derived.mainScore?.score || 0;
+                    const scoreB = b.derived.mainScore?.score || 0;
                     return scoreB - scoreA;
                 }
                 default:
@@ -589,14 +612,27 @@ export default function Library({addr, groupTitle}: LibraryProps) {
             }
         });
         
+        listPerfRef.current.filterComputeMs = performance.now() - computeStart;
+        listPerfRef.current.filterComputeDoneAt = performance.now();
         return result;
-    }, [allItems, selectedCategory, selectedStatuses, getItemStatusForFilter, todoReasonFilter, searchText, sortBy, compareByDefaultSort, waitExpiredTick]);
+    }, [allItems, selectedCategory, selectedStatuses, getItemStatusForFilter, todoReasonFilter, searchText, sortBy, compareByDefaultSort]);
+
+    useEffect(() => {
+        if (!import.meta.env.DEV) {
+            return;
+        }
+        const commitMs = Math.max(0, performance.now() - listPerfRef.current.filterComputeDoneAt);
+        // 用于改造前后对比的性能证据：列表筛选+排序计算和 commit 耗时。
+        console.debug(
+            `[LibraryPerf] items=${allItems.length}, filtered=${filteredItems.length}, compute=${listPerfRef.current.filterComputeMs.toFixed(2)}ms, commit=${commitMs.toFixed(2)}ms`,
+        );
+    }, [allItems, filteredItems, selectedCategory, selectedStatuses, todoReasonFilter, searchText, sortBy]);
 
     // 保存 item 变更
     const handleSaveItem = useCallback((item: LibraryItemFull) => {
         if (!addr || !mainSubGroup) return;
         
-        const originalTask = tasks.find(t => t.ID === item.taskId);
+        const originalTask = taskById.get(item.taskId);
         if (!originalTask) return;
         
         const updatedTask: PTask = {
@@ -624,18 +660,19 @@ export default function Library({addr, groupTitle}: LibraryProps) {
                 message.error('保存失败');
             }
         });
-    }, [addr, mainSubGroup, tasks]);
+    }, [addr, mainSubGroup, taskById]);
 
     const handleQuickStatusChange = useCallback((item: LibraryItemFull, status?: LibraryItemStatus) => {
+        const derived = getItemDerivedMeta(item);
         if (status === LibraryItemStatus.TODO || status === LibraryItemStatus.WAIT) {
             setPendingStatusItem(item);
             setPendingStatus(status);
-            setStatusReasonInput(status === LibraryItemStatus.TODO ? getCurrentTodoReason(item.extra) : getLatestWaitReason(item.extra));
+            setStatusReasonInput(status === LibraryItemStatus.TODO ? derived.statusSnapshot.todoReason : derived.latestWaitReason);
             setShowStatusReasonModal(true);
             return;
         }
         // 防止重复操作
-        if (getCurrentStatus(item.extra) === status && !canUpdateReasonOnSameStatus(status)) {
+        if (derived.statusSnapshot.status === status && !canUpdateReasonOnSameStatus(status)) {
             return;
         }
         // 如果当前周目已结束，再次开始需要确认并建议新周目
@@ -932,7 +969,7 @@ export default function Library({addr, groupTitle}: LibraryProps) {
         let errorCount = 0;
         
         itemsToUpdate.forEach(item => {
-            const originalTask = tasks.find(t => t.ID === item.taskId);
+            const originalTask = taskById.get(item.taskId);
             if (!originalTask) return;
             
             const newExtra = {...item.extra, category: newName.trim()};
@@ -969,7 +1006,7 @@ export default function Library({addr, groupTitle}: LibraryProps) {
                 }
             });
         });
-    }, [addr, mainSubGroup, allItems, tasks, loadTasks]);
+    }, [addr, mainSubGroup, allItems, taskById, loadTasks]);
 
     // 删除分类（清空该分类下所有条目的分类字段）
     const handleClearCategory = useCallback((categoryName: string) => {
@@ -982,7 +1019,7 @@ export default function Library({addr, groupTitle}: LibraryProps) {
         let errorCount = 0;
         
         itemsToUpdate.forEach(item => {
-            const originalTask = tasks.find(t => t.ID === item.taskId);
+            const originalTask = taskById.get(item.taskId);
             if (!originalTask) return;
             
             const newExtra = {...item.extra, category: ''};
@@ -1017,7 +1054,7 @@ export default function Library({addr, groupTitle}: LibraryProps) {
                 }
             });
         });
-    }, [addr, mainSubGroup, allItems, tasks, loadTasks]);
+    }, [addr, mainSubGroup, allItems, taskById, loadTasks]);
 
     // 快速状态变更菜单
     const getStatusMenuItems = (item: LibraryItemFull) => {
@@ -1040,21 +1077,21 @@ export default function Library({addr, groupTitle}: LibraryProps) {
     };
 
     // 卡片渲染
-    const renderCard = (item: LibraryItemFull) => {
-        const mainScore = getMainScore(item.extra);
+    const renderCard = (item: LibraryItemWithDerived) => {
+        const mainScore = item.derived.mainScore;
         const placeholderColor = getLibraryCoverPaletteByTitle(item.title);
         const realCoverUrl = item.extra.pictureAddress?.trim() || '';
         const isPlaceholderCover = realCoverUrl === '';
         const showCategoryOnCard = displayOptions.showCategory && selectedCategory === 'all' && item.extra.category;
         const showFavoriteOnCard = !!item.extra.isFavorite;
         const currentRoundName = item.extra.rounds[item.extra.currentRound]?.name || '-';
-        const displayStatus = getDisplayStatusInfo(item.extra);
+        const displayStatus = item.derived.displayStatus;
         const showRoundTag = currentRoundName && currentRoundName !== '首周目';
         const showScoreBadge = displayOptions.showScore && !!mainScore;
         const scoreStarColor = getScoreStarColor(mainScore?.score || 0);
         const statusTextColor = getStatusTextColor(displayStatus.color);
-        const currentStatus = getCurrentStatus(item.extra);
-        const todoReason = getCurrentTodoReason(item.extra);
+        const currentStatus = item.derived.statusSnapshot.status;
+        const todoReason = item.derived.statusSnapshot.todoReason;
         const displayStatusText = currentStatus === LibraryItemStatus.TODO && todoReason
             ? `等待:${todoReason}`
             : displayStatus.name;
@@ -1802,7 +1839,7 @@ export default function Library({addr, groupTitle}: LibraryProps) {
             {/* 时间线弹窗 */}
             <LibraryTimeline
                 visible={showTimeline}
-                items={allItems.filter((item) => getCurrentStatus(item.extra) !== LibraryItemStatus.ARCHIVED)}
+                items={allItems.filter((item) => item.derived.statusSnapshot.status !== LibraryItemStatus.ARCHIVED)}
                 onClose={() => setShowTimeline(false)}
                 onItemClick={(itemId) => {
                     const item = allItems.find(i => i.taskId === itemId);
@@ -1830,7 +1867,7 @@ export default function Library({addr, groupTitle}: LibraryProps) {
                 {scoreModalItem ? (
                     <LibraryScorePopover
                         extra={scoreModalItem.extra}
-                        mainScoreOverride={getMainScore(scoreModalItem.extra) || undefined}
+                        mainScoreOverride={getItemDerivedMeta(scoreModalItem).mainScore || undefined}
                     />
                 ) : null}
             </Modal>

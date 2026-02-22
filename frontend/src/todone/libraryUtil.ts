@@ -164,6 +164,201 @@ export interface LibraryStatusSnapshot {
     todoSince?: string;
 }
 
+export interface LibraryDisplayStatusInfo {
+    name: string;
+    color: string;
+    isExpiredWait: boolean;
+}
+
+export interface LibraryDerivedMeta {
+    statusSnapshot: LibraryStatusSnapshot;
+    latestWaitReason: string;
+    isWaitExpired: boolean;
+    displayStatus: LibraryDisplayStatusInfo;
+    mainScore: LibraryLogEntry | null;
+    createdAtMs: number;
+    updatedAtMs: number;
+}
+
+function parseTimeMs(value?: string): number {
+    if (!value) {
+        return Number.NaN;
+    }
+    const parsed = new Date(value).getTime();
+    return Number.isNaN(parsed) ? Number.NaN : parsed;
+}
+
+export function deriveLibraryMeta(extra: LibraryExtra, nowMs: number = Date.now()): LibraryDerivedMeta {
+    let latestStatusLog: LibraryLogEntry | undefined;
+    let latestStatusMs = Number.MIN_SAFE_INTEGER;
+    let latestWaitReason = '';
+    let latestWaitReasonMs = Number.MIN_SAFE_INTEGER;
+    let latestScoreLog: LibraryLogEntry | null = null;
+    let latestScoreMs = Number.MIN_SAFE_INTEGER;
+    let latestScoreRoundIndex = -1;
+    let latestScoreLogIndex = -1;
+
+    extra.rounds.forEach((round, roundIndex) => {
+        round.logs.forEach((log, logIndex) => {
+            const timeMs = parseTimeMs(log.time);
+            const safeTimeMs = Number.isNaN(timeMs) ? Number.MIN_SAFE_INTEGER : timeMs;
+
+            if (log.type === LibraryLogType.changeStatus) {
+                if (!Number.isNaN(timeMs) && timeMs >= latestStatusMs) {
+                    latestStatusMs = timeMs;
+                    latestStatusLog = log;
+                }
+                if (
+                    log.status === LibraryItemStatus.WAIT
+                    && !Number.isNaN(timeMs)
+                    && timeMs >= latestWaitReasonMs
+                ) {
+                    latestWaitReasonMs = timeMs;
+                    latestWaitReason = (log.comment || '').trim();
+                }
+            }
+
+            if (log.type !== LibraryLogType.score) {
+                return;
+            }
+
+            if (
+                latestScoreLog === null
+                || safeTimeMs > latestScoreMs
+                || (safeTimeMs === latestScoreMs && (
+                    roundIndex > latestScoreRoundIndex
+                    || (roundIndex === latestScoreRoundIndex && logIndex > latestScoreLogIndex)
+                ))
+            ) {
+                latestScoreLog = log;
+                latestScoreMs = safeTimeMs;
+                latestScoreRoundIndex = roundIndex;
+                latestScoreLogIndex = logIndex;
+            }
+        });
+    });
+
+    const statusSnapshot: LibraryStatusSnapshot = (() => {
+        if (latestStatusLog && latestStatusLog.status !== undefined) {
+            if (latestStatusLog.status === LibraryItemStatus.TODO) {
+                const logReason = (latestStatusLog.comment || '').trim();
+                return {
+                    status: latestStatusLog.status,
+                    todoReason: logReason || (extra.todoReason || '').trim(),
+                    todoSince: latestStatusLog.time,
+                };
+            }
+            if (latestStatusLog.status === LibraryItemStatus.WAIT) {
+                return {
+                    status: latestStatusLog.status,
+                    todoReason: '',
+                    waitSince: latestStatusLog.time,
+                };
+            }
+            return {
+                status: latestStatusLog.status,
+                todoReason: '',
+            };
+        }
+
+        if (extra.status === LibraryItemStatus.TODO) {
+            return {
+                status: extra.status,
+                todoReason: (extra.todoReason || '').trim(),
+                todoSince: extra.todoSince,
+            };
+        }
+        if (extra.status === LibraryItemStatus.WAIT) {
+            return {
+                status: extra.status,
+                todoReason: '',
+                waitSince: extra.waitSince,
+            };
+        }
+        return {
+            status: extra.status,
+            todoReason: '',
+        };
+    })();
+
+    if (!latestWaitReason) {
+        latestWaitReason = (extra.waitReason || '').trim();
+    }
+
+    const isWaitExpiredValue = (() => {
+        const monthMs = 30 * 24 * 60 * 60 * 1000;
+        if (latestStatusLog) {
+            if (latestStatusLog.status !== LibraryItemStatus.WAIT) return false;
+            const reason = (latestStatusLog.comment || '').trim();
+            if (reason) return false;
+            const start = parseTimeMs(latestStatusLog.time);
+            if (Number.isNaN(start)) return false;
+            return (nowMs - start) >= monthMs;
+        }
+
+        if (extra.status !== LibraryItemStatus.WAIT) return false;
+        const reason = (extra.waitReason || '').trim();
+        if (reason) return false;
+        const start = parseTimeMs(extra.waitSince || '');
+        if (Number.isNaN(start)) return false;
+        return (nowMs - start) >= monthMs;
+    })();
+
+    const selectedMainScore = (() => {
+        if (extra.mainScoreRoundIndex === undefined || extra.mainScoreLogIndex === undefined) {
+            return null;
+        }
+        const selectedLog = extra.rounds[extra.mainScoreRoundIndex]?.logs[extra.mainScoreLogIndex];
+        if (selectedLog?.type === LibraryLogType.score) {
+            return selectedLog;
+        }
+        return null;
+    })();
+
+    const mainScore = selectedMainScore || latestScoreLog || legacyMainScoreToLog(extra);
+    const displayStatus: LibraryDisplayStatusInfo = (() => {
+        if (statusSnapshot.status === LibraryItemStatus.ARCHIVED) {
+            return {
+                name: LibraryStatusNames[LibraryItemStatus.ARCHIVED],
+                color: LibraryStatusColors[LibraryItemStatus.ARCHIVED],
+                isExpiredWait: false,
+            };
+        }
+        if (isWaitExpiredValue) {
+            return {
+                name: '鸽了',
+                color: LibraryStatusColors[LibraryItemStatus.GIVE_UP],
+                isExpiredWait: true,
+            };
+        }
+        if (statusSnapshot.status === undefined) {
+            return {
+                name: '无状态',
+                color: '#bfbfbf',
+                isExpiredWait: false,
+            };
+        }
+        return {
+            name: LibraryStatusNames[statusSnapshot.status],
+            color: LibraryStatusColors[statusSnapshot.status],
+            isExpiredWait: false,
+        };
+    })();
+
+    const createdAtMs = parseTimeMs(extra.createdAt);
+    const updatedAtMs = parseTimeMs(extra.updatedAt);
+
+    return {
+        statusSnapshot,
+        latestWaitReason,
+        isWaitExpired: isWaitExpiredValue,
+        displayStatus,
+        mainScore,
+        createdAtMs: Number.isNaN(createdAtMs) ? Number.MIN_SAFE_INTEGER : createdAtMs,
+        updatedAtMs: Number.isNaN(updatedAtMs) ? Number.MIN_SAFE_INTEGER : updatedAtMs,
+    };
+}
+
 /**
  * 当前状态统一从历史日志推导。
  * 若历史日志不存在，则兜底读取已废弃字段，保证旧数据可读。
