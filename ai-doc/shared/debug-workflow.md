@@ -2,6 +2,17 @@
 
 Last verified: 2026-02-22
 
+## Service startup baseline
+
+1. Backend:
+   - program: `backend/main/main.go`
+   - working directory: `backend/test`
+   - env: `GOWORK=${workspaceFolder}/backend/go.work`
+2. Frontend:
+   - working directory: `frontend`
+   - command: `npm run dev`
+   - use Vite output URL (`http://127.0.0.1:5173` preferred when available)
+
 ## Mandatory flow
 
 1. Reproduce with the smallest path first.
@@ -9,10 +20,12 @@ Last verified: 2026-02-22
    - MCP snapshot
    - screenshot (if UI visible)
    - console/network for failure path
+   - for performance tasks, include at least one quantitative baseline metric
 3. Apply minimal patch.
 4. Re-run the same path and capture post-change evidence.
 5. Run at least one adjacent regression path.
-6. Report repro, evidence, patch summary, regression, residual risk.
+6. For performance tasks, compare pre/post with the same interaction path and same dataset context.
+7. Report repro, evidence, patch summary, regression, residual risk.
 
 ## Frontend-first checks
 
@@ -50,6 +63,20 @@ Last verified: 2026-02-22
    - For backend debug in Codex, treat non-sandbox execution as default path (not fallback).
    - Run `dlv` and backend `go run` with elevated execution first, then continue debugging.
    - Use fixed baseline: `program=backend/main/main.go`, `cwd=backend/test`, `GOWORK=${workspaceFolder}/backend/go.work`.
+
+## Performance/refactor guard
+
+1. Unless user explicitly requests backend/database schema changes, assume frontend/module-local changes only.
+
+## Fix output checklist
+
+1. Repro steps.
+2. Pre-change evidence summary.
+3. Patch summary.
+4. Post-change evidence summary.
+5. Regression checklist and results.
+6. AI-doc updates performed.
+7. Residual risk.
 
 ## Conflict handling
 
