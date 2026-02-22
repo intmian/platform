@@ -909,6 +909,10 @@ export default function Library({addr, groupTitle}: LibraryProps) {
                     setShowAdd(false);
                     setAddCoverUrl('');
                     addForm.resetFields();
+                    if (ret.data.Task) {
+                        setDetailItem(parseLibraryFromTask(ret.data.Task));
+                        setShowDetail(true);
+                    }
                     loadTasks(mainSubGroup.ID);
                 } else {
                     message.error('添加失败');
