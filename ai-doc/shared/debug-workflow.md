@@ -78,6 +78,10 @@ Last verified: 2026-02-22
 6. AI-doc updates performed.
 7. Residual risk.
 
+## Completion gate
+
+1. Do not declare completion without evidence summary and regression result.
+
 ## Conflict handling
 
 1. Code facts override doc notes.
