@@ -26,6 +26,19 @@ Last verified: 2026-02-23
    - record data mutation/cleanup notes
    - list AI-doc updates performed
 
+## Write-back decision rules
+
+1. Add to AI-doc only when the finding can help later turns make faster or safer decisions.
+2. Good candidates:
+   - stable behavior facts verified from code/runtime
+   - recurring failure patterns and their prevention rule
+   - environment/runtime constraints that repeatedly affect verification
+3. Do not add:
+   - per-turn command logs
+   - temporary workaround steps with no long-term value
+   - implementation micro-steps that do not change the system understanding
+4. When value is unclear, keep detail in the current task report and skip AI-doc write-back.
+
 ## MCP quick recovery (known issue)
 
 1. Symptom: Playwright MCP launch fails and Chrome prints message equivalent to "opened in existing browser session".

@@ -2,7 +2,7 @@
 
 Purpose: provide repository-local, task-scoped knowledge for AI agents.
 
-Last verified: 2026-02-22
+Last verified: 2026-02-23
 
 ## Core rules
 
@@ -40,3 +40,16 @@ Last verified: 2026-02-22
 1. Facts from code: update immediately.
 2. Facts from UI interaction: add with `verified via interaction` note.
 3. Unknown or conflicting facts: add `TODO-verify` instead of replacing existing fact blindly.
+
+## Knowledge curation gate
+
+1. Only persist context that is likely reusable in future turns (cross-task or recurring value).
+2. Do not persist patch-only process traces:
+   - temporary debugging steps
+   - one-off command outputs
+   - trial-and-error path that does not change stable understanding
+3. Prefer stable conclusions over implementation noise:
+   - behavior contracts
+   - root-cause patterns
+   - environment constraints that can block future verification
+4. If uncertain whether a detail is reusable, do not add it to domain docs; keep it in task report only.

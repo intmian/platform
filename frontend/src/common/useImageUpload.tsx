@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { message, Modal } from "antd";
 import { UploadFile, FileShow } from "./newSendHttp";
 
@@ -42,6 +42,16 @@ export function useImageUpload(
     options?: UseImageUploadOptions
 ): UseImageUploadRet {
     const [uploading, setUploading] = useState(false);
+    const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+    useEffect(() => {
+        return () => {
+            if (fileInputRef.current) {
+                fileInputRef.current.remove();
+                fileInputRef.current = null;
+            }
+        };
+    }, []);
 
     const uploadSingle = useCallback(async (file: File) => {
         setUploading(true);
@@ -63,17 +73,30 @@ export function useImageUpload(
             return null;
         } catch (e) {
             console.error(e);
+            message.error("上传失败，请重试");
             return null;
         } finally {
             setUploading(false);
         }
     }, [onUploadSuccess, customUpload, options]);
 
+    const getOrCreateFileInput = useCallback(() => {
+        if (!fileInputRef.current) {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = "image/*";
+            input.style.display = 'none';
+            document.body.appendChild(input);
+            fileInputRef.current = input;
+        }
+        return fileInputRef.current;
+    }, []);
+
     const selectLocalFile = useCallback((multiple: boolean = false) => {
-        const input = document.createElement('input');
-        input.type = 'file';
+        const input = getOrCreateFileInput();
         input.multiple = multiple;
-        input.accept = "image/*";
+        // reset so selecting the same file still triggers onchange consistently
+        input.value = '';
         input.onchange = async (e: any) => {
             const files = e.target.files;
             if (files && files.length > 0) {
@@ -83,7 +106,7 @@ export function useImageUpload(
             }
         };
         input.click();
-    }, [uploadSingle]);
+    }, [getOrCreateFileInput, uploadSingle]);
 
     const checkClipboard = useCallback(async (autoUpload: boolean = false) => {
         if (!navigator.clipboard || !navigator.clipboard.read) {

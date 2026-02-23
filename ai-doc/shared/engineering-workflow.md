@@ -1,6 +1,6 @@
 # Shared Engineering Workflow
 
-Last verified: 2026-02-22
+Last verified: 2026-02-23
 
 ## Scope
 
@@ -58,6 +58,10 @@ Last verified: 2026-02-22
 10. Data mutation accounting:
    - record entities changed during verification
    - provide cleanup plan (or perform cleanup when safe and requested)
+11. AI-doc curation before write-back:
+   - keep only reusable knowledge for future tasks
+   - drop patch-only process context and one-off exploration noise
+   - write stable conclusions (contracts, root-cause patterns, environment blockers), not transient execution details
 
 ## Evidence standard
 

@@ -15,8 +15,9 @@ Last verified: 2026-02-23
    - tag input supports Ctrl+Enter submit from tag area
    - upload supports local files and clipboard images, then inserts markdown link/image
    - submit queue shows recent send status icons (success/failure/loading)
-3. The top-right settings button writes note service config into `note.setting` through `sendCfgServiceSet`.
-4. Input draft is cached in browser `localStorage` key `note.lastInput`; clearing input removes it.
+3. Upload trigger path uses a reused hidden `input[type=file]` (not recreated per click), and resets `value` before click to avoid occasional "click upload but nothing happens" behavior.
+4. The top-right settings button writes note service config into `note.setting` through `sendCfgServiceSet`.
+5. Input draft is cached in browser `localStorage` key `note.lastInput`; clearing input removes it.
 
 ## Submit and history logic
 
