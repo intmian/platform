@@ -1,6 +1,6 @@
 # Shared Debug Workflow
 
-Last verified: 2026-02-22
+Last verified: 2026-02-23
 
 ## Positioning
 
@@ -60,6 +60,8 @@ Last verified: 2026-02-22
 ## MCP/browser troubleshooting
 
 1. If Playwright MCP fails to launch Chrome with message indicating existing browser session, close local Chrome processes and retry MCP launch.
+   - recommended command: `pkill -f "Google Chrome"`
+   - if needed, target profile: `pkill -f "/Users/<user>/Library/Caches/ms-playwright/mcp-chrome"`
 2. Keep one stable dev server URL for the full pre/post comparison path (`127.0.0.1` preferred when explicitly specified).
 3. Treat framework deprecation warnings (for example AntD/rc component deprecations) as non-regression unless new runtime errors or behavior drift appears.
 

@@ -1,6 +1,7 @@
 import React, {useCallback, useContext, useEffect, useImperativeHandle, useRef, useState} from "react";
-import {Button, Flex, Input, message, Modal, notification, Space, Spin, Tooltip} from "antd";
-import {CheckCircleTwoTone, CloseCircleTwoTone, FileAddOutlined, SettingFilled, SyncOutlined} from "@ant-design/icons";
+import type {MenuProps} from "antd";
+import {Button, Dropdown, Flex, Input, message, Modal, notification, Space, Spin, Tooltip} from "antd";
+import {CheckCircleTwoTone, CloseCircleTwoTone, DownOutlined, FileAddOutlined, SettingFilled, SyncOutlined} from "@ant-design/icons";
 import TagInput from "../common/TagInput";
 import {useLostFocus} from "../common/hook";
 import {sendCfgServiceGet, sendCfgServiceSet} from "../common/sendhttp";
@@ -8,12 +9,44 @@ import {TextAreaRef} from "antd/es/input/TextArea";
 import {useIsMobile} from "../common/hooksv2";
 import User from "../common/User";
 import {LoginCtx} from "../common/loginCtx";
-import {FileShow, sendGptRewrite, UploadFile} from "../common/newSendHttp";
+import {FileShow, sendGptRewrite} from "../common/newSendHttp";
 import {useImageUpload} from "../common/useImageUpload";
 
 // TODO: 使用ios打开网页时，当浏览器切换到后台，立刻重新切回前台，网页并未被回收，但是浏览器会自动刷新一次，此时如果停止刷新，使用是完全正常的，似乎是底层问题后面看看
 
 const {TextArea} = Input;
+const textEncoder = new TextEncoder();
+
+function toBase64(data: Uint8Array): string {
+    let binary = '';
+    const chunkSize = 0x8000;
+    for (let i = 0; i < data.length; i += chunkSize) {
+        const chunk = data.subarray(i, i + chunkSize);
+        binary += String.fromCharCode(...chunk);
+    }
+    return btoa(binary);
+}
+
+async function encryptContentWithAesGcm(content: string, keyText: string): Promise<string> {
+    if (!window.crypto?.subtle) {
+        throw new Error('当前环境不支持 AES 加密');
+    }
+    const rawKey = await window.crypto.subtle.digest('SHA-256', textEncoder.encode(keyText));
+    const key = await window.crypto.subtle.importKey(
+        'raw',
+        rawKey,
+        {name: 'AES-GCM'},
+        false,
+        ['encrypt'],
+    );
+    const iv = window.crypto.getRandomValues(new Uint8Array(12));
+    const cipherBuffer = await window.crypto.subtle.encrypt(
+        {name: 'AES-GCM', iv},
+        key,
+        textEncoder.encode(content),
+    );
+    return `aes-gcm:${toBase64(iv)}:${toBase64(new Uint8Array(cipherBuffer))}`;
+}
 
 interface MemosSetting {
     url: string
@@ -695,9 +728,11 @@ function Memos() {
     }, [lastReqId, reqHis]);
     const [tagsSelected, setTagsSelected] = useState<string[]>([]);
 
-    const submit = useCallback(() => {
-        const realText = inputRef.current.get();
-        AddHis(realText, tagsSelected);
+    const submitByContent = useCallback((content: string) => {
+        if (content === '') {
+            return;
+        }
+        AddHis(content, tagsSelected);
         inputRef.current.clear();
         setLastReqId(lastReqId + 1);
         setHidden(false);
@@ -706,6 +741,64 @@ function Memos() {
             inputRef.current.focus();
         }
     }, [AddHis, lastReqId, tagsSelected]);
+
+    const submit = useCallback(() => {
+        submitByContent(inputRef.current.get());
+    }, [submitByContent]);
+
+    const showEncryptUploadModal = useCallback(() => {
+        let aesKey = '';
+        let tip = '';
+        Modal.confirm({
+            title: '加密上传',
+            okText: '加密并发送',
+            cancelText: '取消',
+            content: (
+                <Space direction="vertical" style={{width: '100%'}}>
+                    <Input.Password
+                        placeholder="AES密钥"
+                        autoComplete="new-password"
+                        onChange={(e) => {
+                            aesKey = e.target.value;
+                        }}
+                    />
+                    <Input
+                        placeholder="tip（将明文展示）"
+                        autoComplete="off"
+                        onChange={(e) => {
+                            tip = e.target.value;
+                        }}
+                    />
+                </Space>
+            ),
+            onOk: async () => {
+                const plainText = inputRef.current.get();
+                if (!plainText) {
+                    message.error('内容为空，无法加密上传');
+                    throw new Error('empty-content');
+                }
+                if (!aesKey) {
+                    message.error('AES密钥不能为空');
+                    throw new Error('empty-key');
+                }
+                const tipTrimmed = tip.trim();
+                if (!tipTrimmed) {
+                    message.error('tip不能为空');
+                    throw new Error('empty-tip');
+                }
+                try {
+                    const encryptedContent = await encryptContentWithAesGcm(plainText, aesKey);
+                    submitByContent(`${tipTrimmed}\n${encryptedContent}`);
+                    aesKey = '';
+                    tip = '';
+                } catch (err) {
+                    console.error('encrypt memo content failed', err);
+                    message.error('加密失败，请检查密钥后重试');
+                    throw err;
+                }
+            },
+        });
+    }, [submitByContent]);
 
     // ctrl+enter发送
     useEffect(() => {
@@ -778,6 +871,32 @@ function Memos() {
             triggerUpload();
         }
     }
+
+    const advancedMenuItems: MenuProps['items'] = [
+        {
+            key: 'ai-rewrite',
+            label: 'AI重写',
+            disabled: !canSubmit || loadingSetting,
+        },
+        {
+            key: 'encrypted-upload',
+            label: '加密上传',
+            disabled: !canSubmit || loadingSetting,
+        },
+    ];
+
+    const onAdvancedMenuClick: MenuProps['onClick'] = ({key}) => {
+        if (key === 'ai-rewrite') {
+            const content = inputRef.current.get();
+            if (content !== '') {
+                inputRef.current.gptReWrite();
+            }
+            return;
+        }
+        if (key === 'encrypted-upload') {
+            showEncryptUploadModal();
+        }
+    };
 
     return <div
         style={{
@@ -894,19 +1013,22 @@ function Memos() {
                     >{
                         hidden ? '显示' : '隐藏'
                     }</Button>
-                    <Button
-                        type="default"
-                        disabled={!canSubmit || loadingSetting}
-                        onClick={() => {
-                            const content = inputRef.current.get();
-                            if (content !== '') {
-                                inputRef.current.gptReWrite();
-                            }
+                    <Dropdown
+                        trigger={['click']}
+                        menu={{
+                            items: advancedMenuItems,
+                            onClick: onAdvancedMenuClick,
                         }}
-                        size={"small"}
                     >
-                        AI
-                    </Button>
+                        <Button
+                            type="default"
+                            disabled={!canSubmit || loadingSetting}
+                            size={"small"}
+                        >
+                            高级
+                            <DownOutlined/>
+                        </Button>
+                    </Dropdown>
                     <Button
                         // 上传按钮
                         icon={<FileAddOutlined/>}
