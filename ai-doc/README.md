@@ -34,6 +34,10 @@ Last verified: 2026-02-25
 
 1. Do not declare completion without evidence summary and regression result.
 2. Explicitly report AI-doc updates performed (or state none).
+3. After development and testing are complete, provide one commit text draft in this format:
+   - `feat/fix/refac 模块: 一句话总结`
+   - `- 改动需求或修复bug1`
+   - `- ...`
 
 ## Update policy
 

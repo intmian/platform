@@ -98,6 +98,7 @@ function openInteractiveCropModal(
         let dragging = false;
         let dragStartX = 0;
         let dragStartY = 0;
+        let activePointerId: number | null = null;
 
         const backdrop = document.createElement('div');
         backdrop.style.position = 'fixed';
@@ -217,8 +218,16 @@ function openInteractiveCropModal(
         };
 
         const cleanup = () => {
+            frame.removeEventListener('pointerdown', onPointerDown);
+            frame.removeEventListener('touchstart', onTouchStart);
             document.removeEventListener('mousemove', onMove);
             document.removeEventListener('mouseup', onEndDrag);
+            document.removeEventListener('touchmove', onTouchMove);
+            document.removeEventListener('touchend', onTouchEnd);
+            document.removeEventListener('touchcancel', onTouchEnd);
+            document.removeEventListener('pointermove', onPointerMove);
+            document.removeEventListener('pointerup', onPointerUp);
+            document.removeEventListener('pointercancel', onPointerUp);
             document.removeEventListener('keydown', onKeyDown);
             backdrop.remove();
         };
@@ -238,6 +247,7 @@ function openInteractiveCropModal(
 
         const onEndDrag = () => {
             dragging = false;
+            activePointerId = null;
             frame.style.cursor = 'grab';
         };
 
@@ -254,6 +264,53 @@ function openInteractiveCropModal(
             applyPreview();
         };
 
+        const onPointerMove = (event: PointerEvent) => {
+            if (!dragging || activePointerId !== event.pointerId) {
+                return;
+            }
+            event.preventDefault();
+            const nextX = event.clientX;
+            const nextY = event.clientY;
+            offsetX += nextX - dragStartX;
+            offsetY += nextY - dragStartY;
+            dragStartX = nextX;
+            dragStartY = nextY;
+            applyPreview();
+        };
+
+        const onPointerUp = (event: PointerEvent) => {
+            if (activePointerId !== event.pointerId) {
+                return;
+            }
+            try {
+                if (frame.hasPointerCapture(event.pointerId)) {
+                    frame.releasePointerCapture(event.pointerId);
+                }
+            } catch {
+                // ignore release errors in non-standard/simulated pointer flows
+            }
+            onEndDrag();
+        };
+
+        const onTouchMove = (event: TouchEvent) => {
+            if (!dragging || event.touches.length === 0) {
+                return;
+            }
+            event.preventDefault();
+            const touch = event.touches[0];
+            const nextX = touch.clientX;
+            const nextY = touch.clientY;
+            offsetX += nextX - dragStartX;
+            offsetY += nextY - dragStartY;
+            dragStartX = nextX;
+            dragStartY = nextY;
+            applyPreview();
+        };
+
+        const onTouchEnd = () => {
+            onEndDrag();
+        };
+
         const onKeyDown = (event: KeyboardEvent) => {
             if (event.key === 'Escape') {
                 cleanup();
@@ -262,12 +319,44 @@ function openInteractiveCropModal(
         };
 
         frame.addEventListener('mousedown', (event) => {
+            if (window.PointerEvent) {
+                return;
+            }
             event.preventDefault();
             dragging = true;
             dragStartX = event.clientX;
             dragStartY = event.clientY;
             frame.style.cursor = 'grabbing';
         });
+
+        const onPointerDown = (event: PointerEvent) => {
+            event.preventDefault();
+            dragging = true;
+            activePointerId = event.pointerId;
+            dragStartX = event.clientX;
+            dragStartY = event.clientY;
+            frame.style.cursor = 'grabbing';
+            try {
+                frame.setPointerCapture(event.pointerId);
+            } catch {
+                // some environments may not allow pointer capture; dragging still works via document listeners
+            }
+        };
+
+        const onTouchStart = (event: TouchEvent) => {
+            if (window.PointerEvent || event.touches.length === 0) {
+                return;
+            }
+            event.preventDefault();
+            const touch = event.touches[0];
+            dragging = true;
+            dragStartX = touch.clientX;
+            dragStartY = touch.clientY;
+            frame.style.cursor = 'grabbing';
+        };
+
+        frame.addEventListener('pointerdown', onPointerDown);
+        frame.addEventListener('touchstart', onTouchStart, {passive: false});
 
         zoomInput.addEventListener('input', () => {
             zoom = Number(zoomInput.value);
@@ -302,6 +391,12 @@ function openInteractiveCropModal(
 
         document.addEventListener('mousemove', onMove);
         document.addEventListener('mouseup', onEndDrag);
+        document.addEventListener('touchmove', onTouchMove, {passive: false});
+        document.addEventListener('touchend', onTouchEnd);
+        document.addEventListener('touchcancel', onTouchEnd);
+        document.addEventListener('pointermove', onPointerMove);
+        document.addEventListener('pointerup', onPointerUp);
+        document.addEventListener('pointercancel', onPointerUp);
         document.addEventListener('keydown', onKeyDown);
 
         frame.appendChild(previewImage);

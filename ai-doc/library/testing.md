@@ -1,6 +1,6 @@
 # Library Module Testing
 
-Last verified: 2026-02-22
+Last verified: 2026-02-25
 
 ## Preconditions
 
@@ -30,6 +30,10 @@ Last verified: 2026-02-22
 5. Delete flow:
    - delete item
    - verify `delTask` and list removal
+6. Cover crop interaction (verified via interaction, 2026-02-25):
+   - open add/detail cover upload, enter crop modal
+   - on mobile viewport, drag image with touch/pointer should move preview position
+   - on desktop viewport, mouse drag should still work
 
 ## Filters and sort checks
 
