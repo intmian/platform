@@ -1,6 +1,6 @@
 # Shared Debug Workflow
 
-Last verified: 2026-02-23
+Last verified: 2026-02-25
 
 ## Positioning
 
@@ -25,7 +25,8 @@ Last verified: 2026-02-23
 2. Confirm runtime readiness before any UI conclusion:
    - backend reachable (`/api/check` success or startup logs show ready)
    - frontend reachable on one stable URL
-   - login/auth is actually successful
+   - login/auth is actually successful via normal user flow
+   - do not bypass auth blockers (for example closing login modal to force operations on disabled/unauthorized UI)
 3. Reproduce with the smallest failing path first.
 4. Capture baseline evidence before code change:
    - MCP snapshot
@@ -56,6 +57,7 @@ Last verified: 2026-02-23
 2. Confirm auth state and account context.
 3. Confirm request payload and API response shape.
 4. Confirm render conditions and fallback paths.
+5. When a page requires login, start backend and complete real login before interactive verification; if login is unavailable, mark verification blocked instead of using hack paths.
 
 ## MCP/browser troubleshooting
 

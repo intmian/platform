@@ -1,6 +1,6 @@
 # Note Mini Knowledge
 
-Last verified: 2026-02-23
+Last verified: 2026-02-25
 
 ## Test reference
 
@@ -18,6 +18,7 @@ Last verified: 2026-02-23
 3. Upload trigger path uses a reused hidden `input[type=file]` (not recreated per click), and resets `value` before click to avoid occasional "click upload but nothing happens" behavior.
 4. The top-right settings button writes note service config into `note.setting` through `sendCfgServiceSet`.
 5. Input draft is cached in browser `localStorage` key `note.lastInput`; clearing input removes it.
+6. Mobile tag selector on `/note_mini` truncates selected tag text (`maxTagTextLength=3`) and uses responsive tag collapsing (`maxTagCount="responsive"`) to avoid bottom action row layout break on narrow screens.
 
 ## Submit and history logic
 
@@ -31,8 +32,8 @@ Last verified: 2026-02-23
 
 ## Advanced menu behavior (verified from code)
 
-1. Bottom action bar uses `高级` dropdown at the original AI button position.
-2. `高级` contains:
+1. Bottom action bar uses `...` dropdown button at the original AI button position.
+2. Advanced dropdown contains:
    - `AI重写`: same behavior as previous AI button
    - `加密上传`: opens modal for AES key + tip, then sends encrypted content
 3. AES key input uses `Input.Password` with `autoComplete="new-password"` and is not persisted to local storage.

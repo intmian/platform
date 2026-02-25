@@ -304,12 +304,13 @@ function MemosQueue({reqs, url, apiKey}: { reqs: MemosReq[], url: string, apiKey
     </Space>;
 }
 
-function Tags({TagsChange, setting, style, tags, onCtrlEnter}: {
+function Tags({TagsChange, setting, style, tags, onCtrlEnter, maxTagTextLength}: {
     TagsChange: (tags: string[]) => void,
     setting: MemosSetting,
     style: React.CSSProperties | undefined,
     tags: string[],
-    onCtrlEnter: () => void
+    onCtrlEnter: () => void,
+    maxTagTextLength?: number,
 }) {
     // 从localStorage中获取之前缓存的tags
     const tagsOprDisk = JSON.parse(localStorage.getItem('memosTags') || '[]');
@@ -335,7 +336,7 @@ function Tags({TagsChange, setting, style, tags, onCtrlEnter}: {
         }}
         tags={tags}
         style={style} tagOps={tagsOpr.current}
-        disabled={false} maxTagCount={undefined} maxTagTextLength={undefined}
+        disabled={false} maxTagCount={"responsive"} maxTagTextLength={maxTagTextLength}
         maxTagPlaceholder={undefined}
     />
 }
@@ -978,6 +979,8 @@ function Memos() {
             <div
                 style={{
                     display: 'flex',
+                    flexWrap: isMobile ? 'wrap' : 'nowrap',
+                    gap: '8px',
                 }}
             >
                 <Tags
@@ -989,16 +992,18 @@ function Memos() {
                     TagsChange={tagsChange}
                     tags={tagsSelected}
                     setting={NowSetting}
+                    maxTagTextLength={isMobile ? 3 : undefined}
                     style={{
-                        // 宽度自动填充
-                        flexGrow: 1,
-                        marginRight: '10px',
+                        flex: 1,
+                        minWidth: 0,
+                        marginRight: isMobile ? 0 : '10px',
                     }}/>
                 <Space
                     style={{
                         // 子组件靠右
                         display: 'flex',
                         justifyContent: 'flex-end',
+                        flexShrink: 0,
                     }}
                 >
                     <Button onClick={() => {
@@ -1025,7 +1030,7 @@ function Memos() {
                             disabled={!canSubmit || loadingSetting}
                             size={"small"}
                         >
-                            高级
+                            ...
                             <DownOutlined/>
                         </Button>
                     </Dropdown>

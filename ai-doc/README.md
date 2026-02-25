@@ -2,7 +2,7 @@
 
 Purpose: provide repository-local, task-scoped knowledge for AI agents.
 
-Last verified: 2026-02-23
+Last verified: 2026-02-25
 
 ## Core rules
 
@@ -40,6 +40,8 @@ Last verified: 2026-02-23
 1. Facts from code: update immediately.
 2. Facts from UI interaction: add with `verified via interaction` note.
 3. Unknown or conflicting facts: add `TODO-verify` instead of replacing existing fact blindly.
+4. For behavior-change tasks, update docs only when the change creates reusable behavior contracts or constraints; otherwise report change in task summary only.
+5. Prefer rewriting/merging existing bullets over appending new ones, so docs stay concise and deduplicated.
 
 ## Knowledge curation gate
 
@@ -53,3 +55,5 @@ Last verified: 2026-02-23
    - root-cause patterns
    - environment constraints that can block future verification
 4. If uncertain whether a detail is reusable, do not add it to domain docs; keep it in task report only.
+5. Domain docs should capture "what is true" and "what must be verified", not "how this specific patch was implemented".
+6. When a section grows noisy, consolidate it in the same turn (replace overlapping bullets instead of stacking patch history).
