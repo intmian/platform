@@ -1,6 +1,6 @@
 # Shared Engineering Workflow
 
-Last verified: 2026-02-23
+Last verified: 2026-02-25
 
 ## Scope
 
@@ -62,6 +62,10 @@ Last verified: 2026-02-23
    - keep only reusable knowledge for future tasks
    - drop patch-only process context and one-off exploration noise
    - write stable conclusions (contracts, root-cause patterns, environment blockers), not transient execution details
+12. Reusable tool/process registration:
+   - when introducing a new reusable helper/hook/utility/simple workflow, document it in `shared/reusable-tools.md` in the same turn
+   - include minimal usage, inputs/options, and where it is already used
+   - if there is a competing older path, mark preferred usage to avoid duplicate patterns
 
 ## Evidence standard
 
@@ -87,3 +91,4 @@ Last verified: 2026-02-23
 1. Task is not complete without target verification evidence and adjacent regression result (or explicit blocker).
 2. Task is not complete without retrospective output.
 3. For behavior-changing work, AI-doc update is required in the same turn.
+4. For newly introduced reusable tools/processes, `shared/reusable-tools.md` update is required in the same turn.

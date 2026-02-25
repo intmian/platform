@@ -1,6 +1,6 @@
 # Library Module Knowledge
 
-Last verified: 2026-02-22
+Last verified: 2026-02-25
 
 ## Route and entry model
 
@@ -8,6 +8,8 @@ Last verified: 2026-02-22
 2. `group` is URL-encoded `addr|title|type`.
 3. `type === 1` (`GroupType.Library`) renders library UI; otherwise normal task board.
 4. Group creation UI allows `groupType=1` label `图书馆`.
+5. Frontend auth gate for `/todone*` is page-level in `Todone` component: unauthenticated users are prompted by `LoginPanel` after login init, and this trigger must not depend on drawer/user component render.
+6. In Todone drawer header, `User` login entry should not auto-open modal (manual button only), to avoid duplicate login dialogs with page-level gate.
 
 ## Data model
 

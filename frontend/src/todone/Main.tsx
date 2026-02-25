@@ -14,6 +14,7 @@ import User from "../common/User";
 import {useParams} from "react-router-dom";
 import TaskTree from "./TaskTree";
 import Library from "./Library";
+import {useLoginGate} from "../common/useLoginGate";
 
 const TodoneConfigs = new ConfigsCtr(ConfigsType.Server, 'todone')
 TodoneConfigs.addBaseConfig('db.account_id', '数据库账号ID', ConfigType.String, 'cloudflare')
@@ -48,6 +49,7 @@ export function Todone() {
     const treeRef = useRef<TaskTree>();
     const [showDir, setShowDir] = useState(false);
     const isMobile = useIsMobile()
+    const {loginPanel} = useLoginGate();
 
     // 更换Favicon为/todone-mini.png
     useEffect(() => {
@@ -128,7 +130,7 @@ export function Todone() {
                 setShowDir(false);
             }}
             open={showDir}
-            extra={<User/>}
+            extra={<User autoOpenLoginPanel={false}/>}
             width={isMobile ? '70%' : '400px'}
         >
             <div
@@ -202,6 +204,8 @@ export function Todone() {
                         tree={treeRef.current}
             />
         </Drawer>
+
+        {loginPanel}
 
 
     </div>

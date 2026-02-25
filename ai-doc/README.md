@@ -24,11 +24,12 @@ Last verified: 2026-02-25
 1. Cross-module engineering default workflow: `shared/engineering-workflow.md`
 2. Cross-module debugging specialized workflow: `shared/debug-workflow.md`
 3. Shared learning/loading workflow: `shared/learning-workflow.md`
-4. Library domain logic: `library/knowledge.md`
-5. Library testing matrix: `library/testing.md`
-6. Library interactive UI map: `library/ui-locator.md`
-7. Note mini domain logic: `note-mini/knowledge.md`
-8. Note mini testing workflow: `note-mini/testing.md`
+4. Shared reusable utilities/process index: `shared/reusable-tools.md`
+5. Library domain logic: `library/knowledge.md`
+6. Library testing matrix: `library/testing.md`
+7. Library interactive UI map: `library/ui-locator.md`
+8. Note mini domain logic: `note-mini/knowledge.md`
+9. Note mini testing workflow: `note-mini/testing.md`
 
 ## Completion gate
 

@@ -39,12 +39,13 @@ function UserButton({user, onLogOut}: {
     </Popconfirm>;
 }
 
-function NeedLoginButton({onLoginSuc}: {
-    onLoginSuc: (user: string) => void
+function NeedLoginButton({onLoginSuc, autoOpenLoginPanel = true}: {
+    onLoginSuc: (user: string) => void,
+    autoOpenLoginPanel?: boolean
 }) {
 
     // 为了避免一些状态同步的问题，这里做一些简化处理，必须登录，因为不登录也用不了，登录后刷新，不进行动态处理了。
-    const [inLogin, setInLogin] = useState(true);
+    const [inLogin, setInLogin] = useState(autoOpenLoginPanel);
 
     return (
         <>
@@ -67,10 +68,11 @@ function NeedLoginButton({onLoginSuc}: {
 }
 
 
-function UsrArea({user, onLoginSuc, onLogOut}: {
+function UsrArea({user, onLoginSuc, onLogOut, autoOpenLoginPanel}: {
     user: string | null,
     onLoginSuc: (user: string) => void,
-    onLogOut: () => void
+    onLogOut: () => void,
+    autoOpenLoginPanel?: boolean
 }) {
     const [realUser, setRealUser] = useState(user);
     if (realUser !== null && realUser !== "") {
@@ -79,10 +81,10 @@ function UsrArea({user, onLoginSuc, onLogOut}: {
             setRealUser("");
         }}/>;
     }
-    return <NeedLoginButton onLoginSuc={onLoginSuc}/>;
+    return <NeedLoginButton onLoginSuc={onLoginSuc} autoOpenLoginPanel={autoOpenLoginPanel}/>;
 }
 
-function User() {
+function User({autoOpenLoginPanel = true}: {autoOpenLoginPanel?: boolean}) {
     const loginCtr = useContext(LoginCtx);
     // TODO 增加自动登录和登入登出的显示
     if (!loginCtr.loginInfo.init) {
@@ -114,6 +116,7 @@ function User() {
         onLogOut={() => {
             loginCtr.onLogout();
         }}
+        autoOpenLoginPanel={autoOpenLoginPanel}
     />
 }
 

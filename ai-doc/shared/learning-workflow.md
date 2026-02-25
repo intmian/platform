@@ -1,6 +1,6 @@
 # Shared Learning Workflow
 
-Last verified: 2026-02-23
+Last verified: 2026-02-25
 
 ## Goal
 
@@ -38,6 +38,7 @@ Last verified: 2026-02-23
    - temporary workaround steps with no long-term value
    - implementation micro-steps that do not change the system understanding
 4. When value is unclear, keep detail in the current task report and skip AI-doc write-back.
+5. If a new reusable helper/hook/utility/simple workflow is introduced, write it to `shared/reusable-tools.md` with concise reuse instructions.
 
 ## MCP quick recovery (known issue)
 
