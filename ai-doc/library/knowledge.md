@@ -1,6 +1,6 @@
 # Library Module Knowledge
 
-Last verified: 2026-02-25
+Last verified: 2026-02-26
 
 ## Route and entry model
 
@@ -28,6 +28,22 @@ Last verified: 2026-02-25
    - main score
    - parsed `createdAt/updatedAt` timestamps for sort
 7. Derived meta is in-memory only and must not add new backend/database fields.
+8. Cover asset contract:
+   - `extra.pictureAddress`: original cover URL.
+   - `extra.pictureAddressDetail` (optional): detail cover URL (cropped 2:3).
+   - `extra.picturePreview` (optional): preview cover URL (list/timeline).
+   - `extra.pictureAddressPreview` is kept as deprecated alias for legacy compatibility.
+   - list/timeline read order is `picturePreview -> pictureAddressPreview -> pictureAddress -> placeholder`.
+   - detail/share read order is `pictureAddressDetail -> pictureAddress -> picturePreview -> placeholder`.
+9. Cover upload strategy:
+   - always keep 2:3 crop interaction and upload 3 assets together:
+     - original file => `pictureAddress`
+     - cropped detail => `pictureAddressDetail` (`quality=0.92`; PNG source converts to JPEG for detail)
+     - cropped preview => `picturePreview` (`width=480`, `quality=0.85`, JPEG)
+   - for legacy records missing detail/preview:
+     - UI falls back to `pictureAddress` with center-crop display.
+     - frontend background job tries to generate missing files from original URL with center crop.
+     - successful backfill writes only backend data and logs console info; current page keeps old display until reopen (`verified via interaction`).
 
 ## Subgroup convention
 

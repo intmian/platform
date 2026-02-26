@@ -19,7 +19,6 @@
 - `/note_mini`：快速发送到 Memos
 - `/loss-fat`：营养计算器
 - `/kana`：假名练习
-- `/debug`：调试页
 
 ## 技术栈
 
@@ -34,38 +33,6 @@
 - `cmd`：脚本工具管理与运行环境
 - `todone`：TODONE 业务
 
-## 快速开始（开发模式）
-
-### 1) 启动后端
-
-在 `backend` 目录运行，后端启动时会读取当前目录下的 `base_setting.toml`。
-
-```bash
-cd backend
-cp test/base_setting.toml ./base_setting.toml
-go run ./main
-```
-
-默认会监听 `web_port`（示例为 `8080`）。
-建议先把 `base_setting.toml` 里的密码和第三方密钥改成你自己的配置。
-
-### 2) 启动前端
-
-```bash
-cd frontend
-npm install
-npm run dev
-```
-
-前端默认通过 Vite 代理把 `/api` 转发到 `http://127.0.0.1:8080`。
-
-### 3) 登录
-
-- 默认管理员账号：`admin`
-- 首次登录密码：`base_setting.toml` 里的 `admin_pwd`
-
-首次用 `admin + admin_pwd` 登录会自动创建管理员账户。
-
 ## 一体化部署（可选）
 
 如果希望由后端直接托管前端静态资源：
@@ -77,15 +44,13 @@ npm run dev
 
 ## 配置说明
 
-`backend/base_setting.toml` 的核心字段：
+`base_setting.toml` 的核心字段：
 
 - `db_addr`：主存储 sqlite 路径
 - `log_addr`：日志输出目录
 - `web_port`：后端端口
 - `admin_pwd`：管理员初始密码
 - `use_front`：是否启用后端托管前端静态资源
-- `gin_debug`：Gin 调试模式
-- `debug`：平台调试开关
 
 后台「设置」页面里还能配置：
 
@@ -104,6 +69,5 @@ skills/       本地技能相关文件
 
 ## 额外说明
 
-- 后端会开启本地 pprof：`127.0.0.1:12351`
-- 前后端分开启动是日常开发的推荐方式
 - 项目仍在持续迭代，README 会随功能更新
+- 开发指引：拆分公共组件时，优先做成可复用的通用组件（接口清晰、业务字段最小化、避免写死单场景逻辑）

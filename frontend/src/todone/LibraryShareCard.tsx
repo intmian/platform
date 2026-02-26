@@ -29,7 +29,10 @@ export interface LibraryShareCardProps {
 
 const LibraryShareCard: React.FC<LibraryShareCardProps> = ({title, extra, editable = false, onChange}) => {
     const isMobile = useIsMobile();
-    const coverUrl = getLibraryCoverDisplayUrl(title, extra.pictureAddress);
+    const coverUrl = getLibraryCoverDisplayUrl(
+        title,
+        extra.pictureAddressDetail?.trim() || extra.pictureAddress
+    );
 
     // 复杂模式下也统一使用评分日志读取主评分，兼容历史快照字段。
     const complexMainScore = useMemo(() => {

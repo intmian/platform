@@ -1,6 +1,6 @@
 # Shared Reusable Tools And Flows
 
-Last verified: 2026-02-25
+Last verified: 2026-02-26
 
 ## Format
 
@@ -12,3 +12,4 @@ Last verified: 2026-02-25
 
 1. `useLoginGate`: 页面级登录门禁；未登录时自动弹登录，不依赖某个组件是否被渲染，可避免移动端漏弹窗问题。
 2. `常见问题-登录弹窗重复`: 页面已使用 `useLoginGate` 时，局部 `User` 入口应关闭自动弹窗，只保留手动登录按钮。
+3. `prepareLibraryCoverFiles` + `prepareLibraryCoverFilesFromCenterCrop`: 可复用的 2:3 裁剪三图产物流程（original/detail/preview）；支持交互裁剪和中心裁剪（兼容补图）。

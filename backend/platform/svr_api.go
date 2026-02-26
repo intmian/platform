@@ -404,6 +404,7 @@ func (m *webMgr) getR2PresignedURL(c *gin.Context) {
 	}, s3.WithPresignExpires(15*time.Minute))
 
 	publicURL := fmt.Sprintf("%s/%s", outWeb, key)
+	m.plat.log.Info("PLAT", "r2 presigned generated user=%s file=%s type=%s key=%s", valid.User, req.FileName, req.FileType, key)
 
 	c.JSON(200, makeOkReturn(gin.H{
 		"UploadURL": presigned.URL,

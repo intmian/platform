@@ -127,7 +127,10 @@ export interface LibraryScoreData {
 
 // Library 扩展数据，存储在 Task.Note 字段中（JSON 格式）
 export interface LibraryExtra {
-    pictureAddress: string          // 封面图片地址
+    pictureAddress: string          // 原始封面图地址
+    pictureAddressDetail?: string   // 详情封面图地址（裁剪后）
+    picturePreview?: string         // 预览封面图地址（照片墙/时间线）
+    pictureAddressPreview?: string  // [deprecated] 旧预览字段，兼容历史数据
     author: string                  // 作者/制作方
     year?: number                   // 作品年份
     remark?: string                 // 作品备注
@@ -193,6 +196,9 @@ export interface TimelineEntry {
     itemTitle: string
     itemId: number
     pictureAddress: string
+    pictureAddressDetail?: string
+    picturePreview?: string
+    pictureAddressPreview?: string
     roundName: string
     logType: LibraryLogType
     status?: LibraryItemStatus

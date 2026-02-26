@@ -1,4 +1,4 @@
-import React, {useEffect, useMemo, useRef, useState} from 'react';
+import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import {
     AutoComplete,
     Button,
@@ -34,6 +34,7 @@ import {
     DeleteOutlined,
     DownloadOutlined,
     EditOutlined,
+    EyeOutlined,
     PauseOutlined,
     PlayCircleOutlined,
     PlusOutlined,
@@ -69,8 +70,10 @@ import {
     getDisplayStatusInfo,
     getLatestWaitReason,
     getLibraryCoverPaletteByTitle,
+    getLibraryDetailCoverUrl,
     getLogTypeText,
     getMainScore,
+    getLibraryPreviewCoverUrl,
     getScoreDisplay,
     getScoreStarColor,
     getScoreText,
@@ -87,7 +90,8 @@ import TextRate from '../library/TextRate';
 import LibraryShareCard from './LibraryShareCard';
 import LibraryScorePopover from './LibraryScorePopover';
 import {useImageUpload} from '../common/useImageUpload';
-import {cropImageToAspectRatio} from '../common/imageCrop';
+import {prepareLibraryCoverFiles} from '../common/imageCrop';
+import {FileShow, UploadFile} from '../common/newSendHttp';
 
 const {Text, Paragraph} = Typography;
 const {TextArea} = Input;
@@ -99,6 +103,7 @@ const SCORE_SUB_SEQ = ["折磨", "负面", "消磨", "享受", "极致"];
 const SCORE_INNOVATE_SEQ = ["抄袭", "模仿", "沿袭", "创新", "革命"];
 const LIBRARY_PLACEHOLDER_TEXT_WIDTH_RATIO = 0.1;
 const LIBRARY_PLACEHOLDER_PADDING_WIDTH_RATIO = 0.086;
+const LIBRARY_PREVIEW_WIDTH = 480;
 type DetailLogFilter = 'all' | 'withoutNote';
 
 function scoreDataToText(seq: string[], score?: LibraryScoreData): string {
@@ -262,9 +267,76 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
     const [showShare, setShowShare] = useState(false);
     const [shareExporting, setShareExporting] = useState(false);
     const shareCardRef = useRef<HTMLDivElement | null>(null);
+    const [showRawCoverModal, setShowRawCoverModal] = useState(false);
     
     // 基本信息编辑表单
     const [form] = Form.useForm();
+
+    const clearCoverFields = useCallback((extra: LibraryExtra): LibraryExtra => ({
+        ...extra,
+        pictureAddress: '',
+        pictureAddressDetail: '',
+        picturePreview: '',
+        pictureAddressPreview: '',
+    }), []);
+
+    const replaceCoverFields = useCallback((
+        extra: LibraryExtra,
+        next: {
+            original?: string;
+            detail?: string;
+            preview?: string;
+        },
+    ): LibraryExtra => {
+        const original = (next.original || '').trim();
+        const detail = (next.detail || '').trim() || original;
+        const preview = (next.preview || '').trim() || original;
+        return {
+            ...clearCoverFields(extra),
+            pictureAddress: original,
+            pictureAddressDetail: detail,
+            picturePreview: preview,
+            pictureAddressPreview: preview,
+        };
+    }, [clearCoverFields]);
+
+    const uploadLibraryCover = useCallback(async (file: File): Promise<FileShow | null> => {
+        try {
+            const processed = await prepareLibraryCoverFiles(file, {
+                previewWidth: LIBRARY_PREVIEW_WIDTH,
+            });
+            if (!processed) {
+                return null;
+            }
+
+            const originalUploaded = await UploadFile(processed.originalFile);
+            if (!originalUploaded) {
+                return null;
+            }
+
+            const detailUploaded = await UploadFile(processed.detailFile);
+            if (!detailUploaded) {
+                message.error('详情图上传失败');
+                return null;
+            }
+
+            const previewUploaded = await UploadFile(processed.previewFile);
+            if (!previewUploaded) {
+                message.error('预览图上传失败');
+                return null;
+            }
+
+            return {
+                ...originalUploaded,
+                detailUrl: detailUploaded.publishUrl,
+                previewUrl: previewUploaded.publishUrl,
+            };
+        } catch (error) {
+            console.error(error);
+            message.error('图片处理失败');
+            return null;
+        }
+    }, []);
 
     const {uploading: coverUploading, checkClipboard: checkCoverClipboard} = useImageUpload(
         (fileShow) => {
@@ -272,26 +344,16 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
                 if (!prev) return prev;
                 return {
                     ...prev,
-                    extra: {
-                        ...prev.extra,
-                        pictureAddress: fileShow.publishUrl,
-                    },
+                    extra: replaceCoverFields(prev.extra, {
+                        original: fileShow.publishUrl,
+                        detail: fileShow.detailUrl || fileShow.publishUrl,
+                        preview: fileShow.previewUrl || fileShow.publishUrl,
+                    }),
                 };
             });
-            message.success('封面已上传并裁剪为 2:3');
+            message.success('封面已上传，已生成三图');
         },
-        undefined,
-        {
-            beforeUpload: async (file) => {
-                try {
-                    return await cropImageToAspectRatio(file, 2, 3);
-                } catch (error) {
-                    console.error(error);
-                    message.error('图片裁剪失败');
-                    return null;
-                }
-            },
-        }
+        uploadLibraryCover
     );
     const editingTitle = Form.useWatch('title', form) || '';
 
@@ -319,14 +381,17 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
             if (!localItem) return;
             
             const title = values.title?.trim() || '';
-            const pictureAddress = localItem.extra.pictureAddress?.trim() || '';
+            const normalizedCoverExtra = replaceCoverFields(localItem.extra, {
+                original: localItem.extra.pictureAddress,
+                detail: localItem.extra.pictureAddressDetail,
+                preview: localItem.extra.picturePreview || localItem.extra.pictureAddressPreview,
+            });
 
             const newItem: LibraryItemFull = {
                 ...localItem,
                 title,
                 extra: {
-                    ...localItem.extra,
-                    pictureAddress,
+                    ...normalizedCoverExtra,
                     author: values.author || '',
                     year: typeof values.year === 'number' ? values.year : undefined,
                     remark: values.remark?.trim() || '',
@@ -968,7 +1033,7 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
                             <Popover
                                 placement="topLeft"
                                 trigger="click"
-                                content={<LibraryScorePopover extra={localItem.extra} mainScoreOverride={log} />}
+                                content={<LibraryScorePopover extra={localItem!.extra} mainScoreOverride={log} />}
                             >
                                 {scoreContent}
                             </Popover>
@@ -1127,7 +1192,10 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
 
     if (!localItem) return null;
     const displayTitle = editMode ? (editingTitle.trim() || localItem.title) : localItem.title;
-    const realCoverUrl = localItem.extra.pictureAddress?.trim() || '';
+    const originalCoverUrl = localItem.extra.pictureAddress?.trim() || '';
+    const detailCoverUrl = getLibraryDetailCoverUrl(localItem.extra);
+    const previewCoverUrl = getLibraryPreviewCoverUrl(localItem.extra);
+    const realCoverUrl = detailCoverUrl || originalCoverUrl || previewCoverUrl;
     const coverPalette = getLibraryCoverPaletteByTitle(displayTitle || '未命名');
     const placeholderFontSize = Math.round(detailCoverWidth * LIBRARY_PLACEHOLDER_TEXT_WIDTH_RATIO);
     const placeholderPadding = Math.round(detailCoverWidth * LIBRARY_PLACEHOLDER_PADDING_WIDTH_RATIO);
@@ -1160,6 +1228,13 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
                 onClick={() => setShowShare(true)}
             >
                 分享
+            </Button>
+            <Button
+                size={actionButtonSize}
+                icon={<EyeOutlined/>}
+                onClick={() => setShowRawCoverModal(true)}
+            >
+                三图原图
             </Button>
             {editMode ? (
                 <>
@@ -1330,14 +1405,11 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
                                     <Button
                                         danger
                                         icon={<DeleteOutlined/>}
-                                        disabled={!localItem.extra.pictureAddress?.trim()}
+                                        disabled={!(localItem.extra.pictureAddress?.trim() || localItem.extra.pictureAddressDetail?.trim() || localItem.extra.picturePreview?.trim() || localItem.extra.pictureAddressPreview?.trim())}
                                         onClick={() => {
                                             const nextItem: LibraryItemFull = {
                                                 ...localItem,
-                                                extra: {
-                                                    ...localItem.extra,
-                                                    pictureAddress: '',
-                                                },
+                                                extra: clearCoverFields(localItem.extra),
                                             };
                                             setLocalItem(nextItem);
                                             message.success('已删除封面，恢复默认占位图');
@@ -1733,6 +1805,42 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
                 <Paragraph style={{marginBottom: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-word'}}>
                     {logNotePreviewText || '-'}
                 </Paragraph>
+            </Modal>
+
+            <Modal
+                title="三图原图"
+                open={showRawCoverModal}
+                onCancel={() => setShowRawCoverModal(false)}
+                footer={[
+                    <Button key="close" onClick={() => setShowRawCoverModal(false)}>
+                        关闭
+                    </Button>,
+                ]}
+                width={isMobile ? 'calc(100vw - 24px)' : 560}
+            >
+                {[
+                    {label: 'pictureAddress', url: originalCoverUrl},
+                    {label: 'pictureAddressDetail', url: detailCoverUrl},
+                    {label: 'picturePreview', url: previewCoverUrl},
+                ].map((entry) => (
+                    <div key={entry.label} style={{marginBottom: 14}}>
+                        <Text strong>{entry.label}</Text>
+                        <div style={{marginTop: 6, marginBottom: 6, wordBreak: 'break-all'}}>
+                            {entry.url ? (
+                                <a href={entry.url} target="_blank" rel="noreferrer">{entry.url}</a>
+                            ) : (
+                                <Text type="secondary">无</Text>
+                            )}
+                        </div>
+                        {entry.url ? (
+                            <img
+                                src={entry.url}
+                                alt={entry.label}
+                                style={{width: 120, aspectRatio: '2 / 3', objectFit: 'cover', objectPosition: 'center', borderRadius: 6, border: '1px solid #f0f0f0'}}
+                            />
+                        ) : null}
+                    </div>
+                ))}
             </Modal>
             
             {/* 分享弹窗 */}

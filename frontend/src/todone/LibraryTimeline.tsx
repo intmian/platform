@@ -547,7 +547,9 @@ export default function LibraryTimeline({visible, items, onClose, onItemClick}: 
         const coverHeight = isMobile ? 63 : 72;
         const placeholderFontSize = Math.round(coverWidth * LIBRARY_PLACEHOLDER_TEXT_WIDTH_RATIO);
         const placeholderPadding = Math.round(coverWidth * LIBRARY_PLACEHOLDER_PADDING_WIDTH_RATIO);
-        const realCoverUrl = entry.pictureAddress?.trim() || '';
+        const originalCoverUrl = entry.pictureAddress?.trim() || '';
+        const previewCoverUrl = entry.picturePreview?.trim() || entry.pictureAddressPreview?.trim() || '';
+        const realCoverUrl = previewCoverUrl || originalCoverUrl;
         const placeholderColor = getLibraryCoverPaletteByTitle(entry.itemTitle || '未命名');
         const actionText = isWaitExpiredEntry(entry)
             ? '鸽了'
@@ -589,6 +591,7 @@ export default function LibraryTimeline({visible, items, onClose, onItemClick}: 
                         {realCoverUrl ? (
                             <img
                                 src={realCoverUrl}
+                                sizes={isMobile ? '120px' : '160px'}
                                 width={coverWidth}
                                 height={coverHeight}
                                 style={{objectFit: 'cover', objectPosition: 'center'}}

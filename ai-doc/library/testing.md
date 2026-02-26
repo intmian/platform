@@ -1,6 +1,6 @@
 # Library Module Testing
 
-Last verified: 2026-02-25
+Last verified: 2026-02-26
 
 ## Preconditions
 
@@ -34,6 +34,17 @@ Last verified: 2026-02-25
    - open add/detail cover upload, enter crop modal
    - on mobile viewport, drag image with touch/pointer should move preview position
    - on desktop viewport, mouse drag should still work
+7. Cover upload strategy regression:
+   - new upload should write 3 URLs:
+     - `pictureAddress` (original)
+     - `pictureAddressDetail` (cropped detail)
+     - `picturePreview` (cropped preview, `480w`)
+   - list/timeline should use preview URL; detail/share should use detail URL.
+   - deleting cover should clear `pictureAddress`, `pictureAddressDetail`, `picturePreview` (and deprecated alias `pictureAddressPreview`).
+   - detail toolbar should provide `三图原图` button and show all 3 URLs.
+   - legacy item (missing detail/preview) should:
+     - render with `pictureAddress` fallback
+     - trigger background backfill and print console log indicating next-open visibility.
 
 ## Filters and sort checks
 

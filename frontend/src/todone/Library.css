@@ -7,14 +7,14 @@
 
 .library-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(0, 158px));
+    grid-template-columns: repeat(auto-fill, minmax(0, 160px));
     gap: 16px;
     justify-content: flex-start;
 }
 
 @media (min-width: 1500px) {
     .library-grid {
-        grid-template-columns: repeat(auto-fill, minmax(0, 158px));
+        grid-template-columns: repeat(auto-fill, minmax(0, 160px));
         gap: 24px;
     }
 }
@@ -81,8 +81,9 @@
     }
 
     .library-grid {
-        grid-template-columns: repeat(auto-fill, minmax(112px, 1fr));
+        grid-template-columns: repeat(auto-fill, minmax(120px, 120px));
         gap: 8px;
+        justify-content: flex-start;
     }
 
     .library-toolbar {

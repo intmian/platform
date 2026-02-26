@@ -612,6 +612,8 @@ export interface FileShow {
     isImage: boolean;
     name: string;
     publishUrl: string;
+    detailUrl?: string;
+    previewUrl?: string;
 }
 
 export async function UploadFile(file: File): Promise<FileShow | null> {

@@ -1,8 +1,73 @@
+export interface CropImageOptions {
+    outputWidth?: number;
+    quality?: number;
+    avoidUpscale?: boolean;
+}
+
+export interface OversizeCoefficients {
+    jpegWebp: number;
+    png: number;
+    other: number;
+}
+
+export interface LibraryCoverProcessOptions {
+    aspectWidth?: number;
+    aspectHeight?: number;
+    previewWidth?: number;
+    detailQuality?: number;
+    previewQuality?: number;
+    cropOriginalQuality?: number;
+    centerCrop?: boolean;
+}
+
+export interface LibraryCoverProcessResult {
+    originalFile: File;
+    croppedOriginalFile: File;
+    detailFile: File;
+    previewFile: File;
+    sourceWidth: number;
+    sourceSize: number;
+}
+
+export interface OversizeRule {
+    minWidth: number;
+    coefficients: OversizeCoefficients;
+}
+
+export interface OversizeJudgeInput {
+    imageWidth: number;
+    fileSize: number;
+    mimeType: string;
+}
+
+const DEFAULT_OVERSIZE_RULE: OversizeRule = {
+    minWidth: 600,
+    coefficients: {
+        jpegWebp: 0.5,
+        png: 1.3,
+        other: 0.8,
+    },
+};
+
+export function isImageOversizedByWidthAndBytes(
+    imageWidth: number,
+    fileSize: number,
+    mimeType: string,
+    rule: OversizeRule = DEFAULT_OVERSIZE_RULE
+): boolean {
+    if (imageWidth <= rule.minWidth) {
+        return false;
+    }
+
+    const coeff = getOversizeCoefficient(mimeType, rule.coefficients);
+    return fileSize > (imageWidth * imageWidth * coeff);
+}
+
 export async function cropImageToAspectRatio(
     file: File,
     aspectWidth: number = 2,
     aspectHeight: number = 3,
-    quality: number = 0.92
+    options?: CropImageOptions
 ): Promise<File | null> {
     const imageUrl = URL.createObjectURL(file);
 
@@ -12,38 +77,112 @@ export async function cropImageToAspectRatio(
         if (!cropResult) {
             return null;
         }
+        const cropRect = buildCropRectFromModal(image, cropResult);
 
-        const outputWidth = 900;
-        const outputHeight = Math.round((outputWidth * aspectHeight) / aspectWidth);
-        const canvas = document.createElement('canvas');
-        canvas.width = outputWidth;
-        canvas.height = outputHeight;
-
-        const ctx = canvas.getContext('2d');
-        if (!ctx) {
-            return file;
-        }
-
-        const scaleX = outputWidth / cropResult.frameWidth;
-        const scaleY = outputHeight / cropResult.frameHeight;
-        const drawWidth = cropResult.displayWidth * scaleX;
-        const drawHeight = cropResult.displayHeight * scaleY;
-        const drawX = cropResult.left * scaleX;
-        const drawY = cropResult.top * scaleY;
-
-        ctx.drawImage(image, drawX, drawY, drawWidth, drawHeight);
-
-        const mimeType = file.type && file.type.startsWith('image/') ? file.type : 'image/jpeg';
-        const blob = await canvasToBlob(canvas, mimeType, quality);
-        if (!blob) {
-            return file;
-        }
-
-        const nextName = normalizeFileName(file.name, mimeType, aspectWidth, aspectHeight);
-        return new File([blob], nextName, {type: mimeType});
+        return await renderCroppedImageFile({
+            sourceFile: file,
+            image,
+            cropRect,
+            aspectWidth,
+            aspectHeight,
+            outputWidth: options?.outputWidth ?? Math.max(1, Math.round(cropRect.width)),
+            quality: options?.quality ?? 0.92,
+            avoidUpscale: options?.avoidUpscale ?? false,
+        });
     } finally {
         URL.revokeObjectURL(imageUrl);
     }
+}
+
+export async function prepareLibraryCoverFiles(
+    file: File,
+    options?: LibraryCoverProcessOptions
+): Promise<LibraryCoverProcessResult | null> {
+    const aspectWidth = options?.aspectWidth ?? 2;
+    const aspectHeight = options?.aspectHeight ?? 3;
+    const previewWidth = options?.previewWidth ?? 480;
+    const detailQuality = options?.detailQuality ?? 0.92;
+    const previewQuality = options?.previewQuality ?? 0.85;
+    const cropOriginalQuality = options?.cropOriginalQuality ?? 0.98;
+    const sourceMimeType = normalizeMimeType(file.type);
+
+    const imageUrl = URL.createObjectURL(file);
+    try {
+        const image = await loadImage(imageUrl);
+        const cropRect = options?.centerCrop
+            ? buildCenterCropRect(image, aspectWidth, aspectHeight)
+            : await (async () => {
+                const cropResult = await openInteractiveCropModal(image, aspectWidth, aspectHeight);
+                if (!cropResult) {
+                    return null;
+                }
+                return buildCropRectFromModal(image, cropResult);
+            })();
+        if (!cropRect) {
+            return null;
+        }
+
+        const croppedOriginalFile = await renderCroppedImageFile({
+            sourceFile: file,
+            image,
+            cropRect,
+            aspectWidth,
+            aspectHeight,
+            outputWidth: Math.max(1, Math.round(cropRect.width)),
+            quality: cropOriginalQuality,
+            avoidUpscale: false,
+            fileTag: 'crop',
+            mimeTypeOverride: sourceMimeType,
+        });
+
+        const detailMimeType = sourceMimeType === 'image/png' ? 'image/jpeg' : sourceMimeType;
+        const detailFile = await renderCroppedImageFile({
+            sourceFile: file,
+            image,
+            cropRect,
+            aspectWidth,
+            aspectHeight,
+            outputWidth: Math.max(1, Math.round(cropRect.width)),
+            quality: detailQuality,
+            avoidUpscale: false,
+            fileTag: 'detail',
+            mimeTypeOverride: detailMimeType,
+        });
+
+        const previewFile = await renderCroppedImageFile({
+            sourceFile: file,
+            image,
+            cropRect,
+            aspectWidth,
+            aspectHeight,
+            outputWidth: previewWidth,
+            quality: previewQuality,
+            avoidUpscale: true,
+            fileTag: 'preview',
+            mimeTypeOverride: 'image/jpeg',
+        });
+
+        return {
+            originalFile: file,
+            croppedOriginalFile,
+            detailFile,
+            previewFile,
+            sourceWidth: image.width,
+            sourceSize: file.size,
+        };
+    } finally {
+        URL.revokeObjectURL(imageUrl);
+    }
+}
+
+export async function prepareLibraryCoverFilesFromCenterCrop(
+    file: File,
+    options?: LibraryCoverProcessOptions
+): Promise<LibraryCoverProcessResult | null> {
+    return prepareLibraryCoverFiles(file, {
+        ...options,
+        centerCrop: true,
+    });
 }
 
 function loadImage(src: string): Promise<HTMLImageElement> {
@@ -61,7 +200,148 @@ function canvasToBlob(canvas: HTMLCanvasElement, type: string, quality: number):
     });
 }
 
-function normalizeFileName(originalName: string, mimeType: string, aspectWidth: number, aspectHeight: number): string {
+function normalizeMimeType(type?: string): string {
+    if (type && type.startsWith('image/')) {
+        return type;
+    }
+    return 'image/jpeg';
+}
+
+function getOversizeCoefficient(mimeType: string, coefficients: OversizeCoefficients): number {
+    if (mimeType === 'image/png') {
+        return coefficients.png;
+    }
+    if (mimeType === 'image/jpeg' || mimeType === 'image/webp') {
+        return coefficients.jpegWebp;
+    }
+    return coefficients.other;
+}
+
+interface CropRect {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+}
+
+function buildCropRectFromModal(image: HTMLImageElement, cropResult: CropModalResult): CropRect {
+    const displayWidth = Math.max(1, cropResult.displayWidth);
+    const displayHeight = Math.max(1, cropResult.displayHeight);
+    const sx = Math.max(0, Math.round(((-cropResult.left) / displayWidth) * image.width));
+    const sy = Math.max(0, Math.round(((-cropResult.top) / displayHeight) * image.height));
+    const sw = Math.max(1, Math.round((cropResult.frameWidth / displayWidth) * image.width));
+    const sh = Math.max(1, Math.round((cropResult.frameHeight / displayHeight) * image.height));
+
+    const x = Math.min(image.width - 1, sx);
+    const y = Math.min(image.height - 1, sy);
+    return {
+        x,
+        y,
+        width: Math.max(1, Math.min(image.width - x, sw)),
+        height: Math.max(1, Math.min(image.height - y, sh)),
+    };
+}
+
+function buildCenterCropRect(
+    image: HTMLImageElement,
+    aspectWidth: number,
+    aspectHeight: number
+): CropRect {
+    const targetRatio = aspectWidth / aspectHeight;
+    const sourceRatio = image.width / image.height;
+
+    if (sourceRatio > targetRatio) {
+        const height = image.height;
+        const width = Math.max(1, Math.round(height * targetRatio));
+        return {
+            x: Math.max(0, Math.round((image.width - width) / 2)),
+            y: 0,
+            width,
+            height,
+        };
+    }
+
+    const width = image.width;
+    const height = Math.max(1, Math.round(width / targetRatio));
+    return {
+        x: 0,
+        y: Math.max(0, Math.round((image.height - height) / 2)),
+        width,
+        height,
+    };
+}
+
+interface RenderCroppedImageFileInput {
+    sourceFile: File;
+    image: HTMLImageElement;
+    cropRect: CropRect;
+    aspectWidth: number;
+    aspectHeight: number;
+    outputWidth: number;
+    quality: number;
+    avoidUpscale: boolean;
+    fileTag?: string;
+    mimeTypeOverride?: string;
+}
+
+async function renderCroppedImageFile(input: RenderCroppedImageFileInput): Promise<File> {
+    const {
+        sourceFile,
+        image,
+        cropRect,
+        aspectWidth,
+        aspectHeight,
+        outputWidth,
+        quality,
+        avoidUpscale,
+        fileTag,
+        mimeTypeOverride,
+    } = input;
+
+    const cropSourceWidth = Math.max(1, Math.round(cropRect.width));
+    const targetWidth = Math.max(1, Math.round(outputWidth));
+    const finalWidth = avoidUpscale ? Math.min(targetWidth, cropSourceWidth) : targetWidth;
+    const finalHeight = Math.max(1, Math.round((finalWidth * aspectHeight) / aspectWidth));
+
+    const canvas = document.createElement('canvas');
+    canvas.width = finalWidth;
+    canvas.height = finalHeight;
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) {
+        return sourceFile;
+    }
+
+    ctx.drawImage(
+        image,
+        cropRect.x,
+        cropRect.y,
+        cropRect.width,
+        cropRect.height,
+        0,
+        0,
+        finalWidth,
+        finalHeight
+    );
+
+    const mimeType = normalizeMimeType(mimeTypeOverride || sourceFile.type);
+    const blob = await canvasToBlob(canvas, mimeType, quality);
+    if (!blob) {
+        return sourceFile;
+    }
+
+    const nextName = normalizeFileName(sourceFile.name, mimeType, aspectWidth, aspectHeight, finalWidth, fileTag);
+    return new File([blob], nextName, {type: mimeType});
+}
+
+function normalizeFileName(
+    originalName: string,
+    mimeType: string,
+    aspectWidth: number,
+    aspectHeight: number,
+    outputWidth?: number,
+    fileTag?: string
+): string {
     const extMap: Record<string, string> = {
         'image/jpeg': 'jpg',
         'image/png': 'png',
@@ -69,7 +349,9 @@ function normalizeFileName(originalName: string, mimeType: string, aspectWidth: 
     };
     const targetExt = extMap[mimeType] || 'jpg';
     const baseName = originalName.replace(/\.[^.]+$/, '') || 'image';
-    return `${baseName}_${aspectWidth}x${aspectHeight}.${targetExt}`;
+    const tagSuffix = fileTag ? `_${fileTag}` : '';
+    const widthSuffix = outputWidth ? `_${Math.max(1, Math.round(outputWidth))}w` : '';
+    return `${baseName}_${aspectWidth}x${aspectHeight}${tagSuffix}${widthSuffix}.${targetExt}`;
 }
 
 interface CropModalResult {

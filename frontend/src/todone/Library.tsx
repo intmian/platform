@@ -61,6 +61,7 @@ import {
     canUpdateReasonOnSameStatus,
     createDefaultLibraryExtra,
     deriveLibraryMeta,
+    getLibraryPreviewCoverUrl,
     LibraryDerivedMeta,
     LIBRARY_CARD_HOVER_EFFECT_CONFIG,
     LIBRARY_WAIT_EXPIRED_FILTER,
@@ -78,7 +79,8 @@ import LibraryDetail from './LibraryDetail';
 import LibraryTimeline from './LibraryTimeline';
 import LibraryScorePopover from './LibraryScorePopover';
 import {useImageUpload} from '../common/useImageUpload';
-import {cropImageToAspectRatio} from '../common/imageCrop';
+import {prepareLibraryCoverFiles, prepareLibraryCoverFilesFromCenterCrop} from '../common/imageCrop';
+import {FileShow, UploadFile} from '../common/newSendHttp';
 import './Library.css';
 
 // 排序选项
@@ -125,6 +127,7 @@ const DEFAULT_SORT_STATUS_ORDER: Record<string, number> = {
 
 // 默认的 SubGroup 名称（用于存储所有 Library 条目）
 const DEFAULT_SUBGROUP_NAME = '_library_items_';
+const LIBRARY_PREVIEW_WIDTH = 480;
 
 interface LibraryProps {
     addr: Addr | null;
@@ -155,6 +158,31 @@ function getStatusTextColor(bg: string): string {
 function getItemDerivedMeta(item: LibraryItemFull): LibraryDerivedMeta {
     const maybeWithDerived = item as LibraryItemFull & {derived?: LibraryDerivedMeta};
     return maybeWithDerived.derived || deriveLibraryMeta(item.extra);
+}
+
+function guessExtFromMimeType(mimeType: string): string {
+    if (mimeType === 'image/png') return 'png';
+    if (mimeType === 'image/webp') return 'webp';
+    return 'jpg';
+}
+
+async function fetchImageAsFile(url: string, fallbackName: string): Promise<File | null> {
+    try {
+        const response = await fetch(url, {credentials: 'omit'});
+        if (!response.ok) {
+            return null;
+        }
+        const blob = await response.blob();
+        if (!blob.type.startsWith('image/')) {
+            return null;
+        }
+        const baseName = fallbackName.replace(/[^a-zA-Z0-9_-]+/g, '_') || 'library_cover';
+        const ext = guessExtFromMimeType(blob.type);
+        const fileName = `${baseName}.${ext}`;
+        return new File([blob], fileName, {type: blob.type});
+    } catch {
+        return null;
+    }
 }
 
 function AutoScrollTitle({text}: {text: string}) {
@@ -301,27 +329,58 @@ export default function Library({addr, groupTitle}: LibraryProps) {
     const [addForm] = Form.useForm();
     const [addLoading, setAddLoading] = useState(false);
     const [addCoverUrl, setAddCoverUrl] = useState('');
+    const [addCoverDetailUrl, setAddCoverDetailUrl] = useState('');
+    const [addCoverPreviewUrl, setAddCoverPreviewUrl] = useState('');
+
+    const uploadLibraryCover = useCallback(async (file: File): Promise<FileShow | null> => {
+        try {
+            const processed = await prepareLibraryCoverFiles(file, {
+                previewWidth: LIBRARY_PREVIEW_WIDTH,
+            });
+            if (!processed) {
+                return null;
+            }
+
+            const originalUploaded = await UploadFile(processed.originalFile);
+            if (!originalUploaded) {
+                return null;
+            }
+
+            const detailUploaded = await UploadFile(processed.detailFile);
+            if (!detailUploaded) {
+                message.error('详情图上传失败');
+                return null;
+            }
+
+            const previewUploaded = await UploadFile(processed.previewFile);
+            if (!previewUploaded) {
+                message.error('预览图上传失败');
+                return null;
+            }
+
+            return {
+                ...originalUploaded,
+                detailUrl: detailUploaded.publishUrl,
+                previewUrl: previewUploaded.publishUrl,
+            };
+        } catch (error) {
+            console.error(error);
+            message.error('图片处理失败');
+            return null;
+        }
+    }, []);
 
     const {uploading: addCoverUploading, checkClipboard: checkAddCoverClipboard} = useImageUpload(
         (fileShow) => {
             setAddCoverUrl(fileShow.publishUrl);
-            message.success('封面已上传并裁剪为 2:3');
+            setAddCoverDetailUrl(fileShow.detailUrl || fileShow.publishUrl);
+            setAddCoverPreviewUrl(fileShow.previewUrl || fileShow.publishUrl);
+            message.success('封面已上传，已生成三图');
         },
-        undefined,
-        {
-            beforeUpload: async (file) => {
-                try {
-                    return await cropImageToAspectRatio(file, 2, 3);
-                } catch (error) {
-                    console.error(error);
-                    message.error('图片裁剪失败');
-                    return null;
-                }
-            },
-        }
+        uploadLibraryCover
     );
     const addTitle = Form.useWatch('title', addForm) || '';
-    const addPreviewUrl = addCoverUrl.trim() || buildLibraryTitleCoverDataUrl(addTitle.trim());
+    const addPreviewUrl = addCoverPreviewUrl.trim() || addCoverDetailUrl.trim() || addCoverUrl.trim() || buildLibraryTitleCoverDataUrl(addTitle.trim());
     
     // 分类管理弹窗
     const [showCategoryManager, setShowCategoryManager] = useState(false);
@@ -347,6 +406,8 @@ export default function Library({addr, groupTitle}: LibraryProps) {
     });
     const [waitExpiredTick, setWaitExpiredTick] = useState(0);
     const listPerfRef = useRef({filterComputeMs: 0, filterComputeDoneAt: 0});
+    const compatProcessedIdsRef = useRef<Set<number>>(new Set());
+    const compatGeneratingRef = useRef(false);
 
     useEffect(() => {
         const timer = window.setInterval(() => {
@@ -625,6 +686,130 @@ export default function Library({addr, groupTitle}: LibraryProps) {
             `[LibraryPerf] items=${allItems.length}, filtered=${filteredItems.length}, compute=${listPerfRef.current.filterComputeMs.toFixed(2)}ms, commit=${commitMs.toFixed(2)}ms`,
         );
     }, [allItems, filteredItems, selectedCategory, selectedStatuses, todoReasonFilter, searchText, sortBy]);
+
+    useEffect(() => {
+        if (!addr || !mainSubGroup) {
+            return;
+        }
+        if (compatGeneratingRef.current) {
+            return;
+        }
+
+        const candidates = allItems.filter((item) => {
+            if (compatProcessedIdsRef.current.has(item.taskId)) {
+                return false;
+            }
+            const originalUrl = item.extra.pictureAddress?.trim() || '';
+            if (!originalUrl) {
+                return false;
+            }
+            const detailMissing = !(item.extra.pictureAddressDetail?.trim() || '');
+            const previewMissing = !(
+                item.extra.picturePreview?.trim()
+                || item.extra.pictureAddressPreview?.trim()
+            );
+            return detailMissing || previewMissing;
+        });
+
+        if (candidates.length === 0) {
+            return;
+        }
+
+        compatGeneratingRef.current = true;
+        let cancelled = false;
+
+        const run = async () => {
+            for (const item of candidates) {
+                if (cancelled) {
+                    break;
+                }
+                compatProcessedIdsRef.current.add(item.taskId);
+
+                const originalUrl = item.extra.pictureAddress?.trim() || '';
+                const sourceFile = await fetchImageAsFile(originalUrl, `${item.title}_${item.taskId}`);
+                if (!sourceFile) {
+                    console.info(`[LibraryCoverCompat] skip task=${item.taskId}, 无法下载原始图`);
+                    continue;
+                }
+
+                const processed = await prepareLibraryCoverFilesFromCenterCrop(sourceFile, {
+                    previewWidth: LIBRARY_PREVIEW_WIDTH,
+                });
+                if (!processed) {
+                    console.info(`[LibraryCoverCompat] skip task=${item.taskId}, 无法生成裁剪图`);
+                    continue;
+                }
+
+                let detailUrl = item.extra.pictureAddressDetail?.trim() || '';
+                let previewUrl = item.extra.picturePreview?.trim() || item.extra.pictureAddressPreview?.trim() || '';
+
+                if (!detailUrl) {
+                    const uploadedDetail = await UploadFile(processed.detailFile);
+                    if (uploadedDetail?.publishUrl) {
+                        detailUrl = uploadedDetail.publishUrl;
+                    }
+                }
+
+                if (!previewUrl) {
+                    const uploadedPreview = await UploadFile(processed.previewFile);
+                    if (uploadedPreview?.publishUrl) {
+                        previewUrl = uploadedPreview.publishUrl;
+                    }
+                }
+
+                if (!detailUrl && !previewUrl) {
+                    console.info(`[LibraryCoverCompat] skip task=${item.taskId}, 详情图/预览图均未生成`);
+                    continue;
+                }
+
+                const originalTask = taskById.get(item.taskId);
+                if (!originalTask) {
+                    continue;
+                }
+
+                const nextExtra = {
+                    ...item.extra,
+                    pictureAddressDetail: detailUrl || item.extra.pictureAddressDetail || '',
+                    picturePreview: previewUrl || item.extra.picturePreview || item.extra.pictureAddressPreview || '',
+                    pictureAddressPreview: previewUrl || item.extra.picturePreview || item.extra.pictureAddressPreview || '',
+                };
+
+                const updatedTask: PTask = {
+                    ...originalTask,
+                    Note: serializeLibraryExtra(nextExtra),
+                };
+
+                const req: ChangeTaskReq = {
+                    DirID: addr.getLastDirID(),
+                    GroupID: addr.getLastGroupID(),
+                    SubGroupID: mainSubGroup.ID,
+                    UserID: addr.userID,
+                    Data: updatedTask,
+                };
+
+                await new Promise<void>((resolve) => {
+                    sendChangeTask(req, (ret) => {
+                        if (ret.ok) {
+                            console.info(`[LibraryCoverCompat] task=${item.taskId} 已补全缺失图，刷新或下次打开页面后生效`);
+                        } else {
+                            console.info(`[LibraryCoverCompat] task=${item.taskId} 补全写回失败`);
+                        }
+                        resolve();
+                    });
+                });
+            }
+            compatGeneratingRef.current = false;
+        };
+
+        run().catch((error) => {
+            compatGeneratingRef.current = false;
+            console.error('[LibraryCoverCompat] generate failed', error);
+        });
+
+        return () => {
+            cancelled = true;
+        };
+    }, [addr, mainSubGroup, allItems, taskById]);
 
     // 保存 item 变更
     const handleSaveItem = useCallback((item: LibraryItemFull) => {
@@ -912,6 +1097,9 @@ export default function Library({addr, groupTitle}: LibraryProps) {
             const title = values.title?.trim() || '';
             let extra = createDefaultLibraryExtra();
             extra.pictureAddress = addCoverUrl.trim() || '';
+            extra.pictureAddressDetail = addCoverDetailUrl.trim() || '';
+            extra.picturePreview = addCoverPreviewUrl.trim() || '';
+            extra.pictureAddressPreview = extra.picturePreview;
             extra.author = values.author || '';
             extra.year = values.year !== undefined && values.year !== null && values.year !== ''
                 ? Number(values.year)
@@ -943,6 +1131,8 @@ export default function Library({addr, groupTitle}: LibraryProps) {
                     message.success('添加成功');
                     setShowAdd(false);
                     setAddCoverUrl('');
+                    setAddCoverDetailUrl('');
+                    setAddCoverPreviewUrl('');
                     addForm.resetFields();
                     if (ret.data.Task) {
                         setDetailItem(parseLibraryFromTask(ret.data.Task));
@@ -954,7 +1144,7 @@ export default function Library({addr, groupTitle}: LibraryProps) {
                 }
             });
         });
-    }, [addr, addCoverUrl, addForm, mainSubGroup, loadTasks]);
+    }, [addr, addCoverDetailUrl, addCoverPreviewUrl, addCoverUrl, addForm, mainSubGroup, loadTasks]);
 
     // 批量修改分类名称
     const handleRenameCategory = useCallback((oldName: string, newName: string) => {
@@ -1078,7 +1268,9 @@ export default function Library({addr, groupTitle}: LibraryProps) {
     const renderCard = (item: LibraryItemWithDerived) => {
         const mainScore = item.derived.mainScore;
         const placeholderColor = getLibraryCoverPaletteByTitle(item.title);
-        const realCoverUrl = item.extra.pictureAddress?.trim() || '';
+        const originalCoverUrl = item.extra.pictureAddress?.trim() || '';
+        const previewCoverUrl = getLibraryPreviewCoverUrl(item.extra);
+        const realCoverUrl = previewCoverUrl || originalCoverUrl;
         const isPlaceholderCover = realCoverUrl === '';
         const showCategoryOnCard = displayOptions.showCategory && selectedCategory === 'all' && item.extra.category;
         const showFavoriteOnCard = !!item.extra.isFavorite;
@@ -1117,6 +1309,7 @@ export default function Library({addr, groupTitle}: LibraryProps) {
                     {realCoverUrl ? (
                         <img
                             src={realCoverUrl}
+                            sizes="(max-width: 768px) 120px, 160px"
                             alt={item.title}
                             onError={(e) => {
                                 (e.target as HTMLImageElement).style.display = 'none';
@@ -1531,6 +1724,8 @@ export default function Library({addr, groupTitle}: LibraryProps) {
                 onCancel={() => {
                     setShowAdd(false);
                     setAddCoverUrl('');
+                    setAddCoverDetailUrl('');
+                    setAddCoverPreviewUrl('');
                     addForm.resetFields();
                 }}
                 confirmLoading={addLoading}
@@ -1561,6 +1756,8 @@ export default function Library({addr, groupTitle}: LibraryProps) {
                                 disabled={!addCoverUrl.trim()}
                                 onClick={() => {
                                     setAddCoverUrl('');
+                                    setAddCoverDetailUrl('');
+                                    setAddCoverPreviewUrl('');
                                     message.success('已删除封面，恢复默认占位图');
                                 }}
                             >

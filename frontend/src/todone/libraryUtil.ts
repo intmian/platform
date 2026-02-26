@@ -18,6 +18,9 @@ export function createDefaultLibraryExtra(): LibraryExtra {
     const now = new Date().toISOString();
     return {
         pictureAddress: '',
+        pictureAddressDetail: '',
+        picturePreview: '',
+        pictureAddressPreview: '',
         author: '',
         year: undefined,
         remark: '',
@@ -70,6 +73,15 @@ export function parseLibraryExtra(note: string): LibraryExtra {
         if (parsed.isFavorite === undefined) {
             parsed.isFavorite = false;
         }
+        if (parsed.pictureAddressDetail === undefined) {
+            parsed.pictureAddressDetail = '';
+        }
+        if (parsed.picturePreview === undefined) {
+            parsed.picturePreview = (parsed.pictureAddressPreview || '').trim();
+        }
+        if (parsed.pictureAddressPreview === undefined) {
+            parsed.pictureAddressPreview = (parsed.picturePreview || '').trim();
+        }
         // `waitReason` 已废弃：统一改为读取最新搁置日志 comment。
         // 为避免继续使用历史项目层字段，这里解析后主动清理。
         delete parsed.waitReason;
@@ -112,6 +124,9 @@ export function serializeLibraryExtra(extra: LibraryExtra): string {
     if (!normalizedExtra.updatedAt) {
         normalizedExtra.updatedAt = normalizedExtra.createdAt;
     }
+    normalizedExtra.pictureAddressDetail = (normalizedExtra.pictureAddressDetail || '').trim();
+    normalizedExtra.picturePreview = (normalizedExtra.picturePreview || normalizedExtra.pictureAddressPreview || '').trim();
+    normalizedExtra.pictureAddressPreview = normalizedExtra.picturePreview;
     migrateLegacyComplexScoreFields(normalizedExtra);
     // 兼容历史数据：以下字段已废弃，运行时可兜底读取，但保存时统一清空。
     delete normalizedExtra.status;
@@ -915,6 +930,9 @@ export function extractTimeline(items: LibraryItemFull[]): TimelineEntry[] {
                     itemTitle: item.title,
                     itemId: item.taskId,
                     pictureAddress: item.extra.pictureAddress,
+                    pictureAddressDetail: item.extra.pictureAddressDetail,
+                    picturePreview: item.extra.picturePreview,
+                    pictureAddressPreview: item.extra.pictureAddressPreview,
                     roundName: round.name,
                     logType: log.type,
                     status: log.status,
@@ -1023,6 +1041,25 @@ export function getLibraryCoverDisplayUrl(title: string, pictureAddress?: string
         return saved;
     }
     return buildLibraryTitleCoverDataUrl(title || '');
+}
+
+export function getLibraryPreviewCoverUrl(extra: LibraryExtra): string {
+    return (
+        extra.picturePreview?.trim()
+        || extra.pictureAddressPreview?.trim()
+        || extra.pictureAddress?.trim()
+        || ''
+    );
+}
+
+export function getLibraryDetailCoverUrl(extra: LibraryExtra): string {
+    return (
+        extra.pictureAddressDetail?.trim()
+        || extra.pictureAddress?.trim()
+        || extra.picturePreview?.trim()
+        || extra.pictureAddressPreview?.trim()
+        || ''
+    );
 }
 
 function escapeXml(value: string): string {
