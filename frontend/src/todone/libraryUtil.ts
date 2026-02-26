@@ -1062,6 +1062,22 @@ export function getLibraryDetailCoverUrl(extra: LibraryExtra): string {
     );
 }
 
+export function appendNoCacheParam(url: string): string {
+    const raw = url.trim();
+    if (!raw) {
+        return raw;
+    }
+    const token = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
+    try {
+        const parsed = new URL(raw, window.location.href);
+        parsed.searchParams.set('__cf_bust', token);
+        return parsed.toString();
+    } catch {
+        const separator = raw.includes('?') ? '&' : '?';
+        return `${raw}${separator}__cf_bust=${encodeURIComponent(token)}`;
+    }
+}
+
 function escapeXml(value: string): string {
     return value
         .replace(/&/g, '&amp;')

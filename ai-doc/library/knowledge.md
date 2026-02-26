@@ -44,6 +44,7 @@ Last verified: 2026-02-26
      - UI falls back to `pictureAddress` with center-crop display.
      - frontend background job tries to generate missing files from original URL with center crop.
      - successful backfill writes only backend data and logs console info; current page keeps old display until reopen (`verified via interaction`).
+   - remote image fetch path used by legacy backfill and share/timeline export adds `__cf_bust` query + `cache: no-store` to reduce stale edge-cache CORS mismatch impact.
 
 ## Subgroup convention
 

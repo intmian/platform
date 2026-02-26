@@ -57,6 +57,7 @@ import {
     LibraryStatusNames,
 } from './net/protocal';
 import {
+    appendNoCacheParam,
     addNoteLog,
     addScoreLog,
     addStatusLog,
@@ -167,7 +168,10 @@ async function inlineExportImages(container: HTMLElement): Promise<void> {
             return;
         }
         try {
-            const response = await fetch(src, {credentials: getImageFetchCredentials(src)});
+            const response = await fetch(appendNoCacheParam(src), {
+                credentials: getImageFetchCredentials(src),
+                cache: 'no-store',
+            });
             if (!response.ok) {
                 throw new Error(`fetch image failed: ${response.status}`);
             }

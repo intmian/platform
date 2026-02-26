@@ -56,6 +56,7 @@ import {
     sendGetTasks,
 } from './net/send_back';
 import {
+    appendNoCacheParam,
     addStatusLog,
     buildLibraryTitleCoverDataUrl,
     canUpdateReasonOnSameStatus,
@@ -168,7 +169,7 @@ function guessExtFromMimeType(mimeType: string): string {
 
 async function fetchImageAsFile(url: string, fallbackName: string): Promise<File | null> {
     try {
-        const response = await fetch(url, {credentials: 'omit'});
+        const response = await fetch(appendNoCacheParam(url), {credentials: 'omit', cache: 'no-store'});
         if (!response.ok) {
             return null;
         }
