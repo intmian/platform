@@ -29,7 +29,11 @@ Last verified: 2026-02-27
    - `todone/db/api_token`
    - `todone/db/db_id`
 5. Frontend `TodoneSetting` and backend service both bind to the same config keys; runtime config update prompt indicates restart is required.
-6. Runtime health probe baseline (for this backend) is `POST /check`; `GET /api/check` returns 404.
+6. Health probe in frontend debug chain:
+   - browser request uses `POST /api/check` (because `api_base_url="/api"` in `frontend/src/config.json`)
+   - Vite proxy rewrites `/api/check` -> backend `POST /check` (`frontend/vite.config.js`)
+   - direct backend probe should call `POST /check`
+   - `GET /check` and `GET /api/check` are not valid for this route
 
 ## Data hierarchy and core flows
 

@@ -1,6 +1,6 @@
 # Shared Debug Workflow
 
-Last verified: 2026-02-25
+Last verified: 2026-02-27
 
 ## Positioning
 
@@ -17,13 +17,15 @@ Last verified: 2026-02-25
 2. Frontend:
    - working directory: `frontend`
    - command: `npm run dev`
-   - use Vite output URL (`http://127.0.0.1:5173` preferred when available)
+   - use the exact Vite runtime URL printed in terminal
+   - request base path is `frontend/src/config.json` -> `api_base_url="/api"`
+   - Vite proxy (`frontend/vite.config.js`) maps `/api/*` -> `http://127.0.0.1:8080/*` by stripping `/api` prefix
 
 ## Debug-specific mandatory flow
 
 1. Keep engineering workflow gates, then apply debug gates below.
 2. Confirm runtime readiness before any UI conclusion:
-   - backend reachable (`/api/check` success or startup logs show ready)
+   - backend reachable (`POST /check` direct call success, or `POST /api/check` success via Vite proxy)
    - frontend reachable on one stable URL
    - login/auth is actually successful via normal user flow
    - do not bypass auth blockers (for example closing login modal to force operations on disabled/unauthorized UI)
@@ -74,6 +76,7 @@ Last verified: 2026-02-25
    - `backend/test/gin.log`
    - `backend/test/sql.log`
 2. If backend startup fails due external network dependency, record exact error and continue with reachable runtime path when feasible (for example existing service responding to `/api/check`).
+   - direct backend health route is `POST /check`; in frontend dev chain use `POST /api/check` (proxied).
 3. Codex sandbox note (`verified via interaction`):
    - `dlv debug` may fail with `listen tcp 127.0.0.1:*: bind: operation not permitted`.
    - Root cause is sandbox socket binding restriction, not `.vscode` `launch.json` mismatch.
