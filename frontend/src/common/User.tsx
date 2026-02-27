@@ -74,11 +74,9 @@ function UsrArea({user, onLoginSuc, onLogOut, autoOpenLoginPanel}: {
     onLogOut: () => void,
     autoOpenLoginPanel?: boolean
 }) {
-    const [realUser, setRealUser] = useState(user);
-    if (realUser !== null && realUser !== "") {
-        return <UserButton user={realUser} onLogOut={() => {
+    if (user !== null && user !== "") {
+        return <UserButton user={user} onLogOut={() => {
             onLogOut();
-            setRealUser("");
         }}/>;
     }
     return <NeedLoginButton onLoginSuc={onLoginSuc} autoOpenLoginPanel={autoOpenLoginPanel}/>;
