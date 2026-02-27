@@ -8,6 +8,7 @@ import {
     DatePicker,
     Descriptions,
     Divider,
+    Dropdown,
     Drawer,
     Flex,
     Form,
@@ -33,6 +34,7 @@ import {
     ClockCircleOutlined,
     DeleteOutlined,
     DownloadOutlined,
+    EllipsisOutlined,
     EditOutlined,
     EyeOutlined,
     PauseOutlined,
@@ -1208,17 +1210,40 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
     const useMobileSplitLayout = isMobile && !editMode;
     const remarkText = (localItem.extra.remark || '').trim();
     const showRemarkClamp = remarkText.length > 0;
-    const drawerActions = (
-        <Space size={8} wrap>
-            {onToggleFavorite ? (
-                <Button
-                    size={actionButtonSize}
-                    icon={localItem.extra.isFavorite ? <StarFilled/> : <StarOutlined/>}
-                    onClick={() => onToggleFavorite(localItem)}
-                >
-                    {localItem.extra.isFavorite ? '已收藏' : '收藏'}
-                </Button>
-            ) : null}
+    const renderMoreActions = () => (
+        <Dropdown
+            trigger={['click']}
+            menu={{
+                items: [
+                    ...(onToggleFavorite ? [{
+                        key: 'favorite',
+                        label: localItem.extra.isFavorite ? '取消收藏' : '收藏',
+                        icon: localItem.extra.isFavorite ? <StarFilled/> : <StarOutlined/>,
+                    }] : []),
+                    {
+                        key: 'imageLibrary',
+                        label: '图片库',
+                        icon: <EyeOutlined/>,
+                    },
+                ],
+                onClick: ({key}) => {
+                    if (key === 'favorite' && onToggleFavorite) {
+                        onToggleFavorite(localItem);
+                        return;
+                    }
+                    if (key === 'imageLibrary') {
+                        setShowRawCoverModal(true);
+                    }
+                },
+            }}
+        >
+            <Button size={actionButtonSize} icon={<EllipsisOutlined/>}>
+                更多
+            </Button>
+        </Dropdown>
+    );
+    const renderPrimaryActions = () => (
+        <>
             <Button
                 size={actionButtonSize}
                 icon={<ReloadOutlined/>}
@@ -1233,13 +1258,6 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
             >
                 分享
             </Button>
-            <Button
-                size={actionButtonSize}
-                icon={<EyeOutlined/>}
-                onClick={() => setShowRawCoverModal(true)}
-            >
-                三图原图
-            </Button>
             {editMode ? (
                 <>
                     <Button size={actionButtonSize} onClick={() => setEditMode(false)}>取消</Button>
@@ -1248,6 +1266,12 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
             ) : (
                 <Button size={actionButtonSize} icon={<EditOutlined/>} onClick={() => setEditMode(true)}>编辑</Button>
             )}
+        </>
+    );
+    const drawerActions = (
+        <Space size={8} wrap>
+            {renderPrimaryActions()}
+            {renderMoreActions()}
         </Space>
     );
 
@@ -1260,8 +1284,8 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
                 </span>
             }
             placement="right"
-            width={isMobile ? '100%' : 600}
-            styles={isMobile ? {header: {paddingInline: 12}, body: {paddingInline: 12}} : undefined}
+            width={isMobile ? '100vw' : 600}
+            styles={isMobile ? {header: {paddingInline: 12}, body: {paddingInline: 12, overflowX: 'hidden'}} : undefined}
             destroyOnClose
             afterOpenChange={(open) => {
                 if (!open) {
@@ -1298,10 +1322,13 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
             }
         >
             {isMobile ? (
-                <div style={{marginBottom: 12, overflowX: 'auto'}}>
-                    <Space size={8} wrap={false} style={{paddingBottom: 2}}>
-                        {drawerActions}
-                    </Space>
+                <div style={{marginBottom: 12}}>
+                    <Flex align="flex-start" justify="space-between" gap={8}>
+                        <Space size={8} wrap style={{flex: 1}}>
+                            {renderPrimaryActions()}
+                        </Space>
+                        {renderMoreActions()}
+                    </Flex>
                 </div>
             ) : null}
             {/* 封面和基本信息 */}
@@ -1812,7 +1839,7 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
             </Modal>
 
             <Modal
-                title="三图原图"
+                title="图片库"
                 open={showRawCoverModal}
                 onCancel={() => setShowRawCoverModal(false)}
                 footer={[

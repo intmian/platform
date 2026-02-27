@@ -1,6 +1,6 @@
 # Library Module Testing
 
-Last verified: 2026-02-26
+Last verified: 2026-02-27
 
 ## Preconditions
 
@@ -41,10 +41,13 @@ Last verified: 2026-02-26
      - `picturePreview` (cropped preview, `480w`)
    - list/timeline should use preview URL; detail/share should use detail URL.
    - deleting cover should clear `pictureAddress`, `pictureAddressDetail`, `picturePreview` (and deprecated alias `pictureAddressPreview`).
-   - detail toolbar should provide `三图原图` button and show all 3 URLs.
+   - detail toolbar should provide `更多(...) -> 图片库` entry and show all 3 URLs.
    - legacy item (missing detail/preview) should:
      - render with `pictureAddress` fallback
      - trigger background backfill and print console log indicating next-open visibility.
+8. Mobile layout regression:
+   - photo wall should stay at fixed 3 columns on mobile viewport.
+   - opening detail drawer on mobile should not show right-side blank strip / horizontal overflow.
 
 ## Filters and sort checks
 

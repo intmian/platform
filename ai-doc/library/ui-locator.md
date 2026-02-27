@@ -1,6 +1,6 @@
 # Library UI Locator Map
 
-Last verified: 2026-02-22 (verified via interaction)
+Last verified: 2026-02-27 (code verified, TODO-verify via interaction)
 
 ## Entry path
 
@@ -43,10 +43,15 @@ Note: coordinates are desktop-relative hints; selector + text should be the prim
 
 Header actions:
 
-1. `收藏`
-2. `刷新`
-3. `分享`
-4. `编辑`
+1. `刷新`
+2. `分享`
+3. `编辑`
+4. `更多`（按钮图标 `...` / `EllipsisOutlined`，靠右）
+
+Advanced menu items:
+
+1. `收藏` / `取消收藏`
+2. `图片库`
 
 Status actions row:
 
