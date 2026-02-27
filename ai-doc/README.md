@@ -28,11 +28,14 @@ Last verified: 2026-02-27
 2. Cross-module debugging specialized workflow: `shared/debug-workflow.md`
 3. Shared learning/loading workflow: `shared/learning-workflow.md`
 4. Shared reusable utilities/process index: `shared/reusable-tools.md`
-5. Library domain logic: `library/knowledge.md`
-6. Library testing matrix: `library/testing.md`
-7. Library interactive UI map: `library/ui-locator.md`
-8. Note mini domain logic: `note-mini/knowledge.md`
-9. Note mini testing workflow: `note-mini/testing.md`
+5. Todone shared module logic: `todone/knowledge.md`
+6. Todone testing matrix: `todone/testing.md`
+7. Todone interactive UI map: `todone/ui-locator.md`
+8. Library domain logic: `library/knowledge.md`
+9. Library testing matrix: `library/testing.md`
+10. Library interactive UI map: `library/ui-locator.md`
+11. Note mini domain logic: `note-mini/knowledge.md`
+12. Note mini testing workflow: `note-mini/testing.md`
 
 ## Completion gate
 

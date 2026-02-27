@@ -1,15 +1,12 @@
 # Library Module Knowledge
 
-Last verified: 2026-02-26
+Last verified: 2026-02-27
 
-## Route and entry model
+## Entry dependency on Todone
 
-1. Library is rendered under `/todone/:group` (not standalone `/library`).
-2. `group` is URL-encoded `addr|title|type`.
-3. `type === 1` (`GroupType.Library`) renders library UI; otherwise normal task board.
-4. Group creation UI allows `groupType=1` label `图书馆`.
-5. Frontend auth gate for `/todone*` is page-level in `Todone` component: unauthenticated users are prompted by `LoginPanel` after login init, and this trigger must not depend on drawer/user component render.
-6. In Todone drawer header, `User` login entry should not auto-open modal (manual button only), to avoid duplicate login dialogs with page-level gate.
+1. Library is rendered under `/todone/:group` and is activated only when `group type = 1` (`GroupType.Library`).
+2. Shared `todone` behavior (route parsing, login gate, dir/group/subgroup baseline, permission gate, common RPC contract) is defined in `ai-doc/todone/knowledge.md`.
+3. If current task涉及 todone 基础设定或入口问题，先加载 `ai-doc/todone/knowledge.md`，再回到本文件处理 library 特有逻辑。
 
 ## Data model
 
@@ -54,21 +51,14 @@ Last verified: 2026-02-26
    - fallback first subgroup for legacy data
    - create `_library_items_` if none exists, then reload
 
-## Backend contract used by library page
+## Backend calls used by library page
 
-Endpoint prefix: `/service/todone/`
-
-1. `getSubGroup`
-2. `createSubGroup`
-3. `getTasks` with `ContainDone: true`
-4. `createTask`
-5. `changeTask`
-6. `delTask`
-
-Permission and identity gates:
-
-1. Need permission in `admin` or `todone`.
-2. `req.UserID` must equal authenticated `valid.User`.
+1. Based on todone RPC (`/service/todone/*`), library page主要使用：
+   - `getSubGroup`
+   - `getTasks` with `ContainDone: true`
+   - `createTask`
+   - `changeTask`
+   - `delTask`
 
 ## Default UI state
 
@@ -121,7 +111,4 @@ Timeline rules:
 1. `group not exist`
 2. `sub group not exist`
 3. `task not exist`
-4. `user not exist`
-5. `no permission`
-6. `user err`
-7. `TODO-verify`: direct `/todone/:group` open may occasionally render empty list while API is healthy; reselecting same group from left tree can recover expected items.
+4. `TODO-verify`: direct `/todone/:group` open may occasionally render empty list while API is healthy; reselecting same group from left tree can recover expected items.

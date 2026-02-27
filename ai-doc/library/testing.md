@@ -4,8 +4,8 @@ Last verified: 2026-02-27
 
 ## Preconditions
 
-1. Use group type `Library` (`type=1` in `/todone/:group`).
-2. Backend auth must satisfy `admin|todone` and user identity match.
+1. Shared todone baseline (route/auth/permission/addr) follows `ai-doc/todone/knowledge.md`.
+2. Use group type `Library` (`type=1` in `/todone/:group`).
 3. Ensure subgroup path is valid (`_library_items_` preferred).
 4. Local login baseline:
    - username: `admin`

@@ -4,12 +4,8 @@ Last verified: 2026-02-27 (code verified, TODO-verify via interaction)
 
 ## Entry path
 
-1. Open `/todone`.
-2. If login modal appears, use fields:
-   - `用户名`
-   - `密码`
-   - submit `提 交`
-3. Select a group whose encoded route suffix has `|...|1` (`GroupType.Library`).
+1. Complete todone login + group selection flow first (`ai-doc/todone/knowledge.md`).
+2. Select a group whose encoded route suffix has `|...|1` (`GroupType.Library`).
 
 ## Main page locators
 
