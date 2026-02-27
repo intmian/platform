@@ -1,6 +1,6 @@
 # Shared Engineering Workflow
 
-Last verified: 2026-02-25
+Last verified: 2026-02-27
 
 ## Scope
 
@@ -26,6 +26,7 @@ Last verified: 2026-02-25
 1. Outcome lock:
    - restate target behavior and explicit non-goals before editing.
 2. Runtime readiness:
+   - before testing, explicitly check whether test backend and test frontend/dev server are already running; reuse if healthy, start only missing parts
    - backend reachable
    - frontend/dev runtime reachable (if UI involved)
    - auth context validated
@@ -41,6 +42,7 @@ Last verified: 2026-02-25
    - prefer one complete vertical slice over scattered partial edits.
 6. Verify target behavior:
    - code-level check (build/test/type/lint where relevant)
+   - for any frontend change, run interaction verification that simulates a normal user flow (not only isolated clicks)
    - runtime/interaction evidence for UI behavior changes
 7. Run adjacent regression path:
    - at least one nearby non-target path
@@ -70,8 +72,13 @@ Last verified: 2026-02-25
 ## Evidence standard
 
 1. UI behavior claims require MCP pre/post interaction evidence.
-2. Build/test success alone is insufficient for UI behavior conclusions.
-3. When runtime is unavailable, explicitly mark verification as blocked and do not claim completion.
+2. Frontend change verification must include normal-flow interaction evidence plus at least one adjacent regression interaction path.
+3. UI change verification must include screenshot evidence of:
+   - the changed area
+   - at least one nearby non-target area to confirm no unintended impact
+4. UI conclusion must explicitly state both "changed behavior works" and "no observed collateral UI impact" based on interaction + screenshot evidence.
+5. Build/test success alone is insufficient for UI behavior conclusions.
+6. When runtime is unavailable, explicitly mark verification as blocked and do not claim completion.
 
 ## Process evolution protocol
 

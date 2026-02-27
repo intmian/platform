@@ -1,6 +1,6 @@
 # Note Mini Testing Workflow
 
-Last verified: 2026-02-23
+Last verified: 2026-02-27
 
 ## Goal
 
@@ -17,26 +17,30 @@ Last verified: 2026-02-23
 
 ## Standard test flow
 
-1. Start frontend dev server (`frontend`, `npm run dev`).
-2. Start local mock memos server that supports:
+1. Pre-check runtime before starting anything:
+   - verify whether frontend dev server is already running and reachable
+   - verify whether local mock memos backend is already running and reachable
+   - only start the missing side(s), avoid duplicate startup
+2. Start frontend dev server (`frontend`, `npm run dev`) if not already running.
+3. Start local mock memos server if not already running. It must support:
    - `GET /api/v1/users/1:getStats` (return `{ "tagCount": {} }`)
    - `POST /api/v1/memos` (capture request body and return success JSON containing `content`)
-3. Open `/note_mini` and set config in the page settings modal:
+4. Open `/note_mini` and set config in the page settings modal:
    - URL = mock URL
    - KEY = mock key
-4. Type a known plaintext in memo input.
-5. Open `高级` menu, click `加密上传`, fill:
+5. Type a known plaintext in memo input.
+6. Open `高级` menu, click `加密上传`, fill:
    - AES key (test key)
    - tip (test tip)
-6. Click `加密并发送` (real send).
-7. Verify UI result:
+7. Click `加密并发送` (real send).
+8. Verify UI result:
    - request queue shows success icon
    - input is cleared after successful enqueue/send
-8. Verify captured payload in mock logs:
+9. Verify captured payload in mock logs:
    - content format is `<tip>\n<aes-gcm:...>`
    - second line follows `aes-gcm:<base64(iv)>:<base64(ciphertext)>`
-9. Decrypt captured cipher using the same AES key and verify plaintext equals step 4 input.
-10. Run adjacent regression:
+10. Decrypt captured cipher using the same AES key and verify plaintext equals step 5 input.
+11. Run adjacent regression:
     - open `高级` -> `AI重写` (no crash path), or
     - submit without AES key and verify validation error appears.
 
@@ -46,6 +50,7 @@ Last verified: 2026-02-23
 2. Captured payload contains tip + AES-GCM ciphertext in expected format.
 3. Decryption output exactly matches original plaintext.
 4. No request sent to formal memo service.
+5. When the task includes UI changes, provide screenshots for both the changed area and a nearby non-target area, and confirm no unintended impact.
 
 ## Cleanup checklist
 

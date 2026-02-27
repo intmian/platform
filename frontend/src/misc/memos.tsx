@@ -873,16 +873,19 @@ function Memos() {
         }
     }
 
+    const advancedMenuDisabled = !canSubmit || loadingSetting;
+    const advancedTriggerDisabled = loadingSetting;
+
     const advancedMenuItems: MenuProps['items'] = [
         {
             key: 'ai-rewrite',
             label: 'AI重写',
-            disabled: !canSubmit || loadingSetting,
+            disabled: advancedMenuDisabled,
         },
         {
             key: 'encrypted-upload',
             label: '加密上传',
-            disabled: !canSubmit || loadingSetting,
+            disabled: advancedMenuDisabled,
         },
     ];
 
@@ -1020,6 +1023,7 @@ function Memos() {
                     }</Button>
                     <Dropdown
                         trigger={['click']}
+                        disabled={advancedTriggerDisabled}
                         menu={{
                             items: advancedMenuItems,
                             onClick: onAdvancedMenuClick,
@@ -1027,10 +1031,10 @@ function Memos() {
                     >
                         <Button
                             type="default"
-                            disabled={!canSubmit || loadingSetting}
+                            disabled={advancedTriggerDisabled}
                             size={"small"}
                         >
-                            ...
+                            更多
                             <DownOutlined/>
                         </Button>
                     </Dropdown>

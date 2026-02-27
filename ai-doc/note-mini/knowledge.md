@@ -1,6 +1,6 @@
 # Note Mini Knowledge
 
-Last verified: 2026-02-25
+Last verified: 2026-02-27
 
 ## Test reference
 
@@ -32,7 +32,7 @@ Last verified: 2026-02-25
 
 ## Advanced menu behavior (verified from code)
 
-1. Bottom action bar uses `...` dropdown button at the original AI button position.
+1. Bottom action bar uses an advanced dropdown trigger button at the original AI button position (current label: `更多`).
 2. Advanced dropdown contains:
    - `AI重写`: same behavior as previous AI button
    - `加密上传`: opens modal for AES key + tip, then sends encrypted content
@@ -41,3 +41,4 @@ Last verified: 2026-02-25
    - `<tip>\n<aes-gcm encrypted blob>`
    - encrypted blob format: `aes-gcm:<base64(iv)>:<base64(ciphertext)>`
 5. Encrypted submit still goes through the same normal submit queue path (`AddHis` -> `SendMemosReq`).
+6. Advanced dropdown trigger is disabled only during setting loading; when input text is empty and settings are ready, trigger remains enabled while both menu items stay disabled (verified via interaction).
