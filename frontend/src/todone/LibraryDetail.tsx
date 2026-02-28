@@ -274,6 +274,7 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
     const [shareExporting, setShareExporting] = useState(false);
     const shareCardRef = useRef<HTMLDivElement | null>(null);
     const [showRawCoverModal, setShowRawCoverModal] = useState(false);
+    const [rawCoverDimensions, setRawCoverDimensions] = useState<Record<string, string>>({});
     
     // 基本信息编辑表单
     const [form] = Form.useForm();
@@ -362,6 +363,66 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
         uploadLibraryCover
     );
     const editingTitle = Form.useWatch('title', form) || '';
+
+    const originalCoverUrl = useMemo(() => localItem?.extra.pictureAddress?.trim() || '', [localItem?.extra.pictureAddress]);
+    const detailCoverUrl = useMemo(() => (localItem ? getLibraryDetailCoverUrl(localItem.extra) : ''), [localItem]);
+    const previewCoverUrl = useMemo(() => (localItem ? getLibraryPreviewCoverUrl(localItem.extra) : ''), [localItem]);
+    const rawCoverEntries = useMemo(() => ([
+        {label: 'pictureAddress', url: originalCoverUrl},
+        {label: 'pictureAddressDetail', url: detailCoverUrl},
+        {label: 'picturePreview', url: previewCoverUrl},
+    ]), [originalCoverUrl, detailCoverUrl, previewCoverUrl]);
+
+    useEffect(() => {
+        if (!showRawCoverModal) {
+            return;
+        }
+        const urls = rawCoverEntries.map((entry) => entry.url).filter(Boolean) as string[];
+        if (urls.length === 0) {
+            setRawCoverDimensions({});
+            return;
+        }
+        let cancelled = false;
+
+        setRawCoverDimensions((prev) => {
+            const next: Record<string, string> = {};
+            urls.forEach((url) => {
+                if (prev[url]) {
+                    next[url] = prev[url];
+                } else {
+                    next[url] = '读取中...';
+                }
+            });
+            return next;
+        });
+
+        urls.forEach((url) => {
+            const img = new Image();
+            img.onload = () => {
+                if (cancelled) {
+                    return;
+                }
+                setRawCoverDimensions((prev) => ({
+                    ...prev,
+                    [url]: `${img.naturalWidth} x ${img.naturalHeight}`,
+                }));
+            };
+            img.onerror = () => {
+                if (cancelled) {
+                    return;
+                }
+                setRawCoverDimensions((prev) => ({
+                    ...prev,
+                    [url]: '读取失败',
+                }));
+            };
+            img.src = url;
+        });
+
+        return () => {
+            cancelled = true;
+        };
+    }, [showRawCoverModal, rawCoverEntries]);
 
     // 初始化 localItem
     useEffect(() => {
@@ -1198,9 +1259,6 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
 
     if (!localItem) return null;
     const displayTitle = editMode ? (editingTitle.trim() || localItem.title) : localItem.title;
-    const originalCoverUrl = localItem.extra.pictureAddress?.trim() || '';
-    const detailCoverUrl = getLibraryDetailCoverUrl(localItem.extra);
-    const previewCoverUrl = getLibraryPreviewCoverUrl(localItem.extra);
     const realCoverUrl = detailCoverUrl || originalCoverUrl || previewCoverUrl;
     const coverPalette = getLibraryCoverPaletteByTitle(displayTitle || '未命名');
     const placeholderFontSize = Math.round(detailCoverWidth * LIBRARY_PLACEHOLDER_TEXT_WIDTH_RATIO);
@@ -1849,11 +1907,7 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
                 ]}
                 width={isMobile ? 'calc(100vw - 24px)' : 560}
             >
-                {[
-                    {label: 'pictureAddress', url: originalCoverUrl},
-                    {label: 'pictureAddressDetail', url: detailCoverUrl},
-                    {label: 'picturePreview', url: previewCoverUrl},
-                ].map((entry) => (
+                {rawCoverEntries.map((entry) => (
                     <div key={entry.label} style={{marginBottom: 14}}>
                         <Text strong>{entry.label}</Text>
                         <div style={{marginTop: 6, marginBottom: 6, wordBreak: 'break-all'}}>
@@ -1864,19 +1918,32 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
                             )}
                         </div>
                         {entry.url ? (
-                            <img
-                                src={entry.url}
-                                alt={entry.label}
+                            <div style={{marginBottom: 6}}>
+                                <Text type="secondary">尺寸: {rawCoverDimensions[entry.url] || '读取中...'}</Text>
+                            </div>
+                        ) : null}
+                        {entry.url ? (
+                            <div
                                 style={{
-                                    maxWidth: '100%',
-                                    width: 'auto',
-                                    height: 'auto',
-                                    maxHeight: 220,
-                                    display: 'block',
+                                    overflowX: 'auto',
                                     borderRadius: 6,
                                     border: '1px solid #f0f0f0',
+                                    padding: 6,
                                 }}
-                            />
+                            >
+                                <img
+                                    src={entry.url}
+                                    alt={entry.label}
+                                    style={{
+                                        width: 'auto',
+                                        height: 'auto',
+                                        maxWidth: 'none',
+                                        maxHeight: 'none',
+                                        display: 'block',
+                                        borderRadius: 4,
+                                    }}
+                                />
+                            </div>
                         ) : null}
                     </div>
                 ))}

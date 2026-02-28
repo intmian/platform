@@ -77,7 +77,7 @@ export async function cropImageToAspectRatio(
         if (!cropResult) {
             return null;
         }
-        const cropRect = buildCropRectFromModal(image, cropResult);
+        const cropRect = buildCropRectFromModal(image, cropResult, aspectWidth, aspectHeight);
 
         return await renderCroppedImageFile({
             sourceFile: file,
@@ -116,7 +116,7 @@ export async function prepareLibraryCoverFiles(
                 if (!cropResult) {
                     return null;
                 }
-                return buildCropRectFromModal(image, cropResult);
+                return buildCropRectFromModal(image, cropResult, aspectWidth, aspectHeight);
             })();
         if (!cropRect) {
             return null;
@@ -224,23 +224,41 @@ interface CropRect {
     height: number;
 }
 
-function buildCropRectFromModal(image: HTMLImageElement, cropResult: CropModalResult): CropRect {
+function buildCropRectFromModal(
+    image: HTMLImageElement,
+    cropResult: CropModalResult,
+    aspectWidth: number,
+    aspectHeight: number
+): CropRect {
     const sourceWidth = Math.max(1, image.naturalWidth || image.width);
     const sourceHeight = Math.max(1, image.naturalHeight || image.height);
     const displayWidth = Math.max(1, cropResult.displayWidth);
     const displayHeight = Math.max(1, cropResult.displayHeight);
-    const sx = Math.max(0, Math.round(((-cropResult.left) / displayWidth) * sourceWidth));
-    const sy = Math.max(0, Math.round(((-cropResult.top) / displayHeight) * sourceHeight));
-    const sw = Math.max(1, Math.round((cropResult.frameWidth / displayWidth) * sourceWidth));
-    const sh = Math.max(1, Math.round((cropResult.frameHeight / displayHeight) * sourceHeight));
+    const ratio = Math.max(1e-6, aspectWidth / aspectHeight);
+    const scaleX = sourceWidth / displayWidth;
+    const scaleY = sourceHeight / displayHeight;
+    const scale = (scaleX + scaleY) / 2;
 
-    const x = Math.min(sourceWidth - 1, sx);
-    const y = Math.min(sourceHeight - 1, sy);
+    const frameSourceWidth = Math.max(1, Math.round(cropResult.frameWidth * scale));
+    const frameSourceHeight = Math.max(1, Math.round(cropResult.frameHeight * scale));
+    const maxCropWidthByFrame = Math.max(1, Math.min(frameSourceWidth, Math.round(frameSourceHeight * ratio)));
+    const maxCropWidthBySource = Math.max(1, Math.min(sourceWidth, Math.round(sourceHeight * ratio)));
+    let cropWidth = Math.max(1, Math.min(maxCropWidthByFrame, maxCropWidthBySource));
+    let cropHeight = Math.max(1, Math.round(cropWidth / ratio));
+    if (cropHeight > sourceHeight) {
+        cropHeight = sourceHeight;
+        cropWidth = Math.max(1, Math.min(sourceWidth, Math.round(cropHeight * ratio)));
+    }
+
+    const sx = Math.round((-cropResult.left) * scale);
+    const sy = Math.round((-cropResult.top) * scale);
+    const x = Math.max(0, Math.min(sourceWidth - cropWidth, sx));
+    const y = Math.max(0, Math.min(sourceHeight - cropHeight, sy));
     return {
         x,
         y,
-        width: Math.max(1, Math.min(sourceWidth - x, sw)),
-        height: Math.max(1, Math.min(sourceHeight - y, sh)),
+        width: Math.max(1, Math.min(sourceWidth - x, cropWidth)),
+        height: Math.max(1, Math.min(sourceHeight - y, cropHeight)),
     };
 }
 
@@ -371,9 +389,20 @@ function openInteractiveCropModal(
     aspectHeight: number
 ): Promise<CropModalResult | null> {
     return new Promise((resolve) => {
-        const viewportMaxHeight = Math.min(window.innerHeight - 220, 560);
-        const frameHeight = Math.max(280, viewportMaxHeight);
-        const frameWidth = Math.round(frameHeight * (aspectWidth / aspectHeight));
+        const frameAspect = aspectWidth / aspectHeight;
+        const preferredFrameHeight = Math.min(560, window.innerHeight - 220);
+        const maxFrameWidth = Math.max(220, Math.floor(window.innerWidth * 0.84));
+        const maxFrameHeight = Math.max(220, Math.floor(window.innerHeight * 0.58));
+        let frameHeight = Math.max(220, preferredFrameHeight);
+        let frameWidth = Math.round(frameHeight * frameAspect);
+        if (frameWidth > maxFrameWidth) {
+            frameWidth = maxFrameWidth;
+            frameHeight = Math.round(frameWidth / frameAspect);
+        }
+        if (frameHeight > maxFrameHeight) {
+            frameHeight = maxFrameHeight;
+            frameWidth = Math.round(frameHeight * frameAspect);
+        }
         const sourceWidth = Math.max(1, image.naturalWidth || image.width);
         const sourceHeight = Math.max(1, image.naturalHeight || image.height);
         let zoom = 1;
@@ -412,8 +441,6 @@ function openInteractiveCropModal(
         frame.style.position = 'relative';
         frame.style.width = `${frameWidth}px`;
         frame.style.height = `${frameHeight}px`;
-        frame.style.maxWidth = '84vw';
-        frame.style.maxHeight = '58vh';
         frame.style.background = '#111';
         frame.style.overflow = 'hidden';
         frame.style.borderRadius = '8px';
