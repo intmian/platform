@@ -1867,7 +1867,15 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
                             <img
                                 src={entry.url}
                                 alt={entry.label}
-                                style={{width: 120, aspectRatio: '2 / 3', objectFit: 'cover', objectPosition: 'center', borderRadius: 6, border: '1px solid #f0f0f0'}}
+                                style={{
+                                    maxWidth: '100%',
+                                    width: 'auto',
+                                    height: 'auto',
+                                    maxHeight: 220,
+                                    display: 'block',
+                                    borderRadius: 6,
+                                    border: '1px solid #f0f0f0',
+                                }}
                             />
                         ) : null}
                     </div>

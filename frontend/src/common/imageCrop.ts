@@ -225,20 +225,22 @@ interface CropRect {
 }
 
 function buildCropRectFromModal(image: HTMLImageElement, cropResult: CropModalResult): CropRect {
+    const sourceWidth = Math.max(1, image.naturalWidth || image.width);
+    const sourceHeight = Math.max(1, image.naturalHeight || image.height);
     const displayWidth = Math.max(1, cropResult.displayWidth);
     const displayHeight = Math.max(1, cropResult.displayHeight);
-    const sx = Math.max(0, Math.round(((-cropResult.left) / displayWidth) * image.width));
-    const sy = Math.max(0, Math.round(((-cropResult.top) / displayHeight) * image.height));
-    const sw = Math.max(1, Math.round((cropResult.frameWidth / displayWidth) * image.width));
-    const sh = Math.max(1, Math.round((cropResult.frameHeight / displayHeight) * image.height));
+    const sx = Math.max(0, Math.round(((-cropResult.left) / displayWidth) * sourceWidth));
+    const sy = Math.max(0, Math.round(((-cropResult.top) / displayHeight) * sourceHeight));
+    const sw = Math.max(1, Math.round((cropResult.frameWidth / displayWidth) * sourceWidth));
+    const sh = Math.max(1, Math.round((cropResult.frameHeight / displayHeight) * sourceHeight));
 
-    const x = Math.min(image.width - 1, sx);
-    const y = Math.min(image.height - 1, sy);
+    const x = Math.min(sourceWidth - 1, sx);
+    const y = Math.min(sourceHeight - 1, sy);
     return {
         x,
         y,
-        width: Math.max(1, Math.min(image.width - x, sw)),
-        height: Math.max(1, Math.min(image.height - y, sh)),
+        width: Math.max(1, Math.min(sourceWidth - x, sw)),
+        height: Math.max(1, Math.min(sourceHeight - y, sh)),
     };
 }
 
@@ -372,8 +374,8 @@ function openInteractiveCropModal(
         const viewportMaxHeight = Math.min(window.innerHeight - 220, 560);
         const frameHeight = Math.max(280, viewportMaxHeight);
         const frameWidth = Math.round(frameHeight * (aspectWidth / aspectHeight));
-
-        const baseFitScale = Math.max(frameWidth / image.width, frameHeight / image.height);
+        const sourceWidth = Math.max(1, image.naturalWidth || image.width);
+        const sourceHeight = Math.max(1, image.naturalHeight || image.height);
         let zoom = 1;
         let offsetX = 0;
         let offsetY = 0;
@@ -424,6 +426,31 @@ function openInteractiveCropModal(
         previewImage.style.userSelect = 'none';
         previewImage.style.pointerEvents = 'none';
         previewImage.draggable = false;
+
+        const getFrameSize = () => ({
+            width: Math.max(1, frame.clientWidth || frameWidth),
+            height: Math.max(1, frame.clientHeight || frameHeight),
+        });
+
+        const buildPreviewGeometry = () => {
+            const frameSize = getFrameSize();
+            const baseFitScale = Math.max(frameSize.width / sourceWidth, frameSize.height / sourceHeight);
+            const displayWidth = sourceWidth * baseFitScale * zoom;
+            const displayHeight = sourceHeight * baseFitScale * zoom;
+            const maxOffsetX = Math.max(0, (displayWidth - frameSize.width) / 2);
+            const maxOffsetY = Math.max(0, (displayHeight - frameSize.height) / 2);
+            offsetX = Math.max(-maxOffsetX, Math.min(maxOffsetX, offsetX));
+            offsetY = Math.max(-maxOffsetY, Math.min(maxOffsetY, offsetY));
+
+            return {
+                frameWidth: frameSize.width,
+                frameHeight: frameSize.height,
+                displayWidth,
+                displayHeight,
+                left: (frameSize.width - displayWidth) / 2 + offsetX,
+                top: (frameSize.height - displayHeight) / 2 + offsetY,
+            };
+        };
 
         const controls = document.createElement('div');
         controls.style.display = 'flex';
@@ -478,25 +505,12 @@ function openInteractiveCropModal(
         okButton.style.padding = '0 16px';
         okButton.style.cursor = 'pointer';
 
-        const clampOffset = () => {
-            const displayWidth = image.width * baseFitScale * zoom;
-            const displayHeight = image.height * baseFitScale * zoom;
-            const maxOffsetX = Math.max(0, (displayWidth - frameWidth) / 2);
-            const maxOffsetY = Math.max(0, (displayHeight - frameHeight) / 2);
-            offsetX = Math.max(-maxOffsetX, Math.min(maxOffsetX, offsetX));
-            offsetY = Math.max(-maxOffsetY, Math.min(maxOffsetY, offsetY));
-        };
-
         const applyPreview = () => {
-            clampOffset();
-            const displayWidth = image.width * baseFitScale * zoom;
-            const displayHeight = image.height * baseFitScale * zoom;
-            const left = (frameWidth - displayWidth) / 2 + offsetX;
-            const top = (frameHeight - displayHeight) / 2 + offsetY;
-            previewImage.style.left = `${left}px`;
-            previewImage.style.top = `${top}px`;
-            previewImage.style.width = `${displayWidth}px`;
-            previewImage.style.height = `${displayHeight}px`;
+            const preview = buildPreviewGeometry();
+            previewImage.style.left = `${preview.left}px`;
+            previewImage.style.top = `${preview.top}px`;
+            previewImage.style.width = `${preview.displayWidth}px`;
+            previewImage.style.height = `${preview.displayHeight}px`;
         };
 
         const cleanup = () => {
@@ -515,15 +529,14 @@ function openInteractiveCropModal(
         };
 
         const buildResult = (): CropModalResult => {
-            const displayWidth = image.width * baseFitScale * zoom;
-            const displayHeight = image.height * baseFitScale * zoom;
+            const preview = buildPreviewGeometry();
             return {
-                frameWidth,
-                frameHeight,
-                displayWidth,
-                displayHeight,
-                left: (frameWidth - displayWidth) / 2 + offsetX,
-                top: (frameHeight - displayHeight) / 2 + offsetY,
+                frameWidth: preview.frameWidth,
+                frameHeight: preview.frameHeight,
+                displayWidth: preview.displayWidth,
+                displayHeight: preview.displayHeight,
+                left: preview.left,
+                top: preview.top,
             };
         };
 
