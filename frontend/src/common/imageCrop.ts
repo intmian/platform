@@ -237,23 +237,30 @@ function buildCropRectFromModal(
     const ratio = Math.max(1e-6, aspectWidth / aspectHeight);
     const scaleX = sourceWidth / displayWidth;
     const scaleY = sourceHeight / displayHeight;
-    const scale = (scaleX + scaleY) / 2;
 
-    const frameSourceWidth = Math.max(1, Math.round(cropResult.frameWidth * scale));
-    const frameSourceHeight = Math.max(1, Math.round(cropResult.frameHeight * scale));
-    const maxCropWidthByFrame = Math.max(1, Math.min(frameSourceWidth, Math.round(frameSourceHeight * ratio)));
-    const maxCropWidthBySource = Math.max(1, Math.min(sourceWidth, Math.round(sourceHeight * ratio)));
-    let cropWidth = Math.max(1, Math.min(maxCropWidthByFrame, maxCropWidthBySource));
-    let cropHeight = Math.max(1, Math.round(cropWidth / ratio));
-    if (cropHeight > sourceHeight) {
-        cropHeight = sourceHeight;
-        cropWidth = Math.max(1, Math.min(sourceWidth, Math.round(cropHeight * ratio)));
+    const leftF = Math.max(0, Math.min(sourceWidth, (-cropResult.left) * scaleX));
+    const topF = Math.max(0, Math.min(sourceHeight, (-cropResult.top) * scaleY));
+    const rightF = Math.max(0, Math.min(sourceWidth, (cropResult.frameWidth - cropResult.left) * scaleX));
+    const bottomF = Math.max(0, Math.min(sourceHeight, (cropResult.frameHeight - cropResult.top) * scaleY));
+
+    const boxX = Math.max(0, Math.min(sourceWidth - 1, Math.floor(leftF)));
+    const boxY = Math.max(0, Math.min(sourceHeight - 1, Math.floor(topF)));
+    const boxWidth = Math.max(1, Math.ceil(rightF) - boxX);
+    const boxHeight = Math.max(1, Math.ceil(bottomF) - boxY);
+
+    const maxCropWidthByBox = Math.max(1, Math.min(boxWidth, Math.floor(boxHeight * ratio)));
+    const maxCropWidthBySource = Math.max(1, Math.min(sourceWidth, Math.floor(sourceHeight * ratio)));
+    let cropWidth = Math.max(1, Math.min(maxCropWidthByBox, maxCropWidthBySource));
+    let cropHeight = Math.max(1, Math.floor(cropWidth / ratio));
+    if (cropHeight > boxHeight) {
+        cropHeight = boxHeight;
+        cropWidth = Math.max(1, Math.floor(cropHeight * ratio));
     }
 
-    const sx = Math.round((-cropResult.left) * scale);
-    const sy = Math.round((-cropResult.top) * scale);
-    const x = Math.max(0, Math.min(sourceWidth - cropWidth, sx));
-    const y = Math.max(0, Math.min(sourceHeight - cropHeight, sy));
+    const maxX = Math.max(0, sourceWidth - cropWidth);
+    const maxY = Math.max(0, sourceHeight - cropHeight);
+    const x = Math.max(0, Math.min(maxX, boxX));
+    const y = Math.max(0, Math.min(maxY, boxY));
     return {
         x,
         y,
@@ -394,14 +401,14 @@ function openInteractiveCropModal(
         const maxFrameWidth = Math.max(220, Math.floor(window.innerWidth * 0.84));
         const maxFrameHeight = Math.max(220, Math.floor(window.innerHeight * 0.58));
         let frameHeight = Math.max(220, preferredFrameHeight);
-        let frameWidth = Math.round(frameHeight * frameAspect);
+        let frameWidth = frameHeight * frameAspect;
         if (frameWidth > maxFrameWidth) {
             frameWidth = maxFrameWidth;
-            frameHeight = Math.round(frameWidth / frameAspect);
+            frameHeight = frameWidth / frameAspect;
         }
         if (frameHeight > maxFrameHeight) {
             frameHeight = maxFrameHeight;
-            frameWidth = Math.round(frameHeight * frameAspect);
+            frameWidth = frameHeight * frameAspect;
         }
         const sourceWidth = Math.max(1, image.naturalWidth || image.width);
         const sourceHeight = Math.max(1, image.naturalHeight || image.height);
@@ -455,8 +462,8 @@ function openInteractiveCropModal(
         previewImage.draggable = false;
 
         const getFrameSize = () => ({
-            width: Math.max(1, frame.clientWidth || frameWidth),
-            height: Math.max(1, frame.clientHeight || frameHeight),
+            width: Math.max(1, frame.getBoundingClientRect().width || frameWidth),
+            height: Math.max(1, frame.getBoundingClientRect().height || frameHeight),
         });
 
         const buildPreviewGeometry = () => {

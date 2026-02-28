@@ -1,6 +1,6 @@
 # Library Module Knowledge
 
-Last verified: 2026-02-27
+Last verified: 2026-02-28
 
 ## Entry dependency on Todone
 
@@ -37,6 +37,10 @@ Last verified: 2026-02-27
      - original file => `pictureAddress`
      - cropped detail => `pictureAddressDetail` (`quality=0.92`; PNG source converts to JPEG for detail)
      - cropped preview => `picturePreview` (`width=480`, `quality=0.85`, JPEG)
+   - detail drawer `更多 -> 图片库` provides "re-crop from original" action:
+     - source uses `pictureAddress`
+     - action opens interactive 2:3 crop again
+     - updates only `pictureAddressDetail` and `picturePreview` (keeps original URL unchanged)
    - for legacy records missing detail/preview:
      - UI falls back to `pictureAddress` with center-crop display.
      - frontend background job tries to generate missing files from original URL with center crop.

@@ -34,6 +34,7 @@ Last verified: 2026-02-28
    - open add/detail cover upload, enter crop modal
    - on mobile viewport, drag image with touch/pointer should move preview position
    - on desktop viewport, mouse drag should still work
+   - ratio-fit edge case: when source image ratio exactly equals crop ratio, confirm max selectable crop can cover full source (no 1-3px width/height loss caused by rounding).
 7. Cover upload strategy regression:
    - new upload should write 3 URLs:
      - `pictureAddress` (original)
@@ -42,6 +43,10 @@ Last verified: 2026-02-28
    - list/timeline should use preview URL; detail/share should use detail URL.
    - deleting cover should clear `pictureAddress`, `pictureAddressDetail`, `picturePreview` (and deprecated alias `pictureAddressPreview`).
    - detail toolbar should provide `更多(...) -> 图片库` entry and show all 3 URLs.
+   - in image library modal, click `从原图重裁并更新`:
+     - must re-open interactive crop modal with `pictureAddress` as source
+     - after confirm, `pictureAddressDetail` + `picturePreview` should change
+     - `pictureAddress` should remain unchanged
    - legacy item (missing detail/preview) should:
      - render with `pictureAddress` fallback
      - trigger background backfill and print console log indicating next-open visibility.

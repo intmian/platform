@@ -109,6 +109,31 @@ const LIBRARY_PLACEHOLDER_PADDING_WIDTH_RATIO = 0.086;
 const LIBRARY_PREVIEW_WIDTH = 480;
 type DetailLogFilter = 'all' | 'withoutNote';
 
+function guessExtFromMimeType(mimeType: string): string {
+    if (mimeType === 'image/png') return 'png';
+    if (mimeType === 'image/webp') return 'webp';
+    return 'jpg';
+}
+
+function buildImageFileName(url: string, mimeType: string, fallbackBase: string): string {
+    const ext = guessExtFromMimeType(mimeType);
+    try {
+        const parsed = new URL(url, window.location.href);
+        const tail = parsed.pathname.split('/').pop() || '';
+        const cleaned = tail.replace(/[^a-zA-Z0-9._-]+/g, '_');
+        if (cleaned) {
+            if (/\.[a-zA-Z0-9]+$/.test(cleaned)) {
+                return cleaned;
+            }
+            return `${cleaned}.${ext}`;
+        }
+    } catch {
+        // ignore malformed URL and fallback to generated name
+    }
+    const safeBase = fallbackBase.replace(/[^a-zA-Z0-9_-]+/g, '_') || 'library_cover';
+    return `${safeBase}.${ext}`;
+}
+
 function scoreDataToText(seq: string[], score?: LibraryScoreData): string {
     if (!score) {
         return seq[2];
@@ -275,6 +300,7 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
     const shareCardRef = useRef<HTMLDivElement | null>(null);
     const [showRawCoverModal, setShowRawCoverModal] = useState(false);
     const [rawCoverDimensions, setRawCoverDimensions] = useState<Record<string, string>>({});
+    const [reCroppingCover, setReCroppingCover] = useState(false);
     
     // 基本信息编辑表单
     const [form] = Form.useForm();
@@ -372,6 +398,75 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
         {label: 'pictureAddressDetail', url: detailCoverUrl},
         {label: 'picturePreview', url: previewCoverUrl},
     ]), [originalCoverUrl, detailCoverUrl, previewCoverUrl]);
+
+    const handleReCropFromOriginal = useCallback(async () => {
+        if (!localItem) {
+            return;
+        }
+        const originalUrl = localItem.extra.pictureAddress?.trim() || '';
+        if (!originalUrl) {
+            message.warning('pictureAddress is empty');
+            return;
+        }
+
+        setReCroppingCover(true);
+        try {
+            const response = await fetch(appendNoCacheParam(originalUrl), {
+                credentials: getImageFetchCredentials(originalUrl),
+                cache: 'no-store',
+            });
+            if (!response.ok) {
+                message.error(`load original failed: ${response.status}`);
+                return;
+            }
+            const blob = await response.blob();
+            if (!blob.type.startsWith('image/')) {
+                message.error('original file is not an image');
+                return;
+            }
+
+            const sourceFile = new File(
+                [blob],
+                buildImageFileName(originalUrl, blob.type, localItem.title || 'library_cover'),
+                {type: blob.type}
+            );
+            const processed = await prepareLibraryCoverFiles(sourceFile, {
+                previewWidth: LIBRARY_PREVIEW_WIDTH,
+            });
+            if (!processed) {
+                return;
+            }
+
+            const detailUploaded = await UploadFile(processed.detailFile);
+            if (!detailUploaded?.publishUrl) {
+                message.error('upload detail failed');
+                return;
+            }
+
+            const previewUploaded = await UploadFile(processed.previewFile);
+            if (!previewUploaded?.publishUrl) {
+                message.error('upload preview failed');
+                return;
+            }
+
+            const nextItem: LibraryItemFull = {
+                ...localItem,
+                extra: replaceCoverFields(localItem.extra, {
+                    original: originalUrl,
+                    detail: detailUploaded.publishUrl,
+                    preview: previewUploaded.publishUrl,
+                }),
+            };
+            setLocalItem(nextItem);
+            onSave(nextItem);
+            message.success('detail/preview updated from original');
+        } catch (error) {
+            console.error(error);
+            message.error('re-crop failed');
+        } finally {
+            setReCroppingCover(false);
+        }
+    }, [localItem, onSave, replaceCoverFields]);
 
     useEffect(() => {
         if (!showRawCoverModal) {
@@ -1901,6 +1996,16 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
                 open={showRawCoverModal}
                 onCancel={() => setShowRawCoverModal(false)}
                 footer={[
+                    <Button
+                        key="recrop"
+                        type="primary"
+                        icon={<ReloadOutlined/>}
+                        loading={reCroppingCover}
+                        disabled={!originalCoverUrl}
+                        onClick={handleReCropFromOriginal}
+                    >
+                        从原图重裁并更新
+                    </Button>,
                     <Button key="close" onClick={() => setShowRawCoverModal(false)}>
                         关闭
                     </Button>,
