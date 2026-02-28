@@ -7,6 +7,10 @@ Last verified: 2026-02-27
 1. Todone is the shared task platform module under `frontend/src/todone` + `backend/services/todone`.
 2. Group `Type=0` is normal task board; `Type=1` is library extension branch.
 3. When current work touches library-specific behavior (timeline/score/cover/category/share), load `ai-doc/library/*` in addition to this file.
+4. When current work touches backend internals (service startup/permission, sequence/cache/move correctness, DB model), also load:
+   - `ai-doc/backend/architecture.md`
+   - `ai-doc/backend/services.md`
+   - `ai-doc/backend/todone-core.md`
 
 ## Route and entry model
 

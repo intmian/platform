@@ -1,6 +1,6 @@
 # Shared Learning Workflow
 
-Last verified: 2026-02-25
+Last verified: 2026-02-27
 
 ## Goal
 
@@ -13,7 +13,9 @@ Last verified: 2026-02-25
 2. Classify task type:
    - feature/change -> load `shared/engineering-workflow.md`
    - bug/debug -> load `shared/engineering-workflow.md` + `shared/debug-workflow.md`
+   - backend/API/auth/config task -> load `backend/architecture.md` + `backend/services.md` (+ `backend/todone-core.md` when todone internals are involved)
    - domain-specific behavior -> load matched domain doc only (for example `library/*` or `note-mini/*`)
+   - uncertain case -> load `shared/doc-skill-map.md` and follow its loading matrix
 3. Build a minimal question list before reading code:
    - what is the target behavior
    - what is the current behavior path

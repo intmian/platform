@@ -5,12 +5,15 @@ Last verified: 2026-02-27
 ## Preconditions
 
 1. Shared contracts/routes/permissions follow `ai-doc/todone/knowledge.md`.
-2. Frontend dev URL should use `http://localhost:5173` (this runtime bound `::1:5173`; `127.0.0.1:5173` may fail).
-3. Health baseline for debug:
+2. Backend internals and API verification baseline follow:
+   - `ai-doc/backend/todone-core.md`
+   - `ai-doc/backend/testing.md`
+3. Frontend dev URL should use `http://localhost:5173` (this runtime bound `::1:5173`; `127.0.0.1:5173` may fail).
+4. Health baseline for debug:
    - frontend chain: use `POST /api/check` (Vite proxy strips `/api`)
    - direct backend chain: use `POST /check`
    - `GET /api/check` is not the health baseline
-4. Login baseline:
+5. Login baseline:
    - username: `admin`
    - password source: `backend/test/base_setting.toml` -> `admin_pwd`
 

@@ -10,32 +10,49 @@ Last verified: 2026-02-27
 2. Keep before/after evidence for behavior-impacting fixes and run at least one adjacent regression path.
 3. When stable facts change, update matching `ai-doc` files in the same turn.
 4. UI behavior-impacting fixes require interaction evidence (MCP pre/post); build/test output alone is insufficient.
-5. When splitting reusable components/hooks/utilities, keep them generic-first: avoid business-specific hardcoding, expose behavior through explicit props/options.
-6. Any frontend code change must include interaction verification that simulates a normal user flow and at least one adjacent regression path.
-7. UI changes must include screenshot evidence focused on the changed area and a nearby non-target area, with an explicit no-unintended-impact check.
+5. Backend behavior-impacting fixes require at least one direct API verification path (not only compile/lint).
+6. When splitting reusable components/hooks/utilities, keep them generic-first: avoid business-specific hardcoding, expose behavior through explicit props/options.
+7. Any frontend code change must include interaction verification that simulates a normal user flow and at least one adjacent regression path.
+8. UI changes must include screenshot evidence focused on the changed area and a nearby non-target area, with an explicit no-unintended-impact check.
 
 ## Loading rules
 
 1. Read this index first.
-2. Only load documents relevant to the current task.
+2. Choose docs in this order:
+   - workflow
+   - system layer (backend/frontend)
+   - domain module
 3. Prefer code verification over stale notes when conflicts appear.
 4. After confirming new behavior from code or real interaction, update the matched doc.
 5. Record `Last verified` date on every updated document.
 
 ## Routing
 
-1. Cross-module engineering default workflow: `shared/engineering-workflow.md`
-2. Cross-module debugging specialized workflow: `shared/debug-workflow.md`
-3. Shared learning/loading workflow: `shared/learning-workflow.md`
-4. Shared reusable utilities/process index: `shared/reusable-tools.md`
-5. Todone shared module logic: `todone/knowledge.md`
-6. Todone testing matrix: `todone/testing.md`
-7. Todone interactive UI map: `todone/ui-locator.md`
-8. Library domain logic: `library/knowledge.md`
-9. Library testing matrix: `library/testing.md`
-10. Library interactive UI map: `library/ui-locator.md`
-11. Note mini domain logic: `note-mini/knowledge.md`
-12. Note mini testing workflow: `note-mini/testing.md`
+### Step 1: pick workflow docs
+
+1. Default engineering: `shared/engineering-workflow.md`
+2. Debug-heavy tasks: add `shared/debug-workflow.md`
+3. Learning/minimal-loading strategy: `shared/learning-workflow.md`
+4. Reusable utility/process index: `shared/reusable-tools.md`
+5. Doc+skill loading strategy: `shared/doc-skill-map.md`
+
+### Step 2: pick backend system docs when task touches API/service/data
+
+1. Backend architecture and gateway/auth/config: `backend/architecture.md`
+2. Service catalog and permission/command matrix: `backend/services.md`
+3. Todone backend core logic (tree/cache/sequence/move): `backend/todone-core.md`
+4. Backend verification baseline: `backend/testing.md`
+
+### Step 3: pick domain docs
+
+1. Todone shared module logic: `todone/knowledge.md`
+2. Todone testing matrix: `todone/testing.md`
+3. Todone interactive UI map: `todone/ui-locator.md`
+4. Library domain logic: `library/knowledge.md`
+5. Library testing matrix: `library/testing.md`
+6. Library interactive UI map: `library/ui-locator.md`
+7. Note mini domain logic: `note-mini/knowledge.md`
+8. Note mini testing workflow: `note-mini/testing.md`
 
 ## Completion gate
 

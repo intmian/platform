@@ -7,6 +7,20 @@ Last verified: 2026-02-27
 1. Standard safe test flow is documented in `note-mini/testing.md`.
 2. Preferred mode is virtual URL/KEY + local mock endpoint, so formal memo data is not polluted during feature tests.
 
+## Backend boundary
+
+1. `note_mini` has no dedicated first-party backend service module in this repo.
+2. It depends on platform gateway/config APIs for settings and utility calls:
+   - `POST /cfg/note/get`
+   - `POST /cfg/note/set`
+   - `POST /misc/gpt-rewrite`
+   - `POST /misc/r2-presigned-url` (used by shared upload helper)
+3. Real memo submit target is external memos API (`POST {url}/api/v1/memos`), not `/service/note/*`.
+4. If task involves auth/config/permission failures around note-mini, additionally load:
+   - `ai-doc/backend/architecture.md`
+   - `ai-doc/backend/services.md`
+   - `ai-doc/backend/testing.md`
+
 ## User-side capabilities
 
 1. Route is `/note_mini`, component entry is `frontend/src/misc/memos.tsx`.
