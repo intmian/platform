@@ -19,6 +19,7 @@ import {useStateWithLocal} from "../common/hooksv2";
 import {TaskMovePanel} from "./TaskDetail";
 import {useSortable} from "@dnd-kit/sortable";
 import {CSS} from "@dnd-kit/utilities";
+import {useDroppable} from "@dnd-kit/core";
 
 enum Status {
     // 以下状态为未开始 started == false
@@ -350,6 +351,7 @@ export interface TaskProps {
 }
 
 export function Task(props: TaskProps) {
+    const subGroupID = props.addr.getLastSubGroupID();
     const {
         attributes,
         listeners,
@@ -357,7 +359,24 @@ export function Task(props: TaskProps) {
         transform,
         transition,
         isDragging
-    } = useSortable({id: props.task.ID});
+    } = useSortable({
+        id: `task-${props.task.ID}`,
+        data: {
+            type: 'task',
+            taskId: props.task.ID,
+            subGroupID,
+            parentID: props.task.ParentID,
+        },
+    });
+
+    const {setNodeRef: setChildrenDropRef, isOver: isOverChildrenDrop} = useDroppable({
+        id: `task-children-${props.task.ID}`,
+        data: {
+            type: 'task-children',
+            taskId: props.task.ID,
+            subGroupID,
+        },
+    });
 
     const style = {
         transform: CSS.Transform.toString(transform),
@@ -666,6 +685,10 @@ export function Task(props: TaskProps) {
                      borderRadius: '4px',
                      transition: 'all 0.2s',
                      color: 'rgba(0, 0, 0, 0.45)', // Ant Design secondary text color
+                     touchAction: 'none',
+                     userSelect: 'none',
+                     WebkitUserSelect: 'none',
+                     WebkitTouchCallout: 'none',
                  }}
                  onMouseEnter={(e) => {
                      e.currentTarget.style.backgroundColor = 'rgba(0, 0, 0, 0.04)'; // Ant Design hover bg
@@ -735,18 +758,29 @@ export function Task(props: TaskProps) {
             <TaskTags task={props.task}/>
             <TaskWaitAndTime status={status} task={props.task}/>
         </Row>
-        {showSubTask && <Row>
-            <TaskList
-                addr={thisAddr}
-                indexSmallFirst={props.indexSmallFirst}
-                loadingTree={props.loadingTree}
-                refreshTree={props.refreshTree}
-                tree={props.tree}
-                level={props.level}
-                onSelectTask={props.onSelectTask}
-                selectMode={props.selectMode}
-                onSelModeSelect={props.onSelModeSelect}
-            />
+        {showSubTask && <Row style={{width: '100%'}}>
+            <div
+                ref={setChildrenDropRef}
+                style={{
+                    width: '100%',
+                    borderRadius: 6,
+                    outline: isOverChildrenDrop ? '2px dashed #1677ff' : undefined,
+                    outlineOffset: isOverChildrenDrop ? 2 : undefined,
+                    transition: 'outline 120ms ease',
+                }}
+            >
+                <TaskList
+                    addr={thisAddr}
+                    indexSmallFirst={props.indexSmallFirst}
+                    loadingTree={props.loadingTree}
+                    refreshTree={props.refreshTree}
+                    tree={props.tree}
+                    level={props.level}
+                    onSelectTask={props.onSelectTask}
+                    selectMode={props.selectMode}
+                    onSelModeSelect={props.onSelModeSelect}
+                />
+            </div>
         </Row>
         }
     </div>

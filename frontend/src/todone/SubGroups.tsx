@@ -8,8 +8,6 @@ import {
     sendCreateSubGroup,
     sendDelSubGroup,
     sendGetTasks,
-    TaskMoveReq,
-    sendTaskMove
 } from "./net/send_back";
 import {Addr} from "./addr";
 import {PSubGroup, PTask} from "./net/protocal";
@@ -30,16 +28,9 @@ import {lowLeverShadow} from "../css/shadow";
 import TaskTree from "./TaskTree";
 import {TaskList} from "./TaskList";
 import {useStateWithLocal} from "../common/hooksv2";
-import {
-    DndContext,
-    DragEndEvent,
-    closestCenter,
-    PointerSensor,
-    useSensor,
-    useSensors,
-} from '@dnd-kit/core';
 import './mist.css';
 import {TaskMovePanel} from "./TaskDetail";
+import {useDroppable} from "@dnd-kit/core";
 
 interface SubGroupAddPanelProps {
     userID: string
@@ -169,6 +160,8 @@ interface SubGroupProps {
     subGroup: PSubGroup
     onDelete: (subGroup: PSubGroup) => void;
     onSelectTask: (addr: Addr, pTask: PTask, refreshApi: () => void, tree: TaskTree) => void;
+    moving?: boolean
+    externalRefreshToken?: number
 }
 
 export function SubGroup(props: SubGroupProps) {
@@ -180,8 +173,6 @@ export function SubGroup(props: SubGroupProps) {
     const [indexSmallFirst, setIndexSmallFirst] = useStateWithLocal("todone:subgroup:indexsmallfirst:" + subGroupAddr.toString(), true); // 是否按Index升序排列
     const [loading, setLoading] = useState(false); // 是否正在加载数据
     const [editOpen, setEditOpen] = useState(false); // 是否显示修改弹窗
-    const [loadingMove, setLoadingMove] = useState(false); // 移动中
-    const [refreshTag, setRefreshTag] = useState(0); // 刷新标记
 
     const [selectMode, setSelectMode] = useState(false); // 是否选择模式
     const [selectModeMove, setSelectModeMove] = useState(false); // 是否选择模式移动
@@ -190,68 +181,13 @@ export function SubGroup(props: SubGroupProps) {
     // 目前先采用每个分组一个任务树的方式，方便移动等逻辑处理，一般来说加载出来的数据任务数量不会太多（不考虑已完成的情况下）,子任务也一起加载，跨分组移动可能会出现刷新问题，但是问题不大，不再采用懒加载。
     const [taskTree, setTaskTree] = useState<TaskTree>(new TaskTree()); // 任务树
 
-    const sensors = useSensors(
-        useSensor(PointerSensor, {
-            activationConstraint: {
-                distance: 8,
-            },
-        })
-    );
-
-    const handleDragEnd = (event: DragEndEvent) => {
-        const {active, over, delta} = event;
-        if (!over || active.id === over.id) return;
-
-        const activeId = Number(active.id);
-        const overId = Number(over.id);
-
-        setLoadingMove(true);
-
-        const position = delta.y > 0 ? 'after' : 'before';
-
-        // 乐观更新
-        const newTree = taskTree.copy();
-        newTree.moveTaskTo(activeId, overId, position);
-        setTaskTree(newTree);
-
-        // 获取目标任务及其父节点信息，用于接口参数
-        // 注意：要在新树中查找，因为结构已经改变
-        // 但其实我们需要的是相对于 overId 的位置。如果 insert 'after' overId, ParentID 就是 overId 的 parent.
-        // 如果 findParent(overId) 为 null, 说明 overId 是 root, ParentID = 0.
-        let trgParentId = 0;
-        const parentNode = newTree.findParent(overId);
-        if (parentNode) {
-            trgParentId = parentNode.task.ID;
-        }
-
-        const req: TaskMoveReq = {
-            After: delta.y > 0,
-            DirID: props.groupAddr.getParentUnit().ID,
-            GroupID: props.groupAddr.getLastUnit().ID,
-            SubGroupID: props.subGroup.ID,
-            TaskIDs: [activeId],
-
-            TrgDir: props.groupAddr.getParentUnit().ID,
-            TrgGroup: props.groupAddr.getLastUnit().ID,
-            TrgSubGroup: props.subGroup.ID,
-
-            TrgParentID: trgParentId,
-            TrgTaskID: overId,
-
-            UserID: props.groupAddr.userID
-        };
-
-        sendTaskMove(req, (ret) => {
-            if (ret.ok) {
-                // message.success("移动成功");
-                setRefreshTag(rt => rt + 1);
-            } else {
-                message.error("移动失败");
-                setRefreshTag(rt => rt + 1); // 失败也刷新以回滚
-            }
-            setLoadingMove(false);
-        });
-    };
+    const {setNodeRef: setSubGroupDropRef, isOver: isSubGroupOver} = useDroppable({
+        id: `subgroup-drop-${props.subGroup.ID}`,
+        data: {
+            type: 'subgroup',
+            subGroupID: props.subGroup.ID,
+        },
+    });
 
     useEffect(() => {
         const req: GetTasksReq = {
@@ -275,7 +211,7 @@ export function SubGroup(props: SubGroupProps) {
             }
             setLoading(false);
         })
-    }, [containDone, refreshTag]);
+    }, [containDone, props.externalRefreshToken]);
 
     return <div
         style={{
@@ -287,7 +223,7 @@ export function SubGroup(props: SubGroupProps) {
             position: 'relative'
         }}
     >
-        {loadingMove && (
+        {props.moving && (
             <div className="mist-container">
                 <div className="mist-effect"></div>
                 <div className="mist-content">
@@ -438,11 +374,14 @@ export function SubGroup(props: SubGroupProps) {
                 onCancel={() => setEditOpen(false)}
             />
         }
-        <DndContext
-            sensors={sensors}
-            collisionDetection={closestCenter}
-            // onDragStart={() => {}} // Optional
-            onDragEnd={handleDragEnd}
+        <div
+            ref={setSubGroupDropRef}
+            style={{
+                borderRadius: 6,
+                outline: isSubGroupOver ? '2px dashed #1677ff' : undefined,
+                outlineOffset: isSubGroupOver ? 2 : undefined,
+                transition: 'outline 120ms ease',
+            }}
         >
             {open ? <TaskList
                 level={0}
@@ -463,6 +402,6 @@ export function SubGroup(props: SubGroupProps) {
                     }
                 }}
             /> : null}
-        </DndContext>
+        </div>
     </div>
 }

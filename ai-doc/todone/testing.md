@@ -1,6 +1,6 @@
 # Todone Module Testing
 
-Last verified: 2026-02-27
+Last verified: 2026-02-28
 
 ## Preconditions
 
@@ -52,6 +52,17 @@ Last verified: 2026-02-27
 10. Directory add modal:
    - from folder `更多 -> 添加`
    - verify fields: `标题`、`备注`、`是否为任务组` switch、`任务组类型(普通/图书馆)`
+11. Drag move (same group, cross-subgroup):
+   - drag task from subgroup A to subgroup B task area
+   - expect `POST /api/service/todone/taskMove`
+   - expect source and target subgroup both refresh (`getTasks` for both)
+12. Drag to empty subtask list:
+   - expand a task with zero children (shows `---添加你的第一个任务吧🥰---`)
+   - drag another task into that empty subtask area
+   - expect `taskMove` called with child target semantics and dropped status on `task-children-*`
+13. Mobile drag-handle interaction:
+   - on mobile viewport, inspect drag handle style
+   - expect `touch-action: none` and `user-select: none` to reduce long-press selection interference
 
 ## Adjacent regression path
 
@@ -73,6 +84,12 @@ Last verified: 2026-02-27
    - `/api/service/todone/getSubGroup`
    - `/api/service/todone/getTasks`
 3. Right-click task menu and subgroup/directory menus all rendered as expected.
+
+## Interaction evidence summary (verified via interaction, 2026-02-28)
+
+1. Cross-subgroup drag produced `POST /api/service/todone/taskMove` and subsequent dual subgroup `getTasks` refresh.
+2. Drag to empty subtask list produced dropped status `task-children-<taskID>` and `POST /api/service/todone/taskMove`.
+3. Mobile viewport computed style for `.drag-handle` is `touchAction=none`, `userSelect=none`.
 
 ## Known non-blocking console messages
 

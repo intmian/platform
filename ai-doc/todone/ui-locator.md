@@ -1,6 +1,6 @@
 # Todone UI Locator Map
 
-Last verified: 2026-02-27 (verified via interaction + code)
+Last verified: 2026-02-28 (verified via interaction + code)
 
 ## Entry path
 
@@ -36,6 +36,10 @@ Last verified: 2026-02-27 (verified via interaction + code)
    - right-click opens task context menu
 4. Subtask toggle:
    - right-side small button with `plus-circle` / `minus-circle` / `down`
+5. Drag drop targets:
+   - subgroup list root droppable id: `subgroup-drop-<subGroupID>`
+   - task card droppable/sortable id: `task-<taskID>`
+   - expanded child-list droppable id: `task-children-<taskID>`
 
 ## Task context menu (right-click title)
 

@@ -266,7 +266,7 @@ export function TaskList({
         />
     </div>
     let show: ReactNode;
-    const itemIds = useMemo(() => taskShow.map(t => t.ID), [taskShow]);
+    const itemIds = useMemo(() => taskShow.map(t => `task-${t.ID}`), [taskShow]);
 
     if (loadingTree) {
         show = <List

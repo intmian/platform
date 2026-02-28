@@ -1,6 +1,6 @@
 # Todone Module Knowledge
 
-Last verified: 2026-02-27
+Last verified: 2026-02-28
 
 ## Scope and loading boundary
 
@@ -62,7 +62,10 @@ Last verified: 2026-02-27
    - uses `createTask`.
 9. Task detail (`TaskDetail`) edits title/note/time/status/type and saves via `changeTask`; deletes via `delTask`; move uses `taskMove`.
 10. Row-level context menu supports copy content/path, flag tag (`[system]flag` via `taskAddTag/taskDelTag`), move, delete.
-11. Drag sorting and bulk move both call `taskMove`; success path currently triggers refresh/reload to resync server order.
+11. Drag sorting and bulk move both call `taskMove`.
+12. Drag-and-drop now supports cross-subgroup move in the same group page (single shared `DndContext` in `Group.tsx`), and refreshes both source/target subgroup task lists after move.
+13. Dragging onto an expanded task's empty subtask list targets `task-children-*` droppable area and moves task as that task's child (`TrgParentID=targetTaskID`, `TrgTaskID=0`).
+14. Mobile drag handle (`.drag-handle`) enforces `touch-action: none` + `user-select: none` to avoid long-press text selection interference.
 
 ## Backend RPC contract (prefix `/service/todone/`)
 
