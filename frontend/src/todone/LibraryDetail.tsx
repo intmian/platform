@@ -1935,10 +1935,11 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
                                     src={entry.url}
                                     alt={entry.label}
                                     style={{
-                                        width: 'auto',
-                                        height: 'auto',
-                                        maxWidth: 'none',
-                                        maxHeight: 'none',
+                                        width: '100%',
+                                        height: '100px',
+                                        maxWidth: '100%',
+                                        maxHeight: '100px',
+                                        objectFit: 'fill',
                                         display: 'block',
                                         borderRadius: 4,
                                     }}

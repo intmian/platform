@@ -1,6 +1,6 @@
 # Library Module Testing
 
-Last verified: 2026-02-27
+Last verified: 2026-02-28
 
 ## Preconditions
 
@@ -46,7 +46,7 @@ Last verified: 2026-02-27
      - render with `pictureAddress` fallback
      - trigger background backfill and print console log indicating next-open visibility.
 8. Mobile layout regression:
-   - photo wall should stay at fixed 3 columns on mobile viewport.
+   - photo wall should stay at fixed 2 columns on mobile viewport.
    - opening detail drawer on mobile should not show right-side blank strip / horizontal overflow.
 
 ## Filters and sort checks
