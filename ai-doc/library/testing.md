@@ -1,6 +1,6 @@
 # Library Module Testing
 
-Last verified: 2026-02-28
+Last verified: 2026-03-04 (matrix updated, TODO-verify via interaction)
 
 ## Preconditions
 
@@ -53,6 +53,9 @@ Last verified: 2026-02-28
 8. Mobile layout regression:
    - photo wall should stay at fixed 2 columns on mobile viewport.
    - opening detail drawer on mobile should not show right-side blank strip / horizontal overflow.
+9. Export content regression:
+   - in detail `分享预览`, exported card bottom section should include main evaluation text (main score log comment).
+   - when item current status is `DONE`, share export should show date range as `YYYY-MM-DD - YYYY-MM-DD` without prefix text.
 
 ## Filters and sort checks
 

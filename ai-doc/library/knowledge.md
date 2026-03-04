@@ -1,6 +1,6 @@
 # Library Module Knowledge
 
-Last verified: 2026-02-28
+Last verified: 2026-03-04 (code verified, TODO-verify via interaction)
 
 ## Entry dependency on Todone
 
@@ -109,6 +109,11 @@ Timeline rules:
 2. `timelineCutoff` log itself is hidden.
 3. Logs before cutoff are excluded.
 4. Legacy `note: 添加到库` is normalized to `addToLibrary`.
+
+Share export rules:
+
+1. Library detail `分享预览` export card must include main evaluation text at the bottom section (from main score log `comment`, with legacy fallback).
+2. When current status is `DONE`, share export card must include current round date range in `YYYY-MM-DD - YYYY-MM-DD` format (without `开始/结束` prefix).
 
 ## Common failure signatures
 

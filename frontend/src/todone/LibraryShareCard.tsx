@@ -1,10 +1,10 @@
 import React, {useMemo} from 'react';
 import {Card, Col, Divider, Row, Space, Tag, Typography} from 'antd';
-import {LibraryExtra, LibraryScoreData} from './net/protocal';
+import {LibraryExtra, LibraryItemStatus, LibraryScoreData} from './net/protocal';
 import TextRate from '../library/TextRate';
 import Paragraphs from '../common/Paragraphs';
 import {useIsMobile} from '../common/hooksv2';
-import {getComplexScoreSnapshot, getLibraryCoverDisplayUrl, getMainScore} from './libraryUtil';
+import {formatDate, getComplexScoreSnapshot, getCurrentStatus, getLibraryCoverDisplayUrl, getMainScore} from './libraryUtil';
 
 const {Title, Text} = Typography;
 
@@ -62,10 +62,31 @@ const LibraryShareCard: React.FC<LibraryShareCardProps> = ({title, extra, editab
         const sign = score.scorePlus ? "+" : score.scoreSub ? "-" : "";
         return `${SEQ_MAIN[index]}${sign}`;
     }, [complexMainScore]);
+    const mainCommentText = useMemo(() => {
+        const logComment = (complexMainScore?.comment || '').trim();
+        if (logComment) {
+            return logComment;
+        }
+        return (extra.comment || '').trim();
+    }, [complexMainScore, extra.comment]);
     const objText = useMemo(() => scoreDataToText(SEQ_OBJ, scoreSnapshot.objScore), [scoreSnapshot.objScore]);
     const subText = useMemo(() => scoreDataToText(SEQ_SUBJ, scoreSnapshot.subScore), [scoreSnapshot.subScore]);
     const innoText = useMemo(() => scoreDataToText(SEQ_INNO, scoreSnapshot.innovateScore), [scoreSnapshot.innovateScore]);
-    const legacyOverallComment = (extra.comment || '').trim();
+    const currentStatus = useMemo(() => getCurrentStatus(extra), [extra]);
+    const currentRound = useMemo(() => extra.rounds[extra.currentRound], [extra]);
+    const completedRangeText = useMemo(() => {
+        if (currentStatus !== LibraryItemStatus.DONE) {
+            return '';
+        }
+        if (!currentRound?.startTime) {
+            return '';
+        }
+        const endTime = currentRound.endTime;
+        if (!endTime) {
+            return '';
+        }
+        return `${formatDate(currentRound.startTime)} - ${formatDate(endTime)}`;
+    }, [currentRound, currentStatus]);
 
     const handleMainScoreChange = (text: string) => {
         if (!onChange) return;
@@ -214,11 +235,20 @@ const LibraryShareCard: React.FC<LibraryShareCardProps> = ({title, extra, editab
                                 fontSize2={fontSizeMain2}
                             />
                         </div>
+                        <div style={{display: 'flex', justifyContent: 'flex-end', width: '100%', marginTop: 8}}>
+                            <Space size={6} wrap style={{justifyContent: 'flex-end'}}>
+                                {completedRangeText ? (
+                                    <span style={{color: '#000000', fontSize: 13, lineHeight: 1.4}}>
+                                        {completedRangeText}
+                                    </span>
+                                ) : null}
+                            </Space>
+                        </div>
                     </div>
                 </Col>
             </Row>
 
-            {isComplexMode || legacyOverallComment ? (
+            {isComplexMode || mainCommentText ? (
                 <Space direction="vertical" size={10} style={{width: '100%', marginTop: 10}}>
                     <Divider style={{margin: '2px 0 6px 0'}}/>
 
@@ -248,10 +278,10 @@ const LibraryShareCard: React.FC<LibraryShareCardProps> = ({title, extra, editab
                         </>
                     ) : null}
 
-                    {legacyOverallComment ? (
+                    {mainCommentText ? (
                         <div>
                             <Paragraphs type="secondary" style={{fontSize: 12}}>
-                                {legacyOverallComment}
+                                {mainCommentText}
                             </Paragraphs>
                         </div>
                     ) : null}
