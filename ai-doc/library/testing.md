@@ -1,6 +1,6 @@
 # Library Module Testing
 
-Last verified: 2026-03-04 (matrix updated, TODO-verify via interaction)
+Last verified: 2026-03-05 (matrix updated, TODO-verify via interaction)
 
 ## Preconditions
 
@@ -64,11 +64,28 @@ Last verified: 2026-03-04 (matrix updated, TODO-verify via interaction)
 3. Category filter (`all`, specific, `_uncategorized_`).
 4. Search over title/author/category.
 5. Sort modes (`default/index/createdAt/updatedAt/title/score`).
-6. `default` sort regression:
+6. URL sync for list filters:
+   - set category/status/todo reason/sort/search and verify URL query changes accordingly.
+   - refresh page and verify filter state restores from URL.
+   - for empty status selection verify `library_statuses=_empty_`.
+7. `default` sort regression:
    - same status (for example `WAIT`) + different categories
    - mark item A favorite
    - edit item B to refresh `updatedAt`
    - expect A still ranked before B.
+
+## Display options checks
+
+1. Main-page display options only include:
+   - `显示评分`
+   - `显示分类`
+2. Verify removed options (`显示作者/显示开始时间/显示更新时间`) no longer appear in desktop and mobile entry menus.
+
+## Detail URL checks
+
+1. Open any item detail from card list and verify URL includes `library_detail=<taskId>`.
+2. Close detail and verify `library_detail` is removed.
+3. Direct-open page with `library_detail=<taskId>` and verify detail auto-opens after list data loaded.
 
 ## Status and timeline checks
 

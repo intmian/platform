@@ -30,7 +30,6 @@ import {
     SettingOutlined,
     SortAscendingOutlined,
     StarFilled,
-    StarOutlined,
     UploadOutlined,
 } from '@ant-design/icons';
 import {Addr} from './addr';
@@ -88,6 +87,16 @@ import './Library.css';
 // 排序选项
 type SortOption = 'default' | 'index' | 'createdAt' | 'updatedAt' | 'title' | 'score';
 type StatusFilterOption = LibraryItemStatus | 'none' | typeof LIBRARY_WAIT_EXPIRED_FILTER;
+type DisplayOptionKey = 'showScore' | 'showCategory';
+
+interface LibraryUrlState {
+    category: string;
+    statuses: StatusFilterOption[];
+    todoReason: string;
+    sortBy: SortOption;
+    searchText: string;
+    detailTaskId: number | null;
+}
 
 const STATUS_FILTER_OPTIONS: StatusFilterOption[] = [
     LibraryItemStatus.DOING,
@@ -104,6 +113,20 @@ const DEFAULT_STATUS_FILTER_OPTIONS: StatusFilterOption[] = [
     LibraryItemStatus.DOING,
     LibraryItemStatus.WAIT,
 ];
+const DEFAULT_DISPLAY_OPTIONS: Record<DisplayOptionKey, boolean> = {
+    showScore: true,
+    showCategory: true,
+};
+const SORT_OPTIONS: SortOption[] = ['default', 'index', 'createdAt', 'updatedAt', 'title', 'score'];
+const URL_STATE_PARAM_KEYS = {
+    category: 'library_category',
+    statuses: 'library_statuses',
+    todoReason: 'library_todo_reason',
+    sortBy: 'library_sort',
+    searchText: 'library_search',
+    detailTaskId: 'library_detail',
+} as const;
+const URL_STATUS_EMPTY_TOKEN = '_empty_';
 
 const STATUS_FILTER_LABELS: Record<string, string> = {
     [LibraryItemStatus.DOING]: '进行中',
@@ -185,6 +208,67 @@ async function fetchImageAsFile(url: string, fallbackName: string): Promise<File
     } catch {
         return null;
     }
+}
+
+function normalizeStatusFilterOptions(options: StatusFilterOption[]): StatusFilterOption[] {
+    const selected = new Set(options.map((option) => String(option)));
+    return STATUS_FILTER_OPTIONS.filter((option) => selected.has(String(option)));
+}
+
+function areStatusFilterOptionsEqual(a: StatusFilterOption[], b: StatusFilterOption[]): boolean {
+    if (a.length !== b.length) {
+        return false;
+    }
+    return a.every((item, index) => String(item) === String(b[index]));
+}
+
+function parseStatusFilterParam(rawValue: string | null): StatusFilterOption[] {
+    if (!rawValue) {
+        return [...DEFAULT_STATUS_FILTER_OPTIONS];
+    }
+    if (rawValue === URL_STATUS_EMPTY_TOKEN) {
+        return [];
+    }
+    const selected = new Set(
+        rawValue
+            .split(',')
+            .map((token) => token.trim())
+            .filter(Boolean)
+    );
+    const parsed = STATUS_FILTER_OPTIONS.filter((option) => selected.has(String(option)));
+    return parsed.length > 0 ? parsed : [...DEFAULT_STATUS_FILTER_OPTIONS];
+}
+
+function parseSortParam(rawValue: string | null): SortOption {
+    if (rawValue && SORT_OPTIONS.includes(rawValue as SortOption)) {
+        return rawValue as SortOption;
+    }
+    return 'default';
+}
+
+function parseDetailTaskIdParam(rawValue: string | null): number | null {
+    if (!rawValue) {
+        return null;
+    }
+    const value = Number(rawValue);
+    if (!Number.isInteger(value) || value <= 0) {
+        return null;
+    }
+    return value;
+}
+
+function readLibraryUrlState(): LibraryUrlState {
+    const params = new URLSearchParams(window.location.search);
+    const category = params.get(URL_STATE_PARAM_KEYS.category)?.trim() || 'all';
+    const todoReason = params.get(URL_STATE_PARAM_KEYS.todoReason)?.trim() || 'all';
+    return {
+        category,
+        statuses: parseStatusFilterParam(params.get(URL_STATE_PARAM_KEYS.statuses)),
+        todoReason,
+        sortBy: parseSortParam(params.get(URL_STATE_PARAM_KEYS.sortBy)),
+        searchText: params.get(URL_STATE_PARAM_KEYS.searchText) || '',
+        detailTaskId: parseDetailTaskIdParam(params.get(URL_STATE_PARAM_KEYS.detailTaskId)),
+    };
 }
 
 function AutoScrollTitle({text}: {text: string}) {
@@ -297,6 +381,8 @@ function AutoScrollTitle({text}: {text: string}) {
 
 export default function Library({addr, groupTitle}: LibraryProps) {
     const isMobile = useIsMobile();
+    const initialUrlStateRef = useRef<LibraryUrlState>(readLibraryUrlState());
+    const pendingDetailTaskIdFromUrlRef = useRef<number | null>(initialUrlStateRef.current.detailTaskId);
     
     // 数据状态
     const [mainSubGroup, setMainSubGroup] = useState<PSubGroup | null>(null);
@@ -304,14 +390,14 @@ export default function Library({addr, groupTitle}: LibraryProps) {
     const [loading, setLoading] = useState(false);
     
     // 当前选中的分类 (extra.category)
-    const [selectedCategory, setSelectedCategory] = useState<string>('all');
+    const [selectedCategory, setSelectedCategory] = useState<string>(initialUrlStateRef.current.category);
     
     // 筛选和排序
-    const [selectedStatuses, setSelectedStatuses] = useState<StatusFilterOption[]>(DEFAULT_STATUS_FILTER_OPTIONS);
+    const [selectedStatuses, setSelectedStatuses] = useState<StatusFilterOption[]>(initialUrlStateRef.current.statuses);
     const [statusFilterOpen, setStatusFilterOpen] = useState(false);
-    const [todoReasonFilter, setTodoReasonFilter] = useState<string>('all');
-    const [sortBy, setSortBy] = useState<SortOption>('default');
-    const [searchText, setSearchText] = useState('');
+    const [todoReasonFilter, setTodoReasonFilter] = useState<string>(initialUrlStateRef.current.todoReason);
+    const [sortBy, setSortBy] = useState<SortOption>(initialUrlStateRef.current.sortBy);
+    const [searchText, setSearchText] = useState(initialUrlStateRef.current.searchText);
 
     // 列表状态切换（等待/搁置可输入原因）
     const [showStatusReasonModal, setShowStatusReasonModal] = useState(false);
@@ -399,13 +485,7 @@ export default function Library({addr, groupTitle}: LibraryProps) {
     
     // 显示选项
     const [showDisplayOptions, setShowDisplayOptions] = useState(false);
-    const [displayOptions, setDisplayOptions] = useState({
-        showScore: true,        // 显示评分
-        showCategory: true,     // 显示分类（仅在全部分类时有效）
-        showUpdateTime: false,  // 显示更新时间
-        showStartTime: false,   // 显示开始时间
-        showAuthor: false,      // 显示作者
-    });
+    const [displayOptions, setDisplayOptions] = useState(DEFAULT_DISPLAY_OPTIONS);
     const [waitExpiredTick, setWaitExpiredTick] = useState(0);
     const listPerfRef = useRef({filterComputeMs: 0, filterComputeDoneAt: 0});
     const compatProcessedIdsRef = useRef<Set<number>>(new Set());
@@ -506,6 +586,12 @@ export default function Library({addr, groupTitle}: LibraryProps) {
         }
     }, [selectedStatuses]);
 
+    useEffect(() => {
+        if (selectedCategory === '') {
+            setSelectedCategory('all');
+        }
+    }, [selectedCategory]);
+
     // 转换为带派生元数据的条目列表（单条仅一次日志扫描）
     const allItems: LibraryItemWithDerived[] = useMemo(() => {
         const nowMs = Date.now();
@@ -529,6 +615,83 @@ export default function Library({addr, groupTitle}: LibraryProps) {
         });
         return result;
     }, [tasks]);
+
+    useEffect(() => {
+        if (!mainSubGroup || loading) {
+            return;
+        }
+        const pendingTaskId = pendingDetailTaskIdFromUrlRef.current;
+        if (!pendingTaskId) {
+            return;
+        }
+        const pendingItem = allItems.find((item) => item.taskId === pendingTaskId);
+        if (pendingItem) {
+            setDetailItem(pendingItem);
+            setShowDetail(true);
+        }
+        pendingDetailTaskIdFromUrlRef.current = null;
+    }, [allItems, loading, mainSubGroup]);
+
+    useEffect(() => {
+        const url = new URL(window.location.href);
+        const params = url.searchParams;
+        const normalizedStatuses = normalizeStatusFilterOptions(selectedStatuses);
+        const isDefaultStatuses = areStatusFilterOptionsEqual(normalizedStatuses, DEFAULT_STATUS_FILTER_OPTIONS);
+        if (normalizedStatuses.length === 0) {
+            params.set(URL_STATE_PARAM_KEYS.statuses, URL_STATUS_EMPTY_TOKEN);
+        } else if (isDefaultStatuses) {
+            params.delete(URL_STATE_PARAM_KEYS.statuses);
+        } else {
+            params.set(
+                URL_STATE_PARAM_KEYS.statuses,
+                normalizedStatuses.map((status) => String(status)).join(',')
+            );
+        }
+
+        if (selectedCategory === 'all') {
+            params.delete(URL_STATE_PARAM_KEYS.category);
+        } else {
+            params.set(URL_STATE_PARAM_KEYS.category, selectedCategory);
+        }
+
+        if (
+            normalizedStatuses.length === 1
+            && normalizedStatuses[0] === LibraryItemStatus.TODO
+            && todoReasonFilter !== 'all'
+        ) {
+            params.set(URL_STATE_PARAM_KEYS.todoReason, todoReasonFilter);
+        } else {
+            params.delete(URL_STATE_PARAM_KEYS.todoReason);
+        }
+
+        if (sortBy === 'default') {
+            params.delete(URL_STATE_PARAM_KEYS.sortBy);
+        } else {
+            params.set(URL_STATE_PARAM_KEYS.sortBy, sortBy);
+        }
+
+        if (searchText.trim()) {
+            params.set(URL_STATE_PARAM_KEYS.searchText, searchText);
+        } else {
+            params.delete(URL_STATE_PARAM_KEYS.searchText);
+        }
+
+        if (showDetail && detailItem) {
+            params.set(URL_STATE_PARAM_KEYS.detailTaskId, String(detailItem.taskId));
+        } else {
+            params.delete(URL_STATE_PARAM_KEYS.detailTaskId);
+        }
+
+        const nextSearch = params.toString();
+        const currentSearch = window.location.search.startsWith('?')
+            ? window.location.search.slice(1)
+            : window.location.search;
+        if (nextSearch === currentSearch) {
+            return;
+        }
+        const nextUrl = `${window.location.pathname}${nextSearch ? `?${nextSearch}` : ''}${window.location.hash}`;
+        window.history.replaceState({}, '', nextUrl);
+    }, [detailItem, searchText, selectedCategory, selectedStatuses, showDetail, sortBy, todoReasonFilter]);
 
     // 提取所有分类（从 extra.category 字段）
     const categories: string[] = useMemo(() => {
@@ -1431,24 +1594,6 @@ export default function Library({addr, groupTitle}: LibraryProps) {
                     onChange={(e) => setDisplayOptions({...displayOptions, showCategory: e.target.checked})}
                 >
                     显示分类
-                </Checkbox>
-                <Checkbox
-                    checked={displayOptions.showAuthor}
-                    onChange={(e) => setDisplayOptions({...displayOptions, showAuthor: e.target.checked})}
-                >
-                    显示作者
-                </Checkbox>
-                <Checkbox
-                    checked={displayOptions.showStartTime}
-                    onChange={(e) => setDisplayOptions({...displayOptions, showStartTime: e.target.checked})}
-                >
-                    显示开始时间
-                </Checkbox>
-                <Checkbox
-                    checked={displayOptions.showUpdateTime}
-                    onChange={(e) => setDisplayOptions({...displayOptions, showUpdateTime: e.target.checked})}
-                >
-                    显示更新时间
                 </Checkbox>
             </Space>
         </div>

@@ -1,6 +1,6 @@
 # Library Module Knowledge
 
-Last verified: 2026-03-04 (code verified, TODO-verify via interaction)
+Last verified: 2026-03-05 (code verified, TODO-verify via interaction)
 
 ## Entry dependency on Todone
 
@@ -71,6 +71,23 @@ Last verified: 2026-03-04 (code verified, TODO-verify via interaction)
 3. `todoReasonFilter = all`
 4. `sortBy = default`
 5. `searchText = ''`
+6. Main-page display options only keep:
+   - `showScore`
+   - `showCategory`
+7. `showAuthor / showStartTime / showUpdateTime` are removed because they are no longer bound to card rendering.
+
+URL sync contract (list + detail):
+
+1. List page syncs current filters to URL query:
+   - `library_category`
+   - `library_statuses`
+   - `library_todo_reason` (only when statuses exactly `[TODO]`)
+   - `library_sort`
+   - `library_search`
+2. Detail drawer syncs currently opened item id to `library_detail`.
+3. On first load, page restores filters/detail from URL query.
+4. Default values are omitted from URL to keep links clean.
+5. Empty status selection is encoded as `library_statuses=_empty_`.
 
 Default sort rank:
 
