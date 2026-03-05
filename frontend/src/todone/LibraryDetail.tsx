@@ -1,4 +1,4 @@
-import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
+import React, {useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState} from 'react';
 import {
     AutoComplete,
     Button,
@@ -92,6 +92,7 @@ import {useIsMobile} from '../common/hooksv2';
 import TextRate from '../library/TextRate';
 import LibraryShareCard from './LibraryShareCard';
 import LibraryScorePopover from './LibraryScorePopover';
+import LibraryLoadingImage from './LibraryLoadingImage';
 import {useImageUpload} from '../common/useImageUpload';
 import {prepareLibraryCoverFiles} from '../common/imageCrop';
 import {FileShow, UploadFile} from '../common/newSendHttp';
@@ -520,7 +521,7 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
     }, [showRawCoverModal, rawCoverEntries]);
 
     // 初始化 localItem
-    useEffect(() => {
+    useLayoutEffect(() => {
         if (item) {
             setLocalItem(JSON.parse(JSON.stringify(item)));
             form.setFieldsValue({
@@ -1500,54 +1501,45 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
                             border: '1px solid #d9d9d9',
                         }}
                     >
-                        {realCoverUrl ? (
-                            <img
-                                src={realCoverUrl}
-                                alt={displayTitle}
-                                style={{
-                                    position: 'absolute',
-                                    inset: 0,
-                                    width: '100%',
-                                    height: '100%',
-                                    objectFit: 'cover',
-                                    objectPosition: 'center',
-                                }}
-                                onError={(e) => {
-                                    (e.target as HTMLImageElement).style.display = 'none';
-                                    const parent = (e.target as HTMLImageElement).parentElement;
-                                    if (parent) {
-                                        const placeholder = parent.querySelector('.library-detail-cover-placeholder') as HTMLElement;
-                                        if (placeholder) {
-                                            placeholder.style.display = 'flex';
-                                        }
-                                    }
-                                }}
-                            />
-                        ) : null}
-                        <div
-                            className="library-detail-cover-placeholder"
-                            style={{
+                        <LibraryLoadingImage
+                            src={realCoverUrl}
+                            alt={displayTitle || '未命名'}
+                            containerStyle={{position: 'absolute', inset: 0}}
+                            imageStyle={{
                                 position: 'absolute',
                                 inset: 0,
-                                display: realCoverUrl ? 'none' : 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                padding: placeholderPadding,
-                                boxSizing: 'border-box',
-                                textAlign: 'center',
-                                wordBreak: 'normal',
-                                overflowWrap: 'anywhere',
-                                whiteSpace: 'normal',
-                                overflow: 'hidden',
-                                background: `linear-gradient(140deg, ${coverPalette.bg} 0%, #ffffff 100%)`,
-                                color: coverPalette.text,
-                                fontWeight: 600,
-                                fontSize: placeholderFontSize,
-                                lineHeight: 1.35,
+                                width: '100%',
+                                height: '100%',
+                                objectFit: 'cover',
+                                objectPosition: 'center',
                             }}
-                        >
-                            {displayTitle || '未命名'}
-                        </div>
+                            placeholder={(
+                                <div
+                                    className="library-detail-cover-placeholder"
+                                    style={{
+                                        position: 'absolute',
+                                        inset: 0,
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        padding: placeholderPadding,
+                                        boxSizing: 'border-box',
+                                        textAlign: 'center',
+                                        wordBreak: 'normal',
+                                        overflowWrap: 'anywhere',
+                                        whiteSpace: 'normal',
+                                        overflow: 'hidden',
+                                        background: `linear-gradient(140deg, ${coverPalette.bg} 0%, #ffffff 100%)`,
+                                        color: coverPalette.text,
+                                        fontWeight: 600,
+                                        fontSize: placeholderFontSize,
+                                        lineHeight: 1.35,
+                                    }}
+                                >
+                                    {displayTitle || '未命名'}
+                                </div>
+                            )}
+                        />
                     </div>
                 </Col>
                 <Col span={useMobileSplitLayout ? 14 : (isMobile ? 24 : 16)} style={{marginTop: useMobileSplitLayout ? 0 : (isMobile ? 12 : 0)}}>
@@ -2036,10 +2028,11 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
                                     padding: 6,
                                 }}
                             >
-                                <img
+                                <LibraryLoadingImage
                                     src={entry.url}
                                     alt={entry.label}
-                                    style={{
+                                    containerStyle={{display: 'inline-block'}}
+                                    imageStyle={{
                                         width: 'auto',
                                         height: 'auto',
                                         maxWidth: 'none',
@@ -2047,6 +2040,23 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
                                         display: 'block',
                                         borderRadius: 4,
                                     }}
+                                    placeholder={(
+                                        <div
+                                            style={{
+                                                width: 96,
+                                                height: 64,
+                                                borderRadius: 4,
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                background: '#fafafa',
+                                                color: '#999',
+                                                fontSize: 12,
+                                            }}
+                                        >
+                                            加载失败
+                                        </div>
+                                    )}
                                 />
                             </div>
                         ) : null}

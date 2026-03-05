@@ -5,6 +5,7 @@ import TextRate from '../library/TextRate';
 import Paragraphs from '../common/Paragraphs';
 import {useIsMobile} from '../common/hooksv2';
 import {formatDate, getComplexScoreSnapshot, getCurrentStatus, getLibraryCoverDisplayUrl, getMainScore} from './libraryUtil';
+import LibraryLoadingImage from './LibraryLoadingImage';
 
 const {Title, Text} = Typography;
 
@@ -171,22 +172,39 @@ const LibraryShareCard: React.FC<LibraryShareCardProps> = ({title, extra, editab
                             background: '#f5f5f5',
                         }}
                     >
-                        {coverUrl ? (
-                            <img
-                                src={coverUrl}
-                                alt={title}
-                                style={{
-                                    display: 'block',
-                                    width: '100%',
-                                    height: '100%',
-                                    objectFit: 'cover',
-                                    objectPosition: 'center',
-                                }}
-                                onError={(e) => {
-                                    (e.target as HTMLImageElement).style.display = 'none';
-                                }}
-                            />
-                        ) : null}
+                        <LibraryLoadingImage
+                            src={coverUrl}
+                            alt={title}
+                            containerStyle={{width: '100%', height: '100%'}}
+                            imageStyle={{
+                                display: 'block',
+                                width: '100%',
+                                height: '100%',
+                                objectFit: 'cover',
+                                objectPosition: 'center',
+                            }}
+                            placeholder={(
+                                <div
+                                    style={{
+                                        width: '100%',
+                                        height: '100%',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        padding: 8,
+                                        boxSizing: 'border-box',
+                                        textAlign: 'center',
+                                        wordBreak: 'break-word',
+                                        background: '#fafafa',
+                                        color: '#8c8c8c',
+                                        fontSize: isMobile ? 11 : 12,
+                                        fontWeight: 500,
+                                    }}
+                                >
+                                    {title || '未命名'}
+                                </div>
+                            )}
+                        />
                     </div>
                 </Col>
 

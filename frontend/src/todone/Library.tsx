@@ -77,6 +77,7 @@ import {
 } from './libraryUtil';
 import {useIsMobile} from '../common/hooksv2';
 import LibraryDetail from './LibraryDetail';
+import LibraryLoadingImage from './LibraryLoadingImage';
 import LibraryTimeline from './LibraryTimeline';
 import LibraryScorePopover from './LibraryScorePopover';
 import {useImageUpload} from '../common/useImageUpload';
@@ -1307,43 +1308,53 @@ export default function Library({addr, groupTitle}: LibraryProps) {
             >
                 {/* 封面图 */}
                 <div className="library-card-cover">
-                    {realCoverUrl ? (
-                        <img
-                            src={realCoverUrl}
-                            sizes="(max-width: 768px) 120px, 160px"
-                            alt={item.title}
-                            onError={(e) => {
-                                (e.target as HTMLImageElement).style.display = 'none';
-                                // 显示备用占位符
-                                const parent = (e.target as HTMLImageElement).parentElement;
-                                if (parent) {
-                                    const placeholder = parent.querySelector('.library-card-placeholder') as HTMLElement;
-                                    if (placeholder) {
-                                        placeholder.style.display = 'flex';
-                                    }
-                                    const cardNode = parent.closest('.library-card');
-                                    if (cardNode) {
-                                        cardNode.classList.add('is-cover-error');
-                                    }
-                                }
-                            }}
-                        />
-                    ) : null}
-                    {/* 占位符（无图片或图片加载失败时显示） */}
-                    <div 
-                        className="library-card-placeholder"
-                        style={{
-                            '--library-placeholder-base': placeholderColor.bg,
-                            display: realCoverUrl ? 'none' : 'flex',
-                        } as React.CSSProperties}
-                    >
-                        <span 
-                            className="library-card-placeholder-text"
-                            style={{color: placeholderColor.text}}
-                        >
-                            {item.title}
-                        </span>
-                    </div>
+                    <LibraryLoadingImage
+                        src={realCoverUrl}
+                        alt={item.title}
+                        sizes="(max-width: 768px) 120px, 160px"
+                        containerStyle={{
+                            position: 'absolute',
+                            inset: 0,
+                        }}
+                        imageStyle={{
+                            position: 'absolute',
+                            top: 0,
+                            left: 0,
+                            width: '100%',
+                            height: '100%',
+                            objectFit: 'cover',
+                            objectPosition: 'center',
+                        }}
+                        onLoad={(e) => {
+                            const parent = (e.target as HTMLImageElement).parentElement;
+                            const cardNode = parent?.closest('.library-card');
+                            if (cardNode) {
+                                cardNode.classList.remove('is-cover-error');
+                            }
+                        }}
+                        onError={(e) => {
+                            const parent = (e.target as HTMLImageElement).parentElement;
+                            const cardNode = parent?.closest('.library-card');
+                            if (cardNode) {
+                                cardNode.classList.add('is-cover-error');
+                            }
+                        }}
+                        placeholder={(
+                            <div
+                                className="library-card-placeholder"
+                                style={{
+                                    '--library-placeholder-base': placeholderColor.bg,
+                                } as React.CSSProperties}
+                            >
+                                <span
+                                    className="library-card-placeholder-text"
+                                    style={{color: placeholderColor.text}}
+                                >
+                                    {item.title}
+                                </span>
+                            </div>
+                        )}
+                    />
                     
                     {/* 顶部标签行（左：分类/周目，右：评分） */}
                     {(showFavoriteOnCard || showCategoryOnCard || showRoundTag || showScoreBadge) ? (
@@ -1740,7 +1751,19 @@ export default function Library({addr, groupTitle}: LibraryProps) {
                             onClick={() => checkAddCoverClipboard(false)}
                         >
                             {addPreviewUrl ? (
-                                <img src={addPreviewUrl} alt="封面预览" className="library-add-cover-image"/>
+                                <LibraryLoadingImage
+                                    src={addPreviewUrl}
+                                    alt="封面预览"
+                                    containerStyle={{width: '100%', height: '100%'}}
+                                    imageClassName="library-add-cover-image"
+                                    placeholder={(
+                                        <div className="library-add-cover-empty">
+                                            <Button type="link" icon={<UploadOutlined/>} loading={addCoverUploading}>
+                                                点击上传
+                                            </Button>
+                                        </div>
+                                    )}
+                                />
                             ) : (
                                 <div className="library-add-cover-empty">
                                     <Button type="link" icon={<UploadOutlined/>} loading={addCoverUploading}>

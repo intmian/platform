@@ -45,6 +45,7 @@ import {
     isWaitExpired,
 } from './libraryUtil';
 import {useIsMobile} from '../common/hooksv2';
+import LibraryLoadingImage from './LibraryLoadingImage';
 
 const {Text, Title} = Typography;
 const UNCATEGORIZED_KEY = '__uncategorized__';
@@ -592,50 +593,45 @@ export default function LibraryTimeline({visible, items, onClose, onItemClick}: 
                             flexShrink: 0,
                         }}
                     >
-                        {realCoverUrl ? (
-                            <img
-                                src={realCoverUrl}
-                                sizes={isMobile ? '120px' : '160px'}
-                                width={coverWidth}
-                                height={coverHeight}
-                                style={{objectFit: 'cover', objectPosition: 'center'}}
-                                onError={(e) => {
-                                    (e.target as HTMLImageElement).style.display = 'none';
-                                    const parent = (e.target as HTMLImageElement).parentElement;
-                                    if (parent) {
-                                        const placeholder = parent.querySelector('.library-timeline-cover-placeholder') as HTMLElement;
-                                        if (placeholder) {
-                                            placeholder.style.display = 'flex';
-                                        }
-                                    }
-                                }}
-                                alt={entry.itemTitle}
-                            />
-                        ) : null}
-                        <div
-                            className="library-timeline-cover-placeholder"
-                            style={{
-                                position: 'absolute',
-                                inset: 0,
-                                display: realCoverUrl ? 'none' : 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                padding: placeholderPadding,
-                                boxSizing: 'border-box',
-                                textAlign: 'center',
-                                wordBreak: 'normal',
-                                overflowWrap: 'anywhere',
-                                whiteSpace: 'normal',
-                                overflow: 'hidden',
-                                background: `linear-gradient(140deg, ${placeholderColor.bg} 0%, #ffffff 100%)`,
-                                color: placeholderColor.text,
-                                fontWeight: 600,
-                                fontSize: placeholderFontSize,
-                                lineHeight: 1.25,
+                        <LibraryLoadingImage
+                            src={realCoverUrl}
+                            alt={entry.itemTitle || '未命名'}
+                            containerStyle={{position: 'absolute', inset: 0}}
+                            sizes={isMobile ? '120px' : '160px'}
+                            imageStyle={{
+                                width: '100%',
+                                height: '100%',
+                                objectFit: 'cover',
+                                objectPosition: 'center',
+                                display: 'block',
                             }}
-                        >
-                            {entry.itemTitle || '未命名'}
-                        </div>
+                            placeholder={(
+                                <div
+                                    className="library-timeline-cover-placeholder"
+                                    style={{
+                                        position: 'absolute',
+                                        inset: 0,
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        padding: placeholderPadding,
+                                        boxSizing: 'border-box',
+                                        textAlign: 'center',
+                                        wordBreak: 'normal',
+                                        overflowWrap: 'anywhere',
+                                        whiteSpace: 'normal',
+                                        overflow: 'hidden',
+                                        background: `linear-gradient(140deg, ${placeholderColor.bg} 0%, #ffffff 100%)`,
+                                        color: placeholderColor.text,
+                                        fontWeight: 600,
+                                        fontSize: placeholderFontSize,
+                                        lineHeight: 1.25,
+                                    }}
+                                >
+                                    {entry.itemTitle || '未命名'}
+                                </div>
+                            )}
+                        />
                     </div>
                     
                     {/* 内容 */}
