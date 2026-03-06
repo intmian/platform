@@ -878,6 +878,10 @@ function Memos() {
 
     const advancedMenuItems: MenuProps['items'] = [
         {
+            key: 'toggle-hidden',
+            label: hidden ? '显示' : '隐藏',
+        },
+        {
             key: 'ai-rewrite',
             label: 'AI重写',
             disabled: advancedMenuDisabled,
@@ -890,6 +894,15 @@ function Memos() {
     ];
 
     const onAdvancedMenuClick: MenuProps['onClick'] = ({key}) => {
+        if (key === 'toggle-hidden') {
+            if (!hidden) {
+                inputRef.current.hide();
+            } else {
+                inputRef.current.show();
+            }
+            setHidden(!hidden);
+            return;
+        }
         if (key === 'ai-rewrite') {
             const content = inputRef.current.get();
             if (content !== '') {
@@ -1009,18 +1022,6 @@ function Memos() {
                         flexShrink: 0,
                     }}
                 >
-                    <Button onClick={() => {
-                        if (!hidden) {
-                            inputRef.current.hide();
-                        } else {
-                            inputRef.current.show();
-                        }
-                        setHidden(!hidden)
-                    }}
-                            size={"small"}
-                    >{
-                        hidden ? '显示' : '隐藏'
-                    }</Button>
                     <Dropdown
                         trigger={['click']}
                         disabled={advancedTriggerDisabled}
