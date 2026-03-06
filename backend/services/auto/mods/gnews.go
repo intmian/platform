@@ -2,11 +2,13 @@ package mods
 
 import (
 	"fmt"
+
 	"github.com/intmian/mian_go_lib/tool/ai"
 	"github.com/intmian/mian_go_lib/tool/spider"
 	"github.com/intmian/mian_go_lib/xstorage"
 	"github.com/intmian/platform/backend/services/auto/setting"
 	"github.com/intmian/platform/backend/services/auto/tool"
+	backendshare "github.com/intmian/platform/backend/share"
 	"github.com/pkg/errors"
 	"time"
 )
@@ -14,65 +16,26 @@ import (
 type GNews struct{}
 
 func (G GNews) Init() {
-	// 为了方便从控制台修改，这里写一下默认值
-	err := setting.GSetting.SetDefault(xstorage.Join("openai", "base"), xstorage.ToUnit[string]("need input", xstorage.ValueTypeString))
-	if err != nil {
-		tool.GLog.WarningErr("auto.GNews", errors.WithMessage(err, "func Init() GetAndSetDefault error"))
-	}
-	err = setting.GSetting.SetDefault(xstorage.Join("openai", "token"), xstorage.ToUnit[string]("need input", xstorage.ValueTypeString))
-	if err != nil {
-		tool.GLog.WarningErr("auto.GNews", errors.WithMessage(err, "func Init() GetAndSetDefault error"))
-	}
-	err = setting.GSetting.SetDefault(xstorage.Join("openai", "cheap"), xstorage.ToUnit[bool](true, xstorage.ValueTypeBool))
-	if err != nil {
-		tool.GLog.WarningErr("auto.GNews", errors.WithMessage(err, "func Init() GetAndSetDefault error"))
-	}
-	err = setting.GSetting.SetDefault(xstorage.Join("auto", "GNews", "newsToken"), xstorage.ToUnit[string]("need input", xstorage.ValueTypeString))
+	err := setting.GSetting.SetDefault(xstorage.Join("auto", "GNews", "newsToken"), xstorage.ToUnit[string]("need input", xstorage.ValueTypeString))
 	if err != nil {
 		tool.GLog.WarningErr("auto.GNews", errors.WithMessage(err, "func Init() GetAndSetDefault error"))
 	}
 }
 
 func (G GNews) Do() {
-	// 获得token和base
-	baseV, err := setting.GSetting.Get("openai.base")
-	if baseV == nil {
-		tool.GLog.Warning("GNews", "openai.base not exist")
-		return
-	}
+	aiCfg, err := backendshare.GetAIConfig(setting.GCfg)
 	if err != nil {
-		tool.GLog.WarningErr("GNews", errors.WithMessage(err, "func Do() Get openai.base error"))
+		tool.GLog.WarningErr("GNews", errors.WithMessage(err, "func Do() GetAIConfig error"))
 		return
 	}
-	base := xstorage.ToBase[string](baseV)
-	if base == "" || base == "need input" {
+	if aiCfg.Base == "" || aiCfg.Base == "need input" {
 		tool.GLog.Warning("GNews", "openai.base is empty")
 		return
 	}
-	tokenV, err := setting.GSetting.Get("openai.token")
-	if tokenV == nil {
-		tool.GLog.Warning("GNews", "openai.token not exist")
-		return
-	}
-	if err != nil {
-		tool.GLog.WarningErr("GNews", errors.WithMessage(err, "func Do() Get openai.token error"))
-		return
-	}
-	token := xstorage.ToBase[string](tokenV)
-	if token == "" || token == "need input" {
+	if aiCfg.Token == "" || aiCfg.Token == "need input" {
 		tool.GLog.Warning("GNews", "openai.token is empty")
 		return
 	}
-	cheapV, err := setting.GSetting.Get("openai.cheap")
-	if cheapV == nil {
-		tool.GLog.Warning("GNews", "openai.cheap not exist")
-		return
-	}
-	if err != nil {
-		tool.GLog.WarningErr("GNews", errors.WithMessage(err, "func Do() Get openai.cheap error"))
-		return
-	}
-	cheap := xstorage.ToBase[bool](cheapV)
 	newsTokenV, err := setting.GSetting.Get("auto.GNews.newsToken")
 	if newsTokenV == nil {
 		tool.GLog.Warning("GNews", "auto.GNews.newsToken not exist")
@@ -87,7 +50,7 @@ func (G GNews) Do() {
 		tool.GLog.Warning("GNews", "auto.GNews.newsToken is empty")
 		return
 	}
-	md, err := getNews(newsToken, base, token, cheap)
+	md, err := getNews(newsToken, aiCfg)
 	if err != nil {
 		tool.GLog.WarningErr("GNews", errors.WithMessage(err, "func Do() getNews error"))
 		return
@@ -98,7 +61,7 @@ func (G GNews) Do() {
 	}
 }
 
-func getNews(newsToken, base, token string, cheap bool) (string, error) {
+func getNews(newsToken string, aiCfg backendshare.AIConfig) (string, error) {
 	// 获取昨天0点到今天0点的新闻，今天发生新闻可能还没有稳定下来，如果到当前时间可能会导致新的新闻永远上不了榜或者重复报。近期的新闻也可能浮动变动过大，等待热度固定。
 	from := time.Now().AddDate(0, 0, -1)
 	from = time.Date(from.Year(), from.Month(), from.Day(), 0, 0, 0, 0, from.Location())
@@ -126,6 +89,7 @@ func getNews(newsToken, base, token string, cheap bool) (string, error) {
 	retry := 0
 	done := false
 	var re string
+	mode := aiCfg.ModeForScene(backendshare.AISceneSummary, ai.ModelModeCheap)
 	for retry < 2 {
 		/*
 			如果不行改成单体输出 Below are the headline and summary of a news segment. Based on these, please generate a concise, friendly, and readable summary in Simplified Chinese (no more than 40 words). And score the news according to its importance to an average Chinese person, using a scale of 1-5. And analyze the type of news (e.g. politics, sports, technology).
@@ -136,7 +100,7 @@ func getNews(newsToken, base, token string, cheap bool) (string, error) {
 			“content”:“......”
 			}
 		*/
-		o := ai.NewOpenAI(base, token, cheap, ai.AiTypeChatGPT)
+		o := ai.NewOpenAIWithMode(aiCfg.Base, aiCfg.Token, mode, ai.AiTypeChatGPT, aiCfg.ModelPools)
 		re, err = o.Chat(`You are a journalist who is proficient in writing in both English and Chinese. The following is the data of the hot news of the past day crawled by using crawler (including title and summary), please do the following processing according to these contents.
 1. if the content of the news is not in Simplified Chinese, then translate it into Simplified Chinese (there is no need to translate proper nouns and people's names into Chinese).
 2. Generate a concise, friendly and readable summary (no more than 30 words) for each news item based on the news title and abstract.

@@ -1,6 +1,6 @@
 # Backend Architecture
 
-Last verified: 2026-02-27
+Last verified: 2026-03-06
 
 ## Scope
 
@@ -63,9 +63,16 @@ Last verified: 2026-02-27
 1. `POST /service/:name/:cmd`
 2. `POST /debug/:name/:cmd`
 3. `POST /cfg/plat/set`, `/cfg/plat/get`
+   - includes AI platform config keys:
+     - `openai.base`, `openai.token`
+     - `openai.model.cheap|fast|normal`
+     - `openai.scene.rewrite|summary|translate`
+   - missing storage values fall back to cfg defaults, so admin UI can read defaults before first save
 4. `POST /cfg/:svr/set`, `/cfg/:svr/get`
 5. `POST /cfg/:svr/:user/set`, `/cfg/:svr/:user/get`
 6. `POST /misc/gpt-rewrite`
+   - business layer reads AI config via `CfgExt`, then passes selected mode + model pools into `mian_go_lib/tool/ai`
+   - rewrite scene defaults to `fast`; summary/translate default to `cheap`
 7. `POST /misc/r2-presigned-url`
 
 ## Auth and permission chain

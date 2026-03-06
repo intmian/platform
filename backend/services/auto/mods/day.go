@@ -17,6 +17,7 @@ import (
 	"github.com/intmian/mian_go_lib/xstorage"
 	"github.com/intmian/platform/backend/services/auto/setting"
 	"github.com/intmian/platform/backend/services/auto/tool"
+	backendshare "github.com/intmian/platform/backend/share"
 )
 
 // TODO: 细化权限，并发控制
@@ -156,12 +157,9 @@ func (d *Day) Init() {
 	//	"kindle",
 	//}, xstorage.ValueTypeSliceString))
 	err1 := setting.GSetting.SetDefault(xstorage.Join("auto", "news", "keys"), xstorage.ToUnit([]string{"need input"}, xstorage.ValueTypeSliceString))
-	err2 := setting.GSetting.SetDefault(xstorage.Join("openai", "base"), xstorage.ToUnit[string]("need input", xstorage.ValueTypeString))
-	err3 := setting.GSetting.SetDefault(xstorage.Join("openai", "token"), xstorage.ToUnit[string]("need input", xstorage.ValueTypeString))
-	err4 := setting.GSetting.SetDefault(xstorage.Join("openai", "cheap"), xstorage.ToUnit[bool](true, xstorage.ValueTypeBool))
-	err5 := setting.GSetting.SetDefault(xstorage.Join("qweather", "key"), xstorage.ToUnit[string]("need input", xstorage.ValueTypeString))
-	err6 := setting.GSetting.SetDefault(xstorage.Join("auto", "weather", "city"), xstorage.ToUnit[string]("杭州", xstorage.ValueTypeString))
-	err := misc.JoinErr(err1, err2, err3, err4, err5, err6)
+	err2 := setting.GSetting.SetDefault(xstorage.Join("qweather", "key"), xstorage.ToUnit[string]("need input", xstorage.ValueTypeString))
+	err3 := setting.GSetting.SetDefault(xstorage.Join("auto", "weather", "city"), xstorage.ToUnit[string]("杭州", xstorage.ValueTypeString))
+	err := misc.JoinErr(err1, err2, err3)
 	if err != nil {
 		tool.GLog.WarningErr("auto.Day", errors.Join(errors.New("func Init() GetAndSetDefault error"), err))
 	}
@@ -299,31 +297,18 @@ func (d *Day) GenerateDayReport() (*DayReport, error) {
 	return report, nil
 }
 
-func getOpenAIConfig() (base, token string, err error) {
-	// 获取 base 配置
-	baseV, err := setting.GSetting.Get("openai.base")
-	if err != nil || baseV == nil {
-		tool.GLog.Warning("GNews", "openai.base not exist")
-		return "", "", errors.New("openai.base not exist")
+func getOpenAIConfig(scene backendshare.AIScene, fallbackMode ai.ModelMode) (base, token string, modelPools map[ai.ModelMode][]string, mode ai.ModelMode, err error) {
+	conf, err := backendshare.GetAIConfig(setting.GCfg)
+	if err != nil {
+		return "", "", nil, fallbackMode, err
 	}
-	base = xstorage.ToBase[string](baseV)
-	if base == "" || base == "need input" {
-		return "", "", errors.New("openai.base is empty")
+	if conf.Base == "" || conf.Base == "need input" {
+		return "", "", nil, fallbackMode, errors.New("openai.base is empty")
 	}
-
-	// 获取 token 配置
-	tokenV, err := setting.GSetting.Get("openai.token")
-	if err != nil || tokenV == nil {
-		tool.GLog.Warning("GNews", "openai.token not exist")
-		return "", "", errors.New("openai.token not exist")
+	if conf.Token == "" || conf.Token == "need input" {
+		return "", "", nil, fallbackMode, errors.New("openai.token is empty")
 	}
-	token = xstorage.ToBase[string](tokenV)
-	if token == "" || token == "need input" {
-		tool.GLog.Warning("GNews", "openai.token is empty")
-		return "", "", errors.New("openai.token is empty")
-	}
-
-	return base, token, nil
+	return conf.Base, conf.Token, conf.ModelPools, conf.ModeForScene(scene, fallbackMode), nil
 }
 
 func translateContent(chat *ai.OpenAI, content string) (string, error) {
@@ -411,13 +396,13 @@ func translateNews(newsBBC []spider.BBCRssItem, newsNYT []spider.NYTimesRssItem,
 
 func summary(report *DayReport) error {
 	// 获取配置
-	base, token, err := getOpenAIConfig()
+	base, token, modelPools, mode, err := getOpenAIConfig(backendshare.AISceneSummary, ai.ModelModeCheap)
 	if err != nil {
 		return err
 	}
 
 	// 创建 OpenAI 实例
-	chat := ai.NewOpenAI(base, token, true, ai.AiTypeChatGPT)
+	chat := ai.NewOpenAIWithMode(base, token, mode, ai.AiTypeChatGPT, modelPools)
 	if chat == nil {
 		return errors.New("NewOpenAI error")
 	}
@@ -569,13 +554,13 @@ func summaryGoogleNews(googleNews []struct {
 
 func translate(report *DayReport) error {
 	// 获取配置
-	base, token, err := getOpenAIConfig()
+	base, token, modelPools, mode, err := getOpenAIConfig(backendshare.AISceneTranslate, ai.ModelModeCheap)
 	if err != nil {
 		return err
 	}
 
 	// 创建 OpenAI 实例
-	chat := ai.NewOpenAI(base, token, true, ai.AiTypeChatGPT)
+	chat := ai.NewOpenAIWithMode(base, token, mode, ai.AiTypeChatGPT, modelPools)
 	if chat == nil {
 		return errors.New("NewOpenAI error")
 	}
@@ -590,13 +575,13 @@ func translate(report *DayReport) error {
 
 func translateW(report *WholeReport) error {
 	// 获取配置
-	base, token, err := getOpenAIConfig()
+	base, token, modelPools, mode, err := getOpenAIConfig(backendshare.AISceneTranslate, ai.ModelModeCheap)
 	if err != nil {
 		return err
 	}
 
 	// 创建 OpenAI 实例
-	chat := ai.NewOpenAI(base, token, true, ai.AiTypeChatGPT)
+	chat := ai.NewOpenAIWithMode(base, token, mode, ai.AiTypeChatGPT, modelPools)
 	if chat == nil {
 		return errors.New("NewOpenAI error")
 	}

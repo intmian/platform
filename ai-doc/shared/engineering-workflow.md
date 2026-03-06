@@ -1,6 +1,6 @@
 # Shared Engineering Workflow
 
-Last verified: 2026-02-27
+Last verified: 2026-03-06
 
 ## Scope
 
@@ -20,16 +20,21 @@ Last verified: 2026-02-27
    - non-functional change with behavior parity target
 4. Mixed mode:
    - default when one task spans more than one mode; follow the strictest gate.
+5. Large-change mode:
+   - applies when the task materially changes architecture, shared abstractions, config contracts, or cross-layer boundaries.
 
 ## Mandatory flow
 
 1. Outcome lock:
    - restate target behavior and explicit non-goals before editing.
+   - for large-change mode, explicitly identify the architecture boundary being changed and the layers that own the behavior.
+   - when touching shared libraries or reusable utilities, explicitly state why the behavior belongs in the shared layer rather than the calling business layer
 2. Runtime readiness:
    - before testing, explicitly check whether test backend and test frontend/dev server are already running; reuse if healthy, start only missing parts
    - backend reachable
    - frontend/dev runtime reachable (if UI involved)
    - auth context validated
+   - when changing config contracts or backend defaults, verify that the running backend process is actually the new code/version before drawing conclusions from UI behavior
 3. Baseline capture:
    - code baseline (key files/paths)
    - runtime baseline (MCP snapshot or logs/test output)
@@ -38,12 +43,25 @@ Last verified: 2026-02-27
    - behavior risk
    - data/schema risk
    - rollback path
+   - for large-change mode, write a detailed architecture design before implementation:
+     - ownership by layer/module
+     - config contract and default-value source of truth
+     - migration/backward-compatibility plan
+     - verification plan
+   - do not implement large-change mode until the user has reviewed and agreed to the design
+   - for shared-lib changes, include a boundary check:
+     - what is generic and reusable
+     - what remains business-specific
+     - why the proposed API does not encode current business policy
 5. Implement minimal coherent slice:
    - prefer one complete vertical slice over scattered partial edits.
+   - do not use frontend-only fallback/default rendering to mask a backend contract or runtime-verification gap; fix the owning layer first
+   - do not move business rules, config ownership, scene names, or storage keys into shared libs unless the user explicitly asks for a shared abstraction and the generic contract is defensible
 6. Verify target behavior:
    - code-level check (build/test/type/lint where relevant)
    - for any frontend change, run interaction verification that simulates a normal user flow (not only isolated clicks)
    - runtime/interaction evidence for UI behavior changes
+   - for config/default-value work, confirm the value shown in UI is coming from the intended backend/runtime path, not from a temporary frontend fallback
 7. Run adjacent regression path:
    - at least one nearby non-target path
 8. Report with evidence:
@@ -92,6 +110,11 @@ Last verified: 2026-02-27
    - what failed
    - why old process allowed it
    - what gate now prevents recurrence
+5. Repeated failure patterns to guard explicitly:
+   - changing shared/library code before proving the boundary belongs there
+   - trusting stale runtime processes during verification
+   - adding presentation-layer fallback that hides missing backend/default-value behavior
+   - encoding business policy inside a reusable lib API instead of passing it in from the owning layer
 
 ## Completion gate
 

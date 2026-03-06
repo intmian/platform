@@ -1,6 +1,6 @@
 # Shared Debug Workflow
 
-Last verified: 2026-02-27
+Last verified: 2026-03-06
 
 ## Positioning
 
@@ -29,6 +29,7 @@ Last verified: 2026-02-27
    - frontend reachable on one stable URL
    - login/auth is actually successful via normal user flow
    - do not bypass auth blockers (for example closing login modal to force operations on disabled/unauthorized UI)
+   - when a config/UI result looks inconsistent with code, verify the backend process PID/cwd/version before patching around the symptom
 3. Reproduce with the smallest failing path first.
 4. Capture baseline evidence before code change:
    - MCP snapshot
@@ -40,18 +41,21 @@ Last verified: 2026-02-27
    - auth/account
    - storage/config
    - frontend-backend contract mismatch
+   - shared-library boundary mismatch
+   - if the suspected fix requires changing a shared lib, first prove the bug is not better owned by the business caller or adapter layer
 6. Apply minimal patch with explicit fault hypothesis.
 7. Re-run the same path and capture post-change evidence.
 8. Run at least one adjacent regression path.
-9. For performance tasks, compare pre/post with the same interaction path and same dataset context.
-10. Report repro, evidence, patch summary, regression, residual risk.
-11. UI behavior fixes (including sort/filter/display order) must include MCP pre/post interaction evidence; compile/build success cannot replace this requirement.
-12. Run a short retrospective before final response:
+9. For config/default-value issues, verify the final displayed value comes from the owning backend/config path; do not accept a frontend fallback as proof of backend correctness.
+10. For performance tasks, compare pre/post with the same interaction path and same dataset context.
+11. Report repro, evidence, patch summary, regression, residual risk.
+12. UI behavior fixes (including sort/filter/display order) must include MCP pre/post interaction evidence; compile/build success cannot replace this requirement.
+13. Run a short retrospective before final response:
    - what went wrong in this task
    - root cause
    - prevention rule
    - process/doc update applied in this turn
-13. If verification mutates real data, record changed entities and provide cleanup plan (or execute cleanup when safe).
+14. If verification mutates real data, record changed entities and provide cleanup plan (or execute cleanup when safe).
 
 ## Frontend-first checks
 

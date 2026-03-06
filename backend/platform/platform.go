@@ -268,6 +268,7 @@ func (p *PlatForm) InitCfg() error {
 			RealKey:   "PLAT.r2.web",
 		},
 	}
+	params = append(params, share.DefaultAIConfigParams()...)
 	for _, v := range params {
 		err := p.cfg.AddParam(v)
 		if err != nil {

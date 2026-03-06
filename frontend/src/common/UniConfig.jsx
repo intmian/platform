@@ -33,24 +33,21 @@ const {Text} = Typography;
 class ConfigParam {
     key = '';  // 对应后端的配置key
     text = ''; // 对应的显示文本
-    defaultValue = null; // 如果值为null的情况下，显示的值（需要与后端的值对应）
     uniConfigType = 0; // 对应配置类型
     tips = '';  // 详细说明
 
     // 以下是额外信息，特殊的Type会有特殊的信息
-    enum2text = {}  // 如果是enum类型，这里是enum的值和对应的提示
+    enum2text = []  // 如果是enum类型，这里是enum的值和对应的提示
     buttonFunc = null;  // 如果是button类型，这里是点击按钮的回调
 }
 
 function enumPanel(ConfigMeta, value, onValueChange, operating) {
-    let options = {}
-    for (const [enumVar, text] of ConfigMeta.enum2text) {
-        options[enumVar] = text
-    }
     return <Select
-        defaultValue={value}
+        value={value}
+        options={ConfigMeta.enum2text}
         onChange={onValueChange}
         disabled={operating}
+        style={{width: "100%", minWidth: 220}}
     />
 }
 
@@ -74,6 +71,11 @@ function ShowControlSavePanel({configs, InitValue, ConfigParam, InitLoading, cfg
     // 是否需要保存
     const [needSave, setNeedSave] = useState(false);
 
+    useEffect(() => {
+        setValue(InitValue);
+        setNeedSave(false);
+    }, [InitValue]);
+
     // 头部
     let head = <Text>{ConfigParam.text}:</Text>;
     if (ConfigParam.tips !== '') {
@@ -96,16 +98,16 @@ function ShowControlSavePanel({configs, InitValue, ConfigParam, InitLoading, cfg
         switch (ConfigParam.uniConfigType) {
             case ConfigType.Bool:
                 body = <Switch
-                    defaultChecked={InitValue}
-                    onChange={(ret) => {
-                        onValueChange(ret.target.value)
+                    checked={value}
+                    onChange={(checked) => {
+                        onValueChange(checked)
                     }}
                     disabled={operating}
                 />
                 break
             case ConfigType.String:
                 body = <Input
-                    defaultValue={InitValue}
+                    value={value}
                     onChange={(ret) => {
                         onValueChange(ret.target.value)
                     }}
@@ -114,14 +116,14 @@ function ShowControlSavePanel({configs, InitValue, ConfigParam, InitLoading, cfg
                 break
             case ConfigType.Enum:
                 // 显示时显示value对应enum2text,选择项也从中取
-                body = enumPanel(ConfigParam, InitValue, onValueChange, operating);
+                body = enumPanel(ConfigParam, value, onValueChange, operating);
                 break
             case ConfigType.Int:
             case ConfigType.Float:
                 body = <InputNumber
-                    defaultValue={InitValue}
+                    value={value}
                     onChange={(ret) => {
-                        onValueChange(ret.target.value)
+                        onValueChange(ret)
                     }}
                     disabled={operating}
                 />
@@ -229,6 +231,10 @@ function MultiInput({defaultValue, onValueChange, operating, type}) {
         defaultValue = [];
     }
     const [RealValue, setRealValue] = useState(defaultValue);
+
+    useEffect(() => {
+        setRealValue(defaultValue ?? []);
+    }, [defaultValue]);
 
     const InputStyle = {
         flex: 1,
@@ -367,6 +373,22 @@ export class ConfigsCtr {
         param.text = text;
         param.uniConfigType = uniConfigType
         param.tips = tips;
+        this.configs.push(param);
+    }
+
+    addEnumConfig(key, text, enum2text, tips) {
+        for (let i = 0; i < this.configs.length; i++) {
+            if (this.configs[i].key === key) {
+                return;
+            }
+        }
+
+        let param = new ConfigParam();
+        param.key = key;
+        param.text = text;
+        param.uniConfigType = ConfigType.Enum;
+        param.tips = tips;
+        param.enum2text = enum2text;
         this.configs.push(param);
     }
 

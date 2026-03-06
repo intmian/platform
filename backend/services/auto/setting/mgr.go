@@ -65,4 +65,5 @@ import (
 //		m.rwLock.RUnlock()
 //	}
 var GSetting *xstorage.XStorage
+var GCfg *xstorage.CfgExt
 var GBaseSetting share.BaseSetting

@@ -268,28 +268,21 @@ func (m *webMgr) gptRewrite(c *gin.Context) {
 		return
 	}
 
-	// 调用GPT优化函数
-	// 获取 base 配置
-	baseV, err := m.plat.storage.Get("openai.base")
-	if err != nil || baseV == nil {
-		c.JSON(200, makeErrReturn("svr error"))
+	aiCfg, err := share.GetAIConfig(m.plat.cfg)
+	if err != nil {
+		c.JSON(200, makeErrReturn("openai config error"))
+		return
 	}
-	base := xstorage.ToBase[string](baseV)
-	if base == "" || base == "need input" {
+	if aiCfg.Base == "" || aiCfg.Base == "need input" {
 		c.JSON(200, makeErrReturn("openai.base is empty"))
+		return
 	}
-
-	// 获取 token 配置
-	tokenV, err := m.plat.storage.Get("openai.token")
-	if err != nil || tokenV == nil {
-		c.JSON(200, makeErrReturn("svr error"))
-	}
-	token := xstorage.ToBase[string](tokenV)
-	if token == "" || token == "need input" {
+	if aiCfg.Token == "" || aiCfg.Token == "need input" {
 		c.JSON(200, makeErrReturn("openai.token is empty"))
+		return
 	}
-
-	bot := ai.NewOpenAI(base, token, false, ai.AiTypeChatGPT)
+	mode := aiCfg.ModeForScene(share.AISceneRewrite, ai.ModelModeFast)
+	bot := ai.NewOpenAIWithMode(aiCfg.Base, aiCfg.Token, mode, ai.AiTypeChatGPT, aiCfg.ModelPools)
 	if bot == nil {
 		c.JSON(200, makeErrReturn("openai init error"))
 		return

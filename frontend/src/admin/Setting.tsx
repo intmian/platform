@@ -1,6 +1,7 @@
 import {ConfigsCtr, UniConfig} from "../common/UniConfig";
 import {ConfigsType, ConfigType} from "../common/UniConfigDef";
 import {TodoneSetting} from "../todone/Main";
+import {AISetting} from "./AISetting";
 
 const AutoConfigs = new ConfigsCtr(ConfigsType.Server, 'auto')
 AutoConfigs.addBaseConfig('news.keys', '新闻关键词', ConfigType.SliceString, '不用的后面标注#已废弃')
@@ -14,6 +15,7 @@ MiscConfigs.addBaseConfig('r2.web', 'R2 外部展示网址', ConfigType.String, 
 
 function Setting() {
     return <div>
+        <AISetting/>
         <UniConfig configCtr={AutoConfigs}/>
         <TodoneSetting/>
         <UniConfig configCtr={MiscConfigs}/>
