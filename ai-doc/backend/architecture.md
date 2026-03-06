@@ -68,6 +68,10 @@ Last verified: 2026-03-06
      - `openai.model.cheap|fast|normal`
      - `openai.scene.rewrite|summary|translate`
    - missing storage values fall back to cfg defaults, so admin UI can read defaults before first save
+   - current backend defaults:
+     - `cheap`: `gpt-5-mini`, `gpt-4.1-mini`
+     - `fast`: `gpt-5.2-chat-latest`
+     - `normal`: `gpt-5.2`, `gpt-5.2-chat-latest`
 4. `POST /cfg/:svr/set`, `/cfg/:svr/get`
 5. `POST /cfg/:svr/:user/set`, `/cfg/:svr/:user/get`
 6. `POST /misc/gpt-rewrite`
