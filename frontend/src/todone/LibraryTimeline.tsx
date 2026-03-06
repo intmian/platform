@@ -307,15 +307,20 @@ export default function LibraryTimeline({visible, items, onClose, onItemClick}: 
         [selectedCategories, categoryOptions]
     );
 
-    const doingRoundKeySet = useMemo(() => {
+    const roundHasAnyDoingLogSet = useMemo(() => {
         const set = new Set<string>();
-        allEntries.forEach((entry) => {
-            if (entry.logType === LibraryLogType.changeStatus && entry.status === LibraryItemStatus.DOING) {
-                set.add(buildRoundKey(entry));
-            }
+        items.forEach((item) => {
+            item.extra.rounds.forEach((round) => {
+                const hasDoingLog = round.logs.some((log) => (
+                    log.type === LibraryLogType.changeStatus && log.status === LibraryItemStatus.DOING
+                ));
+                if (hasDoingLog) {
+                    set.add(`${item.taskId}__${round.name}`);
+                }
+            });
         });
         return set;
-    }, [allEntries]);
+    }, [items]);
 
     const baseEntries = useMemo(() => {
         const sourceEntries = (selectedYear === 'all'
@@ -391,7 +396,7 @@ export default function LibraryTimeline({visible, items, onClose, onItemClick}: 
                 }
 
                 const roundKey = buildRoundKey(entry);
-                if (!doingRoundKeySet.has(roundKey)) {
+                if (!roundHasAnyDoingLogSet.has(roundKey)) {
                     mergedEntries.push({...entry, mergedStartDone: true});
                     return;
                 }
@@ -409,7 +414,7 @@ export default function LibraryTimeline({visible, items, onClose, onItemClick}: 
         });
     }, [
         baseEntries,
-        doingRoundKeySet,
+        roundHasAnyDoingLogSet,
         getEntryStatusOption,
         selectedStatuses,
     ]);

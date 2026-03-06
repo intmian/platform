@@ -1,6 +1,6 @@
 # Library Module Knowledge
 
-Last verified: 2026-03-05 (code verified, TODO-verify via interaction)
+Last verified: 2026-03-06 (code verified, TODO-verify via interaction)
 
 ## Entry dependency on Todone
 
@@ -126,6 +126,10 @@ Timeline rules:
 2. `timelineCutoff` log itself is hidden.
 3. Logs before cutoff are excluded.
 4. Legacy `note: 添加到库` is normalized to `addToLibrary`.
+5. `开始并完成` only appears when:
+   - same-day visible `DOING -> DONE` pair can be merged, or
+   - that round truly has no `DOING` log in original round logs.
+   If `DOING` exists but is filtered out by year/cutoff, keep `DONE` as `完成`.
 
 Share export rules:
 
