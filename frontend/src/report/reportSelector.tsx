@@ -145,7 +145,7 @@ function ReportSelector({onSelect}: {
                 marginBottom: "10px"
             }}
         >
-            <User/>
+            <User autoOpenLoginPanel={false}/>
         </Row>
         <Divider/>
         {opre}

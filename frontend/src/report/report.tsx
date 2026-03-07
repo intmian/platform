@@ -5,8 +5,10 @@ import ReportShow from "./reportShow";
 import {Col, Row} from "antd";
 import {useIsMobile} from "../common/hooksv2";
 import MobileAdapter from "../common/MobileAdapter";
+import {useLoginGate} from "../common/useLoginGate";
 
 function ReportPanel() {
+    const {loginPanel} = useLoginGate();
     // 更换Favicon为/newslogo.webp
     useEffect(() => {
         const existingFavicon = document.querySelector('link[rel="icon"], link[rel="shortcut icon"]');
@@ -54,22 +56,25 @@ function ReportPanel() {
         }
     }, [selected]);
 
-    return <Row>
-        <Col
-            span={isMobile ? 4 : 4}
-        >
-            <MobileAdapter position={"left"} width={"15%"}>
-                <ReportSelector onSelect={setSelected}/>
-            </MobileAdapter>
-        </Col>
-        <Col
-            span={isMobile ? 24 : 16}
-        >
-            <div>
-                <ReportShow selected={selected}/>
-            </div>
-        </Col>
-    </Row>
+    return <>
+        <Row>
+            <Col
+                span={isMobile ? 4 : 4}
+            >
+                <MobileAdapter position={"left"} width={"15%"}>
+                    <ReportSelector onSelect={setSelected}/>
+                </MobileAdapter>
+            </Col>
+            <Col
+                span={isMobile ? 24 : 16}
+            >
+                <div>
+                    <ReportShow selected={selected}/>
+                </div>
+            </Col>
+        </Row>
+        {loginPanel}
+    </>
 }
 
 export default ReportPanel;
