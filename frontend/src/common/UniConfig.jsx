@@ -96,6 +96,41 @@ function formatCollapsedValue(value, secret) {
         .join(", ");
 }
 
+function normalizeConfigValueByType(configType, value) {
+    if (value == null) {
+        return value;
+    }
+
+    if (typeof value !== "string") {
+        return value;
+    }
+
+    let parsedValue = value;
+    try {
+        parsedValue = JSON.parse(value);
+    } catch {
+        return value;
+    }
+
+    switch (configType) {
+        case ConfigType.String:
+        case ConfigType.Enum:
+            return typeof parsedValue === "string" ? parsedValue : value;
+        case ConfigType.Bool:
+            return typeof parsedValue === "boolean" ? parsedValue : value;
+        case ConfigType.Int:
+        case ConfigType.Float:
+            return typeof parsedValue === "number" ? parsedValue : value;
+        case ConfigType.SliceBool:
+        case ConfigType.SliceInt:
+        case ConfigType.SliceFloat:
+        case ConfigType.SliceString:
+            return Array.isArray(parsedValue) ? parsedValue : value;
+        default:
+            return value;
+    }
+}
+
 function ShowControlSavePanel({configs, InitValue, ConfigParam, InitLoading, cfgMode, tileLength, hideLabel}) {
     // 是否正在进行网络操作，内部加载中
     const [operating, setOperating] = useState(false);
@@ -204,7 +239,7 @@ function ShowControlSavePanel({configs, InitValue, ConfigParam, InitLoading, cfg
                     openNotificationWithIcon('success', '保存成功', '保存成功');
                     setOperating(false);
                     setNeedSave(false);
-                    configs.set(ConfigParam.key, newValue);
+                    configs.set(ConfigParam.key, value);
                 } else {
                     openNotificationWithIcon('error', '保存失败', '保存失败');
                     setOperating(false);
@@ -539,7 +574,14 @@ export class ConfigsCtr {
 
     set(key, value) {
         let realKey = this.getRealID(key);
-        this.data[realKey] = value;
+        let param = null;
+        for (let i = 0; i < this.configs.length; i++) {
+            if (this.configs[i].key === key) {
+                param = this.configs[i];
+                break;
+            }
+        }
+        this.data[realKey] = param === null ? value : normalizeConfigValueByType(param.uniConfigType, value);
         this.callBack(false)
     }
 
@@ -640,7 +682,7 @@ export function UniConfig({configCtr, configKeys = null, hideLabels = false}) {
                     break
             }
             if (configCtr.data[realKey] !== undefined) {
-                data = configCtr.data[realKey];
+                data = normalizeConfigValueByType(filteredConfigs[i].uniConfigType, configCtr.data[realKey]);
             } else {
                 data = null;
             }
