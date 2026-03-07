@@ -235,10 +235,15 @@ function ShowControlSavePanel({configs, InitValue, ConfigParam, InitLoading, cfg
     >
         {contextHolder}
         {hideLabel ? null : <div style={{
-            width: tileLength + 0.5 + 'em', display: 'flex', alignItems: 'center', height: '32px'
+            width: tileLength + 0.5 + 'em',
+            minWidth: tileLength + 0.5 + 'em',
+            flex: '0 0 auto',
+            display: 'flex',
+            alignItems: 'center',
+            height: '32px'
         }}>{head}</div>}
-        <div style={{flex: 1}}>{body}</div>
-        <div>{foot}</div>
+        <div style={{flex: 1, minWidth: 0, overflow: 'hidden'}}>{body}</div>
+        <div style={{flexShrink: 0}}>{foot}</div>
     </Flex>
 }
 
@@ -418,11 +423,13 @@ function MultiInput({defaultValue, onValueChange, operating, type, secret}) {
     return <Collapse
         bordered={false}
         size={"small"}
-        style={{width: '100%'}}
+        style={{width: '100%', minWidth: 0}}
         items={[{
-            key: '1', label: <Text ellipsis style={{maxWidth: '100%'}}>
-                {formatCollapsedValue(RealValue, secret)}
-            </Text>, children: <Space direction={"vertical"} style={{width: '100%'}}>
+            key: '1', label: <div style={{width: '100%', minWidth: 0, overflow: 'hidden'}}>
+                <Text ellipsis style={{display: 'block', width: '100%'}}>
+                    {formatCollapsedValue(RealValue, secret)}
+                </Text>
+            </div>, children: <Space direction={"vertical"} style={{width: '100%'}}>
                 {coms}
                 {adder}
             </Space>
