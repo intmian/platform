@@ -1,6 +1,6 @@
 # Doc And Skill Loading Map
 
-Last verified: 2026-02-27
+Last verified: 2026-03-06
 
 ## Goal
 
@@ -19,6 +19,7 @@ Last verified: 2026-02-27
 
 1. Load:
    - `shared/engineering-workflow.md`
+   - `frontend/architecture.md` when routing/auth/request base is shared-layer relevant
    - matched domain docs (`todone/*`, `library/*`, `note-mini/*`)
 2. Skip backend docs unless API contract/auth/config is touched.
 
@@ -26,9 +27,13 @@ Last verified: 2026-02-27
 
 1. Load:
    - `shared/engineering-workflow.md`
+   - `shared/coverage-map.md` when deciding whether the requested area is already documented
    - `backend/architecture.md`
+   - `backend/gateway-auth.md` when route/auth/permission propagation is touched
+   - `backend/config-and-ai.md` when config/AI/R2 is touched
+   - `backend/observability.md` when runtime visibility/logging matters
    - `backend/services.md`
-   - matched backend deep doc (`backend/todone-core.md` if todone)
+   - matched backend deep doc (`backend/account.md`, `backend/auto.md`, `backend/cmd.md`, `backend/todone-core.md`, `backend/web-storage.md` as applicable)
    - `backend/testing.md`
 2. Load frontend docs only when request explicitly includes UI behavior.
 
@@ -37,9 +42,14 @@ Last verified: 2026-02-27
 1. Load:
    - `shared/engineering-workflow.md`
    - `shared/debug-workflow.md` when repro/debug is needed
-   - `backend/architecture.md` + `backend/services.md`
+   - `shared/coverage-map.md` when the task spans multiple system/domain areas
+   - `frontend/architecture.md` when frontend shell/auth/request stack matters
+   - `backend/architecture.md`
+   - `backend/gateway-auth.md` when gateway/auth is involved
+   - `backend/config-and-ai.md` when config/AI/R2 is involved
+   - `backend/services.md`
+   - matched backend deep docs as needed
    - matched domain docs
-   - `backend/todone-core.md` when todone ordering/cache/move is involved
 
 ## Pure learning / mapping task
 

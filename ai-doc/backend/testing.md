@@ -1,11 +1,12 @@
 # Backend Testing Baseline
 
-Last verified: 2026-02-27
+Last verified: 2026-03-06
 
 ## Goal
 
 1. Provide a repeatable backend verification flow for API/service changes.
 2. Ensure tests include both target path and one adjacent regression path.
+3. Pair this file with matched backend deep docs from `backend/*.md` when verifying a specific service.
 
 ## Runtime baseline
 

@@ -1,11 +1,20 @@
 # Backend Services Catalog
 
-Last verified: 2026-02-27
+Last verified: 2026-03-06
 
 ## Scope
 
 1. Summarizes registered backend services, their permission gates, and public RPC commands.
 2. Focuses on stable contract-level facts for debugging and change impact analysis.
+
+## Deep-doc routing
+
+1. Load matched service deep docs when the task needs service internals:
+   - `backend/account.md`
+   - `backend/auto.md`
+   - `backend/cmd.md`
+   - `backend/todone-core.md`
+   - `backend/web-storage.md`
 
 ## Registered services
 
@@ -33,6 +42,7 @@ Last verified: 2026-02-27
 1. Account registration/deregistration.
 2. Password-token permission mapping.
 3. Login token verification source for web login.
+4. See `backend/account.md` for storage model and bootstrap details.
 
 ## Permission gate
 
@@ -61,6 +71,7 @@ Last verified: 2026-02-27
 
 1. Daily/whole report generation and reading.
 2. Integrates modules in `services/auto/mods` and scheduler/task manager.
+3. See `backend/auto.md` for scheduled-unit, storage, and AI details.
 
 ## Permission gate
 
@@ -83,6 +94,7 @@ Last verified: 2026-02-27
 1. Manage script tools.
 2. Manage runtime environments and files.
 3. Run tasks and stream runtime IO/state.
+4. See `backend/cmd.md` for tool/env/task persistence details.
 
 ## Permission gate
 
@@ -122,6 +134,7 @@ Last verified: 2026-02-27
 
 1. Dir/group/subgroup/task/tag CRUD and move flows.
 2. Backend authority for task tree/state/order.
+3. See `backend/todone-core.md` for runtime model, cache, and move semantics.
 
 ## Permission gate
 
@@ -157,6 +170,13 @@ Last verified: 2026-02-27
 19. `taskMove`
 20. `taskAddTag`
 21. `taskDelTag`
+
+## Service: web-storage
+
+## Status
+
+1. Code directory exists but service is not registered.
+2. Current status note lives in `backend/web-storage.md`.
 
 ## Core failure signatures to recognize
 

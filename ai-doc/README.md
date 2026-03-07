@@ -2,7 +2,7 @@
 
 Purpose: provide repository-local, task-scoped knowledge for AI agents.
 
-Last verified: 2026-02-27
+Last verified: 2026-03-06
 
 ## Core rules
 
@@ -35,13 +35,23 @@ Last verified: 2026-02-27
 3. Learning/minimal-loading strategy: `shared/learning-workflow.md`
 4. Reusable utility/process index: `shared/reusable-tools.md`
 5. Doc+skill loading strategy: `shared/doc-skill-map.md`
+6. Code-to-doc coverage matrix: `shared/coverage-map.md`
 
-### Step 2: pick backend system docs when task touches API/service/data
+### Step 2: pick system docs when task touches shared frontend/backend behavior
 
-1. Backend architecture and gateway/auth/config: `backend/architecture.md`
-2. Service catalog and permission/command matrix: `backend/services.md`
-3. Todone backend core logic (tree/cache/sequence/move): `backend/todone-core.md`
-4. Backend verification baseline: `backend/testing.md`
+1. Frontend shell/routing/auth/request conventions: `frontend/architecture.md`
+2. Backend bootstrap and service registration: `backend/architecture.md`
+3. Backend gateway/auth/cookie flow: `backend/gateway-auth.md`
+4. Backend config, AI, and R2 config surface: `backend/config-and-ai.md`
+5. Backend logs, BI, and profiling surface: `backend/observability.md`
+6. Service catalog and permission/command matrix: `backend/services.md`
+7. Matched service deep docs:
+   - `backend/account.md`
+   - `backend/auto.md`
+   - `backend/cmd.md`
+   - `backend/todone-core.md`
+   - `backend/web-storage.md`
+8. Backend verification baseline: `backend/testing.md`
 
 ### Step 3: pick domain docs
 

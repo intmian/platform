@@ -1,18 +1,32 @@
 # Todone Module Knowledge
 
-Last verified: 2026-02-28
+Last verified: 2026-03-06
 
 ## Scope and loading boundary
 
 1. Todone is the shared task platform module under `frontend/src/todone` + `backend/services/todone`.
 2. Group `Type=0` is normal task board; `Type=1` is library extension branch.
 3. When current work touches library-specific behavior (timeline/score/cover/category/share), load `ai-doc/library/*` in addition to this file.
-4. When current work touches backend internals (service startup/permission, sequence/cache/move correctness, DB model), also load:
+4. When current work touches shared frontend routing/auth/request behavior, also load:
+   - `ai-doc/frontend/architecture.md`
+5. When current work touches backend internals (service startup/permission, sequence/cache/move correctness, DB model), also load:
    - `ai-doc/backend/architecture.md`
+   - `ai-doc/backend/gateway-auth.md`
+   - `ai-doc/backend/config-and-ai.md` when config/defaults are involved
    - `ai-doc/backend/services.md`
    - `ai-doc/backend/todone-core.md`
 
-## Route and entry model
+## Module role
+
+1. Todone is the shared task hierarchy and task-state module for this repo.
+2. It owns the canonical CRUD/move/order contract for:
+   - dir
+   - group
+   - subgroup
+   - task
+3. Library is not a separate storage model; it is a specialized branch built on todone group type `1`.
+
+## Frontend entry
 
 1. Frontend routes: `/todone` and `/todone/:group` (`frontend/src/App.jsx`).
 2. `:group` is URL-encoded `addr|title|type`; decode failure or missing data falls back to opening the directory drawer.
@@ -23,7 +37,17 @@ Last verified: 2026-02-28
    - library: `TODONE 娱乐库: <title>`
 6. Page favicon is replaced to `/todone-mini.png` in `Todone` mount effect.
 
-## Auth and settings
+## API surface
+
+1. Backend RPC prefix is `/service/todone/`.
+2. Dir/Group commands:
+   - `getDirTree`, `moveDir`, `moveGroup`, `createDir`, `changeDir`, `delDir`, `createGroup`, `changeGroup`, `delGroup`
+3. SubGroup commands:
+   - `getSubGroup`, `createSubGroup`, `changeSubGroup`, `delSubGroup`
+4. Task commands:
+   - `getTask`, `getTasks`, `createTask`, `changeTask`, `delTask`, `taskMove`, `taskAddTag`, `taskDelTag`
+
+## Backend dependency
 
 1. Page-level login gate is handled by `useLoginGate()` in `Todone`, not by child components.
 2. Drawer `User` component uses `autoOpenLoginPanel={false}` to avoid duplicate login popup.
@@ -39,7 +63,7 @@ Last verified: 2026-02-28
    - direct backend probe should call `POST /check`
    - `GET /check` and `GET /api/check` are not valid for this route
 
-## Data hierarchy and core flows
+## Data contract and core flows
 
 1. Hierarchy: `Dir -> Group -> SubGroup -> Task`.
 2. Dir tree:
@@ -67,11 +91,11 @@ Last verified: 2026-02-28
 13. Dragging onto an expanded task's empty subtask list targets `task-children-*` droppable area and moves task as that task's child (`TrgParentID=targetTaskID`, `TrgTaskID=0`).
 14. Mobile drag handle (`.drag-handle`) enforces `touch-action: none` + `user-select: none` to avoid long-press text selection interference.
 
-## Backend RPC contract (prefix `/service/todone/`)
+## Verification focus
 
-1. Dir/Group: `getDirTree`, `moveDir`, `moveGroup`, `createDir`, `changeDir`, `delDir`, `createGroup`, `changeGroup`, `delGroup`
-2. SubGroup: `getSubGroup`, `createSubGroup`, `changeSubGroup`, `delSubGroup`
-3. Task: `getTask`, `getTasks`, `createTask`, `changeTask`, `delTask`, `taskMove`, `taskAddTag`, `taskDelTag`
+1. Load `todone/testing.md` for interactive and API regression matrix.
+2. Load `backend/todone-core.md` when the task touches sequence integrity, cache, or move semantics.
+3. Adjacent regression for todone changes should usually include switching between normal and library groups because they share the same module shell.
 
 ## Common failure signatures
 

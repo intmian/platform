@@ -2,11 +2,34 @@
 
 Last verified: 2026-03-06 (code verified, TODO-verify via interaction)
 
-## Entry dependency on Todone
+## Module role and loading boundary
 
 1. Library is rendered under `/todone/:group` and is activated only when `group type = 1` (`GroupType.Library`).
 2. Shared `todone` behavior (route parsing, login gate, dir/group/subgroup baseline, permission gate, common RPC contract) is defined in `ai-doc/todone/knowledge.md`.
-3. If current task涉及 todone 基础设定或入口问题，先加载 `ai-doc/todone/knowledge.md`，再回到本文件处理 library 特有逻辑。
+3. If current task涉及 todone 基础设定、共享路由鉴权、或入口问题，先加载 `ai-doc/todone/knowledge.md`；如果问题落在前端壳层，再补 `ai-doc/frontend/architecture.md`，再回到本文件处理 library 特有逻辑。
+4. Library has no dedicated backend service; it is a behavior layer built on todone task storage plus `LibraryExtra` JSON in `Task.Note`.
+
+## Frontend entry
+
+1. Library lives inside `/todone/:group`, not under an independent route namespace.
+2. It activates only when selected group type is `Library`.
+3. Shared route/login/title behaviors come from todone shell; library adds list/detail/timeline/category/share behavior on top.
+
+## API surface
+
+1. Library uses todone RPC instead of a dedicated library RPC namespace.
+2. Main calls are:
+   - `getSubGroup`
+   - `getTasks` with `ContainDone: true`
+   - `createTask`
+   - `changeTask`
+   - `delTask`
+
+## Backend dependency
+
+1. Backend persistence is still todone `Task`.
+2. Library-specific structure is serialized into `Task.Note`.
+3. Subgroup convention prefers `_library_items_`, with legacy fallback to first subgroup and auto-create when none exists.
 
 ## Data model
 
@@ -46,23 +69,6 @@ Last verified: 2026-03-06 (code verified, TODO-verify via interaction)
      - frontend background job tries to generate missing files from original URL with center crop.
      - successful backfill writes only backend data and logs console info; current page keeps old display until reopen (`verified via interaction`).
    - remote image fetch path used by legacy backfill and share/timeline export adds `__cf_bust` query + `cache: no-store` to reduce stale edge-cache CORS mismatch impact.
-
-## Subgroup convention
-
-1. Preferred subgroup title: `_library_items_`.
-2. Load behavior:
-   - find `_library_items_`
-   - fallback first subgroup for legacy data
-   - create `_library_items_` if none exists, then reload
-
-## Backend calls used by library page
-
-1. Based on todone RPC (`/service/todone/*`), library page主要使用：
-   - `getSubGroup`
-   - `getTasks` with `ContainDone: true`
-   - `createTask`
-   - `changeTask`
-   - `delTask`
 
 ## Default UI state
 
@@ -142,3 +148,8 @@ Share export rules:
 2. `sub group not exist`
 3. `task not exist`
 4. `TODO-verify`: direct `/todone/:group` open may occasionally render empty list while API is healthy; reselecting same group from left tree can recover expected items.
+
+## Verification focus
+
+1. Load `library/testing.md` for add/edit/delete/filter/sort/cover/share regression matrix.
+2. Regression should include switching back to a normal todone group because library and todone share the same entry shell and RPC family.
