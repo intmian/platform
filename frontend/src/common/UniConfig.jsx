@@ -17,7 +17,12 @@ import {
 } from "antd";
 import {useEffect, useState} from "react";
 import {ConfigsType, ConfigType} from "./UniConfigDef.js";
-import {CloseOutlined, SaveOutlined} from "@ant-design/icons";
+import {
+    CloseOutlined,
+    DownOutlined,
+    SaveOutlined,
+    UpOutlined
+} from "@ant-design/icons";
 import {
     sendCfgPlatGet,
     sendCfgPlatSet,
@@ -35,6 +40,7 @@ class ConfigParam {
     text = ''; // 对应的显示文本
     uniConfigType = 0; // 对应配置类型
     tips = '';  // 详细说明
+    secret = false; // 机密配置默认隐藏内容
 
     // 以下是额外信息，特殊的Type会有特殊的信息
     enum2text = []  // 如果是enum类型，这里是enum的值和对应的提示
@@ -63,7 +69,34 @@ function ButtonPanel({ConfigParam}) {
     />
 }
 
-function ShowControlSavePanel({configs, InitValue, ConfigParam, InitLoading, cfgMode, tileLength}) {
+function formatCollapsedValue(value, secret) {
+    if (value == null) {
+        return "暂无内容";
+    }
+    if (!Array.isArray(value)) {
+        return secret ? "已隐藏" : String(value);
+    }
+    if (value.length === 0) {
+        return "暂无内容";
+    }
+
+    return value
+        .map((item) => {
+            if (secret) {
+                return "******";
+            }
+            if (item == null) {
+                return "";
+            }
+            if (typeof item === "boolean") {
+                return item ? "true" : "false";
+            }
+            return String(item);
+        })
+        .join(", ");
+}
+
+function ShowControlSavePanel({configs, InitValue, ConfigParam, InitLoading, cfgMode, tileLength, hideLabel}) {
     // 是否正在进行网络操作，内部加载中
     const [operating, setOperating] = useState(false);
     // 当前的值
@@ -106,13 +139,21 @@ function ShowControlSavePanel({configs, InitValue, ConfigParam, InitLoading, cfg
                 />
                 break
             case ConfigType.String:
-                body = <Input
-                    value={value}
-                    onChange={(ret) => {
-                        onValueChange(ret.target.value)
-                    }}
-                    disabled={operating}
-                />
+                body = ConfigParam.secret ?
+                    <Input.Password
+                        value={value}
+                        onChange={(ret) => {
+                            onValueChange(ret.target.value)
+                        }}
+                        disabled={operating}
+                    /> :
+                    <Input
+                        value={value}
+                        onChange={(ret) => {
+                            onValueChange(ret.target.value)
+                        }}
+                        disabled={operating}
+                    />
                 break
             case ConfigType.Enum:
                 // 显示时显示value对应enum2text,选择项也从中取
@@ -137,6 +178,7 @@ function ShowControlSavePanel({configs, InitValue, ConfigParam, InitLoading, cfg
                     onValueChange={onValueChange}
                     operating={operating}
                     type={ConfigParam.uniConfigType}
+                    secret={ConfigParam.secret}
                 />
                 break
         }
@@ -192,9 +234,9 @@ function ShowControlSavePanel({configs, InitValue, ConfigParam, InitLoading, cfg
                  gap={'small'}
     >
         {contextHolder}
-        <div style={{
+        {hideLabel ? null : <div style={{
             width: tileLength + 0.5 + 'em', display: 'flex', alignItems: 'center', height: '32px'
-        }}>{head}</div>
+        }}>{head}</div>}
         <div style={{flex: 1}}>{body}</div>
         <div>{foot}</div>
     </Flex>
@@ -210,7 +252,7 @@ function ShowControlSavePanel({configs, InitValue, ConfigParam, InitLoading, cfg
 * user 用户的名字
 * 如果正在加载中，会显示加载中的状态，否在会在底层未改变初始值的情况下显示值。
 * */
-export function ConfigPanel({configs, ConfigParam, InitLoading, InitValue, cfgMode, tileLength}) {
+export function ConfigPanel({configs, ConfigParam, InitLoading, InitValue, cfgMode, tileLength, hideLabel}) {
     // 特殊处理的一些类型
     if (ConfigParam.uniConfigType === ConfigType.Button) {
         return ButtonPanel(ConfigParam);
@@ -223,10 +265,11 @@ export function ConfigPanel({configs, ConfigParam, InitLoading, InitValue, cfgMo
         ConfigParam={ConfigParam}
         InitLoading={InitLoading}
         cfgMode={cfgMode}
+        hideLabel={hideLabel}
     />
 }
 
-function MultiInput({defaultValue, onValueChange, operating, type}) {
+function MultiInput({defaultValue, onValueChange, operating, type, secret}) {
     if (defaultValue == null) {
         defaultValue = [];
     }
@@ -272,17 +315,29 @@ function MultiInput({defaultValue, onValueChange, operating, type}) {
                 />
                 break;
             case ConfigType.SliceString:
-                editor = <Input
-                    style={InputStyle}
-                    value={RealValue[i]} // 使用 value 而不是 defaultValue
-                    onChange={(newValue) => {
-                        const newRealValue = [...RealValue];
-                        newRealValue[i] = newValue.target.value;
-                        setRealValue(newRealValue);
-                        onValueChange(newRealValue);
-                    }}
-                    disabled={operating}
-                />
+                editor = secret ?
+                    <Input.Password
+                        style={InputStyle}
+                        value={RealValue[i]} // 使用 value 而不是 defaultValue
+                        onChange={(newValue) => {
+                            const newRealValue = [...RealValue];
+                            newRealValue[i] = newValue.target.value;
+                            setRealValue(newRealValue);
+                            onValueChange(newRealValue);
+                        }}
+                        disabled={operating}
+                    /> :
+                    <Input
+                        style={InputStyle}
+                        value={RealValue[i]} // 使用 value 而不是 defaultValue
+                        onChange={(newValue) => {
+                            const newRealValue = [...RealValue];
+                            newRealValue[i] = newValue.target.value;
+                            setRealValue(newRealValue);
+                            onValueChange(newRealValue);
+                        }}
+                        disabled={operating}
+                    />
                 break;
         }
 
@@ -293,6 +348,34 @@ function MultiInput({defaultValue, onValueChange, operating, type}) {
         }} key={i}> {/* 使用 i 作为 key，保证稳定 */}
             <Flex gap={"small"} style={{width: "100%"}}>
                 {editor}
+                <Button
+                    onClick={() => {
+                        if (i === 0) {
+                            return;
+                        }
+                        const newRealValue = [...RealValue];
+                        [newRealValue[i - 1], newRealValue[i]] = [newRealValue[i], newRealValue[i - 1]];
+                        setRealValue(newRealValue);
+                        onValueChange(newRealValue);
+                    }}
+                    type={"text"}
+                    disabled={operating || i === 0}
+                    icon={<UpOutlined/>}
+                />
+                <Button
+                    onClick={() => {
+                        if (i === RealValue.length - 1) {
+                            return;
+                        }
+                        const newRealValue = [...RealValue];
+                        [newRealValue[i], newRealValue[i + 1]] = [newRealValue[i + 1], newRealValue[i]];
+                        setRealValue(newRealValue);
+                        onValueChange(newRealValue);
+                    }}
+                    type={"text"}
+                    disabled={operating || i === RealValue.length - 1}
+                    icon={<DownOutlined/>}
+                />
                 <Button onClick={() => {
                     const newRealValue = [...RealValue];
                     newRealValue.splice(i, 1);
@@ -300,6 +383,7 @@ function MultiInput({defaultValue, onValueChange, operating, type}) {
                     onValueChange(newRealValue);
                 }}
                         type={"text"}
+                        disabled={operating}
                         icon={<CloseOutlined style={{color: 'red'}}/>}
                 />
             </Flex>
@@ -336,7 +420,9 @@ function MultiInput({defaultValue, onValueChange, operating, type}) {
         size={"small"}
         style={{width: '100%'}}
         items={[{
-            key: '1', label: '点击修改', children: <Space direction={"vertical"} style={{width: '100%'}}>
+            key: '1', label: <Text ellipsis style={{maxWidth: '100%'}}>
+                {formatCollapsedValue(RealValue, secret)}
+            </Text>, children: <Space direction={"vertical"} style={{width: '100%'}}>
                 {coms}
                 {adder}
             </Space>
@@ -349,10 +435,11 @@ export class ConfigsCtr {
     cfgMode = ConfigsType.Plat
     configs = []
     data = {}
-    onDataChanged = []
+    onDataChanged = new Set()
     server = ''
     user = ''
     needInit = true
+    initPromise = null
 
     constructor(cfgMode, server, user) {
         this.configs = [];
@@ -361,7 +448,7 @@ export class ConfigsCtr {
         this.user = user;
     }
 
-    addBaseConfig(key, text, uniConfigType, tips) {
+    addBaseConfig(key, text, uniConfigType, tips, options = {}) {
         for (let i = 0; i < this.configs.length; i++) {
             if (this.configs[i].key === key) {
                 return;
@@ -373,10 +460,11 @@ export class ConfigsCtr {
         param.text = text;
         param.uniConfigType = uniConfigType
         param.tips = tips;
+        param.secret = options.secret ?? false;
         this.configs.push(param);
     }
 
-    addEnumConfig(key, text, enum2text, tips) {
+    addEnumConfig(key, text, enum2text, tips, options = {}) {
         for (let i = 0; i < this.configs.length; i++) {
             if (this.configs[i].key === key) {
                 return;
@@ -389,17 +477,21 @@ export class ConfigsCtr {
         param.uniConfigType = ConfigType.Enum;
         param.tips = tips;
         param.enum2text = enum2text;
+        param.secret = options.secret ?? false;
         this.configs.push(param);
     }
 
     addCallback(f) {
-        this.onDataChanged.push(f);
+        this.onDataChanged.add(f);
+        return () => {
+            this.onDataChanged.delete(f);
+        };
     }
 
     callBack(isInit) {
-        for (let i = 0; i < this.onDataChanged.length; i++) {
-            this.onDataChanged[i](isInit);
-        }
+        this.onDataChanged.forEach((f) => {
+            f(isInit);
+        });
     }
 
     get(key) {
@@ -445,62 +537,78 @@ export class ConfigsCtr {
     }
 
     init() {
-        let callback = (ret) => {
-            // 后端传的key都是真实key不需要二次处理，所以调用特殊函数，同时为了避免重复渲染，最后触发一次回调。
-            for (let key in ret.data) {
-                this.setByDB(key, ret.data[key].Data);
+        if (!this.needInit) {
+            return Promise.resolve();
+        }
+        if (this.initPromise !== null) {
+            return this.initPromise;
+        }
+
+        this.initPromise = new Promise((resolve) => {
+            let callback = (ret) => {
+                const retData = ret?.data ?? {};
+                // 后端传的key都是真实key不需要二次处理，所以调用特殊函数，同时为了避免重复渲染，最后触发一次回调。
+                for (let key in retData) {
+                    this.setByDB(key, retData[key].Data);
+                }
+                this.needInit = false;
+                this.initPromise = null;
+                this.callBack(true)
+                resolve(ret);
             }
-            this.needInit = false;
-            this.callBack(true)
-        }
-        if (this.cfgMode === ConfigsType.Plat) {
-            sendCfgPlatGet(callback)
-        } else if (this.cfgMode === ConfigsType.Server) {
-            sendCfgServiceGet(this.server, callback)
-        } else if (this.cfgMode === ConfigsType.User) {
-            sendCfgServiceUserGet(this.server, this.user, callback)
-        }
+            if (this.cfgMode === ConfigsType.Plat) {
+                sendCfgPlatGet(callback)
+            } else if (this.cfgMode === ConfigsType.Server) {
+                sendCfgServiceGet(this.server, callback)
+            } else if (this.cfgMode === ConfigsType.User) {
+                sendCfgServiceUserGet(this.server, this.user, callback)
+            }
+        });
+
+        return this.initPromise;
     }
 }
 
 // UniConfig 一个通用的配置界面，用于显示和修改配置。建议不要和ctx一起耦合，单独处理全局的已有配置
-export function UniConfig({configCtr}) {
+export function UniConfig({configCtr, configKeys = null, hideLabels = false}) {
     // 加载中
     const [loading, setLoading] = useState(true);
+    const [, setVersion] = useState(0);
 
     // 初始化
     useEffect(() => {
-        // 初始化过了就用ctr的数据初始化，否则请求数据
-        if (!configCtr.needInit) {
-            setLoading(false);
-            return;
-        }
-        let callback = (ret) => {
-            setLoading(false);
-            // 后端传的key都是真实key不需要二次处理，所以调用特殊函数，同时为了避免重复渲染，最后触发一次回调。
-            for (let key in ret.data) {
-                configCtr.setByDB(key, ret.data[key].Data);
+        let cancelled = false;
+        setLoading(configCtr.needInit);
+        configCtr.init().finally(() => {
+            if (!cancelled) {
+                setLoading(false);
             }
-            configCtr.callBack(true)
-        }
-        if (configCtr.cfgMode === ConfigsType.Plat) {
-            sendCfgPlatGet(callback)
-        } else if (configCtr.cfgMode === ConfigsType.Server) {
-            sendCfgServiceGet(configCtr.server, callback)
-        } else if (configCtr.cfgMode === ConfigsType.User) {
-            sendCfgServiceUserGet(configCtr.server, configCtr.user, callback)
-        }
-    }, [configCtr.cfgMode, configCtr, configCtr.server, configCtr.user]);
+        });
+
+        const removeCallback = configCtr.addCallback(() => {
+            if (!cancelled) {
+                setVersion((prev) => prev + 1);
+            }
+        });
+
+        return () => {
+            cancelled = true;
+            removeCallback();
+        };
+    }, [configCtr]);
 
     // 配置面板
     let panels = [];
     let maxTitleLength = 0;
+    const filteredConfigs = configKeys === null
+        ? configCtr.configs
+        : configCtr.configs.filter((item) => configKeys.includes(item.key));
 
-    for (let i = 0; i < configCtr.configs.length; i++) {
+    for (let i = 0; i < filteredConfigs.length; i++) {
         // 英文字符按照0.5计算
-        let titleLength = configCtr.configs[i].text.length * 0.5;
-        for (let j = 0; j < configCtr.configs[i].text.length; j++) {
-            if (configCtr.configs[i].text.charCodeAt(j) > 255) {
+        let titleLength = filteredConfigs[i].text.length * 0.5;
+        for (let j = 0; j < filteredConfigs[i].text.length; j++) {
+            if (filteredConfigs[i].text.charCodeAt(j) > 255) {
                 titleLength += 0.5;
             }
         }
@@ -509,19 +617,19 @@ export function UniConfig({configCtr}) {
         }
     }
 
-    for (let i = 0; i < configCtr.configs.length; i++) {
+    for (let i = 0; i < filteredConfigs.length; i++) {
         let data = null;
         if (configCtr.data !== null) {
             let realKey;
             switch (configCtr.cfgMode) {
                 case ConfigsType.Plat:
-                    realKey = 'PLAT.' + configCtr.configs[i].key;
+                    realKey = 'PLAT.' + filteredConfigs[i].key;
                     break
                 case ConfigsType.Server:
-                    realKey = configCtr.server + '.' + configCtr.configs[i].key;
+                    realKey = configCtr.server + '.' + filteredConfigs[i].key;
                     break
                 case ConfigsType.User:
-                    realKey = configCtr.server + '.' + configCtr.user + '.' + configCtr.configs[i].key;
+                    realKey = configCtr.server + '.' + configCtr.user + '.' + filteredConfigs[i].key;
                     break
             }
             if (configCtr.data[realKey] !== undefined) {
@@ -533,11 +641,12 @@ export function UniConfig({configCtr}) {
         panels.push(<ConfigPanel
             configs={configCtr}
             key={i}
-            ConfigParam={configCtr.configs[i]}
+            ConfigParam={filteredConfigs[i]}
             cfgMode={configCtr.cfgMode}
             InitLoading={loading}
             InitValue={data}
             tileLength={maxTitleLength}
+            hideLabel={hideLabels}
         />)
     }
     return <List

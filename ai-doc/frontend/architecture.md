@@ -1,6 +1,6 @@
 # Frontend Architecture
 
-Last verified: 2026-03-06
+Last verified: 2026-03-07
 
 ## Scope
 
@@ -70,6 +70,14 @@ Last verified: 2026-03-06
    - `./front` exists
    - `use_front = true`
 3. In backend-served mode, non-API routes fall back to SPA entry handling.
+
+## Shared config UI
+
+1. Shared config form component lives in `frontend/src/common/UniConfig.jsx`.
+2. `ConfigsCtr` owns config metadata plus init/cache state; concurrent `UniConfig` mounts now reuse the same init request instead of issuing duplicate loads.
+3. Slice config editors use a collapse summary label that shows the current values joined by `,`; reordering items updates that summary immediately before save.
+4. Config metadata supports `secret` fields; string inputs render as password boxes with eye-toggle visibility, and current admin settings use that for token/key style fields.
+5. `UniConfig` supports `hideLabels` for grouped card layouts where the card title already names the config item.
 
 ## Loading guidance
 

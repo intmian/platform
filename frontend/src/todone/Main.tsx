@@ -3,7 +3,7 @@ import {LoginCtr, LoginCtx} from "../common/loginCtx";
 import {Dir} from "./Dir";
 import {ConfigsCtr, UniConfig} from "../common/UniConfig";
 import {ConfigsType, ConfigType} from "../common/UniConfigDef";
-import {Drawer, FloatButton, message} from "antd";
+import {Card, Drawer, FloatButton, message} from "antd";
 import {Addr} from "./addr";
 import Group from "./Group";
 import {TaskDetail} from "./TaskDetail";
@@ -18,7 +18,7 @@ import {useLoginGate} from "../common/useLoginGate";
 
 const TodoneConfigs = new ConfigsCtr(ConfigsType.Server, 'todone')
 TodoneConfigs.addBaseConfig('db.account_id', '数据库账号ID', ConfigType.String, 'cloudflare')
-TodoneConfigs.addBaseConfig('db.api_token', '数据库token', ConfigType.String, 'cloudflare')
+TodoneConfigs.addBaseConfig('db.api_token', '数据库token', ConfigType.String, 'cloudflare', {secret: true})
 TodoneConfigs.addBaseConfig('db.db_id', '数据库ID', ConfigType.String, 'cloudflare')
 TodoneConfigs.addCallback((isInit: boolean) => {
     if (!isInit) {
@@ -30,9 +30,9 @@ TodoneConfigs.addCallback((isInit: boolean) => {
 
 
 export function TodoneSetting() {
-    return <div>
+    return <Card title="Todone 数据库配置" style={{marginBottom: 16}}>
         <UniConfig configCtr={TodoneConfigs}/>
-    </div>
+    </Card>
 }
 
 export function Todone() {

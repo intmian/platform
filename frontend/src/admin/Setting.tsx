@@ -1,3 +1,4 @@
+import {Card} from "antd";
 import {ConfigsCtr, UniConfig} from "../common/UniConfig";
 import {ConfigsType, ConfigType} from "../common/UniConfigDef";
 import {TodoneSetting} from "../todone/Main";
@@ -8,17 +9,21 @@ AutoConfigs.addBaseConfig('news.keys', '新闻关键词', ConfigType.SliceString
 // 不能提前初始化，不然会出现第一次打开界面没有登陆，重新登陆不会刷新的问题。
 const MiscConfigs = new ConfigsCtr(ConfigsType.Plat)
 MiscConfigs.addBaseConfig('r2.endpoint', 'R2 Endpoint', ConfigType.String, 'https://example.com')
-MiscConfigs.addBaseConfig('r2.accessKey', 'R2 Access Key', ConfigType.String, 'example')
-MiscConfigs.addBaseConfig('r2.secretKey', 'R2 Secret Key', ConfigType.String, 'example')
+MiscConfigs.addBaseConfig('r2.accessKey', 'R2 Access Key', ConfigType.String, 'example', {secret: true})
+MiscConfigs.addBaseConfig('r2.secretKey', 'R2 Secret Key', ConfigType.String, 'example', {secret: true})
 MiscConfigs.addBaseConfig('r2.bucket', 'R2 Bucket', ConfigType.String, 'example')
 MiscConfigs.addBaseConfig('r2.web', 'R2 外部展示网址', ConfigType.String, 'https://example.com')
 
 function Setting() {
     return <div>
         <AISetting/>
-        <UniConfig configCtr={AutoConfigs}/>
+        <Card title="Auto 设置" style={{marginBottom: 16}}>
+            <UniConfig configCtr={AutoConfigs}/>
+        </Card>
         <TodoneSetting/>
-        <UniConfig configCtr={MiscConfigs}/>
+        <Card title="R2 配置" style={{marginBottom: 16}}>
+            <UniConfig configCtr={MiscConfigs}/>
+        </Card>
     </div>
 }
 
