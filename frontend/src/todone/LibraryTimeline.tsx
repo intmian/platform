@@ -55,7 +55,7 @@ const LIBRARY_PLACEHOLDER_TEXT_WIDTH_RATIO = 0.1;
 const LIBRARY_PLACEHOLDER_PADDING_WIDTH_RATIO = 0.086;
 
 interface DisplayTimelineEntry extends TimelineEntry {
-    mergedStartDone?: boolean;
+    mergedStartStatus?: LibraryItemStatus.DONE | LibraryItemStatus.GIVE_UP;
 }
 
 async function waitForImagesLoaded(container: HTMLElement): Promise<void> {
@@ -133,6 +133,17 @@ function buildRoundKey(entry: TimelineEntry): string {
 
 function buildRoundDayKey(entry: TimelineEntry): string {
     return `${entry.itemId}__${entry.roundName}__${formatDate(entry.time)}`;
+}
+
+function getMergedStartActionText(status?: LibraryItemStatus): string | undefined {
+    switch (status) {
+        case LibraryItemStatus.DONE:
+            return '开始并完成';
+        case LibraryItemStatus.GIVE_UP:
+            return '开始并放弃';
+        default:
+            return undefined;
+    }
 }
 
 interface LibraryTimelineProps {
@@ -353,12 +364,15 @@ export default function LibraryTimeline({visible, items, onClose, onItemClick}: 
             }
         });
 
-        const donePairDoingIndexMap = new Map<number, number>();
+        const mergedStatusPairDoingIndexMap = new Map<number, number>();
         const consumedDoingIndexes = new Set<number>();
 
-        // 第一阶段：先计算 DONE 对应要合并掉的 DOING 索引
+        // 第一阶段：先计算终态（DONE/GIVE_UP）对应要合并掉的 DOING 索引
         baseEntries.forEach((entry, index) => {
-            if (entry.logType !== LibraryLogType.changeStatus || entry.status !== LibraryItemStatus.DONE) {
+            if (
+                entry.logType !== LibraryLogType.changeStatus
+                || (entry.status !== LibraryItemStatus.DONE && entry.status !== LibraryItemStatus.GIVE_UP)
+            ) {
                 return;
             }
             const dayKey = buildRoundDayKey(entry);
@@ -368,7 +382,7 @@ export default function LibraryTimeline({visible, items, onClose, onItemClick}: 
             ));
             if (pairDoingIndex !== undefined) {
                 consumedDoingIndexes.add(pairDoingIndex);
-                donePairDoingIndexMap.set(index, pairDoingIndex);
+                mergedStatusPairDoingIndexMap.set(index, pairDoingIndex);
             }
         });
 
@@ -389,15 +403,15 @@ export default function LibraryTimeline({visible, items, onClose, onItemClick}: 
                 return;
             }
 
-            if (entry.status === LibraryItemStatus.DONE) {
-                if (donePairDoingIndexMap.has(index)) {
-                    mergedEntries.push({...entry, mergedStartDone: true});
+            if (entry.status === LibraryItemStatus.DONE || entry.status === LibraryItemStatus.GIVE_UP) {
+                if (mergedStatusPairDoingIndexMap.has(index)) {
+                    mergedEntries.push({...entry, mergedStartStatus: entry.status});
                     return;
                 }
 
                 const roundKey = buildRoundKey(entry);
                 if (!roundHasAnyDoingLogSet.has(roundKey)) {
-                    mergedEntries.push({...entry, mergedStartDone: true});
+                    mergedEntries.push({...entry, mergedStartStatus: entry.status});
                     return;
                 }
             }
@@ -561,10 +575,11 @@ export default function LibraryTimeline({visible, items, onClose, onItemClick}: 
         const previewCoverUrl = entry.picturePreview?.trim() || entry.pictureAddressPreview?.trim() || '';
         const realCoverUrl = previewCoverUrl || originalCoverUrl;
         const placeholderColor = getLibraryCoverPaletteByTitle(entry.itemTitle || '未命名');
+        const mergedActionText = getMergedStartActionText(entry.mergedStartStatus);
         const actionText = isWaitExpiredEntry(entry)
             ? '鸽了'
-            : entry.mergedStartDone
-                ? '开始并完成'
+            : mergedActionText
+                ? mergedActionText
             : entry.logType === LibraryLogType.score
                 ? `评分 ${getScoreText(entry.score || 0)}`
                 : getLogTypeText(entry.logType, entry.status);
@@ -819,7 +834,7 @@ export default function LibraryTimeline({visible, items, onClose, onItemClick}: 
                                 if (option === status) {
                                     return total + 1;
                                 }
-                                if (status === LibraryItemStatus.DOING && entry.mergedStartDone) {
+                                if (status === LibraryItemStatus.DOING && entry.mergedStartStatus) {
                                     return total + 1;
                                 }
                                 return total;

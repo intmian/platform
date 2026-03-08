@@ -1,6 +1,6 @@
 # Library Module Knowledge
 
-Last verified: 2026-03-06 (code verified, TODO-verify via interaction)
+Last verified: 2026-03-08 (code verified, TODO-verify via interaction)
 
 ## Module role and loading boundary
 
@@ -132,10 +132,10 @@ Timeline rules:
 2. `timelineCutoff` log itself is hidden.
 3. Logs before cutoff are excluded.
 4. Legacy `note: 添加到库` is normalized to `addToLibrary`.
-5. `开始并完成` only appears when:
-   - same-day visible `DOING -> DONE` pair can be merged, or
+5. `开始并完成` / `开始并放弃` only appear when:
+   - same-day visible `DOING -> DONE` or `DOING -> GIVE_UP` pair can be merged, or
    - that round truly has no `DOING` log in original round logs.
-   If `DOING` exists but is filtered out by year/cutoff, keep `DONE` as `完成`.
+   If `DOING` exists but is filtered out by year/cutoff, keep `DONE` as `完成` and `GIVE_UP` as `放弃`.
 
 Share export rules:
 

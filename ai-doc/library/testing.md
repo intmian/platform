@@ -1,6 +1,6 @@
 # Library Module Testing
 
-Last verified: 2026-03-05 (matrix updated, TODO-verify via interaction)
+Last verified: 2026-03-08 (matrix updated, TODO-verify via interaction)
 
 ## Preconditions
 
@@ -95,7 +95,12 @@ Last verified: 2026-03-05 (matrix updated, TODO-verify via interaction)
 4. Wait-expired rule validation.
 5. New round prompt when restarting DOING after round end.
 6. Timeline order and cutoff behavior.
-7. `updatedAt` trigger regression:
+7. Timeline merged-status behavior:
+   - same-day `DOING -> DONE` shows `开始并完成`
+   - same-day `DOING -> GIVE_UP` shows `开始并放弃`
+   - if original round has no `DOING`, standalone `DONE` / `GIVE_UP` still show merged text
+   - if `DOING` exists but is hidden by year/cutoff, keep `DONE` / `GIVE_UP` as plain status text
+8. `updatedAt` trigger regression:
    - click detail `刷新` => `updatedAt` changes
    - add/edit only `备注` or set `时间线断点` => `updatedAt` unchanged
    - add status/score log and ensure it becomes latest non-note/non-cutoff log => `updatedAt` follows latest log time
