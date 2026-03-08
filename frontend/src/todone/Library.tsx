@@ -17,6 +17,7 @@ import {
     Popconfirm,
     AutoComplete,
     Divider,
+    Typography,
 } from 'antd';
 import {
     AppstoreOutlined,
@@ -26,6 +27,7 @@ import {
     EyeOutlined,
     FilterOutlined,
     PlusOutlined,
+    QuestionCircleOutlined,
     SearchOutlined,
     SettingOutlined,
     SortAscendingOutlined,
@@ -36,6 +38,7 @@ import {Addr} from './addr';
 import {
     LibraryItemFull,
     LibraryItemStatus,
+    LibraryStatusColors,
     LibraryStatusNames,
     PSubGroup,
     PTask,
@@ -84,6 +87,8 @@ import {prepareLibraryCoverFiles, prepareLibraryCoverFilesFromCenterCrop} from '
 import {FileShow, UploadFile} from '../common/newSendHttp';
 import './Library.css';
 
+const {Text, Paragraph, Title} = Typography;
+
 // 排序选项
 type SortOption = 'default' | 'index' | 'createdAt' | 'updatedAt' | 'title' | 'score';
 type StatusFilterOption = LibraryItemStatus | 'none' | typeof LIBRARY_WAIT_EXPIRED_FILTER;
@@ -127,6 +132,7 @@ const URL_STATE_PARAM_KEYS = {
     detailTaskId: 'library_detail',
 } as const;
 const URL_STATUS_EMPTY_TOKEN = '_empty_';
+const LIBRARY_GUIDE_MODAL_TITLE = '娱乐库状态与评分说明';
 
 const STATUS_FILTER_LABELS: Record<string, string> = {
     [LibraryItemStatus.DOING]: '进行中',
@@ -153,6 +159,110 @@ const DEFAULT_SORT_STATUS_ORDER: Record<string, number> = {
 // 默认的 SubGroup 名称（用于存储所有 Library 条目）
 const DEFAULT_SUBGROUP_NAME = '_library_items_';
 const LIBRARY_PREVIEW_WIDTH = 480;
+
+const LIBRARY_GUIDE_STATUS_ITEMS: Array<{
+    key: string;
+    label: string;
+    color: string;
+    description: string;
+}> = [
+    {
+        key: String(LibraryItemStatus.TODO),
+        label: '等待',
+        color: LibraryStatusColors[LibraryItemStatus.TODO],
+        description: '代表已经进入待选池、但还没有正式开始观看或游玩的项目。适合放那些明确想碰、但当前还没开坑的内容；像等待 DLC、等版本更完整再碰的作品，通常也更适合放在这里。',
+    },
+    {
+        key: String(LibraryItemStatus.DOING),
+        label: '进行中',
+        color: LibraryStatusColors[LibraryItemStatus.DOING],
+        description: '代表当前正在观看、阅读、游玩或持续体验中，是你此刻真正投入时间的项目。',
+    },
+    {
+        key: String(LibraryItemStatus.WAIT),
+        label: '搁置',
+        color: LibraryStatusColors[LibraryItemStatus.WAIT],
+        description: '代表已经玩到或看到一半，暂时停一停。它更适合处理中断中的项目；如果填写了明确理由，例如恶性 bug、设备问题、联机环境异常等硬性阻塞，就不会被判成“鸽了”。但像单纯等待 DLC、等更新再开，通常仍建议使用“等待”而不是“搁置”。',
+    },
+    {
+        key: 'wait_expired',
+        label: '鸽了',
+        color: LibraryStatusColors[LibraryItemStatus.GIVE_UP],
+        description: '代表“搁置”放得太久且没有填写理由的状态。当前规则是：搁置超过 30 天且搁置理由为空时，界面会按“鸽了”显示；只要写了明确理由，就不会自动变成“鸽了”。',
+    },
+    {
+        key: String(LibraryItemStatus.DONE),
+        label: '已完成',
+        color: LibraryStatusColors[LibraryItemStatus.DONE],
+        description: '代表已经看完、玩完，或者对大型网游这类长期项目来说，已经体验到了“差不多可以收尾”的阶段。',
+    },
+    {
+        key: String(LibraryItemStatus.GIVE_UP),
+        label: '放弃',
+        color: LibraryStatusColors[LibraryItemStatus.GIVE_UP],
+        description: '代表浅尝辄止或中途戛然而止，并且你已经明确不打算继续推进。它是主动止损，不是临时停一下。',
+    },
+];
+
+const LIBRARY_GUIDE_MAIN_SCORE_RULES = [
+    '零：几乎没有保留价值，整体体验或完成度已经坍塌。',
+    '差：明显不推荐，优点不足以覆盖核心问题。',
+    '合：基本合格，可看可玩，但更多是“还行”而不是“惊喜”。',
+    '优：整体质量可靠，值得投入时间。',
+    '满：在综合体验、完成度与回味价值上都非常强。',
+];
+
+const LIBRARY_GUIDE_SCORE_DIMENSIONS: Array<{
+    key: string;
+    title: string;
+    shortLabel: string;
+    summary: string;
+    levels: string[];
+    example?: string;
+}> = [
+    {
+        key: 'se',
+        title: '主观体验评分（SE / 主观感受）',
+        shortLabel: '主观感受',
+        summary: '衡量作品带给你的直接体验强度，重点看它到底是在折磨你、消磨时间，还是能持续提供享受甚至卓越体验。',
+        levels: [
+            'SE1 / SE1+：极度精神折磨到精神折磨，几乎不具备推荐价值。',
+            'SE2- / SE2 / SE2+：负面体验占主导，可能有零星亮点，但整体仍偏差。',
+            'SE3- / SE3 / SE3+：中等体验，适合打发时间或对题材有偏好的人。',
+            'SE4- / SE4 / SE4+：积极体验，值得投入时间，优秀档还具备复看复玩的价值。',
+            'SE5- / SE5：接近完美到完美体验，在技术、情感或思想上达到极强完成度。',
+        ],
+        example: '例：像《尼尔：机械纪元》这类思想层面强、但游戏性略弱的作品，可以落在 SE4- 一类。',
+    },
+    {
+        key: 'ca',
+        title: '同类比较评分（CA / 客观好坏）',
+        shortLabel: '客观好坏',
+        summary: '衡量它放到同类作品里是什么水平。这个维度允许你按不同参照系理解，比如电影 CA、科幻片 CA、JRPG CA 等。',
+        levels: [
+            'CA1 / CA1+：低劣水准，属于反面教材级别。',
+            'CA2- / CA2 / CA2+：下等水准，存在明显甚至致命缺陷。',
+            'CA3- / CA3 / CA3+：常规水准，围绕行业平均线波动。',
+            'CA4- / CA4 / CA4+：优质水准，具备稳定优势或鲜明特色。',
+            'CA5- / CA5：卓越水准，达到标杆或经典级别。',
+        ],
+        example: '这个维度更强调“放到同类里比”，而不是你个人当下喜欢不喜欢。',
+    },
+    {
+        key: 'iv',
+        title: '创新价值评分（IV / 艺术创新）',
+        shortLabel: '艺术创新',
+        summary: '衡量作品在表达、机制、形式或方法论上的新意。重点不只是“有没有新东西”，还看它有没有真正推动类型边界。',
+        levels: [
+            'IV1 / IV1+：抄袭范畴，从完全抄袭到高水平抄袭。',
+            'IV2- / IV2 / IV2+：模仿范畴，从结构复制到带少量新元素的模仿。',
+            'IV3- / IV3 / IV3+：原创范畴，有独立表达，但创新幅度有限到中等。',
+            'IV4- / IV4 / IV4+：创新范畴，对现有范式形成明显突破。',
+            'IV5- / IV5：革新范畴，建立新的体系、方法或领域。',
+        ],
+        example: '例：像《塞尔达传说 时之笛》这类重塑 3D 游戏设计理解的作品，创新维度就会非常高。',
+    },
+];
 
 interface LibraryProps {
     addr: Addr | null;
@@ -183,6 +293,17 @@ function getStatusTextColor(bg: string): string {
 function getItemDerivedMeta(item: LibraryItemFull): LibraryDerivedMeta {
     const maybeWithDerived = item as LibraryItemFull & {derived?: LibraryDerivedMeta};
     return maybeWithDerived.derived || deriveLibraryMeta(item.extra);
+}
+
+function GuideStatusTag({label, color}: {label: string; color: string}) {
+    return (
+        <Tag
+            color={color}
+            style={{marginInlineEnd: 0, color: getStatusTextColor(color), fontWeight: 500}}
+        >
+            {label}
+        </Tag>
+    );
 }
 
 function guessExtFromMimeType(mimeType: string): string {
@@ -478,6 +599,7 @@ export default function Library({addr, groupTitle}: LibraryProps) {
     
     // 时间线视图
     const [showTimeline, setShowTimeline] = useState(false);
+    const [showGuideModal, setShowGuideModal] = useState(false);
     const [scoreModalItem, setScoreModalItem] = useState<LibraryItemFull | null>(null);
     const [cardMenuVisible, setCardMenuVisible] = useState(false);
     const [cardMenuPosition, setCardMenuPosition] = useState<{x: number; y: number} | null>(null);
@@ -1620,6 +1742,19 @@ export default function Library({addr, groupTitle}: LibraryProps) {
                     <AppstoreOutlined style={{fontSize: 20}}/>
                     <span style={{fontSize: 18, fontWeight: 500}}>{groupTitle}</span>
                     <Tag>{filteredItems.length} 项</Tag>
+                    <Button
+                        type="text"
+                        shape="circle"
+                        size="small"
+                        aria-label="打开娱乐库说明"
+                        icon={<QuestionCircleOutlined/>}
+                        onClick={() => setShowGuideModal(true)}
+                        style={{
+                            color: '#595959',
+                            border: '1px solid #d9d9d9',
+                            background: '#fff',
+                        }}
+                    />
                 </Space>
                 
                 <div className="library-toolbar-actions">
@@ -2199,6 +2334,100 @@ export default function Library({addr, groupTitle}: LibraryProps) {
                     setDetailItem(null);
                 }}
             />
+
+            <Modal
+                title={LIBRARY_GUIDE_MODAL_TITLE}
+                open={showGuideModal}
+                onCancel={() => setShowGuideModal(false)}
+                footer={[
+                    <Button key="close" onClick={() => setShowGuideModal(false)}>
+                        关闭
+                    </Button>
+                ]}
+                width={isMobile ? 'calc(100vw - 16px)' : 920}
+                style={{top: 20}}
+                styles={{body: {maxHeight: '72vh', overflowY: 'auto', paddingTop: 12}}}
+            >
+                <div>
+                    <Title level={5} style={{marginTop: 0, marginBottom: 12}}>状态说明</Title>
+                    <Space direction="vertical" size={12} style={{width: '100%'}}>
+                        {LIBRARY_GUIDE_STATUS_ITEMS.map((item) => (
+                            <div
+                                key={item.key}
+                                style={{
+                                    padding: '10px 12px',
+                                    border: '1px solid #f0f0f0',
+                                    borderRadius: 10,
+                                    background: item.key === 'wait_expired' ? '#fff7e6' : '#fafafa',
+                                }}
+                            >
+                                <Space size={8} wrap>
+                                    <Text strong>{item.label}</Text>
+                                    <GuideStatusTag label={item.label} color={item.color}/>
+                                </Space>
+                                <Paragraph style={{marginTop: 8, marginBottom: 0}}>
+                                    代表了{item.description}
+                                </Paragraph>
+                            </div>
+                        ))}
+                    </Space>
+
+                    <Paragraph type="secondary" style={{marginTop: 12, marginBottom: 0}}>
+                        {LIBRARY_WAIT_EXPIRED_RULE_TEXT}
+                    </Paragraph>
+
+                    <Divider style={{margin: '20px 0 16px'}} />
+
+                    <Title level={5} style={{marginTop: 0, marginBottom: 12}}>评分规则</Title>
+                    <Paragraph>
+                        <Text strong>总评分（主评分）</Text>
+                        是汇总后的综合判定，用来给作品下最终结论。它不是单一维度，而是把整体完成度、主观体验、同类对比和创新价值综合压缩成一个最终分数。
+                    </Paragraph>
+                    <Space direction="vertical" size={6} style={{width: '100%'}}>
+                        {LIBRARY_GUIDE_MAIN_SCORE_RULES.map((rule) => (
+                            <div key={rule} style={{paddingLeft: 4}}>
+                                <Text>{rule}</Text>
+                            </div>
+                        ))}
+                    </Space>
+
+                    <Divider style={{margin: '16px 0'}} />
+
+                    <Space direction="vertical" size={16} style={{width: '100%'}}>
+                        {LIBRARY_GUIDE_SCORE_DIMENSIONS.map((dimension) => (
+                            <div
+                                key={dimension.key}
+                                style={{
+                                    padding: '12px 14px',
+                                    borderRadius: 10,
+                                    border: '1px solid #f0f0f0',
+                                    background: '#fafafa',
+                                }}
+                            >
+                                <Space size={8} wrap style={{marginBottom: 6}}>
+                                    <Text strong>{dimension.title}</Text>
+                                    <Tag style={{marginInlineEnd: 0}}>{dimension.shortLabel}</Tag>
+                                </Space>
+                                <Paragraph style={{marginBottom: 10}}>
+                                    {dimension.summary}
+                                </Paragraph>
+                                <Space direction="vertical" size={6} style={{width: '100%'}}>
+                                    {dimension.levels.map((level) => (
+                                        <div key={level}>
+                                            <Text>{level}</Text>
+                                        </div>
+                                    ))}
+                                </Space>
+                                {dimension.example ? (
+                                    <Paragraph type="secondary" style={{marginTop: 10, marginBottom: 0}}>
+                                        {dimension.example}
+                                    </Paragraph>
+                                ) : null}
+                            </div>
+                        ))}
+                    </Space>
+                </div>
+            </Modal>
             
             {/* 时间线弹窗 */}
             <LibraryTimeline

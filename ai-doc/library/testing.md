@@ -100,7 +100,12 @@ Last verified: 2026-03-08 (matrix updated, TODO-verify via interaction)
    - same-day `DOING -> GIVE_UP` shows `开始并放弃`
    - if original round has no `DOING`, standalone `DONE` / `GIVE_UP` still show merged text
    - if `DOING` exists but is hidden by year/cutoff, keep `DONE` / `GIVE_UP` as plain status text
-8. `updatedAt` trigger regression:
+8. Guide modal:
+   - click title-row `?` button
+   - verify modal `娱乐库状态与评分说明` opens
+   - verify status section contains `等待/进行中/搁置/鸽了/已完成/放弃` tags
+   - verify scoring section contains total-score summary plus `SE / CA / IV` dimension explanations
+9. `updatedAt` trigger regression:
    - click detail `刷新` => `updatedAt` changes
    - add/edit only `备注` or set `时间线断点` => `updatedAt` unchanged
    - add status/score log and ensure it becomes latest non-note/non-cutoff log => `updatedAt` follows latest log time

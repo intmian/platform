@@ -1,6 +1,6 @@
 # Library UI Locator Map
 
-Last verified: 2026-02-27 (code verified, TODO-verify via interaction)
+Last verified: 2026-03-08 (code verified, TODO-verify via interaction)
 
 ## Entry path
 
@@ -8,6 +8,18 @@ Last verified: 2026-02-27 (code verified, TODO-verify via interaction)
 2. Select a group whose encoded route suffix has `|...|1` (`GroupType.Library`).
 
 ## Main page locators
+
+Title row:
+
+1. Group title text, e.g. `测试lib`
+2. Item count tag, e.g. `2 项`
+3. Help button: circular `?` / `QuestionCircleOutlined` button next to the count tag
+
+Guide modal:
+
+1. Title: `娱乐库状态与评分说明`
+2. Section heading: `状态说明`
+3. Section heading: `评分规则`
 
 Toolbar buttons (left to right):
 

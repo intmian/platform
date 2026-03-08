@@ -81,6 +81,7 @@ Last verified: 2026-03-08 (code verified, TODO-verify via interaction)
    - `showScore`
    - `showCategory`
 7. `showAuthor / showStartTime / showUpdateTime` are removed because they are no longer bound to card rendering.
+8. Main-page title row includes a help button that opens `娱乐库状态与评分说明`, covering status semantics and scoring rules.
 
 URL sync contract (list + detail):
 
