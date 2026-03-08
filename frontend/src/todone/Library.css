@@ -229,13 +229,20 @@
 .library-container .library-card.is-real-cover:not(.is-cover-error) .library-card-cover::before {
     content: '';
     position: absolute;
-    inset: 0;
+    inset: -8%;
     pointer-events: none;
     z-index: 1;
-    background: linear-gradient(115deg, rgba(255, 255, 255, 0) 32%, rgba(255, 255, 255, var(--library-hover-shine-opacity)) 50%, rgba(255, 255, 255, 0) 68%);
+    background: linear-gradient(
+        115deg,
+        rgba(255, 255, 255, 0) 24%,
+        rgba(255, 255, 255, calc(var(--library-hover-shine-opacity) * 0.32)) 36%,
+        rgba(255, 255, 255, var(--library-hover-shine-opacity)) 52%,
+        rgba(255, 255, 255, calc(var(--library-hover-shine-opacity) * 0.34)) 68%,
+        rgba(255, 255, 255, 0) 82%
+    );
     opacity: 0;
-    transform: translate(-130%, -130%) rotate(12deg);
-    transition: transform 0.5s ease, opacity 0.35s ease;
+    transform: translate(-126%, -126%) rotate(12deg);
+    transition: transform 0.52s ease, opacity 0.35s ease;
 }
 
 .library-container .library-card.is-real-cover:not(.is-cover-error) .library-card-cover::after {
@@ -251,7 +258,7 @@
 
 .library-container .library-card.is-real-cover:not(.is-cover-error):hover .library-card-cover::before {
     opacity: 1;
-    transform: translate(18%, 18%) rotate(12deg);
+    transform: translate(32%, 32%) rotate(12deg);
 }
 
 .library-container .library-card.is-real-cover:not(.is-cover-error):hover .library-card-cover::after {
