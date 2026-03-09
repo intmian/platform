@@ -77,10 +77,23 @@ interface Question {
     displayType: 'h' | 'k' | 'r';
     questionText: string;
     answerText: string;
+    isRetryItem?: boolean;
     // 键盘模式下的状态
     isAnswered?: boolean;
     isCorrect?: boolean;
 }
+
+interface BatchPattern {
+    isToRomaji: boolean;
+    kanaType: 'h' | 'k';
+}
+
+interface RetryState {
+    items: KanaItem[];
+    pattern: BatchPattern;
+}
+
+const getKanaItemKey = (item: KanaItem) => `${item.r}|${item.h}|${item.k}`;
 
 const KanaPractice = () => {
     const isMobile = useIsMobile();
@@ -116,6 +129,9 @@ const KanaPractice = () => {
     const [questions, setQuestions] = useState<Question[]>([]);
     const [showAnswer, setShowAnswer] = useState(false); // Memory mode only
     const [revealedIds, setRevealedIds] = useState<Set<number>>(new Set());
+    const [wrongQuestionIds, setWrongQuestionIds] = useState<Set<number>>(new Set());
+    const [retryState, setRetryState] = useState<RetryState | null>(null);
+    const [currentBatchPattern, setCurrentBatchPattern] = useState<BatchPattern | null>(null);
     
     // 键盘模式专用状态
     const [currentQuestionIdx, setCurrentQuestionIdx] = useState(0);
@@ -130,26 +146,53 @@ const KanaPractice = () => {
     }, [settings.includeSeion, settings.includeDakuon, settings.includeYouon]);
 
     // 生成一组新题
-    const generateBatch = useCallback(() => {
+    const generateBatch = useCallback((resetRetry = false) => {
         const pool = getCandidatePool();
         const size = settings.batchSize;
-        
-        // 洗牌算法确保不重复
+
+        const currentWrongItems = settings.inputMode === 'memory' && !resetRetry
+            ? questions
+                .filter(q => wrongQuestionIds.has(q.id))
+                .map(q => q.item)
+            : [];
+
+        const hasCurrentMemoryRound = settings.inputMode === 'memory' && questions.length > 0 && currentBatchPattern !== null;
+
+        const nextRetryState = currentWrongItems.length > 0 && currentBatchPattern
+            ? {
+                items: currentWrongItems,
+                pattern: currentBatchPattern
+            }
+            : null;
+
+        const activeRetryState = resetRetry ? null : (hasCurrentMemoryRound ? nextRetryState : retryState);
+        const retryKeySet = new Set((activeRetryState?.items || []).map(getKanaItemKey));
+
         const shuffled = [...pool];
         for (let i = shuffled.length - 1; i > 0; i--) {
             const j = Math.floor(Math.random() * (i + 1));
             [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
         }
-        const selectedItems = shuffled.slice(0, Math.min(size, pool.length));
-        
-        // 统一决定方向和假名类型
-        const isToRomaji = Math.random() > 0.5;
-        let kType: 'h' | 'k';
-        if (settings.kanaLimit === 'all') {
-            // 即使是混合模式，这一组也统一一种假名，方便整体提示及消除歧义
-            kType = Math.random() > 0.5 ? 'h' : 'k';
+
+        const retryItems = activeRetryState
+            ? activeRetryState.items.filter(item => pool.some(poolItem => getKanaItemKey(poolItem) === getKanaItemKey(item)))
+            : [];
+        const extraItems = shuffled.filter(item => !retryKeySet.has(getKanaItemKey(item)));
+        const finalSize = Math.min(pool.length, Math.max(size, retryItems.length));
+        const selectedItems = [...retryItems, ...extraItems].slice(0, finalSize);
+
+        let pattern: BatchPattern;
+        if (activeRetryState) {
+            pattern = activeRetryState.pattern;
         } else {
-            kType = settings.kanaLimit;
+            const isToRomaji = Math.random() > 0.5;
+            let kanaType: 'h' | 'k';
+            if (settings.kanaLimit === 'all') {
+                kanaType = Math.random() > 0.5 ? 'h' : 'k';
+            } else {
+                kanaType = settings.kanaLimit;
+            }
+            pattern = {isToRomaji, kanaType};
         }
 
         const newQuestions: Question[] = selectedItems.map((item, index) => {
@@ -157,16 +200,16 @@ const KanaPractice = () => {
             let questionText = "";
             let answerText = "";
             
-            if (isToRomaji) {
+            if (pattern.isToRomaji) {
                 // 题: 假名 -> 答: 罗马音
-                displayType = kType;
-                questionText = item[kType];
+                displayType = pattern.kanaType;
+                questionText = item[pattern.kanaType];
                 answerText = item.r;
             } else {
                 // 题: 罗马音 -> 答: 假名
                 displayType = 'r';
                 questionText = item.r;
-                answerText = item[kType];
+                answerText = item[pattern.kanaType];
             }
 
             return {
@@ -174,15 +217,20 @@ const KanaPractice = () => {
                 item,
                 displayType,
                 questionText,
-                answerText
+                answerText,
+                isRetryItem: retryKeySet.has(getKanaItemKey(item))
             };
         });
 
         setQuestions(newQuestions);
+        setCurrentBatchPattern(pattern);
+        setRetryState(nextRetryState);
         setShowAnswer(false);
+        setRevealedIds(new Set());
+        setWrongQuestionIds(new Set());
         setSessionCount(c => c + 1);
         setCurrentQuestionIdx(0);
-    }, [getCandidatePool, settings.batchSize, settings.kanaLimit, settings.inputMode]);
+    }, [currentBatchPattern, getCandidatePool, questions, retryState, settings.batchSize, settings.inputMode, settings.kanaLimit, wrongQuestionIds]);
 
     // 计算当前批次的提示文本
     const batchInstruction = useMemo(() => {
@@ -212,7 +260,18 @@ const KanaPractice = () => {
     }, [sessionCount, generateBatch]);
 
     const handleCardClick = (id: number) => {
-        if (showAnswer) return; // 全局显示时不需要单独处理
+        if (showAnswer) {
+            setWrongQuestionIds(prev => {
+                const next = new Set(prev);
+                if (next.has(id)) {
+                    next.delete(id);
+                } else {
+                    next.add(id);
+                }
+                return next;
+            });
+            return;
+        }
         
         setRevealedIds(prev => {
             const next = new Set(prev);
@@ -357,14 +416,27 @@ const KanaPractice = () => {
                     <Row gutter={[16, 24]}>
                         {questions.map((q, idx) => {
                             const isRevealed = showAnswer || revealedIds.has(q.id);
+                            const isMarkedWrong = wrongQuestionIds.has(q.id);
+                            const isRetryItem = Boolean(q.isRetryItem);
                             return (
                                 <Col span={isMobile ? 12 : 6} key={q.id}>
                                     <Card 
-                                        hoverable={!isRevealed}
+                                        hoverable={!showAnswer}
                                         onClick={() => handleCardClick(q.id)}
-                                        style={{ height: '100%', textAlign: 'center', cursor: 'pointer' }}
+                                        style={{
+                                            height: '100%',
+                                            textAlign: 'center',
+                                            cursor: 'pointer',
+                                            borderColor: isMarkedWrong ? '#ff4d4f' : undefined,
+                                            borderWidth: isMarkedWrong ? 2 : undefined,
+                                            background: isRetryItem ? '#fffbe6' : undefined
+                                        }}
                                         bodyStyle={{ padding: isMobile ? 12 : 24 }}
                                     >
+                                        <div style={{ minHeight: 24, marginBottom: 8 }}>
+                                            {isMarkedWrong && <Tag color="error">错题</Tag>}
+                                            {!isMarkedWrong && isRetryItem && <Tag color="gold">错题续练</Tag>}
+                                        </div>
                                         <div style={{ fontSize: 32, fontWeight: 'bold', margin: '16px 0' }}>
                                             {q.questionText}
                                         </div>
@@ -458,6 +530,16 @@ const KanaPractice = () => {
                     color: '#0050b3'
                 }}>
                     <Text strong style={{fontSize: 16}}>{batchInstruction}</Text>
+                    {settings.inputMode === 'memory' && showAnswer && (
+                        <div style={{ marginTop: 8 }}>
+                            <Text type="secondary">再次点击卡片可切换错题标记，红框表示当前轮错题。</Text>
+                        </div>
+                    )}
+                    {settings.inputMode === 'memory' && retryState?.items.length ? (
+                        <div style={{ marginTop: 8 }}>
+                            <Tag color="gold">错题续练中: {retryState.items.length} 题</Tag>
+                        </div>
+                    ) : null}
                 </div>
             )}
 
@@ -471,7 +553,7 @@ const KanaPractice = () => {
                 footer={[
                     <Button key="ok" type="primary" onClick={() => {
                         setIsSettingsOpen(false);
-                        generateBatch(); // 关闭时刷新
+                        generateBatch(true); // 改设置时重置错题续练
                     }}>
                         确认并刷新
                     </Button>
