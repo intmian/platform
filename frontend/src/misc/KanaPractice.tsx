@@ -260,7 +260,9 @@ const KanaPractice = () => {
     }, [sessionCount, generateBatch]);
 
     const handleCardClick = (id: number) => {
-        if (showAnswer) {
+        const isTemporarilyRevealed = revealedIds.has(id);
+
+        if (showAnswer || isTemporarilyRevealed) {
             setWrongQuestionIds(prev => {
                 const next = new Set(prev);
                 if (next.has(id)) {
@@ -273,11 +275,7 @@ const KanaPractice = () => {
             return;
         }
         
-        setRevealedIds(prev => {
-            const next = new Set(prev);
-            next.add(id);
-            return next;
-        });
+        setRevealedIds(prev => new Set(prev).add(id));
 
         // 2秒后隐藏
         setTimeout(() => {
@@ -530,9 +528,9 @@ const KanaPractice = () => {
                     color: '#0050b3'
                 }}>
                     <Text strong style={{fontSize: 16}}>{batchInstruction}</Text>
-                    {settings.inputMode === 'memory' && showAnswer && (
+                    {settings.inputMode === 'memory' && (
                         <div style={{ marginTop: 8 }}>
-                            <Text type="secondary">再次点击卡片可切换错题标记，红框表示当前轮错题。</Text>
+                            <Text type="secondary">点卡片可临时查看答案；答案显示时再次点击可切换错题标记，红框表示当前轮错题。</Text>
                         </div>
                     )}
                     {settings.inputMode === 'memory' && retryState?.items.length ? (
