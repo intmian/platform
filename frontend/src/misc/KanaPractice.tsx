@@ -1,4 +1,4 @@
-import {useState, useCallback, useEffect, useMemo} from 'react';
+import {useState, useCallback, useEffect, useMemo, useRef} from 'react';
 import {Button, Card, Checkbox, Col, Modal, Row, Segmented, Slider, Space, Tag, Typography, message, InputNumber} from 'antd';
 import {ReloadOutlined, EyeOutlined, RightOutlined, SettingOutlined} from '@ant-design/icons';
 import {useIsMobile} from "../common/hooksv2";
@@ -52,6 +52,7 @@ const YOUON: KanaItem[] = [
 // 控制类型定义
 type KanaLimit = 'h' | 'k' | 'all';
 type InputMode = 'memory' | 'keyboard';
+type DirectionMode = 'mixed' | 'toRomaji' | 'toKana';
 
 interface PracticeSettings {
     includeSeion: boolean;
@@ -59,6 +60,7 @@ interface PracticeSettings {
     includeYouon: boolean;
     kanaLimit: KanaLimit;
     inputMode: InputMode;
+    directionMode: DirectionMode;
     batchSize: number;
 }
 
@@ -68,6 +70,7 @@ const DEFAULT_SETTINGS: PracticeSettings = {
     includeYouon: false,
     kanaLimit: 'all',
     inputMode: 'memory',
+    directionMode: 'mixed',
     batchSize: 5
 };
 
@@ -132,6 +135,15 @@ const KanaPractice = () => {
     const [wrongQuestionIds, setWrongQuestionIds] = useState<Set<number>>(new Set());
     const [retryState, setRetryState] = useState<RetryState | null>(null);
     const [currentBatchPattern, setCurrentBatchPattern] = useState<BatchPattern | null>(null);
+    const questionsRef = useRef<Question[]>(questions);
+    const wrongQuestionIdsRef = useRef<Set<number>>(wrongQuestionIds);
+    const retryStateRef = useRef<RetryState | null>(retryState);
+    const currentBatchPatternRef = useRef<BatchPattern | null>(currentBatchPattern);
+
+    questionsRef.current = questions;
+    wrongQuestionIdsRef.current = wrongQuestionIds;
+    retryStateRef.current = retryState;
+    currentBatchPatternRef.current = currentBatchPattern;
     
     // 键盘模式专用状态
     const [currentQuestionIdx, setCurrentQuestionIdx] = useState(0);
@@ -151,21 +163,23 @@ const KanaPractice = () => {
         const size = settings.batchSize;
 
         const currentWrongItems = settings.inputMode === 'memory' && !resetRetry
-            ? questions
-                .filter(q => wrongQuestionIds.has(q.id))
+            ? questionsRef.current
+                .filter(q => wrongQuestionIdsRef.current.has(q.id))
                 .map(q => q.item)
             : [];
 
-        const hasCurrentMemoryRound = settings.inputMode === 'memory' && questions.length > 0 && currentBatchPattern !== null;
+        const hasCurrentMemoryRound = settings.inputMode === 'memory'
+            && questionsRef.current.length > 0
+            && currentBatchPatternRef.current !== null;
 
-        const nextRetryState = currentWrongItems.length > 0 && currentBatchPattern
+        const nextRetryState = currentWrongItems.length > 0 && currentBatchPatternRef.current
             ? {
                 items: currentWrongItems,
-                pattern: currentBatchPattern
+                pattern: currentBatchPatternRef.current
             }
             : null;
 
-        const activeRetryState = resetRetry ? null : (hasCurrentMemoryRound ? nextRetryState : retryState);
+        const activeRetryState = resetRetry ? null : (hasCurrentMemoryRound ? nextRetryState : retryStateRef.current);
         const retryKeySet = new Set((activeRetryState?.items || []).map(getKanaItemKey));
 
         const shuffled = [...pool];
@@ -185,7 +199,9 @@ const KanaPractice = () => {
         if (activeRetryState) {
             pattern = activeRetryState.pattern;
         } else {
-            const isToRomaji = Math.random() > 0.5;
+            const isToRomaji = settings.directionMode === 'mixed'
+                ? Math.random() > 0.5
+                : settings.directionMode === 'toRomaji';
             let kanaType: 'h' | 'k';
             if (settings.kanaLimit === 'all') {
                 kanaType = Math.random() > 0.5 ? 'h' : 'k';
@@ -222,6 +238,10 @@ const KanaPractice = () => {
             };
         });
 
+        questionsRef.current = newQuestions;
+        currentBatchPatternRef.current = pattern;
+        retryStateRef.current = nextRetryState;
+        wrongQuestionIdsRef.current = new Set();
         setQuestions(newQuestions);
         setCurrentBatchPattern(pattern);
         setRetryState(nextRetryState);
@@ -230,7 +250,7 @@ const KanaPractice = () => {
         setWrongQuestionIds(new Set());
         setSessionCount(c => c + 1);
         setCurrentQuestionIdx(0);
-    }, [currentBatchPattern, getCandidatePool, questions, retryState, settings.batchSize, settings.inputMode, settings.kanaLimit, wrongQuestionIds]);
+    }, [getCandidatePool, settings.batchSize, settings.directionMode, settings.inputMode, settings.kanaLimit]);
 
     // 计算当前批次的提示文本
     const batchInstruction = useMemo(() => {
@@ -259,19 +279,22 @@ const KanaPractice = () => {
         }
     }, [sessionCount, generateBatch]);
 
+    const toggleWrongQuestion = useCallback((id: number) => {
+        const next = new Set(wrongQuestionIdsRef.current);
+        if (next.has(id)) {
+            next.delete(id);
+        } else {
+            next.add(id);
+        }
+        wrongQuestionIdsRef.current = next;
+        setWrongQuestionIds(next);
+    }, []);
+
     const handleCardClick = (id: number) => {
         const isTemporarilyRevealed = revealedIds.has(id);
 
         if (showAnswer || isTemporarilyRevealed) {
-            setWrongQuestionIds(prev => {
-                const next = new Set(prev);
-                if (next.has(id)) {
-                    next.delete(id);
-                } else {
-                    next.add(id);
-                }
-                return next;
-            });
+            toggleWrongQuestion(id);
             return;
         }
         
@@ -301,6 +324,7 @@ const KanaPractice = () => {
             isAnswered: true,
             isCorrect
         };
+        questionsRef.current = newQuestions;
         setQuestions(newQuestions);
 
         const checkFinish = () => {
@@ -507,7 +531,7 @@ const KanaPractice = () => {
                             {!isMobile && (showAnswer ? '隐藏' : '看答案')}
                         </Button>
                     )}
-                    <Button onClick={generateBatch} icon={<RightOutlined/>}>
+                    <Button onClick={() => generateBatch()} icon={<RightOutlined/>}>
                         {!isMobile && '换一组'}
                     </Button>
                     <Button icon={<SettingOutlined />} onClick={() => setIsSettingsOpen(true)}>
@@ -573,6 +597,22 @@ const KanaPractice = () => {
                         </div>
                     </div>
                     
+                    <div>
+                        <Text strong>出题方向</Text>
+                        <div style={{marginTop: 8}}>
+                            <Segmented
+                                options={[
+                                    { label: '混合', value: 'mixed' },
+                                    { label: '假名猜读音', value: 'toRomaji' },
+                                    { label: '读音猜假名', value: 'toKana' }
+                                ]}
+                                value={settings.directionMode}
+                                onChange={v => updateSetting('directionMode', v as DirectionMode)}
+                                block
+                            />
+                        </div>
+                    </div>
+
                     <div>
                         <Text strong>假名类型</Text>
                         <div style={{marginTop: 8}}>
