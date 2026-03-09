@@ -1,8 +1,8 @@
-# AI Docs Index
+﻿# AI Docs Index
 
 Purpose: provide repository-local, task-scoped knowledge for AI agents.
 
-Last verified: 2026-03-06
+Last verified: 2026-03-09
 
 ## Core rules
 
@@ -43,15 +43,16 @@ Last verified: 2026-03-06
 2. Backend bootstrap and service registration: `backend/architecture.md`
 3. Backend gateway/auth/cookie flow: `backend/gateway-auth.md`
 4. Backend config, AI, and R2 config surface: `backend/config-and-ai.md`
-5. Backend logs, BI, and profiling surface: `backend/observability.md`
-6. Service catalog and permission/command matrix: `backend/services.md`
-7. Matched service deep docs:
+5. Backend `ai/v2` planning and migration direction: `backend/ai-v2-plan.md`
+6. Backend logs, BI, and profiling surface: `backend/observability.md`
+7. Service catalog and permission/command matrix: `backend/services.md`
+8. Matched service deep docs:
    - `backend/account.md`
    - `backend/auto.md`
    - `backend/cmd.md`
    - `backend/todone-core.md`
    - `backend/web-storage.md`
-8. Backend verification baseline: `backend/testing.md`
+9. Backend verification baseline: `backend/testing.md`
 
 ### Step 3: pick domain docs
 
@@ -69,8 +70,8 @@ Last verified: 2026-03-06
 1. Do not declare completion without evidence summary and regression result.
 2. Explicitly report AI-doc updates performed (or state none).
 3. After development and testing are complete, provide one commit text draft in this format:
-   - `feat/fix/refac 模块: 一句话总结`
-   - `- 改动需求或修复bug1`
+   - `feat/fix/refac 妯″潡: 涓€鍙ヨ瘽鎬荤粨`
+   - `- 鏀瑰姩闇€姹傛垨淇bug1`
    - `- ...`
 
 ## Update policy
@@ -95,3 +96,6 @@ Last verified: 2026-03-06
 4. If uncertain whether a detail is reusable, do not add it to domain docs; keep it in task report only.
 5. Domain docs should capture "what is true" and "what must be verified", not "how this specific patch was implemented".
 6. When a section grows noisy, consolidate it in the same turn (replace overlapping bullets instead of stacking patch history).
+
+
+

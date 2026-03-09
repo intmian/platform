@@ -1,6 +1,6 @@
-# Backend Config And AI
+﻿# Backend Config And AI
 
-Last verified: 2026-03-06
+Last verified: 2026-03-09
 
 ## Scope
 
@@ -135,3 +135,7 @@ Last verified: 2026-03-06
    - AI rewrite behavior
    - R2 upload setup
    - platform/service/user config boundaries
+2. Load `backend/ai-v2-plan.md` when the task is about the planned replacement of the current AI wrapper, official SDK adoption, sessions, files, or tool orchestration.
+
+
+
