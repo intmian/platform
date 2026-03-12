@@ -126,6 +126,28 @@ function renderMonitorTag(item: SubscriptionItem) {
     </Tag>;
 }
 
+function renderProxyOnlyTag(item: SubscriptionItem) {
+    if (!item.workerForwardEnabled || item.monitorEnabled) {
+        return null;
+    }
+    return <Tag
+        bordered
+        style={{
+            borderRadius: 999,
+            display: "inline-flex",
+            alignItems: "center",
+            minHeight: 24,
+            marginInlineEnd: 0,
+            paddingInline: 8,
+            fontSize: 12,
+            fontWeight: 500,
+            lineHeight: 1,
+        }}
+    >
+        Proxy On
+    </Tag>;
+}
+
 function MetricCard(props: {
     label: string
     value: string
@@ -355,6 +377,7 @@ export default function SubscriptionPage() {
                             <LinkOutlined/>
                             <span style={{fontWeight: 600}}>{item.name}</span>
                             {renderMonitorTag(item)}
+                            {renderProxyOnlyTag(item)}
                         </Space>}
                         extra={<Space size="small">
                             {shouldShowHeaderStatus(item) ? formatCheckStatus(item) : null}
