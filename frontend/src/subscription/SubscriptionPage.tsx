@@ -90,12 +90,12 @@ function hasCheckResult(item: SubscriptionItem) {
 }
 
 function shouldShowHeaderStatus(item: SubscriptionItem) {
-    return !item.monitorEnabled && hasCheckResult(item);
+    return false;
 }
 
 function renderMonitorTag(item: SubscriptionItem) {
     if (!item.monitorEnabled) {
-        return <Tag>仅代理</Tag>;
+        return null;
     }
     const success = item.lastCheckStatus === "success";
     const monitorTextStyle = {

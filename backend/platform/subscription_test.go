@@ -219,6 +219,35 @@ func TestSubscriptionManualCheck(t *testing.T) {
 	}
 }
 
+func TestSubscriptionCreateAutoChecksWhenMonitorEnabled(t *testing.T) {
+	mgr := newTestSubscriptionMgr(t)
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte(`
+- {name: "Traffic: 15.8 GB | 150 GB", server: example.com, port: 10011, type: ss}
+- {name: "Expire: 2026-10-16", server: example.com, port: 10011, type: ss}
+`))
+	}))
+	defer upstream.Close()
+
+	item, err := mgr.create("alice", subscriptionCreateReq{
+		Name:           "auto-check-on-create",
+		UpstreamURL:    upstream.URL,
+		MonitorEnabled: true,
+	})
+	if err != nil {
+		t.Fatalf("create failed: %v", err)
+	}
+	if item.LastCheckStatus != subscriptionStatusSuccess {
+		t.Fatalf("expected create to trigger auto check, got %s", item.LastCheckStatus)
+	}
+	if item.UsagePercent <= 0 {
+		t.Fatalf("expected usage percent > 0, got %f", item.UsagePercent)
+	}
+	if item.ExpireAt != "2026-10-16" {
+		t.Fatalf("unexpected expireAt: %s", item.ExpireAt)
+	}
+}
+
 func TestSubscriptionWorkerForwardAndFilename(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	mgr := newTestSubscriptionMgr(t)

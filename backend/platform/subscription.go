@@ -341,6 +341,21 @@ func (m *subscriptionMgr) list(user string) ([]subscriptionListItem, error) {
 	return items, nil
 }
 
+func (m *subscriptionMgr) getListItemByID(user, id string) (subscriptionListItem, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	records, err := m.loadRecordsLocked(user)
+	if err != nil {
+		return subscriptionListItem{}, err
+	}
+	for _, record := range records {
+		if record.ID == id {
+			return m.toListItem(record), nil
+		}
+	}
+	return subscriptionListItem{}, errors.New("subscription not exist")
+}
+
 func (m *subscriptionMgr) create(user string, req subscriptionCreateReq) (subscriptionListItem, error) {
 	if strings.TrimSpace(req.Name) == "" || strings.TrimSpace(req.UpstreamURL) == "" {
 		return subscriptionListItem{}, errors.New("name or upstreamUrl is empty")
@@ -363,17 +378,25 @@ func (m *subscriptionMgr) create(user string, req subscriptionCreateReq) (subscr
 	}
 
 	m.mu.Lock()
-	defer m.mu.Unlock()
 	records, err := m.loadRecordsLocked(user)
 	if err != nil {
+		m.mu.Unlock()
 		return subscriptionListItem{}, err
 	}
 	records = append(records, record)
 	if err = m.saveRecordsLocked(user, records); err != nil {
+		m.mu.Unlock()
 		return subscriptionListItem{}, err
 	}
 	if err = m.ensureUserLocked(user); err != nil {
+		m.mu.Unlock()
 		return subscriptionListItem{}, err
+	}
+	m.mu.Unlock()
+
+	if record.MonitorEnabled {
+		m.monitorRecord(record)
+		return m.getListItemByID(user, record.ID)
 	}
 	return m.toListItem(record), nil
 }
