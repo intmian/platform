@@ -349,7 +349,7 @@ export default function SubscriptionPage() {
                     <Card
                         size="small"
                         key={item.id}
-                        style={{height: "100%", minWidth: isMobile ? undefined : 330}}
+                        style={{height: "100%", minWidth: isMobile ? undefined : 332}}
                         styles={{body: {padding: isMobile ? 14 : 16}}}
                         title={<Space size={10}>
                             <LinkOutlined/>
