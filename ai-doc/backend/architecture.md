@@ -1,6 +1,6 @@
 # Backend Architecture
 
-Last verified: 2026-03-06
+Last verified: 2026-03-10
 
 ## Scope
 
@@ -33,6 +33,10 @@ Last verified: 2026-03-06
 5. `core.Init` starts registered services and sends startup push.
 6. `webMgr.Init` starts Gin HTTP server on `base_setting.toml -> web_port`.
 7. `pprof` is exposed on `127.0.0.1:12351`.
+8. Platform-owned non-service web handlers now also include:
+   - authenticated `POST /misc/subscription/*` CRUD + manual-check endpoints
+   - anonymous `GET /share-link/:username/:token` proxy downloads
+   - an in-process subscription monitor loop owned by `platform`, not by a registered service; checks request the configured upstream URL directly and only use `/share-link/*` for public download traffic
 
 ## Service registration and lifecycle
 

@@ -73,6 +73,62 @@ export function sendDebug(svr: string, cmd: string, req: DebugParam, callback: (
     })
 }
 
+export interface SubscriptionItem {
+    id: string
+    name: string
+    upstreamUrl: string
+    monitorEnabled: boolean
+    shareUrl: string
+    lastCheckAt: string
+    lastCheckStatus: string
+    lastError: string
+    trafficSummary: string
+    usagePercent: number
+    expireAt: string
+    expireRemainDays: number
+}
+
+export interface SubscriptionListRet {
+    items: SubscriptionItem[]
+}
+
+export interface SubscriptionMutationRet {
+    item: SubscriptionItem
+}
+
+export async function sendSubscriptionList() {
+    return UniPost(config.api_base_url + '/misc/subscription/list', {})
+}
+
+export async function sendSubscriptionCreate(req: {
+    name: string
+    upstreamUrl: string
+    monitorEnabled: boolean
+}) {
+    return UniPost(config.api_base_url + '/misc/subscription/create', req)
+}
+
+export async function sendSubscriptionUpdate(req: {
+    id: string
+    name: string
+    upstreamUrl: string
+    monitorEnabled: boolean
+}) {
+    return UniPost(config.api_base_url + '/misc/subscription/update', req)
+}
+
+export async function sendSubscriptionDelete(req: { id: string }) {
+    return UniPost(config.api_base_url + '/misc/subscription/delete', req)
+}
+
+export async function sendSubscriptionRotate(req: { id: string }) {
+    return UniPost(config.api_base_url + '/misc/subscription/rotate', req)
+}
+
+export async function sendSubscriptionCheck(req: { id: string }) {
+    return UniPost(config.api_base_url + '/misc/subscription/check', req)
+}
+
 //=====以下为自动生成的代码=====
 export interface CreateToolReq {
     Name: string

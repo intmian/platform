@@ -1,6 +1,6 @@
 # Frontend Architecture
 
-Last verified: 2026-03-07
+Last verified: 2026-03-10
 
 ## Scope
 
@@ -32,6 +32,7 @@ Last verified: 2026-03-07
    - `/note_mini`
    - `/day-report`
    - `/day-report/:date`
+   - `/subscription`
 5. Misc pages:
    - `/love47`
    - `/loss-fat`
@@ -39,6 +40,8 @@ Last verified: 2026-03-07
    - `/rate/jianxing`
 6. Error route:
    - `/404`
+7. Admin header adds a direct `订阅管理` navigation entry that routes to `/subscription`.
+8. `/subscription` is a logged-in user page with manual subscription checks, and does not require `admin` permission.
 
 ## Shared request model
 

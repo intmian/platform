@@ -14,6 +14,7 @@ import KanaPractice from "./misc/KanaPractice";
 import dayjs from 'dayjs';
 import 'dayjs/locale/zh-cn';
 import {JianXing} from "./library/JianXingTemp.tsx";
+import SubscriptionPage from "./subscription/SubscriptionPage.tsx";
 
 const Memos = lazy(() => import('./misc/memos'));
 
@@ -86,6 +87,10 @@ const router = createBrowserRouter([
     {
         path: '/rate/jianxing',
         element: <JianXing/>
+    },
+    {
+        path: '/subscription',
+        element: <SubscriptionPage/>
     }
 ])
 

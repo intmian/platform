@@ -9,3 +9,4 @@ SecConfig.json
 backend/main/__debug_bin.exe
 /.vscode
 backend/main/__debug_bin*
+/output

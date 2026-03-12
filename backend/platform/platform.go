@@ -40,8 +40,9 @@ type PlatForm struct {
 	tool        tool
 
 	// 子模块
-	webMgr webMgr
-	core   core
+	webMgr          webMgr
+	core            core
+	subscriptionMgr *subscriptionMgr
 
 	// 内部状态
 	startTime int64
@@ -168,6 +169,7 @@ func (p *PlatForm) Init(c context.Context) error {
 	if err != nil {
 		return errors.WithMessage(err, "Init core err")
 	}
+	p.subscriptionMgr = newSubscriptionMgr(p)
 	err = p.webMgr.Init(p)
 	if err != nil {
 		return errors.WithMessage(err, "init web err")
@@ -200,6 +202,7 @@ func (p *PlatForm) Init(c context.Context) error {
 	if err != nil {
 		return errors.WithMessage(err, "InitCfg err")
 	}
+	p.subscriptionMgr.Start()
 
 	return nil
 }

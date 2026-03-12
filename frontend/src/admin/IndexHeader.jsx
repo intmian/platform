@@ -6,6 +6,7 @@ import biglogo from "/plat-logo.png";
 import {UserOutlined} from "@ant-design/icons";
 import {LoginCtx} from "../common/loginCtx.jsx";
 import {useIsMobile} from "../common/hooksv2";
+import {useNavigate} from "react-router-dom";
 
 const {Header} = Layout;
 
@@ -72,6 +73,7 @@ function UsrArea({user, onLoginSuc, onLogOut}) {
 function IndexHeader({onLoginSuc, onLogOut}) {
     const loginCtr = useContext(LoginCtx);
     const isMobile = useIsMobile();
+    const navigate = useNavigate();
     return <Header
         style={{
             display: 'flex',
@@ -106,7 +108,11 @@ function IndexHeader({onLoginSuc, onLogOut}) {
             isMobile ?
                 <div style={{
                     marginLeft: 'auto',
+                    display: 'flex',
+                    gap: 8,
+                    alignItems: 'center',
                 }}>
+                    <Button type="link" onClick={() => navigate('/subscription')}>订阅管理</Button>
                     <UsrArea
                         user={loginCtr.loginInfo.usr}
                         onLoginSuc={onLoginSuc}
@@ -129,6 +135,7 @@ function IndexHeader({onLoginSuc, onLogOut}) {
                             minWidth: 0,
                         }}
                     />
+                    <Button type="link" onClick={() => navigate('/subscription')}>订阅管理</Button>
                     <Button type="link" href="https://www.intmian.com">我的博客</Button>
                     <UsrArea
                         user={loginCtr.loginInfo.usr}
