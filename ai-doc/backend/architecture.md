@@ -37,6 +37,7 @@ Last verified: 2026-03-10
    - authenticated `POST /misc/subscription/*` CRUD + manual-check endpoints
    - anonymous `GET /share-link/:username/:token` proxy downloads
    - an in-process subscription monitor loop owned by `platform`, not by a registered service; checks request the configured upstream URL directly and only use `/share-link/*` for public download traffic
+   - subscription list responses return relative share paths like `/share-link/{username}/{token}`; frontend is responsible for resolving them against the current origin when needed
 
 ## Service registration and lifecycle
 

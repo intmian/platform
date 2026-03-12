@@ -42,6 +42,7 @@ Last verified: 2026-03-10
    - `/404`
 7. Admin header adds a direct `订阅管理` navigation entry that routes to `/subscription`.
 8. `/subscription` is a logged-in user page with manual subscription checks, and does not require `admin` permission.
+9. Subscription API returns relative share paths; the page resolves them against `window.location.origin` for display/copy.
 
 ## Shared request model
 

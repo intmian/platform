@@ -240,31 +240,8 @@ func (m *subscriptionMgr) buildSharePath(user, token string) string {
 	return fmt.Sprintf("/share-link/%s/%s", user, token)
 }
 
-func trimURLSuffix(url string) string {
-	return strings.TrimRight(strings.TrimSpace(url), "/")
-}
-
-func (m *subscriptionMgr) getCfgString(keys ...string) string {
-	if m == nil || m.plat == nil || m.plat.cfg == nil {
-		return ""
-	}
-	value, err := m.plat.cfg.Get(keys...)
-	if err != nil || value == nil {
-		return ""
-	}
-	return strings.TrimSpace(xstorage.ToBase[string](value))
-}
-
 func (m *subscriptionMgr) buildPublicShareURL(user, token string) string {
-	baseURL := trimURLSuffix(m.getCfgString("PLAT", "outUrl"))
-	if baseURL == "" {
-		baseURL = trimURLSuffix(m.getCfgString("PLAT", "realUrl"))
-	}
-	path := m.buildSharePath(user, token)
-	if baseURL == "" {
-		return path
-	}
-	return baseURL + path
+	return m.buildSharePath(user, token)
 }
 
 func (m *subscriptionMgr) toListItem(record subscriptionRecord) subscriptionListItem {

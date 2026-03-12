@@ -29,13 +29,6 @@ func newTestSubscriptionMgr(t *testing.T) *subscriptionMgr {
 	if err != nil {
 		t.Fatalf("new cfg failed: %v", err)
 	}
-	if err = cfg.AddParam(&xstorage.CfgParam{
-		Key:       "PLAT.outUrl",
-		ValueType: xstorage.ValueTypeString,
-		RealKey:   "PLAT.outUrl",
-	}); err != nil {
-		t.Fatalf("add cfg failed: %v", err)
-	}
 	plat := &PlatForm{
 		storage: storage,
 		cfg:     cfg,
@@ -121,6 +114,9 @@ func TestSubscriptionRotateAndShareLink(t *testing.T) {
 	}
 	if item.ID == "" || item.ShareURL == "" {
 		t.Fatalf("unexpected item: %+v", item)
+	}
+	if !strings.HasPrefix(item.ShareURL, "/share-link/alice/") {
+		t.Fatalf("expected relative share url, got %s", item.ShareURL)
 	}
 
 	mgr.mu.Lock()
