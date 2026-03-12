@@ -77,6 +77,8 @@ export interface SubscriptionItem {
     id: string
     name: string
     upstreamUrl: string
+    workerForwardUrl: string
+    workerForwardEnabled: boolean
     monitorEnabled: boolean
     shareUrl: string
     lastCheckAt: string
@@ -103,6 +105,8 @@ export async function sendSubscriptionList() {
 export async function sendSubscriptionCreate(req: {
     name: string
     upstreamUrl: string
+    workerForwardUrl: string
+    workerForwardEnabled: boolean
     monitorEnabled: boolean
 }) {
     return UniPost(config.api_base_url + '/misc/subscription/create', req)
@@ -112,6 +116,8 @@ export async function sendSubscriptionUpdate(req: {
     id: string
     name: string
     upstreamUrl: string
+    workerForwardUrl: string
+    workerForwardEnabled: boolean
     monitorEnabled: boolean
 }) {
     return UniPost(config.api_base_url + '/misc/subscription/update', req)

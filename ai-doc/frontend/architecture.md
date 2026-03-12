@@ -48,7 +48,7 @@ Last verified: 2026-03-10
 
 1. Frontend request base comes from `frontend/src/config.json`:
    - `api_base_url = "/api"`
-2. In local dev, Vite proxy rewrites `/api/*` to backend `http://127.0.0.1:8080/*`.
+2. In local dev, Vite proxy rewrites `/api/*` to backend `http://127.0.0.1:8080/*`, and also forwards `/share-link/*` to the same backend so relative share links work in dev.
 3. Shared HTTP helpers live mainly in:
    - `frontend/src/common/sendhttp.js`
    - `frontend/src/common/newSendHttp.ts`

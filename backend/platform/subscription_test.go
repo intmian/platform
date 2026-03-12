@@ -219,6 +219,70 @@ func TestSubscriptionManualCheck(t *testing.T) {
 	}
 }
 
+func TestSubscriptionWorkerForwardAndFilename(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	mgr := newTestSubscriptionMgr(t)
+	upstreamBody := []byte(`
+- {name: "Traffic: 15.8 GB | 150 GB", server: example.com, port: 10011, type: ss}
+- {name: "Expire: 2026-10-16", server: example.com, port: 10011, type: ss}
+`)
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write(upstreamBody)
+	}))
+	defer upstream.Close()
+
+	expectedUpstreamURL := upstream.URL + "?filename=demo.yaml"
+	workerHit := false
+	worker := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		workerHit = true
+		if got := r.URL.Query().Get("url"); got != expectedUpstreamURL {
+			t.Fatalf("unexpected worker url param: %s", got)
+		}
+		w.Header().Set("Content-Type", "text/plain;charset=utf-8")
+		_, _ = w.Write(upstreamBody)
+	}))
+	defer worker.Close()
+
+	item, err := mgr.create("alice", subscriptionCreateReq{
+		Name:                 "worker",
+		UpstreamURL:          expectedUpstreamURL,
+		WorkerForwardEnabled: true,
+		WorkerForwardURL:     worker.URL + "/?url=",
+		MonitorEnabled:       true,
+	})
+	if err != nil {
+		t.Fatalf("create failed: %v", err)
+	}
+
+	checked, err := mgr.check("alice", item.ID)
+	if err != nil {
+		t.Fatalf("manual check failed: %v", err)
+	}
+	if checked.LastCheckStatus != subscriptionStatusSuccess {
+		t.Fatalf("expected success status, got %s", checked.LastCheckStatus)
+	}
+	if !workerHit {
+		t.Fatal("expected worker to be used")
+	}
+
+	web := &webMgr{plat: mgr.plat}
+	recorder := httptest.NewRecorder()
+	ctx, _ := gin.CreateTestContext(recorder)
+	req := httptest.NewRequest(http.MethodGet, item.ShareURL, nil)
+	ctx.Request = req
+	ctx.Params = gin.Params{
+		{Key: "username", Value: "alice"},
+		{Key: "token", Value: item.ShareURL[strings.LastIndex(item.ShareURL, "/")+1:]},
+	}
+	web.shareLinkDownload(ctx)
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", recorder.Code)
+	}
+	if got := recorder.Header().Get("Content-Disposition"); !strings.Contains(got, "demo.yaml") {
+		t.Fatalf("expected content-disposition filename, got %s", got)
+	}
+}
+
 func TestListReturnsRemainDays(t *testing.T) {
 	mgr := newTestSubscriptionMgr(t)
 	item, err := mgr.create("alice", subscriptionCreateReq{

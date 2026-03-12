@@ -7,7 +7,9 @@ import (
 	"fmt"
 	"io"
 	"math"
+	"mime"
 	"net/http"
+	"net/url"
 	"regexp"
 	"slices"
 	"strconv"
@@ -34,6 +36,8 @@ type subscriptionRecord struct {
 	User             string                    `json:"user"`
 	Name             string                    `json:"name"`
 	UpstreamURL      string                    `json:"upstreamUrl"`
+	WorkerForwardURL string                    `json:"workerForwardUrl"`
+	WorkerEnabled    bool                      `json:"workerForwardEnabled"`
 	ShareToken       string                    `json:"shareToken"`
 	MonitorEnabled   bool                      `json:"monitorEnabled"`
 	CreatedAt        time.Time                 `json:"createdAt"`
@@ -67,6 +71,8 @@ type subscriptionListItem struct {
 	ID               string  `json:"id"`
 	Name             string  `json:"name"`
 	UpstreamURL      string  `json:"upstreamUrl"`
+	WorkerForwardURL string  `json:"workerForwardUrl"`
+	WorkerEnabled    bool    `json:"workerForwardEnabled"`
 	MonitorEnabled   bool    `json:"monitorEnabled"`
 	ShareURL         string  `json:"shareUrl"`
 	LastCheckAt      string  `json:"lastCheckAt"`
@@ -83,16 +89,20 @@ type subscriptionListResp struct {
 }
 
 type subscriptionCreateReq struct {
-	Name           string `json:"name"`
-	UpstreamURL    string `json:"upstreamUrl"`
-	MonitorEnabled bool   `json:"monitorEnabled"`
+	Name                 string `json:"name"`
+	UpstreamURL          string `json:"upstreamUrl"`
+	WorkerForwardURL     string `json:"workerForwardUrl"`
+	WorkerForwardEnabled bool   `json:"workerForwardEnabled"`
+	MonitorEnabled       bool   `json:"monitorEnabled"`
 }
 
 type subscriptionUpdateReq struct {
-	ID             string `json:"id"`
-	Name           string `json:"name"`
-	UpstreamURL    string `json:"upstreamUrl"`
-	MonitorEnabled bool   `json:"monitorEnabled"`
+	ID                   string `json:"id"`
+	Name                 string `json:"name"`
+	UpstreamURL          string `json:"upstreamUrl"`
+	WorkerForwardURL     string `json:"workerForwardUrl"`
+	WorkerForwardEnabled bool   `json:"workerForwardEnabled"`
+	MonitorEnabled       bool   `json:"monitorEnabled"`
 }
 
 type subscriptionDeleteReq struct {
@@ -244,17 +254,65 @@ func (m *subscriptionMgr) buildPublicShareURL(user, token string) string {
 	return m.buildSharePath(user, token)
 }
 
+func normalizeWorkerForwardURL(raw string) string {
+	return strings.TrimSpace(raw)
+}
+
+func validateWorkerForward(enabled bool, workerURL string) error {
+	if !enabled {
+		return nil
+	}
+	if strings.TrimSpace(workerURL) == "" {
+		return errors.New("workerForwardUrl is empty")
+	}
+	parsed, err := url.Parse(workerURL)
+	if err != nil || parsed.Scheme == "" || parsed.Host == "" {
+		return errors.New("workerForwardUrl invalid")
+	}
+	return nil
+}
+
+func (m *subscriptionMgr) buildFetchURL(record subscriptionRecord) (string, error) {
+	if !record.WorkerEnabled {
+		return record.UpstreamURL, nil
+	}
+	if err := validateWorkerForward(true, record.WorkerForwardURL); err != nil {
+		return "", err
+	}
+	return record.WorkerForwardURL + url.QueryEscape(record.UpstreamURL), nil
+}
+
+func buildDownloadContentDisposition(record subscriptionRecord, upstreamHeader string) string {
+	if filename := extractUpstreamFilename(record.UpstreamURL); filename != "" {
+		return mime.FormatMediaType("attachment", map[string]string{"filename": filename})
+	}
+	if strings.TrimSpace(upstreamHeader) != "" {
+		return upstreamHeader
+	}
+	return mime.FormatMediaType("attachment", map[string]string{"filename": "subscription.yaml"})
+}
+
+func extractUpstreamFilename(rawURL string) string {
+	parsed, err := url.Parse(rawURL)
+	if err != nil {
+		return ""
+	}
+	return strings.TrimSpace(parsed.Query().Get("filename"))
+}
+
 func (m *subscriptionMgr) toListItem(record subscriptionRecord) subscriptionListItem {
 	item := subscriptionListItem{
-		ID:              record.ID,
-		Name:            record.Name,
-		UpstreamURL:     record.UpstreamURL,
-		MonitorEnabled:  record.MonitorEnabled,
-		ShareURL:        m.buildPublicShareURL(record.User, record.ShareToken),
-		LastCheckStatus: record.LastCheckStatus,
-		LastError:       record.LastError,
-		TrafficSummary:  record.LastTrafficRaw,
-		UsagePercent:    record.LastUsagePercent,
+		ID:               record.ID,
+		Name:             record.Name,
+		UpstreamURL:      record.UpstreamURL,
+		WorkerForwardURL: record.WorkerForwardURL,
+		WorkerEnabled:    record.WorkerEnabled,
+		MonitorEnabled:   record.MonitorEnabled,
+		ShareURL:         m.buildPublicShareURL(record.User, record.ShareToken),
+		LastCheckStatus:  record.LastCheckStatus,
+		LastError:        record.LastError,
+		TrafficSummary:   record.LastTrafficRaw,
+		UsagePercent:     record.LastUsagePercent,
 	}
 	if !record.LastCheckAt.IsZero() {
 		item.LastCheckAt = record.LastCheckAt.Format(time.RFC3339)
@@ -287,16 +345,21 @@ func (m *subscriptionMgr) create(user string, req subscriptionCreateReq) (subscr
 	if strings.TrimSpace(req.Name) == "" || strings.TrimSpace(req.UpstreamURL) == "" {
 		return subscriptionListItem{}, errors.New("name or upstreamUrl is empty")
 	}
+	if err := validateWorkerForward(req.WorkerForwardEnabled, req.WorkerForwardURL); err != nil {
+		return subscriptionListItem{}, err
+	}
 	record := subscriptionRecord{
-		ID:              uuid.NewString(),
-		User:            user,
-		Name:            strings.TrimSpace(req.Name),
-		UpstreamURL:     strings.TrimSpace(req.UpstreamURL),
-		ShareToken:      newSubscriptionToken(),
-		MonitorEnabled:  req.MonitorEnabled,
-		CreatedAt:       time.Now(),
-		UpdatedAt:       time.Now(),
-		LastCheckStatus: subscriptionStatusNever,
+		ID:               uuid.NewString(),
+		User:             user,
+		Name:             strings.TrimSpace(req.Name),
+		UpstreamURL:      strings.TrimSpace(req.UpstreamURL),
+		WorkerForwardURL: normalizeWorkerForwardURL(req.WorkerForwardURL),
+		WorkerEnabled:    req.WorkerForwardEnabled,
+		ShareToken:       newSubscriptionToken(),
+		MonitorEnabled:   req.MonitorEnabled,
+		CreatedAt:        time.Now(),
+		UpdatedAt:        time.Now(),
+		LastCheckStatus:  subscriptionStatusNever,
 	}
 
 	m.mu.Lock()
@@ -319,6 +382,9 @@ func (m *subscriptionMgr) update(user string, req subscriptionUpdateReq) (subscr
 	if strings.TrimSpace(req.ID) == "" || strings.TrimSpace(req.Name) == "" || strings.TrimSpace(req.UpstreamURL) == "" {
 		return subscriptionListItem{}, errors.New("invalid param")
 	}
+	if err := validateWorkerForward(req.WorkerForwardEnabled, req.WorkerForwardURL); err != nil {
+		return subscriptionListItem{}, err
+	}
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	records, err := m.loadRecordsLocked(user)
@@ -337,11 +403,18 @@ func (m *subscriptionMgr) update(user string, req subscriptionUpdateReq) (subscr
 	}
 	record := records[index]
 	oldURL := record.UpstreamURL
+	oldWorkerURL := record.WorkerForwardURL
+	oldWorkerEnabled := record.WorkerEnabled
 	record.Name = strings.TrimSpace(req.Name)
 	record.UpstreamURL = strings.TrimSpace(req.UpstreamURL)
+	record.WorkerForwardURL = normalizeWorkerForwardURL(req.WorkerForwardURL)
+	record.WorkerEnabled = req.WorkerForwardEnabled
 	record.MonitorEnabled = req.MonitorEnabled
 	record.UpdatedAt = time.Now()
-	if oldURL != record.UpstreamURL || !record.MonitorEnabled {
+	if oldURL != record.UpstreamURL ||
+		oldWorkerURL != record.WorkerForwardURL ||
+		oldWorkerEnabled != record.WorkerEnabled ||
+		!record.MonitorEnabled {
 		record.resetMonitorState()
 	}
 	records[index] = record
@@ -573,11 +646,17 @@ func (m *subscriptionMgr) monitorUser(user string) {
 }
 
 func (m *subscriptionMgr) monitorRecord(record subscriptionRecord) {
-	body, err := m.fetchSubscriptionBody(record.UpstreamURL)
+	fetchURL, err := m.buildFetchURL(record)
 	if err != nil {
-		body, err = m.fetchSubscriptionBody(record.UpstreamURL)
+		m.logInfo("user=%s name=%s build fetch url failed: %v", record.User, record.Name, err)
+		m.updateMonitorFailure(record.User, record.ID, subscriptionStatusRequestFail, err.Error())
+		return
+	}
+	body, err := m.fetchSubscriptionBody(fetchURL)
+	if err != nil {
+		body, err = m.fetchSubscriptionBody(fetchURL)
 		if err != nil {
-			msg := fmt.Sprintf("user=%s name=%s upstream=%s check failed: %v", record.User, record.Name, record.UpstreamURL, err)
+			msg := fmt.Sprintf("user=%s name=%s upstream=%s fetch=%s check failed: %v", record.User, record.Name, record.UpstreamURL, fetchURL, err)
 			m.logInfo(msg)
 			m.pushNotify("订阅巡检失败", msg)
 			m.updateMonitorFailure(record.User, record.ID, subscriptionStatusRequestFail, err.Error())
@@ -889,7 +968,12 @@ func (m *webMgr) shareLinkDownload(c *gin.Context) {
 		c.String(http.StatusNotFound, "not found")
 		return
 	}
-	req, err := http.NewRequestWithContext(c.Request.Context(), http.MethodGet, record.UpstreamURL, nil)
+	fetchURL, err := m.plat.subscriptionMgr.buildFetchURL(*record)
+	if err != nil {
+		c.String(http.StatusBadGateway, "bad upstream")
+		return
+	}
+	req, err := http.NewRequestWithContext(c.Request.Context(), http.MethodGet, fetchURL, nil)
 	if err != nil {
 		c.String(http.StatusBadGateway, "bad upstream")
 		return
@@ -904,12 +988,13 @@ func (m *webMgr) shareLinkDownload(c *gin.Context) {
 		c.String(http.StatusBadGateway, "bad upstream")
 		return
 	}
-	for _, key := range []string{"Content-Type", "Content-Disposition", "Content-Encoding"} {
+	for _, key := range []string{"Content-Type", "Content-Encoding"} {
 		value := resp.Header.Get(key)
 		if value != "" {
 			c.Header(key, value)
 		}
 	}
+	c.Header("Content-Disposition", buildDownloadContentDisposition(*record, resp.Header.Get("Content-Disposition")))
 	if c.Writer.Header().Get("Content-Type") == "" {
 		c.Header("Content-Type", "application/octet-stream")
 	}

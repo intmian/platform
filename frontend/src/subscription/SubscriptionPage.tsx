@@ -41,11 +41,13 @@ import {
     SubscriptionMutationRet
 } from "../common/newSendHttp";
 
-const {Paragraph, Text, Title} = Typography;
+const {Text, Title} = Typography;
 
 type FormValue = {
     name: string
     upstreamUrl: string
+    workerForwardUrl: string
+    workerForwardEnabled: boolean
     monitorEnabled: boolean
 }
 
@@ -60,13 +62,13 @@ function normalizeShareUrl(shareUrl: string) {
 function formatCheckStatus(item: SubscriptionItem) {
     switch (item.lastCheckStatus) {
         case "success":
-            return <Tag color="success">巡检成功</Tag>;
+            return <Tag color="success">检查成功</Tag>;
         case "request_failed":
             return <Tag color="error">请求失败</Tag>;
         case "parse_failed":
             return <Tag color="warning">解析失败</Tag>;
         default:
-            return <Tag>尚未巡检</Tag>;
+            return <Tag>尚未检查</Tag>;
     }
 }
 
@@ -96,6 +98,11 @@ function renderMonitorTag(item: SubscriptionItem) {
         return <Tag>仅代理</Tag>;
     }
     const success = item.lastCheckStatus === "success";
+    const monitorTextStyle = {
+        fontSize: 12,
+        fontWeight: 500,
+        lineHeight: 1,
+    } as const
     return <Tag
         bordered
         style={{
@@ -108,23 +115,49 @@ function renderMonitorTag(item: SubscriptionItem) {
             paddingInline: 8,
         }}
     >
-        <span style={{fontSize: 12, fontWeight: 500, lineHeight: 1}}>Auto Check</span>
+        <span style={monitorTextStyle}>Auto Check</span>
+        {item.workerForwardEnabled ? <span style={{
+            color: "#bfbfbf",
+            fontSize: 12,
+            lineHeight: 1,
+        }}>|</span> : null}
+        {item.workerForwardEnabled ? <span style={monitorTextStyle}>Proxy On</span> : null}
         <Badge status={success ? "success" : "error"}/>
     </Tag>;
 }
 
-function LinkLine({label, value}: { label: string, value: string }) {
-    return <div style={{minWidth: 0}}>
-        <Text type="secondary">{label}</Text>
-        <Typography.Text
-            ellipsis={{tooltip: value}}
-            style={{
-                display: "block",
-                marginTop: 6,
-            }}
-        >
-            {value}
-        </Typography.Text>
+function MetricCard(props: {
+    label: string
+    value: string
+    subValue: string
+    fullRow?: boolean
+}) {
+    return <div style={{
+        padding: "10px 12px",
+        borderRadius: 12,
+        background: "#fafafa",
+        border: "1px solid #f0f0f0",
+        minWidth: 0,
+        gridColumn: props.fullRow ? "1 / -1" : undefined,
+    }}>
+        <Text type="secondary" style={{fontSize: 12}}>{props.label}</Text>
+        <div style={{
+            marginTop: 4,
+            fontSize: 16,
+            fontWeight: 600,
+            lineHeight: 1.2,
+            whiteSpace: "nowrap",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+        }}>{props.value}</div>
+        <Text type="secondary" style={{
+            display: "block",
+            marginTop: 4,
+            fontSize: 12,
+            whiteSpace: "nowrap",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+        }}>{props.subValue}</Text>
     </div>;
 }
 
@@ -138,6 +171,7 @@ export default function SubscriptionPage() {
     const [editingItem, setEditingItem] = useState<SubscriptionItem | null>(null);
     const [actingKey, setActingKey] = useState("");
     const [form] = Form.useForm<FormValue>();
+    const workerForwardEnabled = Form.useWatch("workerForwardEnabled", form);
 
     const loadItems = async () => {
         setLoading(true);
@@ -161,6 +195,8 @@ export default function SubscriptionPage() {
         form.setFieldsValue({
             name: "",
             upstreamUrl: "",
+            workerForwardUrl: "",
+            workerForwardEnabled: false,
             monitorEnabled: false,
         });
         setModalOpen(true);
@@ -171,6 +207,8 @@ export default function SubscriptionPage() {
         form.setFieldsValue({
             name: item.name,
             upstreamUrl: item.upstreamUrl,
+            workerForwardUrl: item.workerForwardUrl,
+            workerForwardEnabled: item.workerForwardEnabled,
             monitorEnabled: item.monitorEnabled,
         });
         setModalOpen(true);
@@ -184,6 +222,8 @@ export default function SubscriptionPage() {
                 id: editingItem.id,
                 name: values.name,
                 upstreamUrl: values.upstreamUrl,
+                workerForwardUrl: values.workerForwardUrl,
+                workerForwardEnabled: values.workerForwardEnabled,
                 monitorEnabled: values.monitorEnabled,
             })
             : await sendSubscriptionCreate(values);
@@ -268,9 +308,9 @@ export default function SubscriptionPage() {
         </div>;
     }
 
-    return <div style={{padding: isMobile ? 16 : 24, maxWidth: 1320, margin: "0 auto"}}>
+    return <div style={{padding: isMobile ? 14 : 20, maxWidth: 1680, margin: "0 auto"}}>
         {loginPanel}
-        <Flex justify="space-between" align="center" wrap="wrap" gap="middle" style={{marginBottom: 20}}>
+        <Flex justify="space-between" align="center" wrap="wrap" gap="middle" style={{marginBottom: 16}}>
             <div>
                 <Flex align="center" gap={8}>
                     <Title level={2} style={{marginBottom: 0}}>订阅管理</Title>
@@ -278,9 +318,9 @@ export default function SubscriptionPage() {
                         trigger="click"
                         placement="bottomLeft"
                         content={<div style={{maxWidth: 320}}>
-                            <div style={{fontWeight: 600, marginBottom: 8}}>巡检说明</div>
+                            <div style={{fontWeight: 600, marginBottom: 8}}>检查说明</div>
                             <div style={{marginBottom: 8}}>每条订阅对应一个上游链接和一个可公开访问的分享链接。</div>
-                            <div>只有开启巡检的链接才会每小时自动检查上游链接，并展示上次请求得到的用量百分比和过期剩余时间。</div>
+                            <div>只有开启自动检查的链接才会每小时自动检查上游链接，并展示本期用量、过期时间和上次检查结果。</div>
                         </div>}
                     >
                         <Button
@@ -301,74 +341,89 @@ export default function SubscriptionPage() {
         <Spin spinning={loading}>
             {items.length === 0 ? <Card><Empty description="还没有订阅链接"/></Card> : <div style={{
                 display: "grid",
-                gridTemplateColumns: isMobile ? "1fr" : "repeat(2, minmax(0, 1fr))",
-                gap: 16,
+                gridTemplateColumns: isMobile ? "1fr" : "repeat(4, minmax(0, 1fr))",
+                gap: 12,
                 width: "100%",
             }}>
                 {items.map((item) => (
                     <Card
+                        size="small"
                         key={item.id}
-                        style={{height: "100%"}}
-                        styles={{body: {height: "100%"}}}
-                        title={<Space>
+                        style={{height: "100%", minWidth: isMobile ? undefined : 330}}
+                        styles={{body: {padding: isMobile ? 14 : 16}}}
+                        title={<Space size={10}>
                             <LinkOutlined/>
-                            <span>{item.name}</span>
+                            <span style={{fontWeight: 600}}>{item.name}</span>
                             {renderMonitorTag(item)}
                         </Space>}
                         extra={<Space size="small">
                             {shouldShowHeaderStatus(item) ? formatCheckStatus(item) : null}
-                            <Button type="text" icon={<EditOutlined/>} onClick={() => openEditModal(item)}>
-                                编辑
-                            </Button>
+                            <Button
+                                size="small"
+                                type="text"
+                                aria-label="编辑"
+                                icon={<EditOutlined/>}
+                                onClick={() => openEditModal(item)}
+                            />
+                            <Popconfirm
+                                title="确定删除这个订阅吗？"
+                                okText="确定"
+                                cancelText="取消"
+                                onConfirm={() => onDelete(item.id)}
+                            >
+                                <Button
+                                    size="small"
+                                    type="text"
+                                    danger
+                                    aria-label="删除"
+                                    icon={<DeleteOutlined/>}
+                                />
+                            </Popconfirm>
                         </Space>}
                     >
-                        <Flex vertical justify="space-between" style={{height: "100%"}} gap="middle">
-                            <Space direction="vertical" style={{width: "100%"}} size="middle">
-                                <LinkLine label="上游链接" value={item.upstreamUrl}/>
-                                <LinkLine label="分享链接" value={normalizeShareUrl(item.shareUrl)}/>
-                            {(item.monitorEnabled || hasCheckResult(item)) ? <Flex wrap="wrap" gap="large">
-                                <div>
-                                    <Text type="secondary">上次用量</Text>
-                                    <div>{item.trafficSummary ? `${item.usagePercent.toFixed(1)}%` : "暂无"}</div>
-                                    <Text type="secondary">{item.trafficSummary || "等待巡检结果"}</Text>
-                                </div>
-                                <div>
-                                    <Text type="secondary">过期时间</Text>
-                                    <div>{item.expireAt || "暂无"}</div>
-                                    <Text type="secondary">{formatRemainDays(item.expireRemainDays, Boolean(item.expireAt))}</Text>
-                                </div>
-                                <div>
-                                    <Text type="secondary">上次巡检</Text>
-                                    <div>{item.lastCheckAt ? new Date(item.lastCheckAt).toLocaleString() : "暂无"}</div>
-                                    <Text type="secondary">{item.lastError || "无错误"}</Text>
-                                </div>
-                            </Flex> : null}
-                            <Space wrap>
-                                <Button icon={<CopyOutlined/>} onClick={() => onCopy(item.shareUrl)}>复制链接</Button>
+                        <Flex vertical gap={12}>
+                            {(item.monitorEnabled || hasCheckResult(item)) ? <div style={{
+                                display: "grid",
+                                gridTemplateColumns: isMobile ? "1fr" : "repeat(2, minmax(0, 1fr))",
+                                gap: 10,
+                                maxWidth: isMobile ? "100%" : 760,
+                            }}>
+                                <MetricCard
+                                    label="本期用量"
+                                    value={item.trafficSummary ? `${item.usagePercent.toFixed(1)}%` : "暂无"}
+                                    subValue={item.trafficSummary || "等待巡检结果"}
+                                />
+                                <MetricCard
+                                    label="过期时间"
+                                    value={item.expireAt || "暂无"}
+                                    subValue={formatRemainDays(item.expireRemainDays, Boolean(item.expireAt))}
+                                />
+                                <MetricCard
+                                    label="上次检查"
+                                    value={item.lastCheckAt ? new Date(item.lastCheckAt).toLocaleString() : "暂无"}
+                                    subValue={item.lastError || "无错误"}
+                                    fullRow={!isMobile}
+                                />
+                            </div> : null}
+                            <Flex wrap gap={8}>
+                                <Button size="small" icon={<CopyOutlined/>} onClick={() => onCopy(item.shareUrl)}>复制链接</Button>
                                 <Button
+                                    size="small"
                                     icon={<CloudSyncOutlined/>}
                                     onClick={() => onManualCheck(item.id)}
                                     loading={actingKey === `check-${item.id}`}
                                 >
-                                    手动巡检
+                                    手动检查
                                 </Button>
                                 <Button
+                                    size="small"
                                     icon={<RedoOutlined/>}
                                     onClick={() => onRotate(item.id)}
                                     loading={actingKey === `rotate-${item.id}`}
                                 >
                                     轮换链接
                                 </Button>
-                                <Popconfirm
-                                    title="确定删除这个订阅吗？"
-                                    okText="确定"
-                                    cancelText="取消"
-                                    onConfirm={() => onDelete(item.id)}
-                                >
-                                    <Button danger icon={<DeleteOutlined/>}>删除</Button>
-                                </Popconfirm>
-                            </Space>
-                            </Space>
+                            </Flex>
                         </Flex>
                     </Card>
                 ))}
@@ -382,7 +437,7 @@ export default function SubscriptionPage() {
             okText={editingItem ? "保存" : "创建"}
             confirmLoading={saving}
         >
-            <Form form={form} layout="vertical" initialValues={{monitorEnabled: false}}>
+            <Form form={form} layout="vertical" initialValues={{monitorEnabled: false, workerForwardEnabled: false, workerForwardUrl: ""}}>
                 <Form.Item
                     name="name"
                     label="名称"
@@ -397,7 +452,21 @@ export default function SubscriptionPage() {
                 >
                     <Input.TextArea rows={4} placeholder="https://example.com/subscription"/>
                 </Form.Item>
-                <Form.Item name="monitorEnabled" label="开启巡检" valuePropName="checked">
+                <Form.Item name="workerForwardEnabled" label="使用 Worker 转发" valuePropName="checked">
+                    <Switch/>
+                </Form.Item>
+                <Form.Item
+                    name="workerForwardUrl"
+                    label="Worker 转发地址"
+                    rules={workerForwardEnabled ? [{required: true, message: "请输入 Worker 转发地址"}] : []}
+                    extra="例如：https://xxx.workers.dev/?url= ，后端会在后面自动拼接原始上游链接"
+                >
+                    <Input
+                        disabled={!workerForwardEnabled}
+                        placeholder="https://xxx.workers.dev/?url="
+                    />
+                </Form.Item>
+                <Form.Item name="monitorEnabled" label="开启自动检查" valuePropName="checked">
                     <Switch/>
                 </Form.Item>
             </Form>
