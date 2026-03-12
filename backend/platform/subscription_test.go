@@ -283,6 +283,45 @@ func TestSubscriptionWorkerForwardAndFilename(t *testing.T) {
 	}
 }
 
+func TestSubscriptionDownloadUsesUpstreamContentDispositionFirst(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	mgr := newTestSubscriptionMgr(t)
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Disposition", `attachment; filename="from-header.yaml"`)
+		_, _ = w.Write([]byte("hello"))
+	}))
+	defer upstream.Close()
+
+	item, err := mgr.create("alice", subscriptionCreateReq{
+		Name:           "header-first",
+		UpstreamURL:    upstream.URL + "?filename=from-query.yaml",
+		MonitorEnabled: false,
+	})
+	if err != nil {
+		t.Fatalf("create failed: %v", err)
+	}
+
+	web := &webMgr{plat: mgr.plat}
+	recorder := httptest.NewRecorder()
+	ctx, _ := gin.CreateTestContext(recorder)
+	req := httptest.NewRequest(http.MethodGet, item.ShareURL, nil)
+	ctx.Request = req
+	ctx.Params = gin.Params{
+		{Key: "username", Value: "alice"},
+		{Key: "token", Value: item.ShareURL[strings.LastIndex(item.ShareURL, "/")+1:]},
+	}
+	web.shareLinkDownload(ctx)
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", recorder.Code)
+	}
+	if got := recorder.Header().Get("Content-Disposition"); !strings.Contains(got, "from-header.yaml") {
+		t.Fatalf("expected upstream header filename, got %s", got)
+	}
+	if got := recorder.Header().Get("Content-Disposition"); strings.Contains(got, "from-query.yaml") {
+		t.Fatalf("expected not to use query filename when upstream header exists, got %s", got)
+	}
+}
+
 func TestListReturnsRemainDays(t *testing.T) {
 	mgr := newTestSubscriptionMgr(t)
 	item, err := mgr.create("alice", subscriptionCreateReq{

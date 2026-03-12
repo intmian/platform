@@ -283,11 +283,11 @@ func (m *subscriptionMgr) buildFetchURL(record subscriptionRecord) (string, erro
 }
 
 func buildDownloadContentDisposition(record subscriptionRecord, upstreamHeader string) string {
-	if filename := extractUpstreamFilename(record.UpstreamURL); filename != "" {
-		return mime.FormatMediaType("attachment", map[string]string{"filename": filename})
-	}
 	if strings.TrimSpace(upstreamHeader) != "" {
 		return upstreamHeader
+	}
+	if filename := extractUpstreamFilename(record.UpstreamURL); filename != "" {
+		return mime.FormatMediaType("attachment", map[string]string{"filename": filename})
 	}
 	return mime.FormatMediaType("attachment", map[string]string{"filename": "subscription.yaml"})
 }
