@@ -63,6 +63,7 @@ Last verified: 2026-03-06
 6. Library interactive UI map: `library/ui-locator.md`
 7. Note mini domain logic: `note-mini/knowledge.md`
 8. Note mini testing workflow: `note-mini/testing.md`
+9. Subscription page behavior: `subscription/knowledge.md`
 
 ## Completion gate
 

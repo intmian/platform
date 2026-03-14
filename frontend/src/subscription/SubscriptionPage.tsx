@@ -42,6 +42,8 @@ import {
 } from "../common/newSendHttp";
 
 const {Text, Title} = Typography;
+const SUBSCRIPTION_CARD_MIN_WIDTH = 335;
+const NO_DATA_TEXT = "无数据";
 
 type FormValue = {
     name: string
@@ -74,7 +76,7 @@ function formatCheckStatus(item: SubscriptionItem) {
 
 function formatRemainDays(days: number, hasExpire: boolean) {
     if (!hasExpire) {
-        return "暂无";
+        return NO_DATA_TEXT;
     }
     if (days > 0) {
         return `剩 ${days} 天`;
@@ -85,12 +87,47 @@ function formatRemainDays(days: number, hasExpire: boolean) {
     return `已过期 ${Math.abs(days)} 天`;
 }
 
-function hasCheckResult(item: SubscriptionItem) {
-    return Boolean(item.lastCheckAt || item.trafficSummary || item.expireAt || item.lastError);
-}
-
 function shouldShowHeaderStatus(item: SubscriptionItem) {
     return false;
+}
+
+function getUsageMetric(item: SubscriptionItem) {
+    if (item.trafficSummary) {
+        return {
+            value: `${item.usagePercent.toFixed(1)}%`,
+            subValue: item.trafficSummary,
+        };
+    }
+    return {
+        value: NO_DATA_TEXT,
+        subValue: item.monitorEnabled ? "等待巡检结果" : NO_DATA_TEXT,
+    };
+}
+
+function getExpireMetric(item: SubscriptionItem) {
+    if (item.expireAt) {
+        return {
+            value: item.expireAt,
+            subValue: formatRemainDays(item.expireRemainDays, true),
+        };
+    }
+    return {
+        value: NO_DATA_TEXT,
+        subValue: NO_DATA_TEXT,
+    };
+}
+
+function getLastCheckMetric(item: SubscriptionItem) {
+    if (item.lastCheckAt) {
+        return {
+            value: new Date(item.lastCheckAt).toLocaleString(),
+            subValue: item.lastError || "无错误",
+        };
+    }
+    return {
+        value: NO_DATA_TEXT,
+        subValue: item.lastError || NO_DATA_TEXT,
+    };
 }
 
 function renderMonitorTag(item: SubscriptionItem) {
@@ -363,22 +400,27 @@ export default function SubscriptionPage() {
         <Spin spinning={loading}>
             {items.length === 0 ? <Card><Empty description="还没有订阅链接"/></Card> : <div style={{
                 display: "grid",
-                gridTemplateColumns: isMobile ? "1fr" : "repeat(4, minmax(0, 1fr))",
+                gridTemplateColumns: isMobile
+                    ? "1fr"
+                    : `repeat(auto-fit, minmax(min(100%, ${SUBSCRIPTION_CARD_MIN_WIDTH}px), 1fr))`,
                 gap: 12,
                 width: "100%",
             }}>
-                {items.map((item) => (
-                    <Card
+                {items.map((item) => {
+                    const usageMetric = getUsageMetric(item);
+                    const expireMetric = getExpireMetric(item);
+                    const lastCheckMetric = getLastCheckMetric(item);
+                    return <Card
                         size="small"
                         key={item.id}
-                        style={{height: "100%"}}
+                        style={{height: "100%", minWidth: 0}}
                         styles={{body: {padding: isMobile ? 14 : 16}}}
-                        title={<Space size={10}>
+                        title={<Flex align="center" gap={8} wrap="wrap" style={{minWidth: 0}}>
                             <LinkOutlined/>
-                            <span style={{fontWeight: 600}}>{item.name}</span>
+                            <span style={{fontWeight: 600, minWidth: 0}}>{item.name}</span>
                             {renderMonitorTag(item)}
                             {renderProxyOnlyTag(item)}
-                        </Space>}
+                        </Flex>}
                         extra={<Space size="small">
                             {shouldShowHeaderStatus(item) ? formatCheckStatus(item) : null}
                             <Button
@@ -405,7 +447,7 @@ export default function SubscriptionPage() {
                         </Space>}
                     >
                         <Flex vertical gap={12}>
-                            {(item.monitorEnabled || hasCheckResult(item)) ? <div style={{
+                            <div style={{
                                 display: "grid",
                                 gridTemplateColumns: isMobile ? "1fr" : "repeat(2, minmax(0, 1fr))",
                                 gap: 10,
@@ -413,21 +455,21 @@ export default function SubscriptionPage() {
                             }}>
                                 <MetricCard
                                     label="本期用量"
-                                    value={item.trafficSummary ? `${item.usagePercent.toFixed(1)}%` : "暂无"}
-                                    subValue={item.trafficSummary || "等待巡检结果"}
+                                    value={usageMetric.value}
+                                    subValue={usageMetric.subValue}
                                 />
                                 <MetricCard
                                     label="过期时间"
-                                    value={item.expireAt || "暂无"}
-                                    subValue={formatRemainDays(item.expireRemainDays, Boolean(item.expireAt))}
+                                    value={expireMetric.value}
+                                    subValue={expireMetric.subValue}
                                 />
                                 <MetricCard
                                     label="上次检查"
-                                    value={item.lastCheckAt ? new Date(item.lastCheckAt).toLocaleString() : "暂无"}
-                                    subValue={item.lastError || "无错误"}
+                                    value={lastCheckMetric.value}
+                                    subValue={lastCheckMetric.subValue}
                                     fullRow={!isMobile}
                                 />
-                            </div> : null}
+                            </div>
                             <Flex wrap gap={8}>
                                 <Button size="small" icon={<CopyOutlined/>} onClick={() => onCopy(item.shareUrl)}>复制链接</Button>
                                 <Button
@@ -448,8 +490,8 @@ export default function SubscriptionPage() {
                                 </Button>
                             </Flex>
                         </Flex>
-                    </Card>
-                ))}
+                    </Card>;
+                })}
             </div>}
         </Spin>
         <Modal
