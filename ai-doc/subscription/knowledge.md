@@ -9,7 +9,7 @@ Last verified: 2026-03-14
 
 ## UI behavior
 
-1. Desktop subscription cards use a responsive grid with a minimum card width of `335px`; column count should reduce automatically instead of forcing four columns when space is insufficient.
+1. Desktop subscription cards keep a fixed breakpoint-based grid (`4 / 3 / 2 / 1` columns by viewport range) sized so each card stays at or above `335px`; the page should reduce column count before cards are compressed below that width.
 2. Mobile subscription cards render as a single column.
 3. Each card always renders the three metric blocks:
    - `本期用量`

@@ -43,6 +43,8 @@ import {
 
 const {Text, Title} = Typography;
 const SUBSCRIPTION_CARD_MIN_WIDTH = 335;
+const SUBSCRIPTION_GRID_GAP = 12;
+const SUBSCRIPTION_PAGE_PADDING = 20;
 const NO_DATA_TEXT = "无数据";
 
 type FormValue = {
@@ -51,6 +53,23 @@ type FormValue = {
     workerForwardUrl: string
     workerForwardEnabled: boolean
     monitorEnabled: boolean
+}
+
+function getSubscriptionColumnCount(viewportWidth: number, isMobile: boolean) {
+    if (isMobile) {
+        return 1;
+    }
+    const desktopViewportWidth = viewportWidth - SUBSCRIPTION_PAGE_PADDING * 2;
+    if (desktopViewportWidth >= SUBSCRIPTION_CARD_MIN_WIDTH * 4 + SUBSCRIPTION_GRID_GAP * 3) {
+        return 4;
+    }
+    if (desktopViewportWidth >= SUBSCRIPTION_CARD_MIN_WIDTH * 3 + SUBSCRIPTION_GRID_GAP * 2) {
+        return 3;
+    }
+    if (desktopViewportWidth >= SUBSCRIPTION_CARD_MIN_WIDTH * 2 + SUBSCRIPTION_GRID_GAP) {
+        return 2;
+    }
+    return 1;
 }
 
 function normalizeShareUrl(shareUrl: string) {
@@ -223,6 +242,7 @@ function MetricCard(props: {
 export default function SubscriptionPage() {
     const {loginReady, isLoggedIn, openLogin, loginPanel} = useLoginGate();
     const isMobile = useIsMobile();
+    const [viewportWidth, setViewportWidth] = useState(window.innerWidth);
     const [items, setItems] = useState<SubscriptionItem[]>([]);
     const [loading, setLoading] = useState(false);
     const [saving, setSaving] = useState(false);
@@ -248,6 +268,14 @@ export default function SubscriptionPage() {
             loadItems().then();
         }
     }, [loginReady, isLoggedIn]);
+
+    useEffect(() => {
+        const handleResize = () => {
+            setViewportWidth(window.innerWidth);
+        };
+        window.addEventListener("resize", handleResize);
+        return () => window.removeEventListener("resize", handleResize);
+    }, []);
 
     const openCreateModal = () => {
         setEditingItem(null);
@@ -367,6 +395,8 @@ export default function SubscriptionPage() {
         </div>;
     }
 
+    const columnCount = getSubscriptionColumnCount(viewportWidth, isMobile);
+
     return <div style={{padding: isMobile ? 14 : 20, maxWidth: 1680, margin: "0 auto"}}>
         {loginPanel}
         <Flex justify="space-between" align="center" wrap="wrap" gap="middle" style={{marginBottom: 16}}>
@@ -400,10 +430,8 @@ export default function SubscriptionPage() {
         <Spin spinning={loading}>
             {items.length === 0 ? <Card><Empty description="还没有订阅链接"/></Card> : <div style={{
                 display: "grid",
-                gridTemplateColumns: isMobile
-                    ? "1fr"
-                    : `repeat(auto-fit, minmax(min(100%, ${SUBSCRIPTION_CARD_MIN_WIDTH}px), 1fr))`,
-                gap: 12,
+                gridTemplateColumns: `repeat(${columnCount}, minmax(0, 1fr))`,
+                gap: SUBSCRIPTION_GRID_GAP,
                 width: "100%",
             }}>
                 {items.map((item) => {
