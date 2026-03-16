@@ -8,7 +8,7 @@ import MobileAdapter from "../common/MobileAdapter";
 import {useLoginGate} from "../common/useLoginGate";
 
 function ReportPanel() {
-    const {loginPanel} = useLoginGate();
+    const {loginReady, isLoggedIn, loginPanel} = useLoginGate();
     // 更换Favicon为/newslogo.webp
     useEffect(() => {
         const existingFavicon = document.querySelector('link[rel="icon"], link[rel="shortcut icon"]');
@@ -62,14 +62,22 @@ function ReportPanel() {
                 span={isMobile ? 4 : 4}
             >
                 <MobileAdapter position={"left"} width={"15%"}>
-                    <ReportSelector onSelect={setSelected}/>
+                    <ReportSelector
+                        onSelect={setSelected}
+                        loginReady={loginReady}
+                        isLoggedIn={isLoggedIn}
+                    />
                 </MobileAdapter>
             </Col>
             <Col
                 span={isMobile ? 24 : 16}
             >
                 <div>
-                    <ReportShow selected={selected}/>
+                    <ReportShow
+                        selected={selected}
+                        loginReady={loginReady}
+                        isLoggedIn={isLoggedIn}
+                    />
                 </div>
             </Col>
         </Row>

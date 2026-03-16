@@ -8,13 +8,19 @@ import {useIsMobile} from "../common/hooksv2";
 const {Title, Text} = Typography;
 
 
-function ReportShow({selected}: {
+function ReportShow({selected, loginReady, isLoggedIn}: {
     selected: string,
+    loginReady: boolean,
+    isLoggedIn: boolean,
 }) {
     const [data, setData] = useState<DayReport | WholeReport | null>(null);
 
     // 发送请求
     useEffect(() => {
+        if (!loginReady || !isLoggedIn) {
+            setData(null);
+            return;
+        }
         if (selected === "") {
             return;
         }
@@ -87,7 +93,7 @@ function ReportShow({selected}: {
                 }
             })
         }
-    }, [selected]);
+    }, [selected, loginReady, isLoggedIn]);
 
     return <div>
         <Row style={{

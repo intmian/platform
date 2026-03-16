@@ -7,14 +7,20 @@ import dayjs, {Dayjs} from "dayjs";
 
 const {RangePicker} = DatePicker;
 
-function ReportSelector({onSelect}: {
+function ReportSelector({onSelect, loginReady, isLoggedIn}: {
     onSelect: (report: string) => void,
+    loginReady: boolean,
+    isLoggedIn: boolean,
 }) {
     const [reportList, setReportList] = useState<string[]>([]);
     // 响应式
     const screenType = useScreenType();
 
     useEffect(() => {
+        if (!loginReady || !isLoggedIn) {
+            setReportList([]);
+            return;
+        }
         sendGetReportList({}, (ret) => {
             if (!ret.ok) {
                 message.error("获取日报列表失败");
@@ -22,7 +28,7 @@ function ReportSelector({onSelect}: {
             }
             setReportList(ret.data.List.reverse());
         });
-    }, []);
+    }, [loginReady, isLoggedIn]);
 
     const handleRefresh = () => {
         sendGetReportList({}, (ret) => {
