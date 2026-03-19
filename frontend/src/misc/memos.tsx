@@ -1,7 +1,16 @@
 import React, {useCallback, useContext, useEffect, useImperativeHandle, useRef, useState} from "react";
 import type {MenuProps} from "antd";
 import {Button, Dropdown, Flex, Input, message, Modal, notification, Space, Spin, Tooltip} from "antd";
-import {CheckCircleTwoTone, CloseCircleTwoTone, DownOutlined, FileAddOutlined, SettingFilled, SyncOutlined} from "@ant-design/icons";
+import {
+    CheckCircleTwoTone,
+    CloseCircleTwoTone,
+    DownOutlined,
+    EyeInvisibleOutlined,
+    EyeOutlined,
+    FileAddOutlined,
+    SettingFilled,
+    SyncOutlined
+} from "@ant-design/icons";
 import TagInput from "../common/TagInput";
 import {useLostFocus} from "../common/hook";
 import {sendCfgServiceGet, sendCfgServiceSet} from "../common/sendhttp";
@@ -170,10 +179,6 @@ function SendMemosReq(url: string, key: string, content: string, tags: string[],
         });
 }
 
-interface MemosTagAmount {
-    tagAmounts: Map<string, number>
-}
-
 interface TagData {
     tag: string
     amount: number
@@ -201,6 +206,10 @@ function GetMemosTags(url: string, key: string, sucCallback: (data: {
             const tags = tagData.map((tag) => tag.tag);
             sucCallback({tags: tags});
         })
+        .catch(error => {
+            console.error('Error:', error);
+            failCallback();
+        });
 }
 
 // function GetMemosReq(url: string, key: string, sucCallback: (data: any) => void, failCallback: () => void) {
@@ -346,6 +355,7 @@ function Tags({TagsChange, setting, style, tags, onCtrlEnter, maxTagTextLength}:
 function HideInput({
                        functionsRef,
                        onChange,
+                       onHideModeChange,
                        onPasteFile,
                    }: {
     functionsRef: React.MutableRefObject<{
@@ -358,6 +368,7 @@ function HideInput({
         addFile: (file: FileShow) => void
     }>,
     onChange: (text: string) => void,
+    onHideModeChange: (hideMode: boolean) => void,
     onPasteFile: (file: File) => void,
 }) {
     // 目前显示的内容，输入的内容也同步在这里
@@ -381,10 +392,23 @@ function HideInput({
 
     // 实时保存输入框的内容到浏览器缓存
     useEffect(() => {
-        if (showText !== '') {
-            localStorage.setItem('note.lastInput', get());
+        if (showText === '') {
+            localStorage.removeItem('note.lastInput');
+            return;
         }
-    }, [showText]);
+        localStorage.setItem('note.lastInput', get());
+    }, [get, showText]);
+
+    useEffect(() => {
+        onHideModeChange(hideMode);
+    }, [hideMode, onHideModeChange]);
+
+    useEffect(() => {
+        if (hideMode && showText === '') {
+            hideTextRef.current = '';
+            setHideMode(false);
+        }
+    }, [hideMode, showText]);
 
     // 给父组件提供的方法
     const clear = useCallback(() => {
@@ -410,6 +434,11 @@ function HideInput({
     }, [showText]);
 
     const hide = useCallback(() => {
+        if (showText === '') {
+            hideTextRef.current = '';
+            setHideMode(false);
+            return;
+        }
         hideTextRef.current = showText;
         setShowText('*'.repeat(showText.length));
         setHideMode(true);
@@ -608,6 +637,7 @@ function Memos() {
     const [loadingSetting, setLoadingSetting] = useState(true);
     const [openSetting, setOpenSetting] = useState(false);
     const [hidden, setHidden] = useState(false);
+    const [hasInputText, setHasInputText] = useState(false);
     const isMobile = useIsMobile();
     // const [uploading, setUploading] = useState(false); // Removed for useImageUpload
     // const fileInputRef = useRef<HTMLInputElement>(null); // Removed for useImageUpload
@@ -635,7 +665,10 @@ function Memos() {
             setLoadingUser(false);
             return;
         }
-        sendCfgServiceGet("note", (ret: any) => {
+        sendCfgServiceGet("note", (ret: {
+            ok: boolean;
+            data?: Record<string, { Data: string }>;
+        }) => {
             if (ret.ok && ret.data && ret.data['note.setting']) {
                 const setting = JSON.parse(ret.data['note.setting'].Data);
                 setNowSetting(setting);
@@ -677,7 +710,7 @@ function Memos() {
         },
         gptReWrite: () => {
         },
-        addFile: (file: FileShow) => {
+        addFile: () => {
         }
     });
 
@@ -692,9 +725,11 @@ function Memos() {
     const [canSubmit, setCanSubmit] = useState(false);
     const input = <HideInput functionsRef={inputRef}
                              onChange={(text) => {
+                                 setHasInputText(text !== '');
                                  // 当输入框内容发生变化时，检查是否可以发送，这样可以减少刷新次数
                                  setCanSubmit(NowSetting.url !== '' && NowSetting.key !== '' && text !== '');
                              }}
+                             onHideModeChange={setHidden}
                              onPasteFile={(file) => {
                                  if (file) {
                                      uploadSingle(file);
@@ -878,10 +913,6 @@ function Memos() {
 
     const advancedMenuItems: MenuProps['items'] = [
         {
-            key: 'toggle-hidden',
-            label: hidden ? '显示' : '隐藏',
-        },
-        {
             key: 'ai-rewrite',
             label: 'AI重写',
             disabled: advancedMenuDisabled,
@@ -894,15 +925,6 @@ function Memos() {
     ];
 
     const onAdvancedMenuClick: MenuProps['onClick'] = ({key}) => {
-        if (key === 'toggle-hidden') {
-            if (!hidden) {
-                inputRef.current.hide();
-            } else {
-                inputRef.current.show();
-            }
-            setHidden(!hidden);
-            return;
-        }
         if (key === 'ai-rewrite') {
             const content = inputRef.current.get();
             if (content !== '') {
@@ -962,12 +984,14 @@ function Memos() {
                 style={{
                     display: 'flex',
                     marginBottom: '10px',
+                    gap: '10px',
+                    alignItems: 'center',
                 }}
             >
                 <div
                     style={{
-                        width: '80%',
-                        marginRight: '10px',
+                        flex: 1,
+                        minWidth: 0,
                     }}
                 >
                     <MemosQueue
@@ -978,15 +1002,27 @@ function Memos() {
                 </div>
                 <Space
                     style={{
-                        // 子组件靠右
                         display: 'flex',
                         justifyContent: 'flex-end',
-                        // 垂直居中
                         alignItems: 'center',
-                        width: '20%',
-                        height: '100%',
+                        flexShrink: 0,
                     }}
                 >
+                    <Tooltip title={hidden ? '显示内容' : '隐藏内容'}>
+                        <Button
+                            size={"small"}
+                            shape={"circle"}
+                            disabled={!hasInputText}
+                            icon={hidden ? <EyeOutlined/> : <EyeInvisibleOutlined/>}
+                            onClick={() => {
+                                if (hidden) {
+                                    inputRef.current.show();
+                                    return;
+                                }
+                                inputRef.current.hide();
+                            }}
+                        />
+                    </Tooltip>
                     <User/>
                     {setButton}
                 </Space>
