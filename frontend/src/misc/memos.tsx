@@ -390,6 +390,19 @@ function HideInput({
         }
     }, []);
 
+    const get = useCallback(() => {
+        // 将inputHidden提取input中剩余的前缀*数放在前面，input中*后的内容放在后面.
+        let starCount = 0;
+        for (let i = 0; i < showText.length; i++) {
+            if (showText[i] === '*') {
+                starCount++;
+            } else {
+                break;
+            }
+        }
+        return hideTextRef.current.slice(0, starCount) + showText.slice(starCount);
+    }, [showText]);
+
     // 实时保存输入框的内容到浏览器缓存
     useEffect(() => {
         if (showText === '') {
@@ -419,19 +432,6 @@ function HideInput({
         setOldText('');
         setHideMode(false);
     }, []);
-
-    const get = useCallback(() => {
-        // 将inputHidden提取input中剩余的前缀*数放在前面，input中*后的内容放在后面.
-        let starCount = 0;
-        for (let i = 0; i < showText.length; i++) {
-            if (showText[i] === '*') {
-                starCount++;
-            } else {
-                break;
-            }
-        }
-        return hideTextRef.current.slice(0, starCount) + showText.slice(starCount);
-    }, [showText]);
 
     const hide = useCallback(() => {
         if (showText === '') {
