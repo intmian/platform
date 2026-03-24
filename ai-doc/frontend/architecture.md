@@ -1,6 +1,6 @@
 # Frontend Architecture
 
-Last verified: 2026-03-10
+Last verified: 2026-03-24
 
 ## Scope
 
@@ -79,9 +79,10 @@ Last verified: 2026-03-10
 
 1. Shared config form component lives in `frontend/src/common/UniConfig.jsx`.
 2. `ConfigsCtr` owns config metadata plus init/cache state; concurrent `UniConfig` mounts now reuse the same init request instead of issuing duplicate loads.
-3. Slice config editors use a collapse summary label that shows the current values joined by `,`; reordering items updates that summary immediately before save.
+3. Slice config editors use a collapse summary label that shows the current values joined by `,`; drag sorting and deletion update that summary immediately before save.
 4. Config metadata supports `secret` fields; string inputs render as password boxes with eye-toggle visibility, and current admin settings use that for token/key style fields.
 5. `UniConfig` supports `hideLabels` for grouped card layouts where the card title already names the config item.
+6. Slice config rows use a dedicated drag handle for reordering and keep the delete `X` on the far right of each row, matching the action alignment used by the save button column.
 
 ## Loading guidance
 

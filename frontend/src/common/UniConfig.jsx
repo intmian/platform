@@ -7,7 +7,6 @@ import {
     List,
     Modal,
     notification,
-    Row,
     Select,
     Space,
     Spin,
@@ -15,13 +14,26 @@ import {
     Tooltip,
     Typography
 } from "antd";
-import {useEffect, useState} from "react";
+import {useEffect, useRef, useState} from "react";
 import {ConfigsType, ConfigType} from "./UniConfigDef.js";
 import {
+    DndContext,
+    PointerSensor,
+    closestCenter,
+    useSensor,
+    useSensors
+} from "@dnd-kit/core";
+import {
+    SortableContext,
+    arrayMove,
+    useSortable,
+    verticalListSortingStrategy
+} from "@dnd-kit/sortable";
+import {CSS} from "@dnd-kit/utilities";
+import {
     CloseOutlined,
-    DownOutlined,
+    HolderOutlined,
     SaveOutlined,
-    UpOutlined
 } from "@ant-design/icons";
 import {
     sendCfgPlatGet,
@@ -67,6 +79,13 @@ function ButtonPanel({ConfigParam}) {
         }}
         disabled={operating}
     />
+}
+
+function createMultiInputItems(values, idRef) {
+    return (values ?? []).map((item) => ({
+        id: `multi-input-${idRef.current++}`,
+        value: item,
+    }));
 }
 
 function formatCollapsedValue(value, secret) {
@@ -313,29 +332,99 @@ function MultiInput({defaultValue, onValueChange, operating, type, secret}) {
     if (defaultValue == null) {
         defaultValue = [];
     }
-    const [RealValue, setRealValue] = useState(defaultValue);
+    const idRef = useRef(0);
+    const [items, setItems] = useState(() => createMultiInputItems(defaultValue, idRef));
+    const sensors = useSensors(
+        useSensor(PointerSensor, {
+            activationConstraint: {
+                distance: 4,
+            },
+        })
+    );
 
     useEffect(() => {
-        setRealValue(defaultValue ?? []);
+        setItems(createMultiInputItems(defaultValue, idRef));
     }, [defaultValue]);
 
     const InputStyle = {
         flex: 1,
     }
 
+    const updateItems = (nextItems) => {
+        setItems(nextItems);
+        onValueChange(nextItems.map((item) => item.value));
+    };
+
+    function SortableInputRow({item, editor, onRemove}) {
+        const {
+            attributes,
+            listeners,
+            setNodeRef,
+            transform,
+            transition,
+            isDragging
+        } = useSortable({
+            id: item.id,
+            disabled: operating,
+        });
+
+        return <div
+            ref={setNodeRef}
+            style={{
+                width: '100%',
+                transform: CSS.Transform.toString(transform),
+                transition: isDragging ? undefined : transition,
+                opacity: isDragging ? 0.7 : 1,
+                position: 'relative',
+                zIndex: isDragging ? 1 : undefined,
+            }}
+        >
+            <Flex
+                gap={"small"}
+                align={"center"}
+                style={{
+                    width: '100%',
+                }}
+            >
+                <Button
+                    {...attributes}
+                    {...listeners}
+                    type={"text"}
+                    disabled={operating}
+                    icon={<HolderOutlined/>}
+                    style={{
+                        cursor: operating ? 'not-allowed' : 'grab',
+                        color: 'rgba(0, 0, 0, 0.45)',
+                        touchAction: 'none',
+                        flexShrink: 0,
+                    }}
+                />
+                <div style={{flex: 1, minWidth: 0}}>
+                    {editor}
+                </div>
+                <Button
+                    onClick={onRemove}
+                    type={"text"}
+                    disabled={operating}
+                    icon={<CloseOutlined style={{color: 'red'}}/>}
+                    style={{flexShrink: 0}}
+                />
+            </Flex>
+        </div>;
+    }
+
     let coms = [];
-    for (let i = 0; i < RealValue.length; i++) {
+    for (let i = 0; i < items.length; i++) {
         let editor = null;
         switch (type) {
             case ConfigType.SliceBool:
                 editor = <Switch
                     style={InputStyle}
-                    checked={RealValue[i]}
+                    checked={items[i].value}
                     onChange={(newValue) => {
-                        const newRealValue = [...RealValue];
-                        newRealValue[i] = newValue;
-                        setRealValue(newRealValue);
-                        onValueChange(newRealValue);
+                        const nextItems = [...items];
+                        nextItems[i] = {...nextItems[i], value: newValue};
+                        updateItems(nextItems);
                     }}
                     disabled={operating}
                 />
@@ -344,12 +433,11 @@ function MultiInput({defaultValue, onValueChange, operating, type, secret}) {
             case ConfigType.SliceFloat:
                 editor = <InputNumber
                     style={InputStyle}
-                    value={RealValue[i]} // 使用 value 而不是 defaultValue
+                    value={items[i].value}
                     onChange={(newValue) => {
-                        const newRealValue = [...RealValue];
-                        newRealValue[i] = newValue;
-                        setRealValue(newRealValue);
-                        onValueChange(newRealValue);
+                        const nextItems = [...items];
+                        nextItems[i] = {...nextItems[i], value: newValue};
+                        updateItems(nextItems);
                     }}
                     disabled={operating}
                 />
@@ -358,76 +446,37 @@ function MultiInput({defaultValue, onValueChange, operating, type, secret}) {
                 editor = secret ?
                     <Input.Password
                         style={InputStyle}
-                        value={RealValue[i]} // 使用 value 而不是 defaultValue
+                        value={items[i].value}
                         onChange={(newValue) => {
-                            const newRealValue = [...RealValue];
-                            newRealValue[i] = newValue.target.value;
-                            setRealValue(newRealValue);
-                            onValueChange(newRealValue);
+                            const nextItems = [...items];
+                            nextItems[i] = {...nextItems[i], value: newValue.target.value};
+                            updateItems(nextItems);
                         }}
                         disabled={operating}
                     /> :
                     <Input
                         style={InputStyle}
-                        value={RealValue[i]} // 使用 value 而不是 defaultValue
+                        value={items[i].value}
                         onChange={(newValue) => {
-                            const newRealValue = [...RealValue];
-                            newRealValue[i] = newValue.target.value;
-                            setRealValue(newRealValue);
-                            onValueChange(newRealValue);
+                            const nextItems = [...items];
+                            nextItems[i] = {...nextItems[i], value: newValue.target.value};
+                            updateItems(nextItems);
                         }}
                         disabled={operating}
                     />
                 break;
         }
 
-        coms.push(<Row style={{
-            width: '100%',
-            display: 'flex',
-            justifyContent: 'space-between',
-        }} key={i}> {/* 使用 i 作为 key，保证稳定 */}
-            <Flex gap={"small"} style={{width: "100%"}}>
-                {editor}
-                <Button
-                    onClick={() => {
-                        if (i === 0) {
-                            return;
-                        }
-                        const newRealValue = [...RealValue];
-                        [newRealValue[i - 1], newRealValue[i]] = [newRealValue[i], newRealValue[i - 1]];
-                        setRealValue(newRealValue);
-                        onValueChange(newRealValue);
-                    }}
-                    type={"text"}
-                    disabled={operating || i === 0}
-                    icon={<UpOutlined/>}
-                />
-                <Button
-                    onClick={() => {
-                        if (i === RealValue.length - 1) {
-                            return;
-                        }
-                        const newRealValue = [...RealValue];
-                        [newRealValue[i], newRealValue[i + 1]] = [newRealValue[i + 1], newRealValue[i]];
-                        setRealValue(newRealValue);
-                        onValueChange(newRealValue);
-                    }}
-                    type={"text"}
-                    disabled={operating || i === RealValue.length - 1}
-                    icon={<DownOutlined/>}
-                />
-                <Button onClick={() => {
-                    const newRealValue = [...RealValue];
-                    newRealValue.splice(i, 1);
-                    setRealValue(newRealValue);
-                    onValueChange(newRealValue);
-                }}
-                        type={"text"}
-                        disabled={operating}
-                        icon={<CloseOutlined style={{color: 'red'}}/>}
-                />
-            </Flex>
-        </Row>);
+        coms.push(<SortableInputRow
+            key={items[i].id}
+            item={items[i]}
+            editor={editor}
+            onRemove={() => {
+                const nextItems = [...items];
+                nextItems.splice(i, 1);
+                updateItems(nextItems);
+            }}
+        />);
     }
 
     let defaultNew = null;
@@ -446,15 +495,30 @@ function MultiInput({defaultValue, onValueChange, operating, type, secret}) {
 
     let adder = <Button
         onClick={() => {
-            const newValue = [...RealValue, defaultNew];
-            setRealValue(newValue);
-            onValueChange(newValue);
+            const nextItems = [...items, {
+                id: `multi-input-${idRef.current++}`,
+                value: defaultNew,
+            }];
+            updateItems(nextItems);
         }}
         type={"dashed"}
         style={{width: '100%'}}
     >
         添加新值
     </Button>;
+
+    const handleDragEnd = ({active, over}) => {
+        if (!over || active.id === over.id) {
+            return;
+        }
+        const oldIndex = items.findIndex((item) => item.id === active.id);
+        const newIndex = items.findIndex((item) => item.id === over.id);
+        if (oldIndex < 0 || newIndex < 0) {
+            return;
+        }
+        updateItems(arrayMove(items, oldIndex, newIndex));
+    };
+
     return <Collapse
         bordered={false}
         size={"small"}
@@ -462,12 +526,25 @@ function MultiInput({defaultValue, onValueChange, operating, type, secret}) {
         items={[{
             key: '1', label: <div style={{width: '100%', minWidth: 0, overflow: 'hidden'}}>
                 <Text ellipsis style={{display: 'block', width: '100%'}}>
-                    {formatCollapsedValue(RealValue, secret)}
+                    {formatCollapsedValue(items.map((item) => item.value), secret)}
                 </Text>
-            </div>, children: <Space direction={"vertical"} style={{width: '100%'}}>
-                {coms}
-                {adder}
-            </Space>
+            </div>, children: <div style={{width: '100%'}}>
+                <DndContext
+                    sensors={sensors}
+                    collisionDetection={closestCenter}
+                    onDragEnd={handleDragEnd}
+                >
+                    <SortableContext
+                        items={items.map((item) => item.id)}
+                        strategy={verticalListSortingStrategy}
+                    >
+                        <Space direction={"vertical"} style={{width: '100%'}}>
+                            {coms}
+                            {adder}
+                        </Space>
+                    </SortableContext>
+                </DndContext>
+            </div>
         }]}
     />
 

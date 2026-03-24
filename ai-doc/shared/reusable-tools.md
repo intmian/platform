@@ -1,6 +1,6 @@
 # Shared Reusable Tools And Flows
 
-Last verified: 2026-03-07
+Last verified: 2026-03-24
 
 ## Format
 
@@ -15,4 +15,4 @@ Last verified: 2026-03-07
 3. `prepareLibraryCoverFiles` + `prepareLibraryCoverFilesFromCenterCrop`: 可复用的 2:3 裁剪三图产物流程（original/detail/preview）；支持交互裁剪和中心裁剪（兼容补图）。
 4. `appendNoCacheParam`: 为远程图片 URL 追加 `__cf_bust` 随机参数，配合 `fetch cache: no-store` 缓解 CDN 旧缓存对象的 CORS 头不一致。
 5. `doc-skill-map`: 统一“任务类型 -> 需加载文档集合”的可复用流程，入口见 `shared/doc-skill-map.md`，用于避免 full-stack 任务只读前端文档。
-6. `UniConfig` + `ConfigsCtr`: 通用配置表单/缓存容器；支持按 key 分组复用、机密字段 password 显示、slice 值折叠摘要和本地顺序调换。
+6. `UniConfig` + `ConfigsCtr`: 通用配置表单/缓存容器；支持按 key 分组复用、机密字段 password 显示、slice 值折叠摘要、拖拽排序和右侧删除操作。
