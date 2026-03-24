@@ -40,27 +40,33 @@ export function AISetting() {
         <Card size="small" title="连接配置" style={{marginBottom: 16}}>
             <UniConfig configCtr={AIConfigs} configKeys={["openai.base", "openai.token"]}/>
         </Card>
-        <Card size="small" title="模型池" style={{marginBottom: 16}}>
-            <Row gutter={[16, 16]}>
-                {AI_MODEL_CONFIGS.map((item) => (
-                    <Col xs={24} lg={8} key={item.key}>
-                        <Card size="small" title={item.title}>
-                            <UniConfig configCtr={AIConfigs} configKeys={[item.key]} hideLabels={true}/>
-                        </Card>
-                    </Col>
-                ))}
-            </Row>
-        </Card>
-        <Card size="small" title="场景档位">
-            <Row gutter={[16, 16]}>
-                {AI_SCENE_CONFIGS.map((item) => (
-                    <Col xs={24} lg={8} key={item.key}>
-                        <Card size="small" title={item.title}>
-                            <UniConfig configCtr={AIConfigs} configKeys={[item.key]} hideLabels={true}/>
-                        </Card>
-                    </Col>
-                ))}
-            </Row>
-        </Card>
+        <Row gutter={[16, 16]}>
+            <Col xs={24} xl={14}>
+                <Card size="small" title="模型池" style={{height: "100%"}}>
+                    <Row gutter={[16, 16]}>
+                        {AI_MODEL_CONFIGS.map((item) => (
+                            <Col xs={24} md={12} xxl={8} key={item.key}>
+                                <Card size="small" title={item.title}>
+                                    <UniConfig configCtr={AIConfigs} configKeys={[item.key]} hideLabels={true}/>
+                                </Card>
+                            </Col>
+                        ))}
+                    </Row>
+                </Card>
+            </Col>
+            <Col xs={24} xl={10}>
+                <Card size="small" title="场景档位" style={{height: "100%"}}>
+                    <Row gutter={[16, 16]}>
+                        {AI_SCENE_CONFIGS.map((item) => (
+                            <Col xs={24} md={12} xl={24} key={item.key}>
+                                <Card size="small" title={item.title}>
+                                    <UniConfig configCtr={AIConfigs} configKeys={[item.key]} hideLabels={true}/>
+                                </Card>
+                            </Col>
+                        ))}
+                    </Row>
+                </Card>
+            </Col>
+        </Row>
     </Card>;
 }

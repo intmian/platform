@@ -83,6 +83,7 @@ Last verified: 2026-03-24
 4. Config metadata supports `secret` fields; string inputs render as password boxes with eye-toggle visibility, and current admin settings use that for token/key style fields.
 5. `UniConfig` supports `hideLabels` for grouped card layouts where the card title already names the config item.
 6. Slice config rows use a dedicated drag handle for reordering and keep the delete `X` on the far right of each row, matching the action alignment used by the save button column.
+7. Admin `AI 设置` page keeps `连接配置` on top, then uses a responsive two-column section layout on desktop: `模型池` on the left and `场景档位` on the right; narrow screens collapse back to a single column.
 
 ## Loading guidance
 
