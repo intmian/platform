@@ -1,6 +1,6 @@
 # Shared Engineering Workflow
 
-Last verified: 2026-03-06
+Last verified: 2026-03-25
 
 ## Scope
 
@@ -37,7 +37,7 @@ Last verified: 2026-03-06
    - when changing config contracts or backend defaults, verify that the running backend process is actually the new code/version before drawing conclusions from UI behavior
 3. Baseline capture:
    - code baseline (key files/paths)
-   - runtime baseline (MCP snapshot or logs/test output)
+   - runtime baseline (browser snapshot/screenshot or logs/test output)
 4. Plan with risk map:
    - touch points
    - behavior risk
@@ -89,7 +89,7 @@ Last verified: 2026-03-06
 
 ## Evidence standard
 
-1. UI behavior claims require MCP pre/post interaction evidence.
+1. UI behavior claims require browser pre/post interaction evidence.
 2. Frontend change verification must include normal-flow interaction evidence plus at least one adjacent regression interaction path.
 3. UI change verification must include screenshot evidence of:
    - the changed area
@@ -97,6 +97,8 @@ Last verified: 2026-03-06
 4. UI conclusion must explicitly state both "changed behavior works" and "no observed collateral UI impact" based on interaction + screenshot evidence.
 5. Build/test success alone is insufficient for UI behavior conclusions.
 6. When runtime is unavailable, explicitly mark verification as blocked and do not claim completion.
+7. When browser automation is available, prefer `playwright-cli` over non-CLI browser tooling.
+8. Prefer headless browser verification by default to avoid interrupting local work; use headed mode only when visual observation is required or explicitly requested.
 
 ## Process evolution protocol
 

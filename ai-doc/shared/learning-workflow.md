@@ -1,6 +1,6 @@
 # Shared Learning Workflow
 
-Last verified: 2026-03-06
+Last verified: 2026-03-25
 
 ## Goal
 
@@ -24,7 +24,7 @@ Last verified: 2026-03-06
    - what must not change
 4. Load only docs that answer current questions; stop when questions are answered.
 5. Verify from code/runtime; if docs conflict with code, trust code and update docs in the same turn.
-6. For UI behavior changes, always collect MCP pre/post evidence.
+6. For UI behavior changes, always collect browser pre/post evidence.
 7. Before finishing:
    - run one adjacent regression path
    - record data mutation/cleanup notes
@@ -44,11 +44,12 @@ Last verified: 2026-03-06
 4. When value is unclear, keep detail in the current task report and skip AI-doc write-back.
 5. If a new reusable helper/hook/utility/simple workflow is introduced, write it to `shared/reusable-tools.md` with concise reuse instructions.
 
-## MCP quick recovery (known issue)
+## Browser Verification Preference
 
-1. Symptom: Playwright MCP launch fails and Chrome prints message equivalent to "opened in existing browser session".
-2. Recovery:
+1. Prefer `playwright-cli` when browser automation is available; do not switch to non-CLI browser tooling unless `playwright-cli` is unavailable or the task explicitly requires it.
+2. Prefer headless verification by default so local desktop work is not interrupted.
+3. If browser launch fails due to an existing Chrome session:
    - close local Chrome processes
    - keep one stable dev URL (prefer `127.0.0.1`)
-   - retry MCP navigation/snapshot
-3. Do not claim UI completion without MCP evidence after recovery.
+   - retry browser navigation/snapshot
+4. Do not claim UI completion without browser interaction evidence after recovery.

@@ -2,14 +2,14 @@
 
 Purpose: provide repository-local, task-scoped knowledge for AI agents.
 
-Last verified: 2026-03-06
+Last verified: 2026-03-25
 
 ## Core rules
 
 1. Solve user tasks with minimal safe changes.
 2. Keep before/after evidence for behavior-impacting fixes and run at least one adjacent regression path.
 3. When stable facts change, update matching `ai-doc` files in the same turn.
-4. UI behavior-impacting fixes require interaction evidence (MCP pre/post); build/test output alone is insufficient.
+4. UI behavior-impacting fixes require browser interaction evidence (pre/post); build/test output alone is insufficient.
 5. Backend behavior-impacting fixes require at least one direct API verification path (not only compile/lint).
 6. When splitting reusable components/hooks/utilities, keep them generic-first: avoid business-specific hardcoding, expose behavior through explicit props/options.
 7. Any frontend code change must include interaction verification that simulates a normal user flow and at least one adjacent regression path.

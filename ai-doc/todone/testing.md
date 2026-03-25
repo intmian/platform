@@ -78,7 +78,7 @@ Last verified: 2026-02-28
 1. Route/title switch observed:
    - normal: `/todone/dir-12%2Fgrp-18%7Ctestmove%7C0` + `TODONE 任务板: testmove`
    - library: `/todone/dir-12%2Fgrp-27%7C%E6%B5%8B%E8%AF%95lib%7C1` + `TODONE 娱乐库: 测试lib`
-2. Network observed in MCP:
+2. Network observed during browser verification:
    - `/api/check`
    - `/api/service/todone/getDirTree`
    - `/api/service/todone/getSubGroup`

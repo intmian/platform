@@ -1,6 +1,6 @@
 # Shared Debug Workflow
 
-Last verified: 2026-03-06
+Last verified: 2026-03-25
 
 ## Positioning
 
@@ -32,7 +32,7 @@ Last verified: 2026-03-06
    - when a config/UI result looks inconsistent with code, verify the backend process PID/cwd/version before patching around the symptom
 3. Reproduce with the smallest failing path first.
 4. Capture baseline evidence before code change:
-   - MCP snapshot
+   - browser snapshot
    - screenshot (if UI visible)
    - console/network for failure path
    - for performance tasks, include at least one quantitative baseline metric
@@ -49,7 +49,7 @@ Last verified: 2026-03-06
 9. For config/default-value issues, verify the final displayed value comes from the owning backend/config path; do not accept a frontend fallback as proof of backend correctness.
 10. For performance tasks, compare pre/post with the same interaction path and same dataset context.
 11. Report repro, evidence, patch summary, regression, residual risk.
-12. UI behavior fixes (including sort/filter/display order) must include MCP pre/post interaction evidence; compile/build success cannot replace this requirement.
+12. UI behavior fixes (including sort/filter/display order) must include browser pre/post interaction evidence; compile/build success cannot replace this requirement.
 13. Run a short retrospective before final response:
    - what went wrong in this task
    - root cause
@@ -65,13 +65,15 @@ Last verified: 2026-03-06
 4. Confirm render conditions and fallback paths.
 5. When a page requires login, start backend and complete real login before interactive verification; if login is unavailable, mark verification blocked instead of using hack paths.
 
-## MCP/browser troubleshooting
+## Playwright/browser troubleshooting
 
-1. If Playwright MCP fails to launch Chrome with message indicating existing browser session, close local Chrome processes and retry MCP launch.
+1. Prefer `playwright-cli` when browser automation is available; do not switch to non-CLI browser tooling unless `playwright-cli` is unavailable or the task explicitly requires it.
+2. Prefer headless runs by default so verification does not interrupt active desktop work; switch to headed only when visual observation is required or explicitly requested.
+3. If Playwright browser launch fails with message indicating existing browser session, close local Chrome processes and retry.
    - recommended command: `pkill -f "Google Chrome"`
    - if needed, target profile: `pkill -f "/Users/<user>/Library/Caches/ms-playwright/mcp-chrome"`
-2. Keep one stable dev server URL for the full pre/post comparison path (`127.0.0.1` preferred when explicitly specified).
-3. Treat framework deprecation warnings (for example AntD/rc component deprecations) as non-regression unless new runtime errors or behavior drift appears.
+4. Keep one stable dev server URL for the full pre/post comparison path (`127.0.0.1` preferred when explicitly specified).
+5. Treat framework deprecation warnings (for example AntD/rc component deprecations) as non-regression unless new runtime errors or behavior drift appears.
 
 ## Backend-first checks (debug)
 
@@ -112,7 +114,7 @@ Last verified: 2026-03-06
 ## Completion gate
 
 1. Do not declare completion without evidence summary and regression result.
-2. For UI behavior fixes, if MCP pre/post interaction evidence is missing, task is not complete.
+2. For UI behavior fixes, if browser pre/post interaction evidence is missing, task is not complete.
 
 ## Conflict handling
 
