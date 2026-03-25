@@ -88,6 +88,64 @@ function createMultiInputItems(values, idRef) {
     }));
 }
 
+function SortableInputRow({item, editor, onRemove, operating}) {
+    const {
+        attributes,
+        listeners,
+        setNodeRef,
+        transform,
+        transition,
+        isDragging
+    } = useSortable({
+        id: item.id,
+        disabled: operating,
+    });
+
+    return <div
+        ref={setNodeRef}
+        style={{
+            width: '100%',
+            transform: CSS.Transform.toString(transform),
+            transition: isDragging ? undefined : transition,
+            opacity: isDragging ? 0.7 : 1,
+            position: 'relative',
+            zIndex: isDragging ? 1 : undefined,
+        }}
+    >
+        <Flex
+            gap={"small"}
+            align={"center"}
+            style={{
+                width: '100%',
+            }}
+        >
+            <Button
+                {...attributes}
+                {...listeners}
+                type={"text"}
+                disabled={operating}
+                icon={<HolderOutlined/>}
+                style={{
+                    cursor: operating ? 'not-allowed' : 'grab',
+                    color: 'rgba(0, 0, 0, 0.45)',
+                    touchAction: 'none',
+                    flexShrink: 0,
+                }}
+            />
+            <div style={{flex: 1, minWidth: 0}}>
+                {editor}
+            </div>
+            <Button
+                onClick={onRemove}
+                type={"text"}
+                disabled={operating}
+                icon={<CloseOutlined style={{color: 'red'}}/>}
+                style={{flexShrink: 0}}
+            />
+        </Flex>
+    </div>;
+}
+
 function formatCollapsedValue(value, secret) {
     if (value == null) {
         return "暂无内容";
@@ -355,64 +413,6 @@ function MultiInput({defaultValue, onValueChange, operating, type, secret}) {
         onValueChange(nextItems.map((item) => item.value));
     };
 
-    function SortableInputRow({item, editor, onRemove}) {
-        const {
-            attributes,
-            listeners,
-            setNodeRef,
-            transform,
-            transition,
-            isDragging
-        } = useSortable({
-            id: item.id,
-            disabled: operating,
-        });
-
-        return <div
-            ref={setNodeRef}
-            style={{
-                width: '100%',
-                transform: CSS.Transform.toString(transform),
-                transition: isDragging ? undefined : transition,
-                opacity: isDragging ? 0.7 : 1,
-                position: 'relative',
-                zIndex: isDragging ? 1 : undefined,
-            }}
-        >
-            <Flex
-                gap={"small"}
-                align={"center"}
-                style={{
-                    width: '100%',
-                }}
-            >
-                <Button
-                    {...attributes}
-                    {...listeners}
-                    type={"text"}
-                    disabled={operating}
-                    icon={<HolderOutlined/>}
-                    style={{
-                        cursor: operating ? 'not-allowed' : 'grab',
-                        color: 'rgba(0, 0, 0, 0.45)',
-                        touchAction: 'none',
-                        flexShrink: 0,
-                    }}
-                />
-                <div style={{flex: 1, minWidth: 0}}>
-                    {editor}
-                </div>
-                <Button
-                    onClick={onRemove}
-                    type={"text"}
-                    disabled={operating}
-                    icon={<CloseOutlined style={{color: 'red'}}/>}
-                    style={{flexShrink: 0}}
-                />
-            </Flex>
-        </div>;
-    }
-
     let coms = [];
     for (let i = 0; i < items.length; i++) {
         let editor = null;
@@ -471,6 +471,7 @@ function MultiInput({defaultValue, onValueChange, operating, type, secret}) {
             key={items[i].id}
             item={items[i]}
             editor={editor}
+            operating={operating}
             onRemove={() => {
                 const nextItems = [...items];
                 nextItems.splice(i, 1);

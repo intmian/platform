@@ -45,7 +45,7 @@ export function AISetting() {
                 <Card size="small" title="模型池" style={{height: "100%"}}>
                     <Row gutter={[16, 16]}>
                         {AI_MODEL_CONFIGS.map((item) => (
-                            <Col xs={24} md={12} xxl={8} key={item.key}>
+                            <Col xs={24} key={item.key}>
                                 <Card size="small" title={item.title}>
                                     <UniConfig configCtr={AIConfigs} configKeys={[item.key]} hideLabels={true}/>
                                 </Card>
