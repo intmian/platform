@@ -111,14 +111,21 @@ Last verified: 2026-03-29 (interaction verified)
    - click detail `刷新` => `updatedAt` changes
    - add/edit only `备注` or set `时间线断点` => `updatedAt` unchanged
    - add status/score log and ensure it becomes latest non-note/non-cutoff log => `updatedAt` follows latest log time
-10. Detail note visibility selector:
+10. Score log interaction:
+    - simple-score and complex-score rows should both be clickable
+    - clicking either should open the score detail popover
+    - `设为主评分` star button should still work without being swallowed by the popover trigger
+11. Score comment preview:
+    - timeline/detail score comment preview should stay on a single line
+    - long preview should render as `前缀...(N字)`
+12. Detail note visibility selector:
     - verify header selector options `隐藏 / 缩略 / 显示`
     - default should be `缩略`
     - in `缩略`, consecutive note logs collapse into `x条备注` and no right-side edit/delete/time controls are rendered for the collapsed note row
     - collapsed time range should show plain `开始时间 - 结束时间` text, without `（开始）/（结束）` suffixes
     - in `隐藏`, note rows disappear
     - in `显示`, each note row renders content plus edit/delete/time controls
-11. Detail quick note entry:
+13. Detail quick note entry:
     - click `体验记录` header `新增最新备注`
     - verify it opens the same `添加备注` modal as the current-round footer button
     - submit and verify the new note is appended into the current/latest round
