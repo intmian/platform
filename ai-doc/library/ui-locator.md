@@ -1,6 +1,6 @@
 # Library UI Locator Map
 
-Last verified: 2026-03-08 (code verified, TODO-verify via interaction)
+Last verified: 2026-03-29 (interaction verified)
 
 ## Entry path
 
@@ -76,6 +76,16 @@ Timeline actions row:
 1. `添加评分`
 2. `添加备注`
 3. `不加入时间线（断点）`
+
+Experience record header:
+
+1. Count text, e.g. `1 个周目`
+2. `新增最新备注`
+3. Note selector text `备注`
+4. Selector options:
+   - `隐藏`
+   - `缩略`
+   - `显示`
 
 Danger action:
 

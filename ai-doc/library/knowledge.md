@@ -1,6 +1,6 @@
 # Library Module Knowledge
 
-Last verified: 2026-03-08 (code verified, TODO-verify via interaction)
+Last verified: 2026-03-29 (code + interaction verified)
 
 ## Module role and loading boundary
 
@@ -82,6 +82,11 @@ Last verified: 2026-03-08 (code verified, TODO-verify via interaction)
    - `showCategory`
 7. `showAuthor / showStartTime / showUpdateTime` are removed because they are no longer bound to card rendering.
 8. Main-page title row includes a help button that opens `娱乐库状态与评分说明`, covering status semantics and scoring rules.
+9. Detail drawer `体验记录` area exposes a note-visibility selector with 3 modes:
+   - `隐藏`: hide note logs entirely
+   - `缩略`: default mode; consecutive note logs collapse into `x条备注` and only show the plain start/end time range in the left content area
+   - `显示`: render note logs in full with edit/delete/time controls
+10. Detail drawer `体验记录` header adds `新增最新备注`, which opens the same add-note modal as `当前周目 -> 添加备注` and still writes to `extra.currentRound`.
 
 URL sync contract (list + detail):
 

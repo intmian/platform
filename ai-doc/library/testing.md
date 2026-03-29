@@ -1,6 +1,6 @@
 # Library Module Testing
 
-Last verified: 2026-03-08 (matrix updated, TODO-verify via interaction)
+Last verified: 2026-03-29 (interaction verified)
 
 ## Preconditions
 
@@ -53,6 +53,7 @@ Last verified: 2026-03-08 (matrix updated, TODO-verify via interaction)
 8. Mobile layout regression:
    - photo wall should stay at fixed 2 columns on mobile viewport.
    - opening detail drawer on mobile should not show right-side blank strip / horizontal overflow.
+   - detail `体验记录` header should keep `体验记录` on one line; count and controls may wrap to the next line instead of squeezing the title vertically.
    - hover/touch visual regression: real-cover card shine should stay continuous without visible hard edge / cutoff band.
 9. Export content regression:
    - in detail `分享预览`, exported card bottom section should include main evaluation text (main score log comment).
@@ -110,6 +111,17 @@ Last verified: 2026-03-08 (matrix updated, TODO-verify via interaction)
    - click detail `刷新` => `updatedAt` changes
    - add/edit only `备注` or set `时间线断点` => `updatedAt` unchanged
    - add status/score log and ensure it becomes latest non-note/non-cutoff log => `updatedAt` follows latest log time
+10. Detail note visibility selector:
+    - verify header selector options `隐藏 / 缩略 / 显示`
+    - default should be `缩略`
+    - in `缩略`, consecutive note logs collapse into `x条备注` and no right-side edit/delete/time controls are rendered for the collapsed note row
+    - collapsed time range should show plain `开始时间 - 结束时间` text, without `（开始）/（结束）` suffixes
+    - in `隐藏`, note rows disappear
+    - in `显示`, each note row renders content plus edit/delete/time controls
+11. Detail quick note entry:
+    - click `体验记录` header `新增最新备注`
+    - verify it opens the same `添加备注` modal as the current-round footer button
+    - submit and verify the new note is appended into the current/latest round
 
 ## Failure isolation
 

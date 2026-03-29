@@ -108,7 +108,10 @@ const SCORE_INNOVATE_SEQ = ["抄袭", "模仿", "沿袭", "创新", "革命"];
 const LIBRARY_PLACEHOLDER_TEXT_WIDTH_RATIO = 0.1;
 const LIBRARY_PLACEHOLDER_PADDING_WIDTH_RATIO = 0.086;
 const LIBRARY_PREVIEW_WIDTH = 480;
-type DetailLogFilter = 'all' | 'withoutNote';
+type DetailLogFilter = 'withoutNote' | 'compactNote' | 'all';
+type RoundDisplayEntry =
+    | {kind: 'log'; log: LibraryLogEntry; logIndex: number}
+    | {kind: 'noteGroup'; noteCount: number; firstLog: LibraryLogEntry; lastLog: LibraryLogEntry};
 
 function guessExtFromMimeType(mimeType: string): string {
     if (mimeType === 'image/png') return 'png';
@@ -269,7 +272,7 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
     const [showRemarkPreview, setShowRemarkPreview] = useState(false);
     const [showLogNotePreview, setShowLogNotePreview] = useState(false);
     const [logNotePreviewText, setLogNotePreviewText] = useState('');
-    const [detailLogFilter, setDetailLogFilter] = useState<DetailLogFilter>('all');
+    const [detailLogFilter, setDetailLogFilter] = useState<DetailLogFilter>('compactNote');
     const detailCoverRef = useRef<HTMLDivElement>(null);
     const [detailCoverWidth, setDetailCoverWidth] = useState(180);
 
@@ -531,7 +534,7 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
                 remark: item.extra.remark,
                 category: item.extra.category,
             });
-            setDetailLogFilter('all');
+            setDetailLogFilter('compactNote');
             setShowRemarkPreview(false);
             setShowLogNotePreview(false);
             setLogNotePreviewText('');
@@ -819,8 +822,47 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
     const getSortedLogEntries = (round: LibraryRound) => {
         return round.logs
             .map((log, index) => ({log, index}))
-            .filter(({log}) => detailLogFilter !== 'withoutNote' || log.type !== LibraryLogType.note)
             .sort((a, b) => new Date(a.log.time).getTime() - new Date(b.log.time).getTime());
+    };
+
+    const getRoundDisplayEntries = (round: LibraryRound): RoundDisplayEntry[] => {
+        const sortedEntries = getSortedLogEntries(round);
+        if (detailLogFilter === 'withoutNote') {
+            return sortedEntries
+                .filter(({log}) => log.type !== LibraryLogType.note)
+                .map(({log, index}) => ({kind: 'log' as const, log, logIndex: index}));
+        }
+        if (detailLogFilter === 'all') {
+            return sortedEntries.map(({log, index}) => ({kind: 'log' as const, log, logIndex: index}));
+        }
+
+        const result: RoundDisplayEntry[] = [];
+        let pendingNotes: typeof sortedEntries = [];
+
+        const flushPendingNotes = () => {
+            if (pendingNotes.length === 0) {
+                return;
+            }
+            result.push({
+                kind: 'noteGroup',
+                noteCount: pendingNotes.length,
+                firstLog: pendingNotes[0].log,
+                lastLog: pendingNotes[pendingNotes.length - 1].log,
+            });
+            pendingNotes = [];
+        };
+
+        sortedEntries.forEach((entry) => {
+            if (entry.log.type === LibraryLogType.note) {
+                pendingNotes.push(entry);
+                return;
+            }
+            flushPendingNotes();
+            result.push({kind: 'log', log: entry.log, logIndex: entry.index});
+        });
+
+        flushPendingNotes();
+        return result;
     };
 
     const resetEditingContentState = () => {
@@ -1285,6 +1327,27 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
         );
     };
 
+    const renderCompactNoteGroup = (
+        entry: Extract<RoundDisplayEntry, {kind: 'noteGroup'}>,
+        roundIndex: number,
+        displayIndex: number,
+    ) => {
+        const timeRangeText = entry.noteCount > 1
+            ? `${formatDateTime(entry.firstLog.time)} - ${formatDateTime(entry.lastLog.time)}`
+            : formatDateTime(entry.firstLog.time);
+
+        return (
+            <Timeline.Item key={`${roundIndex}-note-group-${displayIndex}`} color="#1890ff">
+                <Space direction="vertical" size={0} style={{width: '100%'}}>
+                    <Text strong>{entry.noteCount}条备注</Text>
+                    <Text type="secondary" style={{fontSize: 12}}>
+                        {timeRangeText}
+                    </Text>
+                </Space>
+            </Timeline.Item>
+        );
+    };
+
     // 渲染周目
     const renderRound = (round: LibraryRound, roundIndex: number) => {
         const isCurrentRound = roundIndex === localItem?.extra.currentRound;
@@ -1315,7 +1378,11 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
                 }
             >
                 <Timeline>
-                    {getSortedLogEntries(round).map(({log, index}) => renderLogItem(log, roundIndex, index))}
+                    {getRoundDisplayEntries(round).map((entry, displayIndex) => (
+                        entry.kind === 'log'
+                            ? renderLogItem(entry.log, roundIndex, entry.logIndex)
+                            : renderCompactNoteGroup(entry, roundIndex, displayIndex)
+                    ))}
                 </Timeline>
                 
                 {isCurrentRound && (
@@ -1426,6 +1493,22 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
         <Space size={8} wrap>
             {renderPrimaryActions()}
             {renderMoreActions()}
+        </Space>
+    );
+    const recordHeaderFilter = (
+        <Space size={4} style={{flexShrink: 0}}>
+            <Text type="secondary" style={{fontSize: 12}}>备注</Text>
+            <Select
+                size="small"
+                value={detailLogFilter}
+                onChange={setDetailLogFilter}
+                style={{width: isMobile ? 88 : 112}}
+                options={[
+                    {value: 'withoutNote', label: '隐藏'},
+                    {value: 'compactNote', label: '缩略'},
+                    {value: 'all', label: '显示'},
+                ]}
+            />
         </Space>
     );
 
@@ -1672,20 +1755,41 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
             
             {/* 周目和日志 */}
             <div>
-                <Flex justify="space-between" align="center" style={{marginBottom: 8}}>
-                    <Text strong>体验记录</Text>
-                    <Space size={8} wrap>
-                        <Text type="secondary">{localItem.extra.rounds.length} 个周目</Text>
-                        <Space size={4}>
-                            <Text type="secondary" style={{fontSize: 12}}>隐藏备注</Text>
-                            <Switch
+                {isMobile ? (
+                    <Space direction="vertical" size={8} style={{width: '100%', marginBottom: 8}}>
+                        <Flex justify="space-between" align="center" gap={8}>
+                            <Text strong style={{whiteSpace: 'nowrap'}}>体验记录</Text>
+                            <Text type="secondary" style={{whiteSpace: 'nowrap'}}>
+                                {localItem.extra.rounds.length} 个周目
+                            </Text>
+                        </Flex>
+                        <Flex align="center" gap={8} wrap>
+                            <Button
                                 size="small"
-                                checked={detailLogFilter === 'withoutNote'}
-                                onChange={(checked) => setDetailLogFilter(checked ? 'withoutNote' : 'all')}
-                            />
-                        </Space>
+                                icon={<EditOutlined/>}
+                                onClick={() => setShowAddNote(true)}
+                            >
+                                新增最新备注
+                            </Button>
+                            {recordHeaderFilter}
+                        </Flex>
                     </Space>
-                </Flex>
+                ) : (
+                    <Flex justify="space-between" align="center" style={{marginBottom: 8}}>
+                        <Text strong>体验记录</Text>
+                        <Space size={8} wrap>
+                            <Text type="secondary">{localItem.extra.rounds.length} 个周目</Text>
+                            <Button
+                                size="small"
+                                icon={<EditOutlined/>}
+                                onClick={() => setShowAddNote(true)}
+                            >
+                                新增最新备注
+                            </Button>
+                            {recordHeaderFilter}
+                        </Space>
+                    </Flex>
+                )}
                 
                 <Collapse
                     defaultActiveKey={[localItem.extra.currentRound]}

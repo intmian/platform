@@ -11,3 +11,4 @@ backend/main/__debug_bin.exe
 backend/main/__debug_bin*
 /output
 AGENTS.override.md
+/.playwright-cli
