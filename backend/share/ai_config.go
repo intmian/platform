@@ -17,9 +17,9 @@ const (
 
 func defaultAIModelPools() map[ai.ModelMode][]string {
 	return map[ai.ModelMode][]string{
-		ai.ModelModeCheap:  {"gpt-5-mini", "gpt-4.1-mini"},
-		ai.ModelModeFast:   {"gpt-5.2-chat-latest"},
-		ai.ModelModeNormal: {"gpt-5.2", "gpt-5.2-chat-latest"},
+		ai.ModelModeCheap:  {"gpt-5.4-mini", "gpt-5.4-nano"},
+		ai.ModelModeFast:   {"gpt-5-chat-latest"},
+		ai.ModelModeNormal: {"gpt-5.4", "gpt-5-chat-latest"},
 	}
 }
 

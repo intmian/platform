@@ -17,7 +17,7 @@ func Test_getNews(t *testing.T) {
 		Base:  "https://www.gptapi.us/v1",
 		Token: "sk-RMKHw5wosxxQ27FD4fD922E56b7545A8Aa22EdC2E6A5334f",
 		ModelPools: map[ai.ModelMode][]string{
-			ai.ModelModeCheap: {"gpt-5-mini", "gpt-4.1-mini"},
+			ai.ModelModeCheap: {"gpt-5.4-mini", "gpt-5.4-nano"},
 		},
 		SceneModes: map[backendshare.AIScene]ai.ModelMode{
 			backendshare.AISceneSummary: ai.ModelModeCheap,

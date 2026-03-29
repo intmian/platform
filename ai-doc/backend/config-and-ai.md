@@ -1,6 +1,6 @@
 # Backend Config And AI
 
-Last verified: 2026-03-06
+Last verified: 2026-03-25
 
 ## Scope
 
@@ -64,14 +64,16 @@ Last verified: 2026-03-06
 ## AI config defaults
 
 1. Default model pools are:
-   - `cheap`: `gpt-5-mini`, `gpt-4.1-mini`
-   - `fast`: `gpt-chat-latest`
-   - `normal`: `gpt-5.2`, `gpt-5.2-chat-latest`
+   - `cheap`: `gpt-5.4-mini`, `gpt-5.4-nano`
+   - `fast`: `gpt-5-chat-latest`
+   - `normal`: `gpt-5.4`, `gpt-5-chat-latest`
 2. Default scene-to-mode mapping is:
    - `rewrite -> fast`
    - `summary -> cheap`
    - `translate -> cheap`
 3. Default placeholder values for `PLAT.openai.base` and `PLAT.openai.token` are `need input`.
+4. The reusable AI wrapper in `backend/mian_go_lib/tool/ai/openai.go` now uses the official Go SDK `github.com/openai/openai-go/v3`.
+5. The wrapper still sends requests through the Chat Completions API for compatibility with existing callers and OpenAI-compatible base URLs.
 
 ## AI rewrite endpoint
 
