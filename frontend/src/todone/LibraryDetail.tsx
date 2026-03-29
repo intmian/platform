@@ -153,6 +153,17 @@ function scoreDataToText(seq: string[], score?: LibraryScoreData): string {
     return base;
 }
 
+function getScoreCommentPreview(comment: string, maxChars: number): string {
+    const trimmed = comment.trim();
+    if (!trimmed) {
+        return '';
+    }
+    if (trimmed.length <= maxChars) {
+        return trimmed;
+    }
+    return `${trimmed.slice(0, maxChars)}...(${trimmed.length}字)`;
+}
+
 async function waitForImagesLoaded(container: HTMLElement): Promise<void> {
     const images = Array.from(container.querySelectorAll('img'));
     const pending = images.filter((img) => !img.complete);
@@ -1210,40 +1221,57 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
                 break;
             case LibraryLogType.score:
                 color = '#faad14';
-                const isComplexScore = localItem ? getComplexScoreSnapshot(localItem.extra, log).mode === 'complex' : false;
                 const scoreStarColor = getScoreStarColor(log.score || 0);
+                const scoreCommentPreview = getScoreCommentPreview(log.comment || '', isMobile ? 10 : 16);
                 const scoreContent = (
-                    <Space>
-                        <StarFilled style={{color: scoreStarColor}}/>
-                        <Text strong>
-                            {getScoreText(log.score || 0, log.scorePlus, log.scoreSub)}
-                        </Text>
-                        <Text type="secondary">({getScoreDisplay(log.score || 0, log.scorePlus, log.scoreSub)})</Text>
-                        {isMainScore && <Tag color="gold">主评分</Tag>}
-                        {!isMainScore && log.type === LibraryLogType.score && (
-                            <Tooltip title="设为主评分">
-                                <Button
-                                    type="text"
-                                    size="small"
-                                    icon={<StarOutlined/>}
-                                    onClick={() => handleSetMainScore(roundIndex, logIndex)}
-                                />
-                            </Tooltip>
-                        )}
-                    </Space>
+                    <Popover
+                        placement="topLeft"
+                        trigger="click"
+                        content={<LibraryScorePopover extra={localItem!.extra} mainScoreOverride={log} />}
+                    >
+                        <div style={{cursor: 'pointer', width: '100%'}}>
+                            <Space>
+                                <StarFilled style={{color: scoreStarColor}}/>
+                                <Text strong>
+                                    {getScoreText(log.score || 0, log.scorePlus, log.scoreSub)}
+                                </Text>
+                                <Text type="secondary">({getScoreDisplay(log.score || 0, log.scorePlus, log.scoreSub)})</Text>
+                                {isMainScore && <Tag color="gold">主评分</Tag>}
+                                {!isMainScore && log.type === LibraryLogType.score && (
+                                    <Tooltip title="设为主评分">
+                                        <Button
+                                            type="text"
+                                            size="small"
+                                            icon={<StarOutlined/>}
+                                            onClick={(event) => {
+                                                event.stopPropagation();
+                                                handleSetMainScore(roundIndex, logIndex);
+                                            }}
+                                        />
+                                    </Tooltip>
+                                )}
+                            </Space>
+                            {scoreCommentPreview ? (
+                                <Text
+                                    type="secondary"
+                                    style={{
+                                        display: 'block',
+                                        marginTop: 2,
+                                        fontSize: 12,
+                                        whiteSpace: 'nowrap',
+                                        overflow: 'hidden',
+                                        textOverflow: 'ellipsis',
+                                    }}
+                                >
+                                    {scoreCommentPreview}
+                                </Text>
+                            ) : null}
+                        </div>
+                    </Popover>
                 );
                 content = (
                     <Space direction="vertical" size={0}>
-                        {isComplexScore ? (
-                            <Popover
-                                placement="topLeft"
-                                trigger="click"
-                                content={<LibraryScorePopover extra={localItem!.extra} mainScoreOverride={log} />}
-                            >
-                                {scoreContent}
-                            </Popover>
-                        ) : scoreContent}
-                        {log.comment && <Text type="secondary" style={{fontSize: 12}}>{log.comment}</Text>}
+                        {scoreContent}
                     </Space>
                 );
                 break;

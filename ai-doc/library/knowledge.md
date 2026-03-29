@@ -148,6 +148,12 @@ Share export rules:
 1. Library detail `分享预览` export card must include main evaluation text at the bottom section (from main score log `comment`, with legacy fallback).
 2. When current status is `DONE`, share export card must include current round date range in `YYYY-MM-DD - YYYY-MM-DD` format (without `开始/结束` prefix).
 
+Score log display rules:
+
+1. Both simple-score and complex-score timeline rows are clickable and open the same score detail popover.
+2. Score comment preview in timeline/detail log list is single-line only.
+3. When score comment preview is truncated, it renders as `前缀...(N字)` where `N` is the full trimmed character count.
+
 ## Common failure signatures
 
 1. `group not exist`
