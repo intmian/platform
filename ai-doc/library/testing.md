@@ -102,6 +102,8 @@ Last verified: 2026-03-29 (interaction verified)
    - same-day `DOING -> GIVE_UP` shows `开始并放弃`
    - if original round has no `DOING`, standalone `DONE` / `GIVE_UP` still show merged text
    - if `DOING` exists but is hidden by year/cutoff, keep `DONE` / `GIVE_UP` as plain status text
+   - timeline filter default should not preselect plain `WAIT` (`搁置`)
+   - selecting plain `WAIT` still shows `搁置`; `waitExpired` (`鸽了`) remains a separate filter option
 8. Guide modal:
    - click title-row `?` button
    - verify modal `娱乐库状态与评分说明` opens

@@ -171,7 +171,6 @@ export default function LibraryTimeline({visible, items, onClose, onItemClick}: 
     const [selectedStatuses, setSelectedStatuses] = useState<TimelineStatusOption[]>([
         LibraryItemStatus.DOING,
         LibraryItemStatus.DONE,
-        LibraryItemStatus.WAIT,
         'waitExpired',
         LibraryItemStatus.GIVE_UP,
     ]);
