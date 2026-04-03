@@ -1,6 +1,6 @@
 # Note Mini Knowledge
 
-Last verified: 2026-03-19
+Last verified: 2026-03-31
 
 ## Module role
 
@@ -52,6 +52,7 @@ Last verified: 2026-03-19
    - tag input supports Ctrl+Enter submit from tag area
    - upload supports local files and clipboard images, then inserts markdown link/image
    - submit queue shows recent send status icons (success/failure/loading)
+   - advanced menu supports updating the most recent successful memo submission when current config URL matches the source memo
 3. Upload trigger path uses a reused hidden `input[type=file]` (not recreated per click), and resets `value` before click to avoid occasional "click upload but nothing happens" behavior.
 4. The top-right control area places a small eye toggle to the left of the logged-in user; it switches between visible/hidden draft display without moving the bottom action bar layout.
 5. When the draft is fully deleted, hide mode is cancelled automatically so the page-level hidden state does not remain latched on an empty input.
@@ -66,8 +67,14 @@ Last verified: 2026-03-19
    - `content`
    - selected `tags`
    - local id
-3. Payload content format is always:
+   - request type (`create` or `update`)
+   - target memo name when retrying/updating an existing memo
+3. Successful create/update responses persist the latest remote memo name in browser `localStorage` key `note.lastMemoMeta`, together with the source URL, so the page can update the last successful memo later in the same browser.
+4. Payload content format is always:
    - `<content>\n#tag1 #tag2 ...`
+5. Update-last flow uses Memos memo update API:
+   - `PATCH {url}/api/v1/memos/{memoId}?updateMask=content,visibility`
+   - body still sends the full memo content and `PRIVATE` visibility
 
 ## Advanced menu behavior (verified from code)
 
@@ -88,5 +95,6 @@ Last verified: 2026-03-19
 1. Load `note-mini/testing.md` for safe mock-based verification flow.
 2. Regression should include:
    - normal submit path
+   - update-last path after one successful send
    - AI rewrite path
    - upload path

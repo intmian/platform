@@ -1,6 +1,6 @@
 # Note Mini Testing Workflow
 
-Last verified: 2026-02-27
+Last verified: 2026-03-31
 
 ## Goal
 
@@ -40,7 +40,8 @@ Last verified: 2026-02-27
    - content format is `<tip>\n<aes-gcm:...>`
    - second line follows `aes-gcm:<base64(iv)>:<base64(ciphertext)>`
 10. Decrypt captured cipher using the same AES key and verify plaintext equals step 5 input.
-11. Run adjacent regression:
+11. Re-enter a different draft, use `更多 -> 修改上次提交`, and verify mock backend receives a memo update request rather than a second create request.
+12. Run adjacent regression:
     - open `高级` -> `AI重写` (no crash path), or
     - submit without AES key and verify validation error appears.
 
@@ -49,8 +50,9 @@ Last verified: 2026-02-27
 1. Real send request reaches mock endpoint successfully.
 2. Captured payload contains tip + AES-GCM ciphertext in expected format.
 3. Decryption output exactly matches original plaintext.
-4. No request sent to formal memo service.
-5. When the task includes UI changes, provide screenshots for both the changed area and a nearby non-target area, and confirm no unintended impact.
+4. Update-last flow targets the most recent successful mock memo and does not create an extra memo.
+5. No request sent to formal memo service.
+6. When the task includes UI changes, provide screenshots for both the changed area and a nearby non-target area, and confirm no unintended impact.
 
 ## Cleanup checklist
 

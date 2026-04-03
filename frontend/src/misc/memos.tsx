@@ -111,17 +111,54 @@ function SettingPanel({onSuccess, onFail}: { onSuccess: (setting: MemosSetting) 
 interface MemosReqStatus {
     finish: boolean
     success: boolean
+    memoName?: string
 }
 
 interface MemosReq {
     content: string
     tags: string[]
     id: number
+    type: 'create' | 'update'
+    targetMemoName?: string
 }
 
 let lastSendTime: Date | null = null;
 
-function SendMemosReq(url: string, key: string, content: string, tags: string[], sucCallback: () => void, failCallback: () => void) {
+interface MemoPayload {
+    content: string
+    visibility: string
+}
+
+interface MemoApiResponse {
+    name?: string
+    content?: string
+}
+
+interface LastMemoMeta {
+    memoName: string
+    url: string
+}
+
+function buildMemoPayload(content: string, tags: string[]): MemoPayload {
+    let tagsStr = '';
+    if (tags.length > 0) {
+        // 前面加上#，然后用空格分隔
+        tagsStr = '#' + tags.join(' #');
+    }
+    return {
+        content: content + '\n' + tagsStr,
+        visibility: "PRIVATE",
+    };
+}
+
+function requestMemo(
+    endpoint: string,
+    method: 'POST' | 'PATCH',
+    key: string,
+    payload: MemoPayload,
+    sucCallback: (data: MemoApiResponse) => void,
+    failCallback: () => void,
+) {
     // 一秒内不允许连续发送
     if (lastSendTime && new Date().getTime() - lastSendTime.getTime() < 1000) {
         confirm('发送过于频繁，请稍后再试');
@@ -131,24 +168,14 @@ function SendMemosReq(url: string, key: string, content: string, tags: string[],
         lastSendTime = new Date();
     }
 
-    let tagsStr = '';
-    if (tags.length > 0) {
-        // 前面加上#，然后用空格分隔
-        tagsStr = '#' + tags.join(' #');
-    }
-    const payload = {
-        content: content + '\n' + tagsStr,
-        visibility: "PRIVATE",
-    };
-
     // 设置超时时间
     const timeout = 5000;
     // 使用AbortController来控制请求超时
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), timeout);
 
-    fetch(url + '/api/v1/memos', {
-        method: 'POST',
+    fetch(endpoint, {
+        method,
         headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${key}`
@@ -168,7 +195,7 @@ function SendMemosReq(url: string, key: string, content: string, tags: string[],
         .then(data => {
             // 如果data里面有content，说明成功了
             if (data.content) {
-                sucCallback();
+                sucCallback(data);
             } else {
                 failCallback();
             }
@@ -177,6 +204,31 @@ function SendMemosReq(url: string, key: string, content: string, tags: string[],
             console.error('Error:', error);
             failCallback();
         });
+}
+
+function SendMemosReq(
+    url: string,
+    key: string,
+    content: string,
+    tags: string[],
+    sucCallback: (data: MemoApiResponse) => void,
+    failCallback: () => void,
+) {
+    requestMemo(url + '/api/v1/memos', 'POST', key, buildMemoPayload(content, tags), sucCallback, failCallback);
+}
+
+function UpdateMemosReq(
+    url: string,
+    key: string,
+    memoName: string,
+    content: string,
+    tags: string[],
+    sucCallback: (data: MemoApiResponse) => void,
+    failCallback: () => void,
+) {
+    const memoId = memoName.startsWith('memos/') ? memoName.slice('memos/'.length) : memoName;
+    const endpoint = `${url}/api/v1/memos/${encodeURIComponent(memoId)}?updateMask=content,visibility`;
+    requestMemo(endpoint, 'PATCH', key, buildMemoPayload(content, tags), sucCallback, failCallback);
 }
 
 interface TagData {
@@ -234,7 +286,17 @@ function GetMemosTags(url: string, key: string, sucCallback: (data: {
 //         });
 // }
 
-function MemosQueue({reqs, url, apiKey}: { reqs: MemosReq[], url: string, apiKey: string }) {
+function MemosQueue({
+    reqs,
+    url,
+    apiKey,
+    onMemoSuccess,
+}: {
+    reqs: MemosReq[],
+    url: string,
+    apiKey: string,
+    onMemoSuccess: (meta: LastMemoMeta) => void,
+}) {
     const [reqHisMap, setReqHisMap] = useState(new Map<number, MemosReqStatus>());
     const saveReqHisMap = (id: number, status: MemosReqStatus) => {
         const newMap = new Map(reqHisMap);
@@ -260,14 +322,25 @@ function MemosQueue({reqs, url, apiKey}: { reqs: MemosReq[], url: string, apiKey
         // 没有就新建
         if (noFind) {
             saveReqHisMap(id, {finish: false, success: false});
-            SendMemosReq(url, apiKey, req.content, req.tags, () => {
-                saveReqHisMap(id, {finish: true, success: true});
-            }, () => {
-                saveReqHisMap(id, {finish: true, success: false});
-            });
+            const onSuccess = (data: MemoApiResponse) => {
+                const memoName = data.name || req.targetMemoName;
+                saveReqHisMap(id, {finish: true, success: true, memoName});
+                if (memoName) {
+                    onMemoSuccess({memoName, url});
+                }
+            };
+            const onFail = () => {
+                saveReqHisMap(id, {finish: true, success: false, memoName: req.targetMemoName});
+            };
+            if (req.type === 'update' && req.targetMemoName) {
+                UpdateMemosReq(url, apiKey, req.targetMemoName, req.content, req.tags, onSuccess, onFail);
+            } else {
+                SendMemosReq(url, apiKey, req.content, req.tags, onSuccess, onFail);
+            }
         }
 
-        const realText = req.content + (req.tags.length > 0 ? '\n #' + req.tags.join(' #') : '');
+        const actionText = req.type === 'update' ? '修改上次提交' : '发送';
+        const realText = `${actionText}\n${req.content}${req.tags.length > 0 ? '\n #' + req.tags.join(' #') : ''}`;
 
         if (reqStatus.finish) {
             if (reqStatus.success) {
@@ -280,12 +353,21 @@ function MemosQueue({reqs, url, apiKey}: { reqs: MemosReq[], url: string, apiKey
                         twoToneColor={'#ff8b8b'}
                         key={req.id} title={realText}
                         onClick={() => {
-                            SendMemosReq(url, apiKey, req.content, req.tags, () => {
-                                    saveReqHisMap(id, {finish: true, success: true,});
-                                }, () => {
-                                    saveReqHisMap(id, {finish: true, success: false});
+                            const onSuccess = (data: MemoApiResponse) => {
+                                const memoName = data.name || req.targetMemoName;
+                                saveReqHisMap(id, {finish: true, success: true, memoName});
+                                if (memoName) {
+                                    onMemoSuccess({memoName, url});
                                 }
-                            );
+                            };
+                            const onFail = () => {
+                                saveReqHisMap(id, {finish: true, success: false, memoName: req.targetMemoName});
+                            };
+                            if (req.type === 'update' && req.targetMemoName) {
+                                UpdateMemosReq(url, apiKey, req.targetMemoName, req.content, req.tags, onSuccess, onFail);
+                            } else {
+                                SendMemosReq(url, apiKey, req.content, req.tags, onSuccess, onFail);
+                            }
                             saveReqHisMap(id, {finish: false, success: false});
                         }}
                     />
@@ -723,6 +805,7 @@ function Memos() {
     });
 
     const [canSubmit, setCanSubmit] = useState(false);
+    const [lastMemoMeta, setLastMemoMeta] = useState<LastMemoMeta | null>(null);
     const input = <HideInput functionsRef={inputRef}
                              onChange={(text) => {
                                  setHasInputText(text !== '');
@@ -751,11 +834,13 @@ function Memos() {
     const [lastReqId, setLastReqId] = useState<number>(tempId);
     const [reqHis, setReqHis] = useState<MemosReq[]>([]);
     const reqHisNow = useRef(reqHis);
-    const AddHis = useCallback((content: string, tags: string[]) => {
+    const AddHis = useCallback((content: string, tags: string[], type: 'create' | 'update' = 'create', targetMemoName?: string) => {
         reqHisNow.current = [{
             content: content,
             tags: tags,
-            id: lastReqId
+            id: lastReqId,
+            type,
+            targetMemoName,
         }, ...reqHis];
         if (reqHisNow.current.length > 8) {
             reqHisNow.current.pop();
@@ -768,7 +853,7 @@ function Memos() {
         if (content === '') {
             return;
         }
-        AddHis(content, tagsSelected);
+        AddHis(content, tagsSelected, 'create');
         inputRef.current.clear();
         setLastReqId(lastReqId + 1);
         setHidden(false);
@@ -777,6 +862,46 @@ function Memos() {
             inputRef.current.focus();
         }
     }, [AddHis, lastReqId, tagsSelected]);
+
+    useEffect(() => {
+        const lastMemoMetaStr = localStorage.getItem('note.lastMemoMeta');
+        if (!lastMemoMetaStr) {
+            return;
+        }
+        try {
+            const parsed = JSON.parse(lastMemoMetaStr) as LastMemoMeta;
+            if (parsed.memoName && parsed.url) {
+                setLastMemoMeta(parsed);
+            }
+        } catch (err) {
+            console.error('parse last memo meta failed', err);
+            localStorage.removeItem('note.lastMemoMeta');
+        }
+    }, []);
+
+    const saveLastMemoMeta = useCallback((meta: LastMemoMeta) => {
+        setLastMemoMeta(meta);
+        localStorage.setItem('note.lastMemoMeta', JSON.stringify(meta));
+    }, []);
+
+    const canUpdateLastMemo = canSubmit && !!lastMemoMeta && lastMemoMeta.url === NowSetting.url;
+
+    const updateLastMemo = useCallback(() => {
+        if (!lastMemoMeta || lastMemoMeta.url !== NowSetting.url) {
+            message.error('没有可修改的最近提交，或当前配置与上次提交来源不一致');
+            return;
+        }
+        const content = inputRef.current.get();
+        if (content === '') {
+            return;
+        }
+        AddHis(content, tagsSelected, 'update', lastMemoMeta.memoName);
+        inputRef.current.clear();
+        setLastReqId(lastReqId + 1);
+        setHidden(false);
+        setTagsSelected([]);
+        inputRef.current.focus();
+    }, [AddHis, NowSetting.url, lastMemoMeta, lastReqId, tagsSelected]);
 
     const submit = useCallback(() => {
         submitByContent(inputRef.current.get());
@@ -918,6 +1043,11 @@ function Memos() {
             disabled: advancedMenuDisabled,
         },
         {
+            key: 'update-last',
+            label: '修改上次提交',
+            disabled: !canUpdateLastMemo || loadingSetting,
+        },
+        {
             key: 'encrypted-upload',
             label: '加密上传',
             disabled: advancedMenuDisabled,
@@ -930,6 +1060,10 @@ function Memos() {
             if (content !== '') {
                 inputRef.current.gptReWrite();
             }
+            return;
+        }
+        if (key === 'update-last') {
+            updateLastMemo();
             return;
         }
         if (key === 'encrypted-upload') {
@@ -998,6 +1132,7 @@ function Memos() {
                         reqs={reqHis}
                         url={NowSetting.url}
                         apiKey={NowSetting.key}
+                        onMemoSuccess={saveLastMemoMeta}
                     />
                 </div>
                 <Space

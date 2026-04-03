@@ -6,6 +6,8 @@
 
 1. `product-plan.md`
    AI/Agent 方向的产品规划主文档，先定义目标、阶段、能力边界和里程碑。
+2. `current-architecture-agent-plan.md`
+   基于当前平台架构的 Agent 方案文档，聚焦目的与需求、方案与架构、已实现部分与缺口。
 
 后续建议放入本目录的文档：
 
@@ -20,4 +22,3 @@
 
 1. 当前阶段先做产品规划，不锁定技术架构。
 2. 后续无论是 provider、agent、memory、tools 还是 planner 相关设计，都继续放在这个目录内。
-
