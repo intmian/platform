@@ -42,6 +42,7 @@ import {
     getLogTypeText,
     getScoreText,
     groupTimelineByYear,
+    isLibraryAutoRoundStartComment,
     isWaitExpired,
 } from './libraryUtil';
 import {useIsMobile} from '../common/hooksv2';
@@ -586,7 +587,7 @@ export default function LibraryTimeline({visible, items, onClose, onItemClick}: 
         const shouldHideComment = (
             entry.logType === LibraryLogType.changeStatus
             && entry.status === LibraryItemStatus.DOING
-            && trimmedComment === `开始${entry.roundName}`
+            && isLibraryAutoRoundStartComment(trimmedComment, entry.roundName)
         ) || trimmedComment === actionText;
 
         return (

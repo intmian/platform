@@ -171,6 +171,7 @@ export interface LibraryLogEntry {
     type: LibraryLogType
     time: string
     status?: LibraryItemStatus      // 状态变更时的新状态
+    autoRoundStart?: boolean        // 是否为系统自动生成的周目开始日志
     score?: number                  // 评分（1-5）
     scorePlus?: boolean             // 评分加分
     scoreSub?: boolean              // 评分减分

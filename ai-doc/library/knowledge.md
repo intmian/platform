@@ -1,6 +1,6 @@
 # Library Module Knowledge
 
-Last verified: 2026-03-29 (code + interaction verified)
+Last verified: 2026-04-22 (code + interaction verified)
 
 ## Module role and loading boundary
 
@@ -142,6 +142,15 @@ Timeline rules:
    - same-day visible `DOING -> DONE` or `DOING -> GIVE_UP` pair can be merged, or
    - that round truly has no `DOING` log in original round logs.
    If `DOING` exists but is filtered out by year/cutoff, keep `DONE` as `完成` and `GIVE_UP` as `放弃`.
+6. Round maintenance rules:
+   - detail header provides `重命名 / 调整开始时间 / 删除周目`
+   - deleting the last remaining round is blocked in UI and data layer
+   - changing `round.startTime` also updates the current round's auto-generated start log time when that log can be identified
+   - renaming a round also updates the auto-generated start log comment
+7. Auto-generated round start log identification:
+   - new rounds persist `autoRoundStart=true` on the first `DOING` status log
+   - legacy data without the flag falls back to the first `DOING` log whose comment matches `开始<旧周目名>` or `开始了<旧周目名>`
+   - once matched during rename/start-time edit, the log is normalized by writing back `autoRoundStart=true`
 
 Share export rules:
 

@@ -11,6 +11,8 @@ import {
     TimelineEntry
 } from "./net/protocal";
 
+const LIBRARY_AUTO_ROUND_START_COMMENT_PREFIXES = ['开始', '开始了'] as const;
+
 /**
  * 创建默认的 LibraryExtra 数据
  */
@@ -186,6 +188,95 @@ export function syncLibraryUpdatedAtFromLatestLog(extra: LibraryExtra): LibraryE
         extra.updatedAt = extra.createdAt;
     }
     return extra;
+}
+
+export function buildLibraryRoundStartComment(roundName: string): string {
+    return `开始${roundName}`;
+}
+
+export function isLibraryAutoRoundStartComment(comment: string | undefined, roundName: string): boolean {
+    const trimmedComment = (comment || '').trim();
+    if (!trimmedComment || !roundName) {
+        return false;
+    }
+
+    return LIBRARY_AUTO_ROUND_START_COMMENT_PREFIXES.some((prefix) => trimmedComment === `${prefix}${roundName}`);
+}
+
+function getLibraryAutoRoundStartLog(round: LibraryRound, roundName: string): LibraryLogEntry | undefined {
+    const flaggedLog = round.logs.find((log) => (
+        log.type === LibraryLogType.changeStatus
+        && log.status === LibraryItemStatus.DOING
+        && !!log.autoRoundStart
+    ));
+    if (flaggedLog) {
+        return flaggedLog;
+    }
+
+    const firstDoingLog = round.logs.find((log) => (
+        log.type === LibraryLogType.changeStatus
+        && log.status === LibraryItemStatus.DOING
+    ));
+    if (firstDoingLog && isLibraryAutoRoundStartComment(firstDoingLog.comment, roundName)) {
+        firstDoingLog.autoRoundStart = true;
+        return firstDoingLog;
+    }
+
+    return undefined;
+}
+
+export function renameLibraryRound(extra: LibraryExtra, roundIndex: number, roundName: string): LibraryExtra {
+    const targetRound = extra.rounds[roundIndex];
+    if (!targetRound) {
+        return extra;
+    }
+
+    const oldRoundName = targetRound.name;
+    const autoRoundStartLog = getLibraryAutoRoundStartLog(targetRound, oldRoundName);
+    targetRound.name = roundName;
+
+    if (autoRoundStartLog) {
+        autoRoundStartLog.autoRoundStart = true;
+        autoRoundStartLog.comment = buildLibraryRoundStartComment(roundName);
+    }
+
+    return extra;
+}
+
+export function updateLibraryRoundStartTime(extra: LibraryExtra, roundIndex: number, startTime: string): LibraryExtra {
+    const targetRound = extra.rounds[roundIndex];
+    if (!targetRound) {
+        return extra;
+    }
+
+    targetRound.startTime = startTime;
+    const autoRoundStartLog = getLibraryAutoRoundStartLog(targetRound, targetRound.name);
+    if (autoRoundStartLog) {
+        autoRoundStartLog.autoRoundStart = true;
+        autoRoundStartLog.time = startTime;
+    }
+
+    return syncLibraryUpdatedAtFromLatestLog(extra);
+}
+
+export function deleteLibraryRound(extra: LibraryExtra, roundIndex: number): LibraryExtra {
+    if (extra.rounds.length <= 1) {
+        return extra;
+    }
+    if (roundIndex < 0 || roundIndex >= extra.rounds.length) {
+        return extra;
+    }
+
+    extra.rounds.splice(roundIndex, 1);
+
+    if (extra.currentRound > roundIndex) {
+        extra.currentRound -= 1;
+    } else if (extra.currentRound === roundIndex) {
+        extra.currentRound = Math.min(roundIndex, extra.rounds.length - 1);
+    }
+
+    normalizeMainScoreSelection(extra);
+    return syncLibraryUpdatedAtFromLatestLog(extra);
 }
 
 /**
@@ -736,7 +827,8 @@ export function startNewRound(extra: LibraryExtra, roundName: string): LibraryEx
             type: LibraryLogType.changeStatus,
             time: now,
             status: LibraryItemStatus.DOING,
-            comment: `开始${roundName}`,
+            autoRoundStart: true,
+            comment: buildLibraryRoundStartComment(roundName),
         }],
         startTime: now,
     };

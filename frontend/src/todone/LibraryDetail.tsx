@@ -66,6 +66,7 @@ import {
     addTimelineCutoffLog,
     buildLibraryTitleCoverDataUrl,
     canUpdateReasonOnSameStatus,
+    deleteLibraryRound,
     getCurrentStatus,
     getCurrentTodoReason,
     getComplexScoreSnapshot,
@@ -83,10 +84,12 @@ import {
     isUpdatedAtDrivenLogType,
     LIBRARY_WAIT_EXPIRED_RULE_TEXT,
     normalizeMainScoreSelection,
+    renameLibraryRound,
     setMainScore,
     startNewRound,
     syncLibraryUpdatedAtFromLatestLog,
     touchLibraryUpdatedAt,
+    updateLibraryRoundStartTime,
 } from './libraryUtil';
 import {useIsMobile} from '../common/hooksv2';
 import TextRate from '../library/TextRate';
@@ -262,6 +265,9 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
     const [showRenameRound, setShowRenameRound] = useState(false);
     const [renameRoundIndex, setRenameRoundIndex] = useState<number | null>(null);
     const [renameRoundName, setRenameRoundName] = useState('');
+    const [showEditRoundStartTime, setShowEditRoundStartTime] = useState(false);
+    const [editingRoundStartIndex, setEditingRoundStartIndex] = useState<number | null>(null);
+    const [editingRoundStartTime, setEditingRoundStartTime] = useState('');
     const [showEditLogTime, setShowEditLogTime] = useState(false);
     const [editingLogPos, setEditingLogPos] = useState<{roundIndex: number; logIndex: number} | null>(null);
     const [editingLogTime, setEditingLogTime] = useState('');
@@ -667,14 +673,11 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
             return;
         }
 
-        const newExtra: LibraryExtra = {
-            ...localItem.extra,
-            rounds: localItem.extra.rounds.map((round, index) => (
-                index === renameRoundIndex
-                    ? {...round, name: finalName}
-                    : round
-                )),
-        };
+        const newExtra = renameLibraryRound(
+            JSON.parse(JSON.stringify(localItem.extra)) as LibraryExtra,
+            renameRoundIndex,
+            finalName,
+        );
 
         const newItem = {...localItem, extra: newExtra};
         setLocalItem(newItem);
@@ -683,6 +686,62 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
         setRenameRoundIndex(null);
         setRenameRoundName('');
         message.success('周目名称已更新');
+    };
+
+    const openRoundStartTimeEditor = (roundIndex: number) => {
+        if (!localItem) {
+            return;
+        }
+
+        const targetRound = localItem.extra.rounds[roundIndex];
+        if (!targetRound) {
+            return;
+        }
+
+        setEditingRoundStartIndex(roundIndex);
+        setEditingRoundStartTime(targetRound.startTime || '');
+        setShowEditRoundStartTime(true);
+    };
+
+    const handleSaveRoundStartTime = () => {
+        if (!localItem || editingRoundStartIndex === null || !editingRoundStartTime) {
+            setShowEditRoundStartTime(false);
+            setEditingRoundStartIndex(null);
+            setEditingRoundStartTime('');
+            return;
+        }
+
+        const newExtra = updateLibraryRoundStartTime(
+            JSON.parse(JSON.stringify(localItem.extra)) as LibraryExtra,
+            editingRoundStartIndex,
+            editingRoundStartTime,
+        );
+        const newItem = {...localItem, extra: newExtra};
+        setLocalItem(newItem);
+        onSave(newItem);
+        setShowEditRoundStartTime(false);
+        setEditingRoundStartIndex(null);
+        setEditingRoundStartTime('');
+        message.success('周目开始时间已更新');
+    };
+
+    const handleDeleteRound = (roundIndex: number) => {
+        if (!localItem) {
+            return;
+        }
+        if (localItem.extra.rounds.length <= 1) {
+            message.warning('至少保留一个周目，不能删除最后一个周目');
+            return;
+        }
+
+        const newExtra = deleteLibraryRound(
+            JSON.parse(JSON.stringify(localItem.extra)) as LibraryExtra,
+            roundIndex,
+        );
+        const newItem = {...localItem, extra: newExtra};
+        setLocalItem(newItem);
+        onSave(newItem);
+        message.success('周目已删除');
     };
 
     const handleSetStatusWithReason = () => {
@@ -1379,6 +1438,7 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
     // 渲染周目
     const renderRound = (round: LibraryRound, roundIndex: number) => {
         const isCurrentRound = roundIndex === localItem?.extra.currentRound;
+        const isLastRound = (localItem?.extra.rounds.length || 0) <= 1;
         
         return (
             <Collapse.Panel
@@ -1397,6 +1457,39 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
                         >
                             重命名
                         </Button>
+                        <Button
+                            type="text"
+                            size="small"
+                            icon={<ClockCircleOutlined/>}
+                            onClick={(event) => {
+                                event.stopPropagation();
+                                openRoundStartTimeEditor(roundIndex);
+                            }}
+                        >
+                            调整开始时间
+                        </Button>
+                        <Popconfirm
+                            title="删除该周目？"
+                            description={isLastRound ? '至少保留一个周目' : '会删除该周目的全部日志，且不可恢复'}
+                            onConfirm={() => handleDeleteRound(roundIndex)}
+                            okText="删除"
+                            cancelText="取消"
+                            okButtonProps={{danger: true}}
+                            disabled={isLastRound}
+                        >
+                            <Button
+                                type="text"
+                                size="small"
+                                danger
+                                disabled={isLastRound}
+                                icon={<DeleteOutlined/>}
+                                onClick={(event) => {
+                                    event.stopPropagation();
+                                }}
+                            >
+                                删除周目
+                            </Button>
+                        </Popconfirm>
                         {isCurrentRound && <Tag color="blue">当前</Tag>}
                         <Text type="secondary" style={{fontSize: 12}}>
                             {formatDateTime(round.startTime)}
@@ -1858,6 +1951,24 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
                     placeholder="请输入新的周目名称"
                     value={renameRoundName}
                     onChange={(e) => setRenameRoundName(e.target.value)}
+                />
+            </Modal>
+
+            <Modal
+                title="调整周目开始时间"
+                open={showEditRoundStartTime}
+                onOk={handleSaveRoundStartTime}
+                onCancel={() => {
+                    setShowEditRoundStartTime(false);
+                    setEditingRoundStartIndex(null);
+                    setEditingRoundStartTime('');
+                }}
+            >
+                <DatePicker
+                    showTime
+                    value={editingRoundStartTime ? dayjs(editingRoundStartTime) : null}
+                    onChange={(value) => setEditingRoundStartTime(value ? value.toISOString() : '')}
+                    style={{width: '100%'}}
                 />
             </Modal>
             
