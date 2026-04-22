@@ -1446,28 +1446,30 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
                 header={
                     <Space>
                         <Text strong>{round.name}</Text>
-                        <Button
-                            type="text"
-                            size="small"
-                            icon={<EditOutlined/>}
-                            onClick={(event) => {
-                                event.stopPropagation();
-                                openRenameRound(roundIndex);
-                            }}
-                        >
-                            重命名
-                        </Button>
-                        <Button
-                            type="text"
-                            size="small"
-                            icon={<ClockCircleOutlined/>}
-                            onClick={(event) => {
-                                event.stopPropagation();
-                                openRoundStartTimeEditor(roundIndex);
-                            }}
-                        >
-                            调整开始时间
-                        </Button>
+                        <Tooltip title="重命名">
+                            <Button
+                                type="text"
+                                size="small"
+                                icon={<EditOutlined/>}
+                                aria-label="重命名周目"
+                                onClick={(event) => {
+                                    event.stopPropagation();
+                                    openRenameRound(roundIndex);
+                                }}
+                            />
+                        </Tooltip>
+                        <Tooltip title="调整开始时间">
+                            <Button
+                                type="text"
+                                size="small"
+                                icon={<ClockCircleOutlined/>}
+                                aria-label="调整周目开始时间"
+                                onClick={(event) => {
+                                    event.stopPropagation();
+                                    openRoundStartTimeEditor(roundIndex);
+                                }}
+                            />
+                        </Tooltip>
                         <Popconfirm
                             title="删除该周目？"
                             description={isLastRound ? '至少保留一个周目' : '会删除该周目的全部日志，且不可恢复'}
@@ -1477,18 +1479,19 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
                             okButtonProps={{danger: true}}
                             disabled={isLastRound}
                         >
-                            <Button
-                                type="text"
-                                size="small"
-                                danger
-                                disabled={isLastRound}
-                                icon={<DeleteOutlined/>}
-                                onClick={(event) => {
-                                    event.stopPropagation();
-                                }}
-                            >
-                                删除周目
-                            </Button>
+                            <Tooltip title="删除周目">
+                                <Button
+                                    type="text"
+                                    size="small"
+                                    danger
+                                    disabled={isLastRound}
+                                    icon={<DeleteOutlined/>}
+                                    aria-label="删除周目"
+                                    onClick={(event) => {
+                                        event.stopPropagation();
+                                    }}
+                                />
+                            </Tooltip>
                         </Popconfirm>
                         {isCurrentRound && <Tag color="blue">当前</Tag>}
                         <Text type="secondary" style={{fontSize: 12}}>

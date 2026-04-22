@@ -132,8 +132,9 @@ Last verified: 2026-04-22 (interaction verified)
     - verify it opens the same `添加备注` modal as the current-round footer button
     - submit and verify the new note is appended into the current/latest round
 14. Round maintenance regression:
-    - open detail -> current round header should show `重命名 / 调整开始时间 / 删除周目`
-    - when only one round exists, `删除周目` should stay disabled
+    - open detail -> current round header should show icon-only actions for rename / adjust start time / delete
+    - hover the icons and verify tooltip text matches the action
+    - when only one round exists, delete-round icon should stay disabled
     - for legacy round data whose first `DOING` log comment is `开始<旧周目名>` or `开始了<旧周目名>` and has no `autoRoundStart` flag:
       - rename round in UI
       - verify saved `Task.Note` updates both `round.name` and the start-log `comment`, and writes back `autoRoundStart=true`

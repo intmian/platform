@@ -143,7 +143,7 @@ Timeline rules:
    - that round truly has no `DOING` log in original round logs.
    If `DOING` exists but is filtered out by year/cutoff, keep `DONE` as `完成` and `GIVE_UP` as `放弃`.
 6. Round maintenance rules:
-   - detail header provides `重命名 / 调整开始时间 / 删除周目`
+   - current round header provides icon-only actions for rename / adjust start time / delete, with tooltip text
    - deleting the last remaining round is blocked in UI and data layer
    - changing `round.startTime` also updates the current round's auto-generated start log time when that log can be identified
    - renaming a round also updates the auto-generated start log comment

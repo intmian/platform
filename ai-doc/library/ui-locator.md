@@ -1,6 +1,6 @@
 # Library UI Locator Map
 
-Last verified: 2026-03-29 (interaction verified)
+Last verified: 2026-04-22
 
 ## Entry path
 
@@ -86,6 +86,10 @@ Experience record header:
    - `隐藏`
    - `缩略`
    - `显示`
+5. Current round action icons in each round header:
+   - rename icon (`EditOutlined`), tooltip `重命名`
+   - adjust-start-time icon (`ClockCircleOutlined`), tooltip `调整开始时间`
+   - delete-round icon (`DeleteOutlined`), tooltip `删除周目`
 
 Danger action:
 
