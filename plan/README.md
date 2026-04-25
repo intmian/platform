@@ -12,4 +12,5 @@
 当前计划：
 
 1. `ai-agent-platform/`
+2. `family-money-book/`
 
