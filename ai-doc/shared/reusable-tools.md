@@ -1,6 +1,6 @@
 # Shared Reusable Tools And Flows
 
-Last verified: 2026-03-24
+Last verified: 2026-04-25
 
 ## Format
 
@@ -16,3 +16,4 @@ Last verified: 2026-03-24
 4. `appendNoCacheParam`: 为远程图片 URL 追加 `__cf_bust` 随机参数，配合 `fetch cache: no-store` 缓解 CDN 旧缓存对象的 CORS 头不一致。
 5. `doc-skill-map`: 统一“任务类型 -> 需加载文档集合”的可复用流程，入口见 `shared/doc-skill-map.md`，用于避免 full-stack 任务只读前端文档。
 6. `UniConfig` + `ConfigsCtr`: 通用配置表单/缓存容器；支持按 key 分组复用、机密字段 password 显示、slice 值折叠摘要、拖拽排序和右侧删除操作。
+7. `#ignoreDeploy`: 推送到 `master` 的提交消息包含该标记时，`.github/workflows/deploy.yml` 的前端构建、后端构建和部署 job 会跳过。
