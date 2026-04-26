@@ -4,9 +4,18 @@ export type MoneyBook = {
     name: string
     primaryBalanceAccountId: string
     enabled: boolean
+    deleted: boolean
     viewerUsers: string[]
     createdAt: string
     updatedAt: string
+}
+
+export type MoneyBookArchive = {
+    schemaVersion: number
+    exportedAt: string
+    book: MoneyBook
+    items: MoneyItem[]
+    records: ReconciliationRecord[]
 }
 
 export type MoneyItem = {
@@ -28,6 +37,8 @@ export type ReconciliationEntry = {
     itemId: string
     itemNameSnapshot: string
     itemTypeSnapshot: string
+    includeInReconcileSnapshot: boolean
+    includeInLiabilitySnapshot: boolean
     previousValueCents: number
     currentValueCents: number
     bookValueCents: number
@@ -35,19 +46,6 @@ export type ReconciliationEntry = {
     changeCents: number
     annualizedRate: number
     note: string
-}
-
-export type BalanceSuggestion = {
-    id: string
-    type: string
-    fromItemId: string
-    fromItemName: string
-    toItemId: string
-    toItemName: string
-    bookValueCents: number
-    actualValueCents: number
-    diffCents: number
-    message: string
 }
 
 export type MoneySummary = {
@@ -60,8 +58,6 @@ export type MoneySummary = {
     netAssetLiabilityRate: number
     assetLiabilityRate: number
     positiveAssetCents: number
-    unknownIncomeCents: number
-    unknownExpenseCents: number
     calculationWarningMessages: string[]
 }
 
@@ -71,7 +67,7 @@ export type MoneyEvent = {
     content: string
 }
 
-export type ReconciliationBatch = {
+export type ReconciliationRecord = {
     schemaVersion: number
     id: string
     bookId: string
@@ -79,8 +75,6 @@ export type ReconciliationBatch = {
     status: string
     intervalDays: number
     entries: ReconciliationEntry[]
-    balanceSuggestions: BalanceSuggestion[]
-    summary: MoneySummary
     events: MoneyEvent[]
     source: string
     sourceRef: string
@@ -91,15 +85,11 @@ export type ReconciliationBatch = {
     confirmedAt: string
 }
 
-export type MoneyBatchIndexItem = {
+export type MoneyRecordIndexItem = {
     id: string
     bookId: string
     date: string
     status: string
-    netAssetCents: number
-    netAssetChangeCents: number
-    investmentProfitCents: number
-    assetLiabilityRate: number
     createdBy: string
     confirmedBy: string
     createdAt: string
@@ -118,19 +108,12 @@ export type MoneyDashboardTrendItem = {
     assetLiabilityRate: number
 }
 
-export type MoneyDashboardStructureItem = {
-    name: string
-    valueCents: number
-}
-
 export type MoneyDashboard = {
     book: MoneyBook
-    latestBatchId: string
+    items: MoneyItem[]
+    latestRecordId: string
     latestDate: string
-    summary: MoneySummary
-    trends: MoneyDashboardTrendItem[]
-    assetStructure: MoneyDashboardStructureItem[]
-    liabilityStructure: MoneyDashboardStructureItem[]
+    records: ReconciliationRecord[]
     events: MoneyEvent[]
 }
 
@@ -152,4 +135,3 @@ export type MoneyImportPreview = {
     warnings: string[]
     createdAt: string
 }
-

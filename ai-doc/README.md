@@ -2,7 +2,7 @@
 
 Purpose: provide repository-local, task-scoped knowledge for AI agents.
 
-Last verified: 2026-03-25
+Last verified: 2026-04-26
 
 ## Core rules
 
@@ -64,6 +64,9 @@ Last verified: 2026-03-25
 7. Note mini domain logic: `note-mini/knowledge.md`
 8. Note mini testing workflow: `note-mini/testing.md`
 9. Subscription page behavior: `subscription/knowledge.md`
+10. Family money book domain logic: `money/knowledge.md`
+11. Family money book testing matrix: `money/testing.md`
+12. Family money book interactive UI map: `money/ui-locator.md`
 
 ## Completion gate
 

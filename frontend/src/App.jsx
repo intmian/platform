@@ -109,7 +109,7 @@ const router = createBrowserRouter([
         element: <MoneyConfigPage/>
     },
     {
-        path: '/money/:bookId/reconcile/:batchId',
+        path: '/money/:bookId/reconcile/:recordId',
         element: <MoneyReconcilePage/>
     },
     {

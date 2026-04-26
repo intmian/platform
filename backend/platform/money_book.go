@@ -38,6 +38,11 @@ const (
 
 	moneySourceManual      = "manual"
 	moneySourceExcelImport = "excel_import"
+
+	moneyImportItemCash             = "excel_import_cash"
+	moneyImportItemOtherAsset       = "excel_import_other_asset"
+	moneyImportItemLiability        = "excel_import_liability"
+	moneyImportItemInvestmentProfit = "excel_import_investment_profit"
 )
 
 type MoneyBook struct {
@@ -46,6 +51,7 @@ type MoneyBook struct {
 	Name                    string    `json:"name"`
 	PrimaryBalanceAccountID string    `json:"primaryBalanceAccountId"`
 	Enabled                 bool      `json:"enabled"`
+	Deleted                 bool      `json:"deleted"`
 	ViewerUsers             []string  `json:"viewerUsers"`
 	CreatedAt               time.Time `json:"createdAt"`
 	UpdatedAt               time.Time `json:"updatedAt"`
@@ -56,6 +62,14 @@ type moneyBookIndexItem struct {
 	Name      string    `json:"name"`
 	Enabled   bool      `json:"enabled"`
 	UpdatedAt time.Time `json:"updatedAt"`
+}
+
+type moneyBookArchive struct {
+	SchemaVersion int                    `json:"schemaVersion"`
+	ExportedAt    time.Time              `json:"exportedAt"`
+	Book          MoneyBook              `json:"book"`
+	Items         []MoneyItem            `json:"items"`
+	Records       []ReconciliationRecord `json:"records"`
 }
 
 type MoneyItem struct {
@@ -73,53 +87,44 @@ type MoneyItem struct {
 	Note                      string `json:"note"`
 }
 
-type ReconciliationBatch struct {
-	SchemaVersion      int                   `json:"schemaVersion"`
-	ID                 string                `json:"id"`
-	BookID             string                `json:"bookId"`
-	Date               string                `json:"date"`
-	Status             string                `json:"status"`
-	IntervalDays       int                   `json:"intervalDays"`
-	Entries            []ReconciliationEntry `json:"entries"`
-	BalanceSuggestions []BalanceSuggestion   `json:"balanceSuggestions"`
-	Summary            MoneySummary          `json:"summary"`
-	Events             []MoneyEvent          `json:"events"`
-	Source             string                `json:"source"`
-	SourceRef          string                `json:"sourceRef"`
-	CreatedBy          string                `json:"createdBy"`
-	ConfirmedBy        string                `json:"confirmedBy"`
-	CreatedAt          time.Time             `json:"createdAt"`
-	UpdatedAt          time.Time             `json:"updatedAt"`
-	ConfirmedAt        time.Time             `json:"confirmedAt"`
+type ReconciliationRecord struct {
+	SchemaVersion int                   `json:"schemaVersion"`
+	ID            string                `json:"id"`
+	BookID        string                `json:"bookId"`
+	Date          string                `json:"date"`
+	Status        string                `json:"status"`
+	Entries       []ReconciliationEntry `json:"entries"`
+	Events        []MoneyEvent          `json:"events"`
+	Source        string                `json:"source"`
+	SourceRef     string                `json:"sourceRef"`
+	CreatedBy     string                `json:"createdBy"`
+	ConfirmedBy   string                `json:"confirmedBy"`
+	CreatedAt     time.Time             `json:"createdAt"`
+	UpdatedAt     time.Time             `json:"updatedAt"`
+	ConfirmedAt   time.Time             `json:"confirmedAt"`
+}
+
+type ReconciliationRecordView struct {
+	ReconciliationRecord
+	IntervalDays int `json:"intervalDays"`
 }
 
 type ReconciliationEntry struct {
-	ItemID             string  `json:"itemId"`
-	ItemNameSnapshot   string  `json:"itemNameSnapshot"`
-	ItemTypeSnapshot   string  `json:"itemTypeSnapshot"`
-	PreviousValueCents int64   `json:"previousValueCents"`
-	CurrentValueCents  int64   `json:"currentValueCents"`
-	BookValueCents     int64   `json:"bookValueCents"`
-	ActualValueCents   int64   `json:"actualValueCents"`
-	ChangeCents        int64   `json:"changeCents"`
-	AnnualizedRate     float64 `json:"annualizedRate"`
-	Note               string  `json:"note"`
+	ItemID                     string  `json:"itemId"`
+	ItemNameSnapshot           string  `json:"itemNameSnapshot"`
+	ItemTypeSnapshot           string  `json:"itemTypeSnapshot"`
+	IncludeInReconcileSnapshot bool    `json:"includeInReconcileSnapshot"`
+	IncludeInLiabilitySnapshot bool    `json:"includeInLiabilitySnapshot"`
+	PreviousValueCents         int64   `json:"previousValueCents"`
+	CurrentValueCents          int64   `json:"currentValueCents"`
+	BookValueCents             int64   `json:"bookValueCents"`
+	ActualValueCents           int64   `json:"actualValueCents"`
+	ChangeCents                int64   `json:"changeCents"`
+	AnnualizedRate             float64 `json:"annualizedRate"`
+	Note                       string  `json:"note"`
 }
 
-type BalanceSuggestion struct {
-	ID               string `json:"id"`
-	Type             string `json:"type"`
-	FromItemID       string `json:"fromItemId"`
-	FromItemName     string `json:"fromItemName"`
-	ToItemID         string `json:"toItemId"`
-	ToItemName       string `json:"toItemName"`
-	BookValueCents   int64  `json:"bookValueCents"`
-	ActualValueCents int64  `json:"actualValueCents"`
-	DiffCents        int64  `json:"diffCents"`
-	Message          string `json:"message"`
-}
-
-type MoneySummary struct {
+type moneyImportSummary struct {
 	CashCents                  int64    `json:"cashCents"`
 	NetAssetCents              int64    `json:"netAssetCents"`
 	LiabilityCents             int64    `json:"liabilityCents"`
@@ -129,8 +134,6 @@ type MoneySummary struct {
 	NetAssetLiabilityRate      float64  `json:"netAssetLiabilityRate"`
 	AssetLiabilityRate         float64  `json:"assetLiabilityRate"`
 	PositiveAssetCents         int64    `json:"positiveAssetCents"`
-	UnknownIncomeCents         int64    `json:"unknownIncomeCents"`
-	UnknownExpenseCents        int64    `json:"unknownExpenseCents"`
 	CalculationWarningMessages []string `json:"calculationWarningMessages"`
 }
 
@@ -140,21 +143,30 @@ type MoneyEvent struct {
 	Content string `json:"content"`
 }
 
-type moneyBatchIndexItem struct {
-	ID                    string    `json:"id"`
-	BookID                string    `json:"bookId"`
-	Date                  string    `json:"date"`
-	Status                string    `json:"status"`
-	NetAssetCents         int64     `json:"netAssetCents"`
-	NetAssetChangeCents   int64     `json:"netAssetChangeCents"`
-	InvestmentProfitCents int64     `json:"investmentProfitCents"`
-	AssetLiabilityRate    float64   `json:"assetLiabilityRate"`
-	CreatedBy             string    `json:"createdBy"`
-	ConfirmedBy           string    `json:"confirmedBy"`
-	CreatedAt             time.Time `json:"createdAt"`
-	ConfirmedAt           time.Time `json:"confirmedAt"`
-	Source                string    `json:"source"`
-	SourceRef             string    `json:"sourceRef"`
+type moneyRecordIndexItem struct {
+	ID          string    `json:"id"`
+	BookID      string    `json:"bookId"`
+	Date        string    `json:"date"`
+	Status      string    `json:"status"`
+	CreatedBy   string    `json:"createdBy"`
+	ConfirmedBy string    `json:"confirmedBy"`
+	CreatedAt   time.Time `json:"createdAt"`
+	ConfirmedAt time.Time `json:"confirmedAt"`
+	Source      string    `json:"source"`
+	SourceRef   string    `json:"sourceRef"`
+}
+
+type moneyRecordListItem struct {
+	ID          string    `json:"id"`
+	BookID      string    `json:"bookId"`
+	Date        string    `json:"date"`
+	Status      string    `json:"status"`
+	CreatedBy   string    `json:"createdBy"`
+	ConfirmedBy string    `json:"confirmedBy"`
+	CreatedAt   time.Time `json:"createdAt"`
+	ConfirmedAt time.Time `json:"confirmedAt"`
+	Source      string    `json:"source"`
+	SourceRef   string    `json:"sourceRef"`
 }
 
 type moneyBookMgr struct {
@@ -178,12 +190,12 @@ func moneyItemsKey(bookID string) string {
 	return fmt.Sprintf("misc.money.book.%s.items", bookID)
 }
 
-func moneyBatchesKey(bookID string) string {
-	return fmt.Sprintf("misc.money.book.%s.batches", bookID)
+func moneyRecordsKey(bookID string) string {
+	return fmt.Sprintf("misc.money.book.%s.records", bookID)
 }
 
-func moneyBatchKey(bookID, batchID string) string {
-	return fmt.Sprintf("misc.money.book.%s.batch.%s", bookID, batchID)
+func moneyRecordKey(bookID, recordID string) string {
+	return fmt.Sprintf("misc.money.book.%s.record.%s", bookID, recordID)
 }
 
 func moneyImportPreviewKey(bookID, previewID string) string {
@@ -271,6 +283,9 @@ func (m *moneyBookMgr) listBooks(user string, admin bool) ([]MoneyBook, error) {
 		if err != nil {
 			continue
 		}
+		if book.Deleted {
+			continue
+		}
 		if !book.Enabled && !admin {
 			continue
 		}
@@ -334,8 +349,102 @@ func (m *moneyBookMgr) deleteBook(bookID string) error {
 		return err
 	}
 	book.Enabled = false
+	book.Deleted = true
 	book.UpdatedAt = time.Now()
 	return m.saveBookLocked(book)
+}
+
+func (m *moneyBookMgr) exportBookArchive(bookID string) (moneyBookArchive, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	book, err := m.loadBookLocked(bookID)
+	if err != nil {
+		return moneyBookArchive{}, err
+	}
+	items, err := m.loadItemsLocked(bookID)
+	if err != nil {
+		return moneyBookArchive{}, err
+	}
+	index, err := m.loadRecordIndexLocked(bookID)
+	if err != nil {
+		return moneyBookArchive{}, err
+	}
+	records := make([]ReconciliationRecord, 0, len(index))
+	for _, item := range index {
+		record, err := m.loadRecordLocked(bookID, item.ID)
+		if err != nil {
+			return moneyBookArchive{}, err
+		}
+		records = append(records, record)
+	}
+	sort.SliceStable(records, func(i, j int) bool {
+		if records[i].Date == records[j].Date {
+			return records[i].CreatedAt.Before(records[j].CreatedAt)
+		}
+		return records[i].Date < records[j].Date
+	})
+	return moneyBookArchive{
+		SchemaVersion: moneySchemaVersion,
+		ExportedAt:    time.Now(),
+		Book:          book,
+		Items:         items,
+		Records:       records,
+	}, nil
+}
+
+func (m *moneyBookMgr) importBookArchive(archive moneyBookArchive, user string) (MoneyBook, error) {
+	if archive.Book.Name == "" {
+		return MoneyBook{}, errors.New("archive book name is empty")
+	}
+	now := time.Now()
+	book := archive.Book
+	book.ID = uuid.NewString()
+	book.Name = strings.TrimSpace(book.Name) + "（导入）"
+	book.Enabled = true
+	book.Deleted = false
+	book.CreatedAt = now
+	book.UpdatedAt = now
+	book.ViewerUsers = normalizeStringList(book.ViewerUsers)
+	items := make([]MoneyItem, 0, len(archive.Items))
+	for i, item := range archive.Items {
+		item.BookID = book.ID
+		if item.ID == "" {
+			item.ID = uuid.NewString()
+		}
+		item.Sort = i + 1
+		items = append(items, item)
+	}
+	records := make([]ReconciliationRecord, 0, len(archive.Records))
+	for _, record := range archive.Records {
+		if record.ID == "" {
+			record.ID = uuid.NewString()
+		}
+		record.BookID = book.ID
+		if record.SchemaVersion == 0 {
+			record.SchemaVersion = moneySchemaVersion
+		}
+		if record.CreatedBy == "" {
+			record.CreatedBy = user
+		}
+		if record.Status == moneyBookStatusConfirmed && record.ConfirmedBy == "" {
+			record.ConfirmedBy = user
+		}
+		records = append(records, record)
+	}
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if err := m.saveBookLocked(book); err != nil {
+		return MoneyBook{}, err
+	}
+	if err := m.saveItemsLocked(book.ID, items); err != nil {
+		return MoneyBook{}, err
+	}
+	for _, record := range records {
+		if err := m.saveRecordLocked(record); err != nil {
+			return MoneyBook{}, err
+		}
+	}
+	return book, nil
 }
 
 func (m *moneyBookMgr) grantDashboard(bookID string, users []string) (MoneyBook, error) {
@@ -401,9 +510,6 @@ func normalizeMoneyItem(bookID string, item MoneyItem, idx int) MoneyItem {
 	if item.ID == "" {
 		item.ID = uuid.NewString()
 	}
-	if item.Type == "" {
-		item.Type = moneyItemTypeCashAccount
-	}
 	if item.Sort == 0 {
 		item.Sort = idx + 1
 	}
@@ -419,25 +525,25 @@ func sortMoneyItems(items []MoneyItem) {
 	})
 }
 
-func (m *moneyBookMgr) loadBatchIndexLocked(bookID string) ([]moneyBatchIndexItem, error) {
-	var items []moneyBatchIndexItem
-	err := m.plat.storage.GetFromJson(moneyBatchesKey(bookID), &items)
+func (m *moneyBookMgr) loadRecordIndexLocked(bookID string) ([]moneyRecordIndexItem, error) {
+	var items []moneyRecordIndexItem
+	err := m.plat.storage.GetFromJson(moneyRecordsKey(bookID), &items)
 	if err != nil {
 		if errors.Is(err, xstorage.ErrNoData) {
-			return []moneyBatchIndexItem{}, nil
+			return []moneyRecordIndexItem{}, nil
 		}
 		return nil, err
 	}
-	sortBatchIndexDesc(items)
+	sortRecordIndexDesc(items)
 	return items, nil
 }
 
-func (m *moneyBookMgr) saveBatchIndexLocked(bookID string, items []moneyBatchIndexItem) error {
-	sortBatchIndexDesc(items)
-	return m.plat.storage.SetToJson(moneyBatchesKey(bookID), items)
+func (m *moneyBookMgr) saveRecordIndexLocked(bookID string, items []moneyRecordIndexItem) error {
+	sortRecordIndexDesc(items)
+	return m.plat.storage.SetToJson(moneyRecordsKey(bookID), items)
 }
 
-func sortBatchIndexDesc(items []moneyBatchIndexItem) {
+func sortRecordIndexDesc(items []moneyRecordIndexItem) {
 	sort.SliceStable(items, func(i, j int) bool {
 		if items[i].Date == items[j].Date {
 			return items[i].CreatedAt.After(items[j].CreatedAt)
@@ -446,27 +552,27 @@ func sortBatchIndexDesc(items []moneyBatchIndexItem) {
 	})
 }
 
-func (m *moneyBookMgr) loadBatchLocked(bookID, batchID string) (ReconciliationBatch, error) {
-	var batch ReconciliationBatch
-	err := m.plat.storage.GetFromJson(moneyBatchKey(bookID, batchID), &batch)
+func (m *moneyBookMgr) loadRecordLocked(bookID, recordID string) (ReconciliationRecord, error) {
+	var record ReconciliationRecord
+	err := m.plat.storage.GetFromJson(moneyRecordKey(bookID, recordID), &record)
 	if err != nil {
-		return ReconciliationBatch{}, err
+		return ReconciliationRecord{}, err
 	}
-	return batch, nil
+	return record, nil
 }
 
-func (m *moneyBookMgr) saveBatchLocked(batch ReconciliationBatch) error {
-	if err := m.plat.storage.SetToJson(moneyBatchKey(batch.BookID, batch.ID), batch); err != nil {
+func (m *moneyBookMgr) saveRecordLocked(record ReconciliationRecord) error {
+	if err := m.plat.storage.SetToJson(moneyRecordKey(record.BookID, record.ID), record); err != nil {
 		return err
 	}
-	index, err := m.loadBatchIndexLocked(batch.BookID)
+	index, err := m.loadRecordIndexLocked(record.BookID)
 	if err != nil {
 		return err
 	}
-	rec := batch.toIndexItem()
+	rec := record.toIndexItem()
 	found := false
 	for i := range index {
-		if index[i].ID == batch.ID {
+		if index[i].ID == record.ID {
 			index[i] = rec
 			found = true
 			break
@@ -475,68 +581,109 @@ func (m *moneyBookMgr) saveBatchLocked(batch ReconciliationBatch) error {
 	if !found {
 		index = append(index, rec)
 	}
-	return m.saveBatchIndexLocked(batch.BookID, index)
+	return m.saveRecordIndexLocked(record.BookID, index)
 }
 
-func (b ReconciliationBatch) toIndexItem() moneyBatchIndexItem {
-	return moneyBatchIndexItem{
-		ID:                    b.ID,
-		BookID:                b.BookID,
-		Date:                  b.Date,
-		Status:                b.Status,
-		NetAssetCents:         b.Summary.NetAssetCents,
-		NetAssetChangeCents:   b.Summary.NetAssetChangeCents,
-		InvestmentProfitCents: b.Summary.InvestmentProfitCents,
-		AssetLiabilityRate:    b.Summary.AssetLiabilityRate,
-		CreatedBy:             b.CreatedBy,
-		ConfirmedBy:           b.ConfirmedBy,
-		CreatedAt:             b.CreatedAt,
-		ConfirmedAt:           b.ConfirmedAt,
-		Source:                b.Source,
-		SourceRef:             b.SourceRef,
+func (m *moneyBookMgr) deleteRecord(bookID, recordID string) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	record, err := m.loadRecordLocked(bookID, recordID)
+	if err != nil {
+		return err
+	}
+	if record.Status != moneyBookStatusDraft {
+		return errors.New("only draft record can be deleted")
+	}
+	index, err := m.loadRecordIndexLocked(bookID)
+	if err != nil {
+		return err
+	}
+	next := index[:0]
+	for _, item := range index {
+		if item.ID != recordID {
+			next = append(next, item)
+		}
+	}
+	if err = m.saveRecordIndexLocked(bookID, next); err != nil {
+		return err
+	}
+	return m.plat.storage.Delete(moneyRecordKey(bookID, recordID))
+}
+
+func (b ReconciliationRecord) toIndexItem() moneyRecordIndexItem {
+	return moneyRecordIndexItem{
+		ID:          b.ID,
+		BookID:      b.BookID,
+		Date:        b.Date,
+		Status:      b.Status,
+		CreatedBy:   b.CreatedBy,
+		ConfirmedBy: b.ConfirmedBy,
+		CreatedAt:   b.CreatedAt,
+		ConfirmedAt: b.ConfirmedAt,
+		Source:      b.Source,
+		SourceRef:   b.SourceRef,
 	}
 }
 
-func (m *moneyBookMgr) listBatches(bookID string) ([]moneyBatchIndexItem, error) {
+func (m *moneyBookMgr) listRecords(bookID string) ([]moneyRecordListItem, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	if _, err := m.loadBookLocked(bookID); err != nil {
 		return nil, err
 	}
-	return m.loadBatchIndexLocked(bookID)
+	index, err := m.loadRecordIndexLocked(bookID)
+	if err != nil {
+		return nil, err
+	}
+	items := make([]moneyRecordListItem, 0, len(index))
+	for _, rec := range index {
+		items = append(items, moneyRecordListItem{
+			ID:          rec.ID,
+			BookID:      rec.BookID,
+			Date:        rec.Date,
+			Status:      rec.Status,
+			CreatedBy:   rec.CreatedBy,
+			ConfirmedBy: rec.ConfirmedBy,
+			CreatedAt:   rec.CreatedAt,
+			ConfirmedAt: rec.ConfirmedAt,
+			Source:      rec.Source,
+			SourceRef:   rec.SourceRef,
+		})
+	}
+	return items, nil
 }
 
-func (m *moneyBookMgr) createBatch(req moneyBatchCreateReq, user string) (ReconciliationBatch, error) {
+func (m *moneyBookMgr) createRecord(req moneyRecordCreateReq, user string) (ReconciliationRecordView, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	book, err := m.loadBookLocked(req.BookID)
 	if err != nil {
-		return ReconciliationBatch{}, err
+		return ReconciliationRecordView{}, err
 	}
 	items, err := m.loadItemsLocked(book.ID)
 	if err != nil {
-		return ReconciliationBatch{}, err
+		return ReconciliationRecordView{}, err
 	}
-	var prev *ReconciliationBatch
-	if req.CopyFromBatchID != "" {
-		b, err := m.loadBatchLocked(book.ID, req.CopyFromBatchID)
+	var prev *ReconciliationRecord
+	if req.CopyFromRecordID != "" {
+		b, err := m.loadRecordLocked(book.ID, req.CopyFromRecordID)
 		if err != nil {
-			return ReconciliationBatch{}, err
+			return ReconciliationRecordView{}, err
 		}
 		prev = &b
-	} else if b, ok, err := m.latestConfirmedBatchLocked(book.ID, "", ""); err != nil {
-		return ReconciliationBatch{}, err
+	} else if b, ok, err := m.latestConfirmedRecordLocked(book.ID, "", ""); err != nil {
+		return ReconciliationRecordView{}, err
 	} else if ok {
 		prev = &b
 	}
+	date := normalizeMoneyDate(req.Date)
 	now := time.Now()
-	batch := ReconciliationBatch{
+	record := ReconciliationRecord{
 		SchemaVersion: moneySchemaVersion,
 		ID:            uuid.NewString(),
 		BookID:        book.ID,
-		Date:          normalizeMoneyDate(req.Date),
+		Date:          date,
 		Status:        moneyBookStatusDraft,
-		IntervalDays:  defaultIntervalDays(req.IntervalDays),
 		Entries:       buildInitialEntries(items, prev),
 		Events:        []MoneyEvent{},
 		Source:        moneySourceManual,
@@ -544,10 +691,10 @@ func (m *moneyBookMgr) createBatch(req moneyBatchCreateReq, user string) (Reconc
 		CreatedAt:     now,
 		UpdatedAt:     now,
 	}
-	if err = m.saveBatchLocked(batch); err != nil {
-		return ReconciliationBatch{}, err
+	if err = m.saveRecordLocked(record); err != nil {
+		return ReconciliationRecordView{}, err
 	}
-	return batch, nil
+	return m.computeRecordViewLocked(record)
 }
 
 func defaultIntervalDays(days int) int {
@@ -557,7 +704,20 @@ func defaultIntervalDays(days int) int {
 	return days
 }
 
-func buildInitialEntries(items []MoneyItem, prev *ReconciliationBatch) []ReconciliationEntry {
+func intervalDaysBetween(prevDate, currentDate string, fallback int) int {
+	prev, errPrev := time.Parse("2006-01-02", prevDate)
+	current, errCurrent := time.Parse("2006-01-02", currentDate)
+	if errPrev != nil || errCurrent != nil {
+		return defaultIntervalDays(fallback)
+	}
+	days := int(current.Sub(prev).Hours() / 24)
+	if days <= 0 {
+		return defaultIntervalDays(fallback)
+	}
+	return days
+}
+
+func buildInitialEntries(items []MoneyItem, prev *ReconciliationRecord) []ReconciliationEntry {
 	prevValues := map[string]int64{}
 	if prev != nil {
 		for _, entry := range prev.Entries {
@@ -571,141 +731,204 @@ func buildInitialEntries(items []MoneyItem, prev *ReconciliationBatch) []Reconci
 		}
 		prevValue := prevValues[item.ID]
 		entry := ReconciliationEntry{
-			ItemID:             item.ID,
-			ItemNameSnapshot:   item.Name,
-			ItemTypeSnapshot:   item.Type,
-			PreviousValueCents: prevValue,
-			CurrentValueCents:  prevValue,
-			BookValueCents:     prevValue,
-			ActualValueCents:   prevValue,
+			ItemID:                     item.ID,
+			ItemNameSnapshot:           item.Name,
+			ItemTypeSnapshot:           item.Type,
+			IncludeInReconcileSnapshot: item.IncludeInReconcile,
+			IncludeInLiabilitySnapshot: item.IncludeInLiability,
+			PreviousValueCents:         prevValue,
+			CurrentValueCents:          prevValue,
+			BookValueCents:             prevValue,
+			ActualValueCents:           prevValue,
 		}
 		entries = append(entries, entry)
 	}
 	return entries
 }
 
-func (m *moneyBookMgr) getBatch(bookID, batchID string) (ReconciliationBatch, error) {
+func (m *moneyBookMgr) getRecord(bookID, recordID string) (ReconciliationRecordView, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	return m.loadBatchLocked(bookID, batchID)
-}
-
-func (m *moneyBookMgr) updateBatch(req moneyBatchUpdateReq) (ReconciliationBatch, error) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	batch, err := m.loadBatchLocked(req.BookID, req.Batch.ID)
+	record, err := m.loadRecordLocked(bookID, recordID)
 	if err != nil {
-		return ReconciliationBatch{}, err
+		return ReconciliationRecordView{}, err
 	}
-	if batch.Status != moneyBookStatusDraft {
-		return ReconciliationBatch{}, errors.New("confirmed batch is locked")
+	items, err := m.loadItemsLocked(bookID)
+	if err != nil {
+		return ReconciliationRecordView{}, err
 	}
-	req.Batch.SchemaVersion = moneySchemaVersion
-	req.Batch.ID = batch.ID
-	req.Batch.BookID = batch.BookID
-	req.Batch.Status = moneyBookStatusDraft
-	req.Batch.Source = batch.Source
-	req.Batch.SourceRef = batch.SourceRef
-	req.Batch.CreatedBy = batch.CreatedBy
-	req.Batch.CreatedAt = batch.CreatedAt
-	req.Batch.Date = normalizeMoneyDate(req.Batch.Date)
-	req.Batch.IntervalDays = defaultIntervalDays(req.Batch.IntervalDays)
-	req.Batch.UpdatedAt = time.Now()
-	normalizeBatchEvents(&req.Batch)
-	if err = m.saveBatchLocked(req.Batch); err != nil {
-		return ReconciliationBatch{}, err
-	}
-	return req.Batch, nil
+	enrichRecordEntrySnapshots(&record, items)
+	return m.computeRecordViewLocked(record)
 }
 
-func normalizeBatchEvents(batch *ReconciliationBatch) {
-	for i := range batch.Events {
-		if batch.Events[i].ID == "" {
-			batch.Events[i].ID = uuid.NewString()
-		}
-		if batch.Events[i].Date == "" {
-			batch.Events[i].Date = batch.Date
-		}
-		batch.Events[i].Content = strings.TrimSpace(batch.Events[i].Content)
+func enrichRecordEntrySnapshots(record *ReconciliationRecord, items []MoneyItem) {
+	itemMap := make(map[string]MoneyItem, len(items))
+	for _, item := range items {
+		itemMap[item.ID] = item
 	}
-	next := batch.Events[:0]
-	for _, event := range batch.Events {
+	for i := range record.Entries {
+		item, ok := itemMap[record.Entries[i].ItemID]
+		if !ok {
+			continue
+		}
+		record.Entries[i].ItemNameSnapshot = item.Name
+		record.Entries[i].ItemTypeSnapshot = item.Type
+		record.Entries[i].IncludeInReconcileSnapshot = item.IncludeInReconcile
+		record.Entries[i].IncludeInLiabilitySnapshot = item.IncludeInLiability
+	}
+}
+
+func (m *moneyBookMgr) updateRecord(req moneyRecordUpdateReq) (ReconciliationRecordView, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	record, err := m.loadRecordLocked(req.BookID, req.Record.ID)
+	if err != nil {
+		return ReconciliationRecordView{}, err
+	}
+	req.Record.SchemaVersion = moneySchemaVersion
+	req.Record.ID = record.ID
+	req.Record.BookID = record.BookID
+	req.Record.Status = record.Status
+	req.Record.Source = record.Source
+	req.Record.SourceRef = record.SourceRef
+	req.Record.CreatedBy = record.CreatedBy
+	req.Record.ConfirmedBy = record.ConfirmedBy
+	req.Record.CreatedAt = record.CreatedAt
+	req.Record.ConfirmedAt = record.ConfirmedAt
+	req.Record.Date = normalizeMoneyDate(req.Record.Date)
+	req.Record.UpdatedAt = time.Now()
+	normalizeRecordEvents(&req.Record)
+	items, err := m.loadItemsLocked(req.BookID)
+	if err != nil {
+		return ReconciliationRecordView{}, err
+	}
+	enrichRecordEntrySnapshots(&req.Record, items)
+	normalizeRecordLiabilityAmounts(&req.Record, items)
+	if err = m.saveRecordLocked(req.Record); err != nil {
+		return ReconciliationRecordView{}, err
+	}
+	return m.computeRecordViewLocked(req.Record)
+}
+
+func normalizeRecordEvents(record *ReconciliationRecord) {
+	for i := range record.Events {
+		if record.Events[i].ID == "" {
+			record.Events[i].ID = uuid.NewString()
+		}
+		if record.Events[i].Date == "" {
+			record.Events[i].Date = record.Date
+		}
+		record.Events[i].Content = strings.TrimSpace(record.Events[i].Content)
+	}
+	next := record.Events[:0]
+	for _, event := range record.Events {
 		if event.Content != "" {
 			next = append(next, event)
 		}
 	}
-	batch.Events = next
+	record.Events = next
 }
 
-func (m *moneyBookMgr) computeBatch(bookID, batchID string, save bool) (ReconciliationBatch, error) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	book, err := m.loadBookLocked(bookID)
-	if err != nil {
-		return ReconciliationBatch{}, err
+func normalizeRecordLiabilityAmounts(record *ReconciliationRecord, items []MoneyItem) {
+	itemMap := make(map[string]MoneyItem, len(items))
+	for _, item := range items {
+		itemMap[item.ID] = item
 	}
-	items, err := m.loadItemsLocked(bookID)
-	if err != nil {
-		return ReconciliationBatch{}, err
+	for i := range record.Entries {
+		item, ok := itemMap[record.Entries[i].ItemID]
+		if !ok {
+			item = MoneyItem{
+				ID:                 record.Entries[i].ItemID,
+				Type:               record.Entries[i].ItemTypeSnapshot,
+				IncludeInLiability: record.Entries[i].IncludeInLiabilitySnapshot,
+			}
+		}
+		record.Entries[i].BookValueCents = signedMoneyValue(item, record.Entries[i].BookValueCents)
+		record.Entries[i].ActualValueCents = signedMoneyValue(item, record.Entries[i].ActualValueCents)
+		record.Entries[i].CurrentValueCents = signedMoneyValue(item, record.Entries[i].CurrentValueCents)
+		record.Entries[i].PreviousValueCents = signedMoneyValue(item, record.Entries[i].PreviousValueCents)
 	}
-	batch, err := m.loadBatchLocked(bookID, batchID)
+}
+
+func (m *moneyBookMgr) computeRecordViewLocked(record ReconciliationRecord) (ReconciliationRecordView, error) {
+	items, err := m.loadItemsLocked(record.BookID)
 	if err != nil {
-		return ReconciliationBatch{}, err
+		return ReconciliationRecordView{}, err
 	}
-	prev, ok, err := m.latestConfirmedBatchLocked(bookID, batch.Date, batch.ID)
+	prev, ok, err := m.latestConfirmedRecordLocked(record.BookID, record.Date, record.ID)
 	if err != nil {
-		return ReconciliationBatch{}, err
+		return ReconciliationRecordView{}, err
 	}
-	var prevPtr *ReconciliationBatch
+	var prevPtr *ReconciliationRecord
+	intervalDays := defaultIntervalDays(0)
 	if ok {
 		prevPtr = &prev
+		intervalDays = intervalDaysBetween(prev.Date, record.Date, intervalDays)
 	}
-	result, err := ComputeMoneyBatch(book, items, prevPtr, batch)
+	result, err := ComputeMoneyRecord(items, prevPtr, record, intervalDays)
 	if err != nil {
-		return ReconciliationBatch{}, err
+		return ReconciliationRecordView{}, err
 	}
-	batch.Entries = result.Entries
-	batch.BalanceSuggestions = result.BalanceSuggestions
-	batch.Summary = result.Summary
-	batch.UpdatedAt = time.Now()
-	if save {
-		if err = m.saveBatchLocked(batch); err != nil {
-			return ReconciliationBatch{}, err
-		}
-	}
-	return batch, nil
+	record.Entries = result.Entries
+	return ReconciliationRecordView{
+		ReconciliationRecord: record,
+		IntervalDays:         intervalDays,
+	}, nil
 }
 
-func (m *moneyBookMgr) confirmBatch(bookID, batchID, user string) (ReconciliationBatch, error) {
-	batch, err := m.computeBatch(bookID, batchID, true)
+func (m *moneyBookMgr) computeRecord(bookID, recordID string, save bool) (ReconciliationRecordView, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	record, err := m.loadRecordLocked(bookID, recordID)
 	if err != nil {
-		return ReconciliationBatch{}, err
+		return ReconciliationRecordView{}, err
+	}
+	view, err := m.computeRecordViewLocked(record)
+	if err != nil {
+		return ReconciliationRecordView{}, err
+	}
+	record = view.ReconciliationRecord
+	record.UpdatedAt = time.Now()
+	view.UpdatedAt = record.UpdatedAt
+	if save {
+		if err = m.saveRecordLocked(record); err != nil {
+			return ReconciliationRecordView{}, err
+		}
+	}
+	return view, nil
+}
+
+func (m *moneyBookMgr) confirmRecord(bookID, recordID, user string) (ReconciliationRecordView, error) {
+	view, err := m.computeRecord(bookID, recordID, true)
+	if err != nil {
+		return ReconciliationRecordView{}, err
 	}
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	batch, err = m.loadBatchLocked(bookID, batchID)
+	record, err := m.loadRecordLocked(bookID, recordID)
 	if err != nil {
-		return ReconciliationBatch{}, err
+		return ReconciliationRecordView{}, err
 	}
 	now := time.Now()
-	batch.Status = moneyBookStatusConfirmed
-	batch.ConfirmedBy = user
-	batch.ConfirmedAt = now
-	batch.UpdatedAt = now
-	if err = m.saveBatchLocked(batch); err != nil {
-		return ReconciliationBatch{}, err
+	record.Status = moneyBookStatusConfirmed
+	record.ConfirmedBy = user
+	record.ConfirmedAt = now
+	record.UpdatedAt = now
+	if err = m.saveRecordLocked(record); err != nil {
+		return ReconciliationRecordView{}, err
 	}
-	return batch, nil
+	view.ReconciliationRecord = record
+	return view, nil
 }
 
-func (m *moneyBookMgr) latestConfirmedBatchLocked(bookID, beforeDate, excludeBatchID string) (ReconciliationBatch, bool, error) {
-	index, err := m.loadBatchIndexLocked(bookID)
+func (m *moneyBookMgr) latestConfirmedRecordLocked(bookID, beforeDate, excludeRecordID string) (ReconciliationRecord, bool, error) {
+	index, err := m.loadRecordIndexLocked(bookID)
 	if err != nil {
-		return ReconciliationBatch{}, false, err
+		return ReconciliationRecord{}, false, err
 	}
-	candidates := make([]moneyBatchIndexItem, 0, len(index))
+	candidates := make([]moneyRecordIndexItem, 0, len(index))
 	for _, item := range index {
-		if item.Status != moneyBookStatusConfirmed || item.ID == excludeBatchID {
+		if item.Status != moneyBookStatusConfirmed || item.ID == excludeRecordID {
 			continue
 		}
 		if beforeDate != "" && item.Date >= beforeDate {
@@ -717,13 +940,13 @@ func (m *moneyBookMgr) latestConfirmedBatchLocked(bookID, beforeDate, excludeBat
 		return candidates[i].Date > candidates[j].Date
 	})
 	if len(candidates) == 0 {
-		return ReconciliationBatch{}, false, nil
+		return ReconciliationRecord{}, false, nil
 	}
-	batch, err := m.loadBatchLocked(bookID, candidates[0].ID)
+	record, err := m.loadRecordLocked(bookID, candidates[0].ID)
 	if err != nil {
-		return ReconciliationBatch{}, false, err
+		return ReconciliationRecord{}, false, err
 	}
-	return batch, true, nil
+	return record, true, nil
 }
 
 func (m *moneyBookMgr) dashboard(bookID, user string, admin bool) (moneyDashboardResp, error) {
@@ -736,11 +959,11 @@ func (m *moneyBookMgr) dashboard(bookID, user string, admin bool) (moneyDashboar
 	if !admin && !containsString(book.ViewerUsers, user) {
 		return moneyDashboardResp{}, errors.New("no permission")
 	}
-	index, err := m.loadBatchIndexLocked(bookID)
+	index, err := m.loadRecordIndexLocked(bookID)
 	if err != nil {
 		return moneyDashboardResp{}, err
 	}
-	confirmed := make([]moneyBatchIndexItem, 0, len(index))
+	confirmed := make([]moneyRecordIndexItem, 0, len(index))
 	for _, item := range index {
 		if item.Status == moneyBookStatusConfirmed {
 			confirmed = append(confirmed, item)
@@ -750,279 +973,102 @@ func (m *moneyBookMgr) dashboard(bookID, user string, admin bool) (moneyDashboar
 		return confirmed[i].Date < confirmed[j].Date
 	})
 	resp := moneyDashboardResp{
-		Book:               book,
-		Trends:             []moneyDashboardTrendItem{},
-		Events:             []MoneyEvent{},
-		AssetStructure:     []moneyDashboardStructureItem{},
-		LiabilityStructure: []moneyDashboardStructureItem{},
+		Book:    book,
+		Items:   []MoneyItem{},
+		Records: []ReconciliationRecordView{},
+		Events:  []MoneyEvent{},
 	}
+	items, err := m.loadItemsLocked(bookID)
+	if err != nil {
+		return moneyDashboardResp{}, err
+	}
+	resp.Items = items
 	for _, item := range confirmed {
-		resp.Trends = append(resp.Trends, moneyDashboardTrendItem{
-			Date:                  item.Date,
-			CashCents:             0,
-			NetAssetCents:         item.NetAssetCents,
-			LiabilityCents:        0,
-			TotalAssetCents:       0,
-			InvestmentProfitCents: item.InvestmentProfitCents,
-			AssetLiabilityRate:    item.AssetLiabilityRate,
-		})
+		record, err := m.loadRecordLocked(bookID, item.ID)
+		if err != nil {
+			continue
+		}
+		view, err := m.computeRecordViewLocked(record)
+		if err != nil {
+			return moneyDashboardResp{}, err
+		}
+		resp.Records = append(resp.Records, view)
 	}
 	if len(confirmed) == 0 {
 		return resp, nil
 	}
 	latestIndex := confirmed[len(confirmed)-1]
-	latest, err := m.loadBatchLocked(bookID, latestIndex.ID)
-	if err != nil {
-		return moneyDashboardResp{}, err
-	}
-	resp.LatestBatchID = latest.ID
-	resp.LatestDate = latest.Date
-	resp.Summary = latest.Summary
-	for i := range resp.Trends {
-		if resp.Trends[i].Date == latest.Date {
-			resp.Trends[i].CashCents = latest.Summary.CashCents
-			resp.Trends[i].LiabilityCents = latest.Summary.LiabilityCents
-			resp.Trends[i].TotalAssetCents = latest.Summary.TotalAssetCents
-		}
-	}
+	resp.LatestRecordID = latestIndex.ID
+	resp.LatestDate = latestIndex.Date
 	for _, item := range confirmed {
-		batch, err := m.loadBatchLocked(bookID, item.ID)
+		record, err := m.loadRecordLocked(bookID, item.ID)
 		if err != nil {
 			continue
 		}
-		for _, event := range batch.Events {
+		for _, event := range record.Events {
 			if strings.TrimSpace(event.Content) != "" {
 				resp.Events = append(resp.Events, event)
 			}
 		}
 	}
-	resp.AssetStructure, resp.LiabilityStructure = buildDashboardStructure(latest)
 	return resp, nil
 }
 
-func buildDashboardStructure(batch ReconciliationBatch) ([]moneyDashboardStructureItem, []moneyDashboardStructureItem) {
-	assetMap := map[string]int64{}
-	liabilityMap := map[string]int64{}
-	for _, entry := range batch.Entries {
-		switch entry.ItemTypeSnapshot {
-		case moneyItemTypeLiability, moneyItemTypeDebtAccount:
-			liabilityMap[moneyItemTypeLabel(entry.ItemTypeSnapshot)] += entry.CurrentValueCents
-		default:
-			if entry.CurrentValueCents > 0 {
-				assetMap[moneyItemTypeLabel(entry.ItemTypeSnapshot)] += entry.CurrentValueCents
-			}
-		}
-	}
-	return mapToStructureItems(assetMap), mapToStructureItems(liabilityMap)
-}
-
-func mapToStructureItems(values map[string]int64) []moneyDashboardStructureItem {
-	items := make([]moneyDashboardStructureItem, 0, len(values))
-	for name, value := range values {
-		if value != 0 {
-			items = append(items, moneyDashboardStructureItem{Name: name, ValueCents: value})
-		}
-	}
-	sort.SliceStable(items, func(i, j int) bool {
-		return items[i].ValueCents > items[j].ValueCents
-	})
-	return items
-}
-
-func moneyItemTypeLabel(typ string) string {
-	switch typ {
-	case moneyItemTypeCashAccount:
-		return "现金账户"
-	case moneyItemTypeDebtAccount:
-		return "对账负债账户"
-	case moneyItemTypeInvestment:
-		return "投资"
-	case moneyItemTypeForeignCash:
-		return "外币现钞"
-	case moneyItemTypeForeignExchange:
-		return "外币现汇"
-	case moneyItemTypeCrypto:
-		return "虚拟币"
-	case moneyItemTypeFixedAsset:
-		return "固定资产"
-	case moneyItemTypeLiability:
-		return "负债"
-	case moneyItemTypeReceivable:
-		return "债权"
-	default:
-		return "其他"
-	}
-}
-
 type MoneyComputeResult struct {
-	Entries            []ReconciliationEntry `json:"entries"`
-	BalanceSuggestions []BalanceSuggestion   `json:"balanceSuggestions"`
-	Summary            MoneySummary          `json:"summary"`
+	Entries []ReconciliationEntry `json:"entries"`
 }
 
-func ComputeMoneyBatch(book MoneyBook, items []MoneyItem, prev *ReconciliationBatch, batch ReconciliationBatch) (MoneyComputeResult, error) {
-	if batch.IntervalDays <= 0 {
+func ComputeMoneyRecord(items []MoneyItem, prev *ReconciliationRecord, record ReconciliationRecord, intervalDays int) (MoneyComputeResult, error) {
+	if intervalDays <= 0 {
 		return MoneyComputeResult{}, errors.New("intervalDays invalid")
 	}
 	itemMap := make(map[string]MoneyItem, len(items))
 	for _, item := range items {
 		itemMap[item.ID] = item
 	}
-	prevNetAsset := int64(0)
 	prevValues := map[string]int64{}
 	if prev != nil {
-		prevNetAsset = prev.Summary.NetAssetCents
 		for _, entry := range prev.Entries {
-			prevValues[entry.ItemID] = entry.CurrentValueCents
+			prevValues[entry.ItemID] = signedMoneyValue(itemMap[entry.ItemID], entry.CurrentValueCents)
 		}
 	}
-	entries := make([]ReconciliationEntry, 0, len(batch.Entries))
-	for _, entry := range batch.Entries {
+	entries := make([]ReconciliationEntry, 0, len(record.Entries))
+	for _, entry := range record.Entries {
 		item, ok := itemMap[entry.ItemID]
 		if !ok {
 			item = MoneyItem{ID: entry.ItemID, Name: entry.ItemNameSnapshot, Type: entry.ItemTypeSnapshot, Enabled: true}
 		}
 		entry.ItemNameSnapshot = item.Name
 		entry.ItemTypeSnapshot = item.Type
+		entry.IncludeInReconcileSnapshot = item.IncludeInReconcile
+		entry.IncludeInLiabilitySnapshot = item.IncludeInLiability
+		entry.BookValueCents = signedMoneyValue(item, entry.BookValueCents)
+		entry.ActualValueCents = signedMoneyValue(item, entry.ActualValueCents)
+		entry.CurrentValueCents = signedMoneyValue(item, entry.CurrentValueCents)
+		entry.PreviousValueCents = signedMoneyValue(item, entry.PreviousValueCents)
+		if item.IncludeInReconcile {
+			entry.CurrentValueCents = entry.ActualValueCents
+		}
 		if entry.PreviousValueCents == 0 {
 			entry.PreviousValueCents = prevValues[entry.ItemID]
 		}
 		entry.ChangeCents = entry.CurrentValueCents - entry.PreviousValueCents
 		if item.IncludeInInvestmentProfit && entry.CurrentValueCents != 0 {
-			entry.AnnualizedRate = roundRate((float64(entry.ChangeCents) / float64(entry.CurrentValueCents)) * 365 / float64(batch.IntervalDays))
+			entry.AnnualizedRate = roundRate((float64(entry.ChangeCents) / float64(entry.CurrentValueCents)) * 365 / float64(intervalDays))
 		} else {
 			entry.AnnualizedRate = 0
 		}
 		entries = append(entries, entry)
 	}
 	result := MoneyComputeResult{Entries: entries}
-	result.BalanceSuggestions, result.Summary.UnknownIncomeCents, result.Summary.UnknownExpenseCents = computeBalanceSuggestions(book, itemMap, entries)
-	summary, warnings := computeMoneySummary(itemMap, entries, prevNetAsset, batch.IntervalDays)
-	summary.UnknownIncomeCents = result.Summary.UnknownIncomeCents
-	summary.UnknownExpenseCents = result.Summary.UnknownExpenseCents
-	summary.CalculationWarningMessages = warnings
-	result.Summary = summary
 	return result, nil
 }
 
-func computeBalanceSuggestions(book MoneyBook, itemMap map[string]MoneyItem, entries []ReconciliationEntry) ([]BalanceSuggestion, int64, int64) {
-	entryMap := map[string]ReconciliationEntry{}
-	for _, entry := range entries {
-		entryMap[entry.ItemID] = entry
-	}
-	primary, ok := entryMap[book.PrimaryBalanceAccountID]
-	if !ok || book.PrimaryBalanceAccountID == "" {
-		return []BalanceSuggestion{}, 0, 0
-	}
-	primaryItem := itemMap[primary.ItemID]
-	primaryBook := effectiveReconcileValue(primaryItem, primary.BookValueCents)
-	primaryActual := effectiveReconcileValue(primaryItem, primary.ActualValueCents)
-	sumDiff := int64(0)
-	suggestions := []BalanceSuggestion{}
-	for _, entry := range entries {
-		if entry.ItemID == book.PrimaryBalanceAccountID {
-			continue
-		}
-		item := itemMap[entry.ItemID]
-		if !item.IncludeInReconcile {
-			continue
-		}
-		bookValue := effectiveReconcileValue(item, entry.BookValueCents)
-		actualValue := effectiveReconcileValue(item, entry.ActualValueCents)
-		diff := actualValue - bookValue
-		if diff == 0 {
-			continue
-		}
-		sumDiff += diff
-		suggestion := BalanceSuggestion{
-			ID:               uuid.NewString(),
-			Type:             "transfer",
-			BookValueCents:   entry.BookValueCents,
-			ActualValueCents: entry.ActualValueCents,
-			DiffCents:        absInt64(diff),
-		}
-		if diff > 0 {
-			suggestion.FromItemID = primary.ItemID
-			suggestion.FromItemName = primary.ItemNameSnapshot
-			suggestion.ToItemID = entry.ItemID
-			suggestion.ToItemName = entry.ItemNameSnapshot
-			suggestion.Message = fmt.Sprintf("%s 转入 %s %s", primary.ItemNameSnapshot, entry.ItemNameSnapshot, formatCents(absInt64(diff)))
-		} else {
-			suggestion.FromItemID = entry.ItemID
-			suggestion.FromItemName = entry.ItemNameSnapshot
-			suggestion.ToItemID = primary.ItemID
-			suggestion.ToItemName = primary.ItemNameSnapshot
-			suggestion.Message = fmt.Sprintf("%s 转入 %s %s", entry.ItemNameSnapshot, primary.ItemNameSnapshot, formatCents(absInt64(diff)))
-		}
-		suggestions = append(suggestions, suggestion)
-	}
-	primaryTheoretical := primaryBook - sumDiff
-	unknown := primaryActual - primaryTheoretical
-	unknownIncome := int64(0)
-	unknownExpense := int64(0)
-	if unknown != 0 {
-		suggestion := BalanceSuggestion{
-			ID:               uuid.NewString(),
-			BookValueCents:   primary.BookValueCents,
-			ActualValueCents: primary.ActualValueCents,
-			DiffCents:        absInt64(unknown),
-		}
-		if unknown > 0 {
-			unknownIncome = unknown
-			suggestion.Type = "unknown_income"
-			suggestion.ToItemID = primary.ItemID
-			suggestion.ToItemName = primary.ItemNameSnapshot
-			suggestion.Message = fmt.Sprintf("未知来源收入 %s", formatCents(unknown))
-		} else {
-			unknownExpense = absInt64(unknown)
-			suggestion.Type = "unknown_expense"
-			suggestion.FromItemID = primary.ItemID
-			suggestion.FromItemName = primary.ItemNameSnapshot
-			suggestion.Message = fmt.Sprintf("未知去向支出 %s", formatCents(absInt64(unknown)))
-		}
-		suggestions = append(suggestions, suggestion)
-	}
-	return suggestions, unknownIncome, unknownExpense
-}
-
-func effectiveReconcileValue(item MoneyItem, value int64) int64 {
-	if item.Type == moneyItemTypeDebtAccount {
-		return -value
+func signedMoneyValue(item MoneyItem, value int64) int64 {
+	if item.Type == moneyItemTypeDebtAccount || item.IncludeInLiability {
+		return -absInt64(value)
 	}
 	return value
-}
-
-func computeMoneySummary(itemMap map[string]MoneyItem, entries []ReconciliationEntry, prevNetAsset int64, intervalDays int) (MoneySummary, []string) {
-	summary := MoneySummary{}
-	warnings := []string{}
-	for _, entry := range entries {
-		item := itemMap[entry.ItemID]
-		if item.IncludeInCash {
-			summary.CashCents += entry.CurrentValueCents
-		}
-		if item.IncludeInLiability {
-			summary.LiabilityCents += entry.CurrentValueCents
-		}
-		if item.IncludeInNetAsset && !item.IncludeInLiability {
-			summary.PositiveAssetCents += entry.CurrentValueCents
-		}
-		if item.IncludeInInvestmentProfit {
-			summary.InvestmentProfitCents += entry.CurrentValueCents - entry.PreviousValueCents
-			if entry.CurrentValueCents == 0 {
-				warnings = append(warnings, fmt.Sprintf("%s 当期值为 0，年化变化率按 0 处理", entry.ItemNameSnapshot))
-			}
-		}
-	}
-	summary.NetAssetCents = summary.PositiveAssetCents - summary.LiabilityCents
-	summary.TotalAssetCents = summary.NetAssetCents + summary.LiabilityCents
-	summary.NetAssetChangeCents = summary.NetAssetCents - prevNetAsset
-	if summary.NetAssetCents != 0 {
-		summary.NetAssetLiabilityRate = roundRate(float64(summary.LiabilityCents) / float64(summary.NetAssetCents))
-	}
-	if summary.TotalAssetCents != 0 {
-		summary.AssetLiabilityRate = roundRate(float64(summary.LiabilityCents) / float64(summary.TotalAssetCents))
-	}
-	return summary, warnings
 }
 
 func roundRate(v float64) float64 {
@@ -1037,10 +1083,6 @@ func absInt64(v int64) int64 {
 		return -v
 	}
 	return v
-}
-
-func formatCents(v int64) string {
-	return fmt.Sprintf("%.2f", float64(v)/100)
 }
 
 func containsString(items []string, want string) bool {
@@ -1063,7 +1105,6 @@ func normalizeStringList(values []string) []string {
 		seen[value] = true
 		next = append(next, value)
 	}
-	sort.Strings(next)
 	return next
 }
 
@@ -1077,13 +1118,13 @@ type moneyImportPreview struct {
 }
 
 type moneyImportPreviewSheet struct {
-	SheetName string       `json:"sheetName"`
-	Date      string       `json:"date"`
-	Valid     bool         `json:"valid"`
-	Warnings  []string     `json:"warnings"`
-	Summary   MoneySummary `json:"summary"`
-	Events    []MoneyEvent `json:"events"`
-	RowsRead  int          `json:"rowsRead"`
+	SheetName string             `json:"sheetName"`
+	Date      string             `json:"date"`
+	Valid     bool               `json:"valid"`
+	Warnings  []string           `json:"warnings"`
+	Summary   moneyImportSummary `json:"summary"`
+	Events    []MoneyEvent       `json:"events"`
+	RowsRead  int                `json:"rowsRead"`
 }
 
 func (m *moneyBookMgr) previewExcelImport(req moneyImportExcelPreviewReq) (moneyImportPreview, error) {
@@ -1139,7 +1180,7 @@ func (m *moneyBookMgr) confirmExcelImport(req moneyImportExcelConfirmReq, user s
 	if preview.BookID != req.BookID {
 		return moneyImportConfirmResp{}, errors.New("preview not match")
 	}
-	index, err := m.loadBatchIndexLocked(req.BookID)
+	index, err := m.loadRecordIndexLocked(req.BookID)
 	if err != nil {
 		return moneyImportConfirmResp{}, err
 	}
@@ -1150,8 +1191,12 @@ func (m *moneyBookMgr) confirmExcelImport(req moneyImportExcelConfirmReq, user s
 		}
 	}
 	now := time.Now()
-	created := []moneyBatchIndexItem{}
+	created := []moneyRecordIndexItem{}
 	skipped := []string{}
+	importItems, err := m.ensureImportSummaryItemsLocked(req.BookID)
+	if err != nil {
+		return moneyImportConfirmResp{}, err
+	}
 	for _, sheet := range preview.Sheets {
 		if !sheet.Valid {
 			skipped = append(skipped, sheet.SheetName)
@@ -1161,15 +1206,13 @@ func (m *moneyBookMgr) confirmExcelImport(req moneyImportExcelConfirmReq, user s
 			skipped = append(skipped, sheet.SheetName)
 			continue
 		}
-		batch := ReconciliationBatch{
+		record := ReconciliationRecord{
 			SchemaVersion: moneySchemaVersion,
 			ID:            uuid.NewString(),
 			BookID:        req.BookID,
 			Date:          sheet.Date,
 			Status:        moneyBookStatusConfirmed,
-			IntervalDays:  30,
-			Entries:       []ReconciliationEntry{},
-			Summary:       sheet.Summary,
+			Entries:       buildImportSummaryEntries(sheet.Summary, importItems),
 			Events:        sheet.Events,
 			Source:        moneySourceExcelImport,
 			SourceRef:     sheet.SheetName,
@@ -1179,13 +1222,132 @@ func (m *moneyBookMgr) confirmExcelImport(req moneyImportExcelConfirmReq, user s
 			UpdatedAt:     now,
 			ConfirmedAt:   now,
 		}
-		if err = m.saveBatchLocked(batch); err != nil {
+		if err = m.saveRecordLocked(record); err != nil {
 			return moneyImportConfirmResp{}, err
 		}
-		created = append(created, batch.toIndexItem())
+		created = append(created, record.toIndexItem())
 		exists[sheet.SheetName] = true
 	}
 	return moneyImportConfirmResp{Created: created, SkippedSheets: skipped}, nil
+}
+
+func (m *moneyBookMgr) ensureImportSummaryItemsLocked(bookID string) (map[string]MoneyItem, error) {
+	items, err := m.loadItemsLocked(bookID)
+	if err != nil {
+		return nil, err
+	}
+	byID := make(map[string]MoneyItem, len(items)+4)
+	for _, item := range items {
+		byID[item.ID] = item
+	}
+	defs := []MoneyItem{
+		{
+			ID:                 moneyImportItemCash,
+			Name:               "Excel导入-现金",
+			Type:               "现金",
+			Enabled:            true,
+			IncludeInCash:      true,
+			IncludeInNetAsset:  true,
+			IncludeInReconcile: false,
+		},
+		{
+			ID:                 moneyImportItemOtherAsset,
+			Name:               "Excel导入-其他资产",
+			Type:               "资产",
+			Enabled:            true,
+			IncludeInNetAsset:  true,
+			IncludeInReconcile: false,
+		},
+		{
+			ID:                 moneyImportItemLiability,
+			Name:               "Excel导入-负债",
+			Type:               "负债",
+			Enabled:            true,
+			IncludeInLiability: true,
+			IncludeInReconcile: false,
+		},
+		{
+			ID:                        moneyImportItemInvestmentProfit,
+			Name:                      "Excel导入-投资盈利",
+			Type:                      "投资",
+			Enabled:                   true,
+			IncludeInInvestmentProfit: true,
+			IncludeInReconcile:        false,
+		},
+	}
+	changed := false
+	for _, def := range defs {
+		if existing, ok := byID[def.ID]; ok {
+			def.Sort = existing.Sort
+			def.BookID = bookID
+			if existing.Name != def.Name ||
+				existing.Type != def.Type ||
+				!existing.Enabled ||
+				existing.IncludeInCash != def.IncludeInCash ||
+				existing.IncludeInNetAsset != def.IncludeInNetAsset ||
+				existing.IncludeInLiability != def.IncludeInLiability ||
+				existing.IncludeInInvestmentProfit != def.IncludeInInvestmentProfit ||
+				existing.IncludeInReconcile != def.IncludeInReconcile {
+				for i := range items {
+					if items[i].ID == def.ID {
+						items[i] = def
+						break
+					}
+				}
+				changed = true
+			}
+		} else {
+			def.Sort = len(items) + 1
+			def.BookID = bookID
+			items = append(items, def)
+			changed = true
+		}
+		byID[def.ID] = def
+	}
+	if changed {
+		if err := m.saveItemsLocked(bookID, items); err != nil {
+			return nil, err
+		}
+	}
+	return byID, nil
+}
+
+func buildImportSummaryEntries(summary moneyImportSummary, items map[string]MoneyItem) []ReconciliationEntry {
+	liability := summary.LiabilityCents
+	positiveAsset := summary.NetAssetCents + liability
+	if positiveAsset == 0 && summary.TotalAssetCents != 0 {
+		positiveAsset = summary.TotalAssetCents
+	}
+	otherAsset := positiveAsset - summary.CashCents
+	values := map[string]int64{
+		moneyImportItemCash:             summary.CashCents,
+		moneyImportItemOtherAsset:       otherAsset,
+		moneyImportItemLiability:        liability,
+		moneyImportItemInvestmentProfit: summary.InvestmentProfitCents,
+	}
+	orderedIDs := []string{
+		moneyImportItemCash,
+		moneyImportItemOtherAsset,
+		moneyImportItemLiability,
+		moneyImportItemInvestmentProfit,
+	}
+	entries := make([]ReconciliationEntry, 0, len(orderedIDs))
+	for _, id := range orderedIDs {
+		item := items[id]
+		value := values[id]
+		entry := ReconciliationEntry{
+			ItemID:                     id,
+			ItemNameSnapshot:           item.Name,
+			ItemTypeSnapshot:           item.Type,
+			IncludeInReconcileSnapshot: item.IncludeInReconcile,
+			IncludeInLiabilitySnapshot: item.IncludeInLiability,
+			CurrentValueCents:          value,
+			BookValueCents:             value,
+			ActualValueCents:           value,
+		}
+		entries = append(entries, entry)
+	}
+	return entries
 }
 
 type workbookXML struct {

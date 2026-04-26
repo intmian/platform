@@ -1,6 +1,6 @@
 # Frontend Architecture
 
-Last verified: 2026-04-25
+Last verified: 2026-04-26
 
 ## Scope
 
@@ -35,7 +35,7 @@ Last verified: 2026-04-25
    - `/subscription`
    - `/money`
    - `/money/:bookId/config`
-   - `/money/:bookId/reconcile/:batchId`
+   - `/money/:bookId/reconcile/:recordId`
    - `/money/:bookId/history`
    - `/money/:bookId/dashboard`
    - `/money/:bookId/import`
@@ -49,7 +49,7 @@ Last verified: 2026-04-25
 7. Admin header adds a direct `订阅管理` navigation entry that routes to `/subscription`.
 8. `/subscription` is a logged-in user page with manual subscription checks, and does not require `admin` permission.
 9. Subscription API returns relative share paths; the page resolves them against `window.location.origin` for display/copy.
-10. `/money` is a logged-in family money book module; admin users can manage books/items/batches/imports, while viewer users only receive dashboard access from the backend per-book ACL.
+10. `/money` is a logged-in family money book module; admin users can manage books/items/records/Excel imports/JSON archives/delete flows, while viewer users only receive dashboard access from the backend per-book ACL.
 
 ## Shared request model
 

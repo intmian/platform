@@ -52,8 +52,97 @@
 
 .money-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
     gap: 12px;
+}
+
+.money-book-card {
+    display: grid;
+    gap: 12px;
+}
+
+.money-book-title {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    column-gap: 12px;
+    align-items: center;
+    margin-bottom: 0;
+}
+
+.money-book-title h2 {
+    min-width: 0;
+    line-height: 1.25;
+    overflow-wrap: anywhere;
+}
+
+.money-book-title-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex: 0 0 auto;
+}
+
+.money-book-title-actions .ant-btn {
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.money-book-stats {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0;
+    overflow: hidden;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    background: #f8fafc;
+}
+
+.money-book-stat {
+    min-width: 0;
+    padding: 10px 12px;
+    border-left: 1px solid #e5e7eb;
+}
+
+.money-book-stat:first-child {
+    border-left: 0;
+}
+
+.money-book-stat span {
+    display: block;
+    color: #667085;
+    font-size: 12px;
+    line-height: 1.2;
+}
+
+.money-book-stat strong {
+    display: block;
+    margin-top: 6px;
+    color: #1f2937;
+    font-size: clamp(14px, 1.35vw, 17px);
+    line-height: 1.15;
+    font-weight: 720;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.money-book-stat.is-primary strong {
+    color: #155eef;
+}
+
+.money-card-actions {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 18px;
+}
+
+.money-card-actions .ant-btn {
+    width: 100%;
 }
 
 .money-metric {
@@ -77,6 +166,35 @@
     overflow-wrap: anywhere;
 }
 
+.money-record-meta {
+    display: flex;
+    align-items: center;
+    gap: 22px;
+}
+
+.money-record-meta-item {
+    min-width: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.money-record-meta-item label {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.money-record-meta-value {
+    min-height: 32px;
+    display: flex;
+    align-items: center;
+    color: #1f2937;
+    font-size: 15px;
+    font-weight: 560;
+    font-variant-numeric: tabular-nums;
+}
+
 .money-toolbar {
     display: flex;
     flex-wrap: wrap;
@@ -88,6 +206,35 @@
     width: 120px;
 }
 
+.money-amount-editor {
+    display: inline-flex;
+    align-items: stretch;
+}
+
+.money-amount-editor .money-table-input {
+    width: 104px;
+}
+
+.money-expression-button {
+    width: 32px;
+    height: auto;
+    align-self: stretch;
+    padding: 0;
+    border-left: 0;
+    border-radius: 0 6px 6px 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.money-amount-editor .ant-input-number {
+    border-radius: 6px 0 0 6px;
+}
+
+.money-amount-editor .ant-input-number-input {
+    height: 100%;
+}
+
 .money-amount {
     font-variant-numeric: tabular-nums;
     text-align: right;
@@ -96,6 +243,10 @@
 
 .money-muted {
     color: #667085;
+}
+
+.money-hidden-file {
+    display: none;
 }
 
 .is-positive {
@@ -146,66 +297,23 @@
     gap: 12px;
 }
 
-.money-bars {
+.money-balance-overview {
     display: grid;
+    gap: 12px;
+}
+
+.money-balance-cards {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
     gap: 10px;
 }
 
-.money-bar-row {
-    display: grid;
-    grid-template-columns: 110px 1fr 110px;
-    gap: 10px;
-    align-items: center;
+.money-balance-cards .money-metric {
+    padding: 10px;
 }
 
-.money-bar-track {
-    height: 10px;
-    border-radius: 999px;
-    background: #eef1f5;
-    overflow: hidden;
-}
-
-.money-bar-fill {
-    height: 100%;
-    border-radius: 999px;
-    background: #1677ff;
-}
-
-.money-timeline {
-    display: flex;
-    align-items: end;
-    gap: 8px;
-    min-height: 180px;
-    padding-top: 20px;
-    overflow-x: auto;
-    border-bottom: 1px solid #eef1f5;
-}
-
-.money-trend-bar {
-    flex: 1;
-    min-width: 28px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 6px;
-}
-
-.money-trend-fill {
-    width: 100%;
-    max-width: 42px;
-    min-height: 4px;
-    border-radius: 6px 6px 0 0;
-    background: #16a34a;
-}
-
-.money-trend-fill.is-negative {
-    background: #d92d20;
-}
-
-.money-trend-label {
-    font-size: 12px;
-    color: #667085;
-    white-space: nowrap;
+.money-balance-cards .money-metric-value {
+    font-size: 18px;
 }
 
 .money-trend-list {
@@ -219,6 +327,129 @@
     padding: 10px 0;
     border-bottom: 1px solid #eef1f5;
     font-variant-numeric: tabular-nums;
+}
+
+.money-line-chart {
+    position: relative;
+    min-width: 0;
+    overflow: visible;
+}
+
+.money-line-scroll {
+    overflow-x: auto;
+    overflow-y: visible;
+}
+
+.money-line-chart svg {
+    display: block;
+    width: 100%;
+    min-width: 560px;
+    height: auto;
+}
+
+.money-line-axis,
+.money-line-zero {
+    stroke: #d8dee8;
+    stroke-width: 1;
+}
+
+.money-line-zero {
+    stroke-dasharray: 5 5;
+}
+
+.money-line-path {
+    fill: none;
+    stroke: #155eef;
+    stroke-width: 3;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.money-line-point {
+    fill: #fff;
+    stroke: #155eef;
+    stroke-width: 3;
+    cursor: pointer;
+}
+
+.money-line-point.is-active {
+    fill: #155eef;
+}
+
+.money-line-scale,
+.money-line-date {
+    fill: #667085;
+    font-size: 12px;
+}
+
+.money-line-tooltip {
+    position: absolute;
+    z-index: 2;
+    display: grid;
+    gap: 3px;
+    min-width: 150px;
+    padding: 8px 10px;
+    border: 1px solid #d8dee8;
+    border-radius: 8px;
+    background: #fff;
+    box-shadow: 0 8px 24px rgba(16, 24, 40, 0.14);
+    color: #1f2937;
+    font-size: 12px;
+    pointer-events: none;
+}
+
+.money-line-tooltip.is-right.is-above {
+    transform: translate(12px, -50%);
+}
+
+.money-line-tooltip.is-right.is-below {
+    transform: translate(12px, 12px);
+}
+
+.money-line-tooltip.is-left.is-above {
+    transform: translate(calc(-100% - 12px), -50%);
+}
+
+.money-line-tooltip.is-left.is-below {
+    transform: translate(calc(-100% - 12px), 12px);
+}
+
+.money-line-tooltip span {
+    white-space: nowrap;
+}
+
+.money-structure-tree {
+    display: grid;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.money-structure-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 12px;
+    align-items: center;
+    padding: 10px 12px;
+    border-top: 1px solid #eef1f5;
+    font-variant-numeric: tabular-nums;
+}
+
+.money-structure-row:first-child {
+    border-top: 0;
+}
+
+.money-structure-row.is-root {
+    background: #f8fafc;
+    font-weight: 700;
+}
+
+.money-structure-row.is-child span {
+    color: #344054;
+}
+
+.money-structure-row strong {
+    white-space: nowrap;
 }
 
 .money-trend-list-row:last-child {
@@ -250,8 +481,116 @@
     overflow-wrap: anywhere;
 }
 
+.money-event-pagination {
+    justify-self: end;
+}
+
 .money-history-cards {
     display: none;
+}
+
+.money-reconcile-cards,
+.money-config-cards {
+    display: none;
+}
+
+.money-entry-card,
+.money-config-card {
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    background: #fff;
+    padding: 12px;
+}
+
+.money-entry-head,
+.money-config-card-head {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.money-entry-head span {
+    color: #667085;
+}
+
+.money-entry-grid {
+    display: grid;
+    grid-template-columns: 84px minmax(0, 1fr);
+    gap: 10px 12px;
+    align-items: center;
+}
+
+.money-entry-grid span {
+    color: #667085;
+}
+
+.money-entry-grid strong {
+    min-width: 0;
+    overflow-wrap: anywhere;
+    text-align: right;
+}
+
+.money-entry-grid .money-table-input {
+    width: 100%;
+}
+
+.money-entry-grid .money-amount-editor {
+    width: min(100%, 220px);
+    justify-self: end;
+}
+
+.money-entry-grid .money-amount-editor .money-table-input {
+    flex: 1 1 auto;
+    width: auto;
+    min-width: 0;
+}
+
+.money-entry-grid .money-amount-editor .money-expression-button {
+    flex: 0 0 32px;
+}
+
+.money-config-card {
+    display: grid;
+    gap: 10px;
+}
+
+.money-config-flags {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px 12px;
+}
+
+.money-empty-action {
+    display: grid;
+    justify-items: center;
+    gap: 12px;
+}
+
+.money-list-editor {
+    display: grid;
+    gap: 8px;
+}
+
+.money-list-editor-row {
+    display: grid;
+    grid-template-columns: 36px minmax(0, 1fr) 40px;
+    gap: 8px;
+    align-items: center;
+}
+
+.money-list-editor-row.is-dragging {
+    opacity: 0.55;
+}
+
+.money-list-drag-handle {
+    cursor: grab;
+    color: #667085;
+}
+
+.money-list-drag-handle:active {
+    cursor: grabbing;
 }
 
 .money-history-card {
@@ -308,9 +647,36 @@
         padding: 12px;
     }
 
+    .money-record-meta {
+        align-items: center;
+        gap: 12px 18px;
+        flex-wrap: wrap;
+    }
+
+    .money-record-meta-item {
+        flex: 0 1 auto;
+    }
+
     .money-section-title {
         align-items: flex-start;
         flex-direction: column;
+    }
+
+    .money-book-title {
+        align-items: center;
+    }
+
+    .money-book-title h2 {
+        flex: 1 1 auto;
+        min-width: 0;
+    }
+
+    .money-book-stat {
+        padding: 10px 8px;
+    }
+
+    .money-book-stat strong {
+        font-size: 14px;
     }
 
     .money-grid {
@@ -343,6 +709,10 @@
         font-size: clamp(18px, 5.2vw, 22px);
     }
 
+    .money-balance-cards {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
     .money-dashboard-panel .ant-tabs-nav {
         margin-bottom: 8px;
     }
@@ -351,26 +721,8 @@
         padding: 8px 0;
     }
 
-    .money-bar-row {
-        grid-template-columns: 1fr;
-        gap: 6px;
-    }
-
-    .money-bar-row .money-amount {
-        text-align: left;
-    }
-
-    .money-timeline {
-        min-height: 130px;
-        padding-top: 8px;
-    }
-
-    .money-trend-bar {
-        min-width: 42px;
-    }
-
-    .money-trend-label {
-        font-size: 11px;
+    .money-line-chart svg {
+        min-width: 520px;
     }
 
     .money-trend-list {
@@ -390,5 +742,20 @@
 
     .money-history-table {
         display: none;
+    }
+
+    .money-reconcile-table,
+    .money-config-table {
+        display: none;
+    }
+
+    .money-reconcile-cards,
+    .money-config-cards {
+        display: grid;
+        gap: 10px;
+    }
+
+    .money-list-editor-row {
+        grid-template-columns: 36px minmax(0, 1fr) 40px;
     }
 }

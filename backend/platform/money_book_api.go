@@ -29,6 +29,18 @@ type moneyBookDeleteReq struct {
 	ID string `json:"id"`
 }
 
+type moneyBookExportReq struct {
+	BookID string `json:"bookId"`
+}
+
+type moneyBookExportResp struct {
+	Archive moneyBookArchive `json:"archive"`
+}
+
+type moneyBookImportReq struct {
+	Archive moneyBookArchive `json:"archive"`
+}
+
 type moneyBookGrantDashboardReq struct {
 	BookID      string   `json:"bookId"`
 	ViewerUsers []string `json:"viewerUsers"`
@@ -47,33 +59,32 @@ type moneyItemUpdateReq struct {
 	Items  []MoneyItem `json:"items"`
 }
 
-type moneyBatchCreateReq struct {
-	BookID          string `json:"bookId"`
-	Date            string `json:"date"`
-	IntervalDays    int    `json:"intervalDays"`
-	CopyFromBatchID string `json:"copyFromBatchId"`
+type moneyRecordCreateReq struct {
+	BookID           string `json:"bookId"`
+	Date             string `json:"date"`
+	CopyFromRecordID string `json:"copyFromRecordId"`
 }
 
-type moneyBatchReq struct {
-	BookID  string `json:"bookId"`
-	BatchID string `json:"batchId"`
+type moneyRecordReq struct {
+	BookID   string `json:"bookId"`
+	RecordID string `json:"recordId"`
 }
 
-type moneyBatchResp struct {
-	Batch ReconciliationBatch `json:"batch"`
+type moneyRecordResp struct {
+	Record ReconciliationRecordView `json:"record"`
 }
 
-type moneyBatchUpdateReq struct {
-	BookID string              `json:"bookId"`
-	Batch  ReconciliationBatch `json:"batch"`
+type moneyRecordUpdateReq struct {
+	BookID string               `json:"bookId"`
+	Record ReconciliationRecord `json:"record"`
 }
 
-type moneyBatchListReq struct {
+type moneyRecordListReq struct {
 	BookID string `json:"bookId"`
 }
 
-type moneyBatchListResp struct {
-	Items []moneyBatchIndexItem `json:"items"`
+type moneyRecordListResp struct {
+	Items []moneyRecordListItem `json:"items"`
 }
 
 type moneyDashboardReq struct {
@@ -81,29 +92,12 @@ type moneyDashboardReq struct {
 }
 
 type moneyDashboardResp struct {
-	Book               MoneyBook                     `json:"book"`
-	LatestBatchID      string                        `json:"latestBatchId"`
-	LatestDate         string                        `json:"latestDate"`
-	Summary            MoneySummary                  `json:"summary"`
-	Trends             []moneyDashboardTrendItem     `json:"trends"`
-	AssetStructure     []moneyDashboardStructureItem `json:"assetStructure"`
-	LiabilityStructure []moneyDashboardStructureItem `json:"liabilityStructure"`
-	Events             []MoneyEvent                  `json:"events"`
-}
-
-type moneyDashboardTrendItem struct {
-	Date                  string  `json:"date"`
-	CashCents             int64   `json:"cashCents"`
-	NetAssetCents         int64   `json:"netAssetCents"`
-	LiabilityCents        int64   `json:"liabilityCents"`
-	TotalAssetCents       int64   `json:"totalAssetCents"`
-	InvestmentProfitCents int64   `json:"investmentProfitCents"`
-	AssetLiabilityRate    float64 `json:"assetLiabilityRate"`
-}
-
-type moneyDashboardStructureItem struct {
-	Name       string `json:"name"`
-	ValueCents int64  `json:"valueCents"`
+	Book           MoneyBook                  `json:"book"`
+	Items          []MoneyItem                `json:"items"`
+	LatestRecordID string                     `json:"latestRecordId"`
+	LatestDate     string                     `json:"latestDate"`
+	Records        []ReconciliationRecordView `json:"records"`
+	Events         []MoneyEvent               `json:"events"`
 }
 
 type moneyImportExcelPreviewReq struct {
@@ -122,8 +116,8 @@ type moneyImportExcelConfirmReq struct {
 }
 
 type moneyImportConfirmResp struct {
-	Created       []moneyBatchIndexItem `json:"created"`
-	SkippedSheets []string              `json:"skippedSheets"`
+	Created       []moneyRecordIndexItem `json:"created"`
+	SkippedSheets []string               `json:"skippedSheets"`
 }
 
 func isMoneyAdmin(valid share.Valid) bool {
@@ -204,6 +198,41 @@ func (m *webMgr) moneyBookDelete(c *gin.Context) {
 	OkReturn(c, map[string]bool{"suc": true})
 }
 
+func (m *webMgr) moneyBookExportJSON(c *gin.Context) {
+	if _, ok := m.requireMoneyAdmin(c); !ok {
+		return
+	}
+	var req moneyBookExportReq
+	if err := c.ShouldBindJSON(&req); err != nil {
+		ErrReturn(c, "illegal param")
+		return
+	}
+	archive, err := m.plat.moneyBookMgr.exportBookArchive(req.BookID)
+	if err != nil {
+		ErrReturn(c, err.Error())
+		return
+	}
+	OkReturn(c, moneyBookExportResp{Archive: archive})
+}
+
+func (m *webMgr) moneyBookImportJSON(c *gin.Context) {
+	valid, ok := m.requireMoneyAdmin(c)
+	if !ok {
+		return
+	}
+	var req moneyBookImportReq
+	if err := c.ShouldBindJSON(&req); err != nil {
+		ErrReturn(c, "illegal param")
+		return
+	}
+	book, err := m.plat.moneyBookMgr.importBookArchive(req.Archive, valid.User)
+	if err != nil {
+		ErrReturn(c, err.Error())
+		return
+	}
+	OkReturn(c, moneyBookMutationResp{Book: book})
+}
+
 func (m *webMgr) moneyBookGrantDashboard(c *gin.Context) {
 	if _, ok := m.requireMoneyAdmin(c); !ok {
 		return
@@ -255,108 +284,124 @@ func (m *webMgr) moneyItemUpdate(c *gin.Context) {
 	OkReturn(c, moneyItemListResp{Items: items})
 }
 
-func (m *webMgr) moneyBatchCreate(c *gin.Context) {
+func (m *webMgr) moneyRecordCreate(c *gin.Context) {
 	valid, ok := m.requireMoneyAdmin(c)
 	if !ok {
 		return
 	}
-	var req moneyBatchCreateReq
+	var req moneyRecordCreateReq
 	if err := c.ShouldBindJSON(&req); err != nil {
 		ErrReturn(c, "illegal param")
 		return
 	}
-	batch, err := m.plat.moneyBookMgr.createBatch(req, valid.User)
+	record, err := m.plat.moneyBookMgr.createRecord(req, valid.User)
 	if err != nil {
 		ErrReturn(c, err.Error())
 		return
 	}
-	OkReturn(c, moneyBatchResp{Batch: batch})
+	OkReturn(c, moneyRecordResp{Record: record})
 }
 
-func (m *webMgr) moneyBatchGet(c *gin.Context) {
+func (m *webMgr) moneyRecordGet(c *gin.Context) {
 	if _, ok := m.requireMoneyAdmin(c); !ok {
 		return
 	}
-	var req moneyBatchReq
+	var req moneyRecordReq
 	if err := c.ShouldBindJSON(&req); err != nil {
 		ErrReturn(c, "illegal param")
 		return
 	}
-	batch, err := m.plat.moneyBookMgr.getBatch(req.BookID, req.BatchID)
+	record, err := m.plat.moneyBookMgr.getRecord(req.BookID, req.RecordID)
 	if err != nil {
 		ErrReturn(c, err.Error())
 		return
 	}
-	OkReturn(c, moneyBatchResp{Batch: batch})
+	OkReturn(c, moneyRecordResp{Record: record})
 }
 
-func (m *webMgr) moneyBatchUpdate(c *gin.Context) {
+func (m *webMgr) moneyRecordUpdate(c *gin.Context) {
 	if _, ok := m.requireMoneyAdmin(c); !ok {
 		return
 	}
-	var req moneyBatchUpdateReq
+	var req moneyRecordUpdateReq
 	if err := c.ShouldBindJSON(&req); err != nil {
 		ErrReturn(c, "illegal param")
 		return
 	}
-	batch, err := m.plat.moneyBookMgr.updateBatch(req)
+	record, err := m.plat.moneyBookMgr.updateRecord(req)
 	if err != nil {
 		ErrReturn(c, err.Error())
 		return
 	}
-	OkReturn(c, moneyBatchResp{Batch: batch})
+	OkReturn(c, moneyRecordResp{Record: record})
 }
 
-func (m *webMgr) moneyBatchCompute(c *gin.Context) {
+func (m *webMgr) moneyRecordDelete(c *gin.Context) {
 	if _, ok := m.requireMoneyAdmin(c); !ok {
 		return
 	}
-	var req moneyBatchReq
+	var req moneyRecordReq
 	if err := c.ShouldBindJSON(&req); err != nil {
 		ErrReturn(c, "illegal param")
 		return
 	}
-	batch, err := m.plat.moneyBookMgr.computeBatch(req.BookID, req.BatchID, true)
+	if err := m.plat.moneyBookMgr.deleteRecord(req.BookID, req.RecordID); err != nil {
+		ErrReturn(c, err.Error())
+		return
+	}
+	OkReturn(c, map[string]bool{"suc": true})
+}
+
+func (m *webMgr) moneyRecordCompute(c *gin.Context) {
+	if _, ok := m.requireMoneyAdmin(c); !ok {
+		return
+	}
+	var req moneyRecordReq
+	if err := c.ShouldBindJSON(&req); err != nil {
+		ErrReturn(c, "illegal param")
+		return
+	}
+	record, err := m.plat.moneyBookMgr.computeRecord(req.BookID, req.RecordID, true)
 	if err != nil {
 		ErrReturn(c, err.Error())
 		return
 	}
-	OkReturn(c, moneyBatchResp{Batch: batch})
+	OkReturn(c, moneyRecordResp{Record: record})
 }
 
-func (m *webMgr) moneyBatchConfirm(c *gin.Context) {
+func (m *webMgr) moneyRecordConfirm(c *gin.Context) {
 	valid, ok := m.requireMoneyAdmin(c)
 	if !ok {
 		return
 	}
-	var req moneyBatchReq
+	var req moneyRecordReq
 	if err := c.ShouldBindJSON(&req); err != nil {
 		ErrReturn(c, "illegal param")
 		return
 	}
-	batch, err := m.plat.moneyBookMgr.confirmBatch(req.BookID, req.BatchID, valid.User)
+	record, err := m.plat.moneyBookMgr.confirmRecord(req.BookID, req.RecordID, valid.User)
 	if err != nil {
 		ErrReturn(c, err.Error())
 		return
 	}
-	OkReturn(c, moneyBatchResp{Batch: batch})
+	OkReturn(c, moneyRecordResp{Record: record})
 }
 
-func (m *webMgr) moneyBatchList(c *gin.Context) {
+func (m *webMgr) moneyRecordList(c *gin.Context) {
 	if _, ok := m.requireMoneyAdmin(c); !ok {
 		return
 	}
-	var req moneyBatchListReq
+	var req moneyRecordListReq
 	if err := c.ShouldBindJSON(&req); err != nil {
 		ErrReturn(c, "illegal param")
 		return
 	}
-	items, err := m.plat.moneyBookMgr.listBatches(req.BookID)
+	items, err := m.plat.moneyBookMgr.listRecords(req.BookID)
 	if err != nil {
 		ErrReturn(c, err.Error())
 		return
 	}
-	OkReturn(c, moneyBatchListResp{Items: items})
+	OkReturn(c, moneyRecordListResp{Items: items})
 }
 
 func (m *webMgr) moneyDashboardGet(c *gin.Context) {

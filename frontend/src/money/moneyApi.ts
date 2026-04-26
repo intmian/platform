@@ -2,11 +2,12 @@ import config from "../config.json";
 import {UniPost} from "../common/newSendHttp";
 import {
     MoneyBook,
-    MoneyBatchIndexItem,
+    MoneyBookArchive,
+    MoneyRecordIndexItem,
     MoneyDashboard,
     MoneyImportPreview,
     MoneyItem,
-    ReconciliationBatch
+    ReconciliationRecord
 } from "./types";
 
 async function moneyPost<T>(path: string, req: object): Promise<T> {
@@ -39,6 +40,14 @@ export function deleteMoneyBook(id: string) {
     return moneyPost<{ suc: boolean }>("/misc/money/book/delete", {id});
 }
 
+export function exportMoneyBookJson(bookId: string) {
+    return moneyPost<{ archive: MoneyBookArchive }>("/misc/money/book/export-json", {bookId});
+}
+
+export function importMoneyBookJson(archive: MoneyBookArchive) {
+    return moneyPost<{ book: MoneyBook }>("/misc/money/book/import-json", {archive});
+}
+
 export function grantMoneyDashboard(bookId: string, viewerUsers: string[]) {
     return moneyPost<{ book: MoneyBook }>("/misc/money/book/grant-dashboard", {bookId, viewerUsers});
 }
@@ -51,33 +60,36 @@ export function updateMoneyItems(bookId: string, items: MoneyItem[]) {
     return moneyPost<{ items: MoneyItem[] }>("/misc/money/item/update", {bookId, items});
 }
 
-export function createMoneyBatch(req: {
+export function createMoneyRecord(req: {
     bookId: string
     date?: string
-    intervalDays?: number
-    copyFromBatchId?: string
+    copyFromRecordId?: string
 }) {
-    return moneyPost<{ batch: ReconciliationBatch }>("/misc/money/batch/create", req);
+    return moneyPost<{ record: ReconciliationRecord }>("/misc/money/record/create", req);
 }
 
-export function getMoneyBatch(bookId: string, batchId: string) {
-    return moneyPost<{ batch: ReconciliationBatch }>("/misc/money/batch/get", {bookId, batchId});
+export function getMoneyRecord(bookId: string, recordId: string) {
+    return moneyPost<{ record: ReconciliationRecord }>("/misc/money/record/get", {bookId, recordId});
 }
 
-export function updateMoneyBatch(bookId: string, batch: ReconciliationBatch) {
-    return moneyPost<{ batch: ReconciliationBatch }>("/misc/money/batch/update", {bookId, batch});
+export function updateMoneyRecord(bookId: string, record: ReconciliationRecord) {
+    return moneyPost<{ record: ReconciliationRecord }>("/misc/money/record/update", {bookId, record});
 }
 
-export function computeMoneyBatch(bookId: string, batchId: string) {
-    return moneyPost<{ batch: ReconciliationBatch }>("/misc/money/batch/compute", {bookId, batchId});
+export function deleteMoneyRecord(bookId: string, recordId: string) {
+    return moneyPost<{ suc: boolean }>("/misc/money/record/delete", {bookId, recordId});
 }
 
-export function confirmMoneyBatch(bookId: string, batchId: string) {
-    return moneyPost<{ batch: ReconciliationBatch }>("/misc/money/batch/confirm", {bookId, batchId});
+export function computeMoneyRecord(bookId: string, recordId: string) {
+    return moneyPost<{ record: ReconciliationRecord }>("/misc/money/record/compute", {bookId, recordId});
 }
 
-export function listMoneyBatches(bookId: string) {
-    return moneyPost<{ items: MoneyBatchIndexItem[] }>("/misc/money/batch/list", {bookId});
+export function confirmMoneyRecord(bookId: string, recordId: string) {
+    return moneyPost<{ record: ReconciliationRecord }>("/misc/money/record/confirm", {bookId, recordId});
+}
+
+export function listMoneyRecords(bookId: string) {
+    return moneyPost<{ items: MoneyRecordIndexItem[] }>("/misc/money/record/list", {bookId});
 }
 
 export function getMoneyDashboard(bookId: string) {
@@ -93,7 +105,7 @@ export function previewMoneyExcelImport(bookId: string, fileName: string, fileBa
 }
 
 export function confirmMoneyExcelImport(bookId: string, previewId: string) {
-    return moneyPost<{ created: MoneyBatchIndexItem[], skippedSheets: string[] }>(
+    return moneyPost<{ created: MoneyRecordIndexItem[], skippedSheets: string[] }>(
         "/misc/money/import/excel/confirm",
         {bookId, previewId}
     );
@@ -138,4 +150,3 @@ export function formatMoney(value?: number) {
 export function formatRate(value?: number) {
     return `${((value || 0) * 100).toFixed(2)}%`;
 }
-
