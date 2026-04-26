@@ -1,6 +1,6 @@
 # Backend Gateway And Auth
 
-Last verified: 2026-03-06
+Last verified: 2026-04-25
 
 ## Scope
 
@@ -29,6 +29,8 @@ Last verified: 2026-03-06
 5. Misc routes:
    - `POST /misc/gpt-rewrite`
    - `POST /misc/r2-presigned-url`
+   - `POST /misc/subscription/*`
+   - `POST /misc/money/*`
 
 ## Service gateway contract
 
@@ -87,6 +89,7 @@ Last verified: 2026-03-06
 1. Gateway auth only proves caller identity and passes permissions through.
 2. Each backend service still owns its own business permission checks.
 3. A successful `/check` response does not imply permission to call a given `/service/:name/:cmd`.
+4. Platform-owned misc handlers also own their own permission checks; family money book management and batch APIs require `admin`, while `dashboard/get` allows `admin` or per-book viewer ACL.
 
 ## Cookie and salt behavior
 

@@ -15,6 +15,14 @@ import dayjs from 'dayjs';
 import 'dayjs/locale/zh-cn';
 import {JianXing} from "./library/JianXingTemp.tsx";
 import SubscriptionPage from "./subscription/SubscriptionPage.tsx";
+import {
+    MoneyBookList,
+    MoneyConfigPage,
+    MoneyDashboardPage,
+    MoneyHistoryPage,
+    MoneyImportPage,
+    MoneyReconcilePage
+} from "./money/MoneyPages.tsx";
 
 const Memos = lazy(() => import('./misc/memos'));
 
@@ -91,6 +99,30 @@ const router = createBrowserRouter([
     {
         path: '/subscription',
         element: <SubscriptionPage/>
+    },
+    {
+        path: '/money',
+        element: <MoneyBookList/>
+    },
+    {
+        path: '/money/:bookId/config',
+        element: <MoneyConfigPage/>
+    },
+    {
+        path: '/money/:bookId/reconcile/:batchId',
+        element: <MoneyReconcilePage/>
+    },
+    {
+        path: '/money/:bookId/history',
+        element: <MoneyHistoryPage/>
+    },
+    {
+        path: '/money/:bookId/dashboard',
+        element: <MoneyDashboardPage/>
+    },
+    {
+        path: '/money/:bookId/import',
+        element: <MoneyImportPage/>
     }
 ])
 

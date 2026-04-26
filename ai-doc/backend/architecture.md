@@ -1,6 +1,6 @@
 # Backend Architecture
 
-Last verified: 2026-03-10
+Last verified: 2026-04-25
 
 ## Scope
 
@@ -35,6 +35,7 @@ Last verified: 2026-03-10
 7. `pprof` is exposed on `127.0.0.1:12351`.
 8. Platform-owned non-service web handlers now also include:
    - authenticated `POST /misc/subscription/*` CRUD + manual-check endpoints
+   - authenticated `POST /misc/money/*` family money book endpoints for book/item/batch/dashboard/import flows
    - anonymous `GET /share-link/:username/:token` proxy downloads
    - an in-process subscription monitor loop owned by `platform`, not by a registered service; checks request the configured upstream URL directly and only use `/share-link/*` for public download traffic
    - subscription list responses return relative share paths like `/share-link/{username}/{token}`; frontend is responsible for resolving them against the current origin when needed

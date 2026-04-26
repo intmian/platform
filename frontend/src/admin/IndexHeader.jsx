@@ -113,6 +113,7 @@ function IndexHeader({onLoginSuc, onLogOut}) {
                     alignItems: 'center',
                 }}>
                     <Button type="link" onClick={() => navigate('/subscription')}>订阅管理</Button>
+                    <Button type="link" onClick={() => navigate('/money')}>家庭账本</Button>
                     <UsrArea
                         user={loginCtr.loginInfo.usr}
                         onLoginSuc={onLoginSuc}
@@ -136,6 +137,7 @@ function IndexHeader({onLoginSuc, onLogOut}) {
                         }}
                     />
                     <Button type="link" onClick={() => navigate('/subscription')}>订阅管理</Button>
+                    <Button type="link" onClick={() => navigate('/money')}>家庭账本</Button>
                     <Button type="link" href="https://www.intmian.com">我的博客</Button>
                     <UsrArea
                         user={loginCtr.loginInfo.usr}

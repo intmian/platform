@@ -43,6 +43,7 @@ type PlatForm struct {
 	webMgr          webMgr
 	core            core
 	subscriptionMgr *subscriptionMgr
+	moneyBookMgr    *moneyBookMgr
 
 	// 内部状态
 	startTime int64
@@ -170,6 +171,7 @@ func (p *PlatForm) Init(c context.Context) error {
 		return errors.WithMessage(err, "Init core err")
 	}
 	p.subscriptionMgr = newSubscriptionMgr(p)
+	p.moneyBookMgr = newMoneyBookMgr(p)
 	err = p.webMgr.Init(p)
 	if err != nil {
 		return errors.WithMessage(err, "init web err")
