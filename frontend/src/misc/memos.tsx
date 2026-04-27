@@ -299,6 +299,10 @@ function MemosQueue({reqs, url, apiKey}: { reqs: MemosReq[], url: string, apiKey
         }
     }, [apiKey, reqHisMap, reqs, sendReq, url]);
 
+    if (reqs.length === 0) {
+        return null;
+    }
+
     // 横过来排列，每个元素是一个请求的状态，移上去显示请求的内容，finish = false 时显示loading，finish = true 时显示绿色或红色的对号或叉号 icon
     // 当发生变化时重新刷新显示。
     const queue = [];
