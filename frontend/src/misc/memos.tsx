@@ -1,6 +1,6 @@
 import React, {useCallback, useContext, useEffect, useImperativeHandle, useRef, useState} from "react";
 import type {MenuProps} from "antd";
-import {Button, Dropdown, Flex, Input, message, Modal, notification, Space, Spin, Tooltip} from "antd";
+import {Button, Dropdown, Flex, Input, message, Modal, notification, Popover, Space, Spin, Tooltip} from "antd";
 import {
     CheckCircleTwoTone,
     CloseCircleTwoTone,
@@ -119,6 +119,8 @@ interface MemosReq {
     id: number
 }
 
+const MAX_MEMOS_HISTORY = 20;
+
 let lastSendTime: Date | null = null;
 
 function SendMemosReq(url: string, key: string, content: string, tags: string[], sucCallback: () => void, failCallback: () => void) {
@@ -179,6 +181,22 @@ function SendMemosReq(url: string, key: string, content: string, tags: string[],
         });
 }
 
+function copyTextToClipboard(text: string): Promise<void> {
+    if (navigator.clipboard?.writeText) {
+        return navigator.clipboard.writeText(text);
+    }
+    const textArea = document.createElement('textarea');
+    textArea.value = text;
+    textArea.style.position = 'fixed';
+    textArea.style.left = '-9999px';
+    document.body.appendChild(textArea);
+    textArea.focus();
+    textArea.select();
+    const copied = document.execCommand('copy');
+    document.body.removeChild(textArea);
+    return copied ? Promise.resolve() : Promise.reject(new Error('copy failed'));
+}
+
 interface TagData {
     tag: string
     amount: number
@@ -236,68 +254,124 @@ function GetMemosTags(url: string, key: string, sucCallback: (data: {
 
 function MemosQueue({reqs, url, apiKey}: { reqs: MemosReq[], url: string, apiKey: string }) {
     const [reqHisMap, setReqHisMap] = useState(new Map<number, MemosReqStatus>());
-    const saveReqHisMap = (id: number, status: MemosReqStatus) => {
-        const newMap = new Map(reqHisMap);
-        newMap.set(id, status);
-        setReqHisMap(newMap);
-    };
+    const sendingIdsRef = useRef(new Set<number>());
+    const saveReqHisMap = useCallback((id: number, status: MemosReqStatus) => {
+        setReqHisMap((prev) => {
+            const newMap = new Map(prev);
+            newMap.set(id, status);
+            return newMap;
+        });
+    }, []);
+    const formatReqText = useCallback((req: MemosReq) => {
+        return req.content + (req.tags.length > 0 ? '\n#' + req.tags.join(' #') : '');
+    }, []);
+    const copyReqText = useCallback((req: MemosReq) => {
+        copyTextToClipboard(formatReqText(req)).then(() => {
+            message.success('已复制');
+        }).catch((err) => {
+            console.error('copy memo content failed', err);
+            message.error('复制失败');
+        });
+    }, [formatReqText]);
+    const sendReq = useCallback((req: MemosReq) => {
+        if (!url || !apiKey || sendingIdsRef.current.has(req.id)) {
+            return;
+        }
+        sendingIdsRef.current.add(req.id);
+        saveReqHisMap(req.id, {finish: false, success: false});
+        SendMemosReq(url, apiKey, req.content, req.tags, () => {
+            sendingIdsRef.current.delete(req.id);
+            saveReqHisMap(req.id, {finish: true, success: true});
+        }, () => {
+            sendingIdsRef.current.delete(req.id);
+            saveReqHisMap(req.id, {finish: true, success: false});
+        });
+    }, [apiKey, saveReqHisMap, url]);
+
+    useEffect(() => {
+        if (!url || !apiKey) {
+            return;
+        }
+        for (const req of reqs) {
+            if (!reqHisMap.has(req.id)) {
+                sendReq(req);
+            }
+        }
+    }, [apiKey, reqHisMap, reqs, sendReq, url]);
+
     // 横过来排列，每个元素是一个请求的状态，移上去显示请求的内容，finish = false 时显示loading，finish = true 时显示绿色或红色的对号或叉号 icon
     // 当发生变化时重新刷新显示。
     const queue = [];
     for (const req of reqs) {
-        // 读取状态，如果没有就新建一个
         const id = req.id;
-        let noFind = false;
-        if (!reqHisMap.has(id)) {
-            noFind = true;
-            reqHisMap.set(id, {finish: false, success: false});
-        }
-        const reqStatus = reqHisMap.get(id);
-        if (!reqStatus) {
-            continue;
-        }
-
-        // 没有就新建
-        if (noFind) {
-            saveReqHisMap(id, {finish: false, success: false});
-            SendMemosReq(url, apiKey, req.content, req.tags, () => {
-                saveReqHisMap(id, {finish: true, success: true});
-            }, () => {
-                saveReqHisMap(id, {finish: true, success: false});
-            });
-        }
-
-        const realText = req.content + (req.tags.length > 0 ? '\n #' + req.tags.join(' #') : '');
-
+        const reqStatus = reqHisMap.get(id) || {finish: false, success: false};
+        const realText = formatReqText(req);
+        let statusIcon = <SyncOutlined style={{color: 'orange'}} spin/>;
+        let statusText = '发送中';
         if (reqStatus.finish) {
             if (reqStatus.success) {
-                queue.push(<Tooltip key={req.id} title={realText}><CheckCircleTwoTone
-                    twoToneColor={'#52c41a'}/></Tooltip>);
+                statusIcon = <CheckCircleTwoTone twoToneColor={'#52c41a'}/>;
+                statusText = '发送成功';
             } else {
-                // 点击叉号重新发送，更改状态
-                queue.push(
-                    <CloseCircleTwoTone
-                        twoToneColor={'#ff8b8b'}
-                        key={req.id} title={realText}
-                        onClick={() => {
-                            SendMemosReq(url, apiKey, req.content, req.tags, () => {
-                                    saveReqHisMap(id, {finish: true, success: true,});
-                                }, () => {
-                                    saveReqHisMap(id, {finish: true, success: false});
-                                }
-                            );
-                            saveReqHisMap(id, {finish: false, success: false});
-                        }}
-                    />
-                );
+                statusIcon = <CloseCircleTwoTone twoToneColor={'#ff8b8b'}/>;
+                statusText = '发送失败';
             }
-        } else {
-            queue.push(<Tooltip key={req.id} title={realText}>
-                <SyncOutlined style={{color: 'orange'}} spin/>
-            </Tooltip>);
         }
+
+        queue.push(
+            <Popover
+                key={req.id}
+                trigger="click"
+                title={statusText}
+                content={
+                    <Space direction="vertical" size="small" style={{maxWidth: 320}}>
+                        <div
+                            style={{
+                                whiteSpace: 'pre-wrap',
+                                wordBreak: 'break-word',
+                                maxHeight: 180,
+                                overflowY: 'auto',
+                                userSelect: 'text',
+                            }}
+                        >
+                            {realText}
+                        </div>
+                        <Space>
+                            <Button size="small" onClick={() => copyReqText(req)}>复制</Button>
+                            {reqStatus.finish && !reqStatus.success ? <Button
+                                size="small"
+                                type="primary"
+                                onClick={() => {
+                                    sendReq(req);
+                                }}
+                            >
+                                重新发送
+                            </Button> : null}
+                        </Space>
+                    </Space>
+                }
+            >
+                <Tooltip title={realText}>
+                    <Button
+                        size="small"
+                        type="text"
+                        style={{
+                            width: 24,
+                            height: 24,
+                            minWidth: 24,
+                            padding: 0,
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                        }}
+                    >
+                        {statusIcon}
+                    </Button>
+                </Tooltip>
+            </Popover>
+        );
     }
-    return <Space
+    return <div
         style={{
             // 圆角虚线框
             border: '1px dashed',
@@ -307,10 +381,20 @@ function MemosQueue({reqs, url, apiKey}: { reqs: MemosReq[], url: string, apiKey
             boxSizing: 'border-box',
             paddingLeft: '5px',
             paddingRight: '5px',
+            overflowX: 'auto',
+            overflowY: 'hidden',
+            whiteSpace: 'nowrap',
         }}
     >
-        {queue}
-    </Space>;
+        <Space
+            size={4}
+            style={{
+                minWidth: 'max-content',
+            }}
+        >
+            {queue}
+        </Space>
+    </div>;
 }
 
 function Tags({TagsChange, setting, style, tags, onCtrlEnter, maxTagTextLength}: {
@@ -757,7 +841,7 @@ function Memos() {
             tags: tags,
             id: lastReqId
         }, ...reqHis];
-        if (reqHisNow.current.length > 8) {
+        if (reqHisNow.current.length > MAX_MEMOS_HISTORY) {
             reqHisNow.current.pop();
         }
         setReqHis(reqHisNow.current);

@@ -1,6 +1,6 @@
 # Note Mini Knowledge
 
-Last verified: 2026-03-19
+Last verified: 2026-04-27
 
 ## Module role
 
@@ -62,12 +62,14 @@ Last verified: 2026-03-19
 ## Data contract and submit flow
 
 1. Real submit call is `SendMemosReq`, posting to `POST {url}/api/v1/memos`.
-2. Queue/history is frontend-only (`reqHis`), capped to 8 entries, each carrying:
+2. Queue/history is frontend-only (`reqHis`), capped to 20 entries, each carrying:
    - `content`
    - selected `tags`
    - local id
 3. Payload content format is always:
    - `<content>\n#tag1 #tag2 ...`
+4. The top status bar is horizontally scrollable; overflow history remains hidden until the user scrolls.
+5. Queue status items open a click popover for text review/copy. Failure retry is an explicit popover action, not the icon's default click behavior.
 
 ## Advanced menu behavior (verified from code)
 
