@@ -110,18 +110,19 @@ type ReconciliationRecordView struct {
 }
 
 type ReconciliationEntry struct {
-	ItemID                     string  `json:"itemId"`
-	ItemNameSnapshot           string  `json:"itemNameSnapshot"`
-	ItemTypeSnapshot           string  `json:"itemTypeSnapshot"`
-	IncludeInReconcileSnapshot bool    `json:"includeInReconcileSnapshot"`
-	IncludeInLiabilitySnapshot bool    `json:"includeInLiabilitySnapshot"`
-	PreviousValueCents         int64   `json:"previousValueCents"`
-	CurrentValueCents          int64   `json:"currentValueCents"`
-	BookValueCents             int64   `json:"bookValueCents"`
-	ActualValueCents           int64   `json:"actualValueCents"`
-	ChangeCents                int64   `json:"changeCents"`
-	AnnualizedRate             float64 `json:"annualizedRate"`
-	Note                       string  `json:"note"`
+	ItemID                         string  `json:"itemId"`
+	ItemNameSnapshot               string  `json:"itemNameSnapshot"`
+	ItemTypeSnapshot               string  `json:"itemTypeSnapshot"`
+	IncludeInReconcileSnapshot     bool    `json:"includeInReconcileSnapshot"`
+	IncludeInLiabilitySnapshot     bool    `json:"includeInLiabilitySnapshot"`
+	PreviousValueCents             int64   `json:"previousValueCents"`
+	CurrentValueCents              int64   `json:"currentValueCents"`
+	BookValueCents                 int64   `json:"bookValueCents"`
+	ActualValueCents               int64   `json:"actualValueCents"`
+	ChangeCents                    int64   `json:"changeCents"`
+	AnnualizedRate                 float64 `json:"annualizedRate"`
+	InvestmentPrincipalChangeCents int64   `json:"investmentPrincipalChangeCents"`
+	Note                           string  `json:"note"`
 }
 
 type moneyImportSummary struct {
@@ -1053,7 +1054,7 @@ func ComputeMoneyRecord(items []MoneyItem, prev *ReconciliationRecord, record Re
 			entry.PreviousValueCents = prevValues[entry.ItemID]
 		}
 		entry.ChangeCents = entry.CurrentValueCents - entry.PreviousValueCents
-		if item.IncludeInInvestmentProfit && entry.CurrentValueCents != 0 {
+		if item.IncludeInInvestmentProfit && entry.InvestmentPrincipalChangeCents == 0 && entry.CurrentValueCents != 0 {
 			entry.AnnualizedRate = roundRate((float64(entry.ChangeCents) / float64(entry.CurrentValueCents)) * 365 / float64(intervalDays))
 		} else {
 			entry.AnnualizedRate = 0

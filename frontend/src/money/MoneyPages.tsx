@@ -973,6 +973,22 @@ function roundMoneyRate(value: number) {
     return Math.round(value * 10000) / 10000;
 }
 
+function entryPrincipalChangeCents(entry: ReconciliationEntry) {
+    return entry.investmentPrincipalChangeCents || 0;
+}
+
+function entryInvestmentProfitCents(entry: ReconciliationEntry, item: MoneyItem | undefined) {
+    const currentValue = signedEntryValue(entry, item, entry.currentValueCents);
+    const previousValue = signedEntryValue(entry, item, entry.previousValueCents);
+    return currentValue - previousValue - entryPrincipalChangeCents(entry);
+}
+
+function entryTotalChangeCents(entry: ReconciliationEntry, item: MoneyItem | undefined) {
+    const currentValue = signedEntryValue(entry, item, entry.currentValueCents);
+    const previousValue = signedEntryValue(entry, item, entry.previousValueCents);
+    return currentValue - previousValue;
+}
+
 function computeReconcileSummary(entries: ReconciliationEntry[], itemById: Map<string, MoneyItem>, hasPreviousRecord: boolean): MoneySummary {
     const summary: MoneySummary = {
         cashCents: 0,
@@ -1006,8 +1022,8 @@ function computeReconcileSummary(entries: ReconciliationEntry[], itemById: Map<s
             previousPositiveAssetCents += previousValue;
         }
         if (item?.includeInInvestmentProfit) {
-            summary.investmentProfitCents += currentValue - previousValue;
-            if (currentValue === 0) {
+            summary.investmentProfitCents += currentValue - previousValue - entryPrincipalChangeCents(entry);
+            if (entryPrincipalChangeCents(entry) === 0 && currentValue === 0) {
                 summary.calculationWarningMessages.push(`${entry.itemNameSnapshot} 当期值为 0，年化变化率按 0 处理`);
             }
         }
@@ -1215,6 +1231,21 @@ export function MoneyReconcilePage() {
                 }
                 const item = itemById.get(entry.itemId);
                 const includeInReconcile = item?.includeInReconcile ?? entry.includeInReconcileSnapshot;
+                const principalChangeCents = hasPreviousRecord && investmentItemIds.has(entry.itemId) ? entryPrincipalChangeCents(entry) : 0;
+                if (principalChangeCents !== 0) {
+                    sumDiff += principalChangeCents;
+                    suggestions.push({
+                        id: `investment-principal-${entry.itemId}`,
+                        type: "transfer",
+                        fromItemId: principalChangeCents > 0 ? primaryEntry.itemId : entry.itemId,
+                        fromItemName: principalChangeCents > 0 ? primaryEntry.itemNameSnapshot : entry.itemNameSnapshot,
+                        toItemId: principalChangeCents > 0 ? entry.itemId : primaryEntry.itemId,
+                        toItemName: principalChangeCents > 0 ? entry.itemNameSnapshot : primaryEntry.itemNameSnapshot,
+                        bookValueCents: entry.previousValueCents,
+                        actualValueCents: entry.currentValueCents,
+                        diffCents: Math.abs(principalChangeCents),
+                    });
+                }
                 if (!includeInReconcile) {
                     return;
                 }
@@ -1255,19 +1286,23 @@ export function MoneyReconcilePage() {
         }
         if (hasPreviousRecord) {
             record.entries.forEach((entry) => {
-                if (!investmentItemIds.has(entry.itemId) || entry.changeCents === 0) {
+                if (!investmentItemIds.has(entry.itemId)) {
+                    return;
+                }
+                const investmentProfitCents = entryInvestmentProfitCents(entry, itemById.get(entry.itemId));
+                if (investmentProfitCents === 0) {
                     return;
                 }
                 suggestions.push({
                     id: `investment-${entry.itemId}`,
-                    type: entry.changeCents > 0 ? "investment_gain" : "investment_loss",
-                    fromItemId: entry.changeCents > 0 ? "" : entry.itemId,
-                    fromItemName: entry.changeCents > 0 ? "投资盈利" : entry.itemNameSnapshot,
-                    toItemId: entry.changeCents > 0 ? entry.itemId : "",
-                    toItemName: entry.changeCents > 0 ? entry.itemNameSnapshot : "投资亏损",
+                    type: investmentProfitCents > 0 ? "investment_gain" : "investment_loss",
+                    fromItemId: investmentProfitCents > 0 ? "" : entry.itemId,
+                    fromItemName: investmentProfitCents > 0 ? "投资盈利" : entry.itemNameSnapshot,
+                    toItemId: investmentProfitCents > 0 ? entry.itemId : "",
+                    toItemName: investmentProfitCents > 0 ? entry.itemNameSnapshot : "投资亏损",
                     bookValueCents: entry.previousValueCents,
                     actualValueCents: entry.currentValueCents,
-                    diffCents: Math.abs(entry.changeCents),
+                    diffCents: Math.abs(investmentProfitCents),
                 });
             });
         }
@@ -1420,13 +1455,29 @@ export function MoneyReconcilePage() {
             title: "变化",
             dataIndex: "changeCents",
             width: 120,
-            render: (value, record) => hasPreviousRecord && isInvestmentEntry(record) ? <div className="money-amount">{formatMoney(value)}</div> : <span className="money-muted">--</span>,
+            render: (_, record) => hasPreviousRecord && isInvestmentEntry(record) ? <div className="money-amount">{formatMoney(entryTotalChangeCents(record, itemById.get(record.itemId)))}</div> : <span className="money-muted">--</span>,
+        },
+        {
+            title: "本金变更",
+            dataIndex: "investmentPrincipalChangeCents",
+            width: 150,
+            render: (value, record, index) => {
+                if (!hasPreviousRecord || !isInvestmentEntry(record)) {
+                    return <span className="money-muted">--</span>;
+                }
+                return entryAmountInput(value || 0, (next) => patchEntry(index, {investmentPrincipalChangeCents: next}));
+            },
+        },
+        {
+            title: "投资盈利",
+            width: 120,
+            render: (_, record) => hasPreviousRecord && isInvestmentEntry(record) ? <div className="money-amount">{formatMoney(entryInvestmentProfitCents(record, itemById.get(record.itemId)))}</div> : <span className="money-muted">--</span>,
         },
         {
             title: "年化",
             dataIndex: "annualizedRate",
             width: 100,
-            render: (value, record) => hasPreviousRecord && isInvestmentEntry(record) ? formatRate(value) : <span className="money-muted">--</span>,
+            render: (value, record) => hasPreviousRecord && isInvestmentEntry(record) && entryPrincipalChangeCents(record) === 0 ? formatRate(value) : <span className="money-muted">--</span>,
         },
     ];
 
@@ -1467,7 +1518,7 @@ export function MoneyReconcilePage() {
                 </div>
                 <div className="money-section">
                     <div className="money-section-title"><h2>录入明细</h2></div>
-                    <Table className="money-reconcile-table" rowKey="itemId" columns={columns} dataSource={record.entries || []} pagination={false} scroll={{x: 880}}/>
+                    <Table className="money-reconcile-table" rowKey="itemId" columns={columns} dataSource={record.entries || []} pagination={false} scroll={{x: 1150}}/>
                     <div className="money-reconcile-cards">
                         {(record.entries || []).map((entry, index) => <div className="money-entry-card" key={entry.itemId}>
                             <div className="money-entry-head">
@@ -1483,8 +1534,10 @@ export function MoneyReconcilePage() {
                                     <span>账面值</span><strong className="money-muted">不参与平账</strong>
                                     <span>实际值</span>{entryAmountInput(entry.currentValueCents, (next) => patchEntry(index, {currentValueCents: next}), {liability: entry.includeInLiabilitySnapshot})}
                                 </>}
-                                <span>变化</span><strong>{displayAmountOrDash(hasPreviousRecord && isInvestmentEntry(entry), entry.changeCents)}</strong>
-                                <span>年化</span><strong>{hasPreviousRecord && isInvestmentEntry(entry) ? formatRate(entry.annualizedRate) : "--"}</strong>
+                                <span>变化</span><strong>{displayAmountOrDash(hasPreviousRecord && isInvestmentEntry(entry), entryTotalChangeCents(entry, itemById.get(entry.itemId)))}</strong>
+                                <span>本金变更</span>{hasPreviousRecord && isInvestmentEntry(entry) ? entryAmountInput(entryPrincipalChangeCents(entry), (next) => patchEntry(index, {investmentPrincipalChangeCents: next})) : <strong className="money-muted">--</strong>}
+                                <span>投资盈利</span><strong>{displayAmountOrDash(hasPreviousRecord && isInvestmentEntry(entry), entryInvestmentProfitCents(entry, itemById.get(entry.itemId)))}</strong>
+                                <span>年化</span><strong>{hasPreviousRecord && isInvestmentEntry(entry) && entryPrincipalChangeCents(entry) === 0 ? formatRate(entry.annualizedRate) : "--"}</strong>
                             </div>
                         </div>)}
                     </div>

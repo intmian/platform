@@ -45,6 +45,7 @@ export type ReconciliationEntry = {
     actualValueCents: number
     changeCents: number
     annualizedRate: number
+    investmentPrincipalChangeCents: number
     note: string
 }
 

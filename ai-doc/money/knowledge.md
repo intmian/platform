@@ -1,6 +1,6 @@
 # Family Money Book Knowledge
 
-Last verified: 2026-04-26
+Last verified: 2026-04-27
 
 ## Scope
 
@@ -24,14 +24,15 @@ Last verified: 2026-04-26
 3. Item inclusion flags drive calculations:
    - `includeInReconcile`: show book/actual values and force current value to actual value during compute.
    - `includeInCash`: contributes to cash.
-   - `includeInInvestmentProfit`: contributes current minus previous value and annualized rate.
+   - `includeInInvestmentProfit`: contributes adjusted investment profit and annualized rate.
    - `includeInNetAsset`: contributes to positive assets unless the item is a liability.
    - `includeInLiability`: contributes to liabilities and liability structure.
    - liability item amounts can be entered as positive or negative numbers in the UI; both mean liability magnitude and are normalized to negative signed values for storage/calculation, while liability summaries and structure displays use absolute values.
    - net-asset liability rate uses the absolute net-asset denominator so the displayed rate is never negative when net assets are below zero.
-4. Durable `ReconciliationRecord` storage contains only record identity, date/status, entries, events, source, and audit fields. Runtime APIs do not return persisted summary fields; `intervalDays` is the only derived record-view field and archives must not persist it.
-5. Record interval days are derived from the previous confirmed record date when one exists; the frontend treats the field as read-only.
-6. Draft records may be deleted through `record/delete`; confirmed records remain editable but cannot be deleted.
+4. Investment entries may store `investmentPrincipalChangeCents`; investment profit is current minus previous minus principal change, while non-zero principal change disables only that entry's annualized-rate calculation.
+5. Durable `ReconciliationRecord` storage contains only record identity, date/status, entries, events, source, and audit fields. Runtime APIs do not return persisted summary fields; `intervalDays` is the only derived record-view field and archives must not persist it.
+6. Record interval days are derived from the previous confirmed record date when one exists; the frontend treats the field as read-only.
+7. Draft records may be deleted through `record/delete`; confirmed records remain editable but cannot be deleted.
 
 ## Import And Export
 
@@ -60,9 +61,9 @@ Last verified: 2026-04-26
    - reconcile items force current value to actual value; the UI does not show a separate current-value column.
    - non-reconcile items hide book value and reuse the actual-value column for current value input.
    - editing record date, entries, or events triggers debounced automatic save and recalculation; the manual save action is only an immediate persistence shortcut.
-   - bookkeeping suggestions list type/source/target/amount without description or action columns; the frontend derives transfer, balance expense, balance income, investment gain, and investment loss from the current record, book config, and item config.
+   - bookkeeping suggestions list type/source/target/amount without description or action columns; the frontend derives transfer, balance expense, balance income, investment principal transfer, investment gain, and investment loss from the current record, book config, and item config.
    - balance income/expense suggestions are computed from the primary balance account after applying transfer suggestions, so the primary account's remaining imbalance is still visible.
-   - change and annualized-rate columns are only shown for investment-profit items.
+   - change, principal-change, adjusted investment-profit, and annualized-rate columns are only shown for investment-profit items; non-zero principal change keeps adjusted profit in summaries but shows annualized rate as unavailable.
    - asset/liability calculation shows summary cards for net asset, two liability rates, asset change, and investment profit, followed by a net-asset-rooted tree where liability branches are negative values.
    - draft records expose a delete action with confirmation.
    - confirmed records remain editable and expose save actions.
