@@ -282,7 +282,7 @@ func (m *webMgr) gptRewrite(c *gin.Context) {
 		return
 	}
 	mode := aiCfg.ModeForScene(share.AISceneRewrite, ai.ModelModeFast)
-	bot := ai.NewOpenAIWithMode(aiCfg.Base, aiCfg.Token, mode, ai.AiTypeChatGPT, aiCfg.ModelPools)
+	bot := ai.NewOpenAIWithMode(aiCfg.Base, aiCfg.Token, mode, aiCfg.ModelPools)
 	if bot == nil {
 		c.JSON(200, makeErrReturn("openai init error"))
 		return

@@ -1,6 +1,6 @@
 # Backend Config And AI
 
-Last verified: 2026-03-25
+Last verified: 2026-04-29
 
 ## Scope
 
@@ -74,6 +74,7 @@ Last verified: 2026-03-25
 3. Default placeholder values for `PLAT.openai.base` and `PLAT.openai.token` are `need input`.
 4. The reusable AI wrapper in `backend/mian_go_lib/tool/ai/openai.go` now uses the official Go SDK `github.com/openai/openai-go/v3`.
 5. The wrapper still sends requests through the Chat Completions API for compatibility with existing callers and OpenAI-compatible base URLs.
+6. The wrapper is provider-neutral and no longer exposes provider enums or DeepSeek-specific defaults/response cleanup; compatible providers must be configured through `PLAT.openai.base` and `PLAT.openai.model.*` only.
 
 ## AI rewrite endpoint
 

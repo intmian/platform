@@ -402,7 +402,7 @@ func summary(report *DayReport) error {
 	}
 
 	// 创建 OpenAI 实例
-	chat := ai.NewOpenAIWithMode(base, token, mode, ai.AiTypeChatGPT, modelPools)
+	chat := ai.NewOpenAIWithMode(base, token, mode, modelPools)
 	if chat == nil {
 		return errors.New("NewOpenAI error")
 	}
@@ -560,7 +560,7 @@ func translate(report *DayReport) error {
 	}
 
 	// 创建 OpenAI 实例
-	chat := ai.NewOpenAIWithMode(base, token, mode, ai.AiTypeChatGPT, modelPools)
+	chat := ai.NewOpenAIWithMode(base, token, mode, modelPools)
 	if chat == nil {
 		return errors.New("NewOpenAI error")
 	}
@@ -581,7 +581,7 @@ func translateW(report *WholeReport) error {
 	}
 
 	// 创建 OpenAI 实例
-	chat := ai.NewOpenAIWithMode(base, token, mode, ai.AiTypeChatGPT, modelPools)
+	chat := ai.NewOpenAIWithMode(base, token, mode, modelPools)
 	if chat == nil {
 		return errors.New("NewOpenAI error")
 	}
