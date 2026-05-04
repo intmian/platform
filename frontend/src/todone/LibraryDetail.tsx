@@ -99,6 +99,11 @@ import LibraryLoadingImage from './LibraryLoadingImage';
 import {useImageUpload} from '../common/useImageUpload';
 import {prepareLibraryCoverFiles} from '../common/imageCrop';
 import {FileShow, UploadFile} from '../common/newSendHttp';
+import {
+    AiAction,
+    LibraryReviewNotesDigestResp,
+    sendAiAction,
+} from '../common/aiGateway';
 
 const {Text, Paragraph} = Typography;
 const {TextArea} = Input;
@@ -115,6 +120,7 @@ type DetailLogFilter = 'withoutNote' | 'compactNote' | 'all';
 type RoundDisplayEntry =
     | {kind: 'log'; log: LibraryLogEntry; logIndex: number}
     | {kind: 'noteGroup'; noteCount: number; firstLog: LibraryLogEntry; lastLog: LibraryLogEntry};
+type AiDraftTarget = 'main' | 'objective' | 'subjective' | 'innovation';
 
 function guessExtFromMimeType(mimeType: string): string {
     if (mimeType === 'image/png') return 'png';
@@ -257,6 +263,8 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
     const [showNewRound, setShowNewRound] = useState(false);
     const [newRoundName, setNewRoundName] = useState('');
     const [showAddScore, setShowAddScore] = useState(false);
+    const [scoreAiDigest, setScoreAiDigest] = useState<LibraryReviewNotesDigestResp | null>(null);
+    const [scoreAiLoading, setScoreAiLoading] = useState(false);
     const [showAddNote, setShowAddNote] = useState(false);
     const [noteContent, setNoteContent] = useState('');
     const [showStatusReason, setShowStatusReason] = useState(false);
@@ -410,6 +418,18 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
         uploadLibraryCover
     );
     const editingTitle = Form.useWatch('title', form) || '';
+    const currentRoundNoteLogs = useMemo(() => {
+        const round = localItem?.extra.rounds[localItem.extra.currentRound];
+        if (!round) {
+            return [];
+        }
+        return round.logs
+            .filter((log) => log.type === LibraryLogType.note && (log.comment || '').trim())
+            .map((log) => ({
+                time: log.time,
+                content: (log.comment || '').trim(),
+            }));
+    }, [localItem]);
 
     const originalCoverUrl = useMemo(() => localItem?.extra.pictureAddress?.trim() || '', [localItem?.extra.pictureAddress]);
     const detailCoverUrl = useMemo(() => (localItem ? getLibraryDetailCoverUrl(localItem.extra) : ''), [localItem]);
@@ -555,6 +575,8 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
             setShowRemarkPreview(false);
             setShowLogNotePreview(false);
             setLogNotePreviewText('');
+            setScoreAiDigest(null);
+            setScoreAiLoading(false);
         }
     }, [item, form]);
 
@@ -772,6 +794,46 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
         setNewRoundName('');
         message.success(`开始${newRoundName}`);
     };
+
+    const handleRequestScoreAiDigest = useCallback(async () => {
+        if (!localItem) {
+            return;
+        }
+        const currentRound = localItem.extra.rounds[localItem.extra.currentRound];
+        if (!currentRound || currentRoundNoteLogs.length === 0) {
+            message.warning('当前周目暂无可分析的备注');
+            return;
+        }
+
+        setScoreAiLoading(true);
+        try {
+            const ret = await sendAiAction(AiAction.LibraryReviewNotesDigest, {
+                title: localItem.title,
+                category: localItem.extra.category || '',
+                author: localItem.extra.author || '',
+                roundName: currentRound.name || '当前周目',
+                notes: currentRoundNoteLogs,
+            });
+            if (!ret) {
+                message.error('AI 助手请求失败');
+                return;
+            }
+            setScoreAiDigest({
+                positives: ret.positives || [],
+                negatives: ret.negatives || [],
+                records: ret.records || [],
+                draftPhrases: {
+                    main: ret.draftPhrases?.main || [],
+                    objective: ret.draftPhrases?.objective || [],
+                    subjective: ret.draftPhrases?.subjective || [],
+                    innovation: ret.draftPhrases?.innovation || [],
+                },
+            });
+            message.success('AI 助手已整理备注');
+        } finally {
+            setScoreAiLoading(false);
+        }
+    }, [currentRoundNoteLogs, localItem]);
 
     // 添加评分
     const handleAddScore = (payload: AddScorePayload) => {
@@ -1981,6 +2043,10 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
                 onOk={handleAddScore}
                 onCancel={() => setShowAddScore(false)}
                 initialMode={mainScoreSnapshot.mode}
+                notesCount={currentRoundNoteLogs.length}
+                aiDigest={scoreAiDigest}
+                aiLoading={scoreAiLoading}
+                onRequestAiDigest={handleRequestScoreAiDigest}
             />
             
             {/* 添加备注弹窗 */}
@@ -2364,6 +2430,10 @@ interface AddScoreModalProps {
     onOk: (payload: AddScorePayload) => void;
     onCancel: () => void;
     initialMode?: 'simple' | 'complex';
+    notesCount: number;
+    aiDigest: LibraryReviewNotesDigestResp | null;
+    aiLoading: boolean;
+    onRequestAiDigest: () => void;
 }
 
 interface AddScorePayload {
@@ -2378,8 +2448,19 @@ interface AddScorePayload {
     comment?: string;
 }
 
-function AddScoreModal({visible, onOk, onCancel, initialMode = 'simple'}: AddScoreModalProps) {
+function AddScoreModal({
+    visible,
+    onOk,
+    onCancel,
+    initialMode = 'simple',
+    notesCount,
+    aiDigest,
+    aiLoading,
+    onRequestAiDigest,
+}: AddScoreModalProps) {
+    const isMobile = useIsMobile();
     const [mode, setMode] = useState<'simple' | 'complex'>(initialMode);
+    const [aiPanelOpen, setAiPanelOpen] = useState(false);
     const [mainScoreText, setMainScoreText] = useState('合');
     const [enableObjScore, setEnableObjScore] = useState(true);
     const [enableSubScore, setEnableSubScore] = useState(true);
@@ -2450,137 +2531,315 @@ function AddScoreModal({visible, onOk, onCancel, initialMode = 'simple'}: AddSco
 
         onOk(payload);
         resetForm();
+        setAiPanelOpen(false);
     };
 
     const handleCancel = () => {
         onCancel();
         resetForm();
+        setAiPanelOpen(false);
     };
+
+    const appendText = (target: AiDraftTarget, text: string) => {
+        const finalText = text.trim();
+        if (!finalText) {
+            return;
+        }
+        const joinText = (prev: string) => {
+            const trimmedPrev = prev.trim();
+            return trimmedPrev ? `${trimmedPrev}\n${finalText}` : finalText;
+        };
+
+        if (target === 'main') {
+            setComment(joinText);
+        } else if (target === 'objective') {
+            setObjComment(joinText);
+            setEnableObjScore(true);
+            setMode('complex');
+        } else if (target === 'subjective') {
+            setSubComment(joinText);
+            setEnableSubScore(true);
+            setMode('complex');
+        } else {
+            setInnovateComment(joinText);
+            setEnableInnovateScore(true);
+            setMode('complex');
+        }
+    };
+
+    const openAiPanel = () => {
+        setAiPanelOpen(true);
+        if (!aiDigest && !aiLoading && notesCount > 0) {
+            onRequestAiDigest();
+        }
+    };
+
+    const renderAiPointList = (
+        title: string,
+        points: LibraryReviewNotesDigestResp['positives'],
+        target: AiDraftTarget,
+    ) => (
+        <div>
+            <Text strong>{title}</Text>
+            <Space direction="vertical" size={6} style={{width: '100%', marginTop: 8}}>
+                {points.length === 0 ? (
+                    <Text type="secondary" style={{fontSize: 12}}>暂无</Text>
+                ) : points.map((item, index) => (
+                    <Card key={`${title}-${index}`} size="small" style={{borderRadius: 6}}>
+                        <Space direction="vertical" size={6} style={{width: '100%'}}>
+                            <Text style={{fontSize: 13}}>{item.point}</Text>
+                            {item.evidence ? (
+                                <Text type="secondary" style={{fontSize: 12}}>{item.evidence}</Text>
+                            ) : null}
+                            <Space size={6} wrap>
+                                <Button size="small" onClick={() => appendText('main', item.point)}>
+                                    加到总评
+                                </Button>
+                                {target !== 'main' ? (
+                                    <Button size="small" onClick={() => appendText(target, item.point)}>
+                                        加到维度
+                                    </Button>
+                                ) : null}
+                            </Space>
+                        </Space>
+                    </Card>
+                ))}
+            </Space>
+        </div>
+    );
+
+    const renderDraftButtons = (
+        title: string,
+        phrases: string[] | undefined,
+        target: AiDraftTarget,
+    ) => {
+        const finalPhrases = (phrases || []).filter(Boolean);
+        return (
+            <div>
+                <Text strong>{title}</Text>
+                <Flex gap={6} wrap="wrap" style={{marginTop: 8}}>
+                    {finalPhrases.length === 0 ? (
+                        <Text type="secondary" style={{fontSize: 12}}>暂无</Text>
+                    ) : finalPhrases.map((phrase, index) => (
+                        <Button
+                            key={`${title}-${index}`}
+                            size="small"
+                            onClick={() => appendText(target, phrase)}
+                        >
+                            {phrase}
+                        </Button>
+                    ))}
+                </Flex>
+            </div>
+        );
+    };
+
+    const renderAiPanel = () => (
+        <Card
+            size="small"
+            title="AI 助手"
+            extra={(
+                <Button
+                    size="small"
+                    loading={aiLoading}
+                    disabled={notesCount === 0}
+                    onClick={onRequestAiDigest}
+                >
+                    重新整理
+                </Button>
+            )}
+            style={{borderRadius: 8}}
+        >
+            {notesCount === 0 ? (
+                <Text type="secondary">当前周目暂无备注，先添加备注后再整理。</Text>
+            ) : !aiDigest && !aiLoading ? (
+                <Space direction="vertical" size={10} style={{width: '100%'}}>
+                    <Text type="secondary">从当前周目的 {notesCount} 条备注中提取观点和可写入评价的短句。</Text>
+                    <Button type="primary" loading={aiLoading} onClick={onRequestAiDigest}>
+                        开始整理
+                    </Button>
+                </Space>
+            ) : (
+                <Space direction="vertical" size={14} style={{width: '100%'}}>
+                    {aiLoading ? <Text type="secondary">正在整理备注...</Text> : null}
+                    {aiDigest ? (
+                        <>
+                            {renderAiPointList('正面观点', aiDigest.positives || [], 'subjective')}
+                            {renderAiPointList('负面观点', aiDigest.negatives || [], 'subjective')}
+                            {renderAiPointList('可记录条目', aiDigest.records || [], 'main')}
+                            {renderDraftButtons('总评短句', aiDigest.draftPhrases?.main, 'main')}
+                            {renderDraftButtons('客观维度', aiDigest.draftPhrases?.objective, 'objective')}
+                            {renderDraftButtons('主观维度', aiDigest.draftPhrases?.subjective, 'subjective')}
+                            {renderDraftButtons('创新维度', aiDigest.draftPhrases?.innovation, 'innovation')}
+                        </>
+                    ) : null}
+                </Space>
+            )}
+        </Card>
+    );
 
     return (
         <Modal
-            title="添加评分"
+            title={(
+                <Flex justify="space-between" align="center" gap={12}>
+                    <span>添加评分</span>
+                    <Button
+                        size="small"
+                        loading={aiLoading}
+                        disabled={notesCount === 0}
+                        onClick={(event) => {
+                            event.stopPropagation();
+                            openAiPanel();
+                        }}
+                    >
+                        AI助手
+                    </Button>
+                </Flex>
+            )}
             open={visible}
             onOk={handleOk}
             onCancel={handleCancel}
+            width={isMobile ? '100%' : (aiPanelOpen ? 940 : 560)}
         >
-            <Space direction="vertical" style={{width: '100%'}}>
-                <Radio.Group value={mode} onChange={(e) => setMode(e.target.value)}>
-                    <Radio.Button value="simple">简单评分</Radio.Button>
-                    <Radio.Button value="complex">复杂评分</Radio.Button>
-                </Radio.Group>
+            <Flex gap={16} align="flex-start">
+                <div style={{flex: 1, minWidth: 0}}>
+                    <Space direction="vertical" style={{width: '100%'}}>
+                        <Radio.Group value={mode} onChange={(e) => setMode(e.target.value)}>
+                            <Radio.Button value="simple">简单评分</Radio.Button>
+                            <Radio.Button value="complex">复杂评分</Radio.Button>
+                        </Radio.Group>
 
-                <div>
-                    <Text>{mode === 'complex' ? '主评分：' : '评分：'}</Text>
-                    <div style={{marginTop: 8}}>
-                        <TextRate
-                            sequence={["零", "差", "合", "优", "满"]}
-                            editable={true}
-                            initialValue={mainScoreText}
-                            onChange={setMainScoreText}
-                            fontSize={24}
-                            fontSize2={16}
-                        />
+                        <div>
+                            <Text>{mode === 'complex' ? '主评分：' : '评分：'}</Text>
+                            <div style={{marginTop: 8}}>
+                                <TextRate
+                                    sequence={["零", "差", "合", "优", "满"]}
+                                    editable={true}
+                                    initialValue={mainScoreText}
+                                    onChange={setMainScoreText}
+                                    fontSize={24}
+                                    fontSize2={16}
+                                />
+                            </div>
+                        </div>
+
+                        {mode === 'complex' && (
+                            <>
+                                <div>
+                                    <Flex justify="space-between" align="center">
+                                        <Text>客观好坏：</Text>
+                                        <Switch size="small" checked={enableObjScore} onChange={setEnableObjScore} checkedChildren="启用" unCheckedChildren="关闭"/>
+                                    </Flex>
+                                    {enableObjScore ? (
+                                        <>
+                                            <div style={{marginTop: 8}}>
+                                                <TextRate
+                                                    sequence={["垃圾", "低劣", "普通", "优秀", "传奇"]}
+                                                    editable={true}
+                                                    initialValue={objScoreText}
+                                                    onChange={setObjScoreText}
+                                                    fontSize={20}
+                                                    fontSize2={14}
+                                                />
+                                            </div>
+                                            <TextArea
+                                                rows={2}
+                                                placeholder="客观维度评价（可选）"
+                                                value={objComment}
+                                                onChange={(e) => setObjComment(e.target.value)}
+                                                style={{marginTop: 8}}
+                                            />
+                                        </>
+                                    ) : null}
+                                </div>
+                                <div>
+                                    <Flex justify="space-between" align="center">
+                                        <Text>主观感受：</Text>
+                                        <Switch size="small" checked={enableSubScore} onChange={setEnableSubScore} checkedChildren="启用" unCheckedChildren="关闭"/>
+                                    </Flex>
+                                    {enableSubScore ? (
+                                        <>
+                                            <div style={{marginTop: 8}}>
+                                                <TextRate
+                                                    sequence={["折磨", "负面", "消磨", "享受", "极致"]}
+                                                    editable={true}
+                                                    initialValue={subScoreText}
+                                                    onChange={setSubScoreText}
+                                                    fontSize={20}
+                                                    fontSize2={14}
+                                                />
+                                            </div>
+                                            <TextArea
+                                                rows={2}
+                                                placeholder="主观维度评价（可选）"
+                                                value={subComment}
+                                                onChange={(e) => setSubComment(e.target.value)}
+                                                style={{marginTop: 8}}
+                                            />
+                                        </>
+                                    ) : null}
+                                </div>
+                                <div>
+                                    <Flex justify="space-between" align="center">
+                                        <Text>艺术创新：</Text>
+                                        <Switch size="small" checked={enableInnovateScore} onChange={setEnableInnovateScore} checkedChildren="启用" unCheckedChildren="关闭"/>
+                                    </Flex>
+                                    {enableInnovateScore ? (
+                                        <>
+                                            <div style={{marginTop: 8}}>
+                                                <TextRate
+                                                    sequence={["抄袭", "模仿", "沿袭", "创新", "革命"]}
+                                                    editable={true}
+                                                    initialValue={innovateScoreText}
+                                                    onChange={setInnovateScoreText}
+                                                    fontSize={20}
+                                                    fontSize2={14}
+                                                />
+                                            </div>
+                                            <TextArea
+                                                rows={2}
+                                                placeholder="创新维度评价（可选）"
+                                                value={innovateComment}
+                                                onChange={(e) => setInnovateComment(e.target.value)}
+                                                style={{marginTop: 8}}
+                                            />
+                                        </>
+                                    ) : null}
+                                </div>
+                            </>
+                        )}
+
+                        <div>
+                            <Text>{mode === 'complex' ? '主评分评价（可选）：' : '评价（可选）：'}</Text>
+                            <TextArea
+                                rows={3}
+                                placeholder="请输入评价内容..."
+                                value={comment}
+                                onChange={(e) => setComment(e.target.value)}
+                                style={{marginTop: 8}}
+                            />
+                        </div>
+                    </Space>
+                </div>
+
+                {!isMobile && aiPanelOpen ? (
+                    <div style={{width: 340, maxHeight: '62vh', overflowY: 'auto'}}>
+                        {renderAiPanel()}
                     </div>
-                </div>
+                ) : null}
+            </Flex>
 
-                {mode === 'complex' && (
-                    <>
-                        <div>
-                            <Flex justify="space-between" align="center">
-                                <Text>客观好坏：</Text>
-                                <Switch size="small" checked={enableObjScore} onChange={setEnableObjScore} checkedChildren="启用" unCheckedChildren="关闭"/>
-                            </Flex>
-                            {enableObjScore ? (
-                                <>
-                                    <div style={{marginTop: 8}}>
-                                        <TextRate
-                                            sequence={["垃圾", "低劣", "普通", "优秀", "传奇"]}
-                                            editable={true}
-                                            initialValue={objScoreText}
-                                            onChange={setObjScoreText}
-                                            fontSize={20}
-                                            fontSize2={14}
-                                        />
-                                    </div>
-                                    <TextArea
-                                        rows={2}
-                                        placeholder="客观维度评价（可选）"
-                                        value={objComment}
-                                        onChange={(e) => setObjComment(e.target.value)}
-                                        style={{marginTop: 8}}
-                                    />
-                                </>
-                            ) : null}
-                        </div>
-                        <div>
-                            <Flex justify="space-between" align="center">
-                                <Text>主观感受：</Text>
-                                <Switch size="small" checked={enableSubScore} onChange={setEnableSubScore} checkedChildren="启用" unCheckedChildren="关闭"/>
-                            </Flex>
-                            {enableSubScore ? (
-                                <>
-                                    <div style={{marginTop: 8}}>
-                                        <TextRate
-                                            sequence={["折磨", "负面", "消磨", "享受", "极致"]}
-                                            editable={true}
-                                            initialValue={subScoreText}
-                                            onChange={setSubScoreText}
-                                            fontSize={20}
-                                            fontSize2={14}
-                                        />
-                                    </div>
-                                    <TextArea
-                                        rows={2}
-                                        placeholder="主观维度评价（可选）"
-                                        value={subComment}
-                                        onChange={(e) => setSubComment(e.target.value)}
-                                        style={{marginTop: 8}}
-                                    />
-                                </>
-                            ) : null}
-                        </div>
-                        <div>
-                            <Flex justify="space-between" align="center">
-                                <Text>艺术创新：</Text>
-                                <Switch size="small" checked={enableInnovateScore} onChange={setEnableInnovateScore} checkedChildren="启用" unCheckedChildren="关闭"/>
-                            </Flex>
-                            {enableInnovateScore ? (
-                                <>
-                                    <div style={{marginTop: 8}}>
-                                        <TextRate
-                                            sequence={["抄袭", "模仿", "沿袭", "创新", "革命"]}
-                                            editable={true}
-                                            initialValue={innovateScoreText}
-                                            onChange={setInnovateScoreText}
-                                            fontSize={20}
-                                            fontSize2={14}
-                                        />
-                                    </div>
-                                    <TextArea
-                                        rows={2}
-                                        placeholder="创新维度评价（可选）"
-                                        value={innovateComment}
-                                        onChange={(e) => setInnovateComment(e.target.value)}
-                                        style={{marginTop: 8}}
-                                    />
-                                </>
-                            ) : null}
-                        </div>
-                    </>
-                )}
-                
-                <div>
-                    <Text>{mode === 'complex' ? '主评分评价（可选）：' : '评价（可选）：'}</Text>
-                    <TextArea
-                        rows={3}
-                        placeholder="请输入评价内容..."
-                        value={comment}
-                        onChange={(e) => setComment(e.target.value)}
-                        style={{marginTop: 8}}
-                    />
-                </div>
-            </Space>
+            {isMobile ? (
+                <Drawer
+                    title="AI 助手"
+                    placement="bottom"
+                    height="76vh"
+                    open={aiPanelOpen}
+                    onClose={() => setAiPanelOpen(false)}
+                >
+                    {renderAiPanel()}
+                </Drawer>
+            ) : null}
         </Modal>
     );
 }

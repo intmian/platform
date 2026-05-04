@@ -1,6 +1,6 @@
 # Library Module Knowledge
 
-Last verified: 2026-04-22 (code + interaction verified)
+Last verified: 2026-05-04 (code inspected; interaction not run)
 
 ## Module role and loading boundary
 
@@ -152,6 +152,14 @@ Timeline rules:
    - legacy data without the flag falls back to the first `DOING` log whose comment matches `开始<旧周目名>` or `开始了<旧周目名>`
    - once matched during rename/start-time edit, the log is normalized by writing back `autoRoundStart=true`
 
+Timeline export preview rules:
+
+1. Export preview starts from the currently filtered timeline entries.
+2. Preview-only controls use a single `导出` checkbox per timeline record.
+3. Unchecked records stay visible in preview, but are removed from the cloned DOM before `html2canvas` export.
+4. Checkbox state does not mutate `LibraryExtra` or normal timeline filters.
+5. Reopening export preview resets all records to checked.
+
 Share export rules:
 
 1. Library detail `分享预览` export card must include main evaluation text at the bottom section (from main score log `comment`, with legacy fallback).
@@ -162,6 +170,13 @@ Score log display rules:
 1. Both simple-score and complex-score timeline rows are clickable and open the same score detail popover.
 2. Score comment preview in timeline/detail log list is single-line only.
 3. When score comment preview is truncated, it renders as `前缀...(N字)` where `N` is the full trimmed character count.
+
+Score AI assistant rules:
+
+1. Add-score modal can call `library.reviewNotesDigest` through the shared AI Gateway.
+2. Input notes are only note logs from the current round (`LibraryLogType.note`), not all historical rounds.
+3. AI output is draft assistance only; it is kept in component state and is persisted to `LibraryExtra` only when the user inserts text and saves the score log.
+4. Desktop shows the assistant as a side panel beside the score form; mobile opens it as a bottom drawer, and closing that drawer keeps the current AI result while the score modal remains open.
 
 ## Common failure signatures
 

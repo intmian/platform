@@ -1,6 +1,6 @@
 # Shared Reusable Tools And Flows
 
-Last verified: 2026-04-25
+Last verified: 2026-05-04
 
 ## Format
 
@@ -17,3 +17,4 @@ Last verified: 2026-04-25
 5. `doc-skill-map`: 统一“任务类型 -> 需加载文档集合”的可复用流程，入口见 `shared/doc-skill-map.md`，用于避免 full-stack 任务只读前端文档。
 6. `UniConfig` + `ConfigsCtr`: 通用配置表单/缓存容器；支持按 key 分组复用、机密字段 password 显示、slice 值折叠摘要、拖拽排序和右侧删除操作。
 7. `#ignoreDeploy`: 推送到 `master` 的提交消息包含该标记时，`.github/workflows/deploy.yml` 的前端构建、后端构建和部署 job 会跳过。
+8. `sendAiAction` + `POST /misc/ai/run`: 前后端类型化 AI Gateway；前端只传固定 action enum 和结构化 payload，后端按 action 白名单绑定权限、prompt 和响应结构。

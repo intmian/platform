@@ -59,6 +59,12 @@ interface DisplayTimelineEntry extends TimelineEntry {
     mergedStartStatus?: LibraryItemStatus.DONE | LibraryItemStatus.GIVE_UP;
 }
 
+interface TimelineRenderOptions {
+    exportPreview?: boolean;
+    excludedEntryKeys?: Set<string>;
+    onToggleEntry?: (entry: DisplayTimelineEntry, checked: boolean) => void;
+}
+
 async function waitForImagesLoaded(container: HTMLElement): Promise<void> {
     const images = Array.from(container.querySelectorAll('img'));
     const pending = images.filter((img) => !img.complete);
@@ -136,6 +142,17 @@ function buildRoundDayKey(entry: TimelineEntry): string {
     return `${entry.itemId}__${entry.roundName}__${formatDate(entry.time)}`;
 }
 
+function buildTimelineEntryKey(entry: TimelineEntry): string {
+    return [
+        entry.itemId,
+        entry.roundName,
+        entry.time,
+        entry.logType,
+        entry.status ?? '',
+        entry.score ?? '',
+    ].join('__');
+}
+
 function getMergedStartActionText(status?: LibraryItemStatus): string | undefined {
     switch (status) {
         case LibraryItemStatus.DONE:
@@ -161,6 +178,7 @@ export default function LibraryTimeline({visible, items, onClose, onItemClick}: 
     const [showExportPreview, setShowExportPreview] = useState(false);
     const exportPreviewRef = useRef<HTMLDivElement>(null);
     const [waitExpiredTick, setWaitExpiredTick] = useState(0);
+    const [excludedExportEntryKeys, setExcludedExportEntryKeys] = useState<Set<string>>(() => new Set());
 
     useEffect(() => {
         const timer = window.setInterval(() => {
@@ -444,6 +462,13 @@ export default function LibraryTimeline({visible, items, onClose, onItemClick}: 
     );
     const allStatusChecked = selectedStatuses.length === allStatusValues.length;
     const statusIndeterminate = selectedStatuses.length > 0 && selectedStatuses.length < allStatusValues.length;
+    const exportPreviewEntries = useMemo(
+        () => displayEntries.filter((entry) => (
+            !excludedExportEntryKeys.has(buildTimelineEntryKey(entry))
+        )),
+        [displayEntries, excludedExportEntryKeys]
+    );
+    const excludedExportCount = Math.max(0, displayEntries.length - exportPreviewEntries.length);
 
     const getCategoryLabel = (value: string) => {
         if (value === UNCATEGORIZED_KEY) {
@@ -452,9 +477,35 @@ export default function LibraryTimeline({visible, items, onClose, onItemClick}: 
         return value;
     };
 
+    const openExportPreview = () => {
+        setExcludedExportEntryKeys(new Set());
+        setShowExportPreview(true);
+    };
+
+    const toggleExportEntry = (entry: DisplayTimelineEntry, checked: boolean) => {
+        const key = buildTimelineEntryKey(entry);
+        setExcludedExportEntryKeys((prev) => {
+            const next = new Set(prev);
+            if (checked) {
+                next.delete(key);
+            } else {
+                next.add(key);
+            }
+            return next;
+        });
+    };
+
+    const restoreAllExportEntries = () => {
+        setExcludedExportEntryKeys(new Set());
+    };
+
     const handleExportImage = async () => {
         if (!exportPreviewRef.current) {
             message.warning('暂无可导出内容');
+            return;
+        }
+        if (exportPreviewEntries.length === 0) {
+            message.warning('没有可导出的记录');
             return;
         }
 
@@ -476,6 +527,8 @@ export default function LibraryTimeline({visible, items, onClose, onItemClick}: 
             target.style.maxHeight = 'none';
             target.style.overflow = 'visible';
             target.style.height = 'auto';
+            target.querySelectorAll('.library-export-preview-control').forEach((node) => node.remove());
+            target.querySelectorAll('.library-export-preview-excluded').forEach((node) => node.remove());
             wrapper.appendChild(target);
             document.body.appendChild(wrapper);
             await inlineExportImages(target);
@@ -566,7 +619,7 @@ export default function LibraryTimeline({visible, items, onClose, onItemClick}: 
     };
 
     // 渲染时间线条目
-    const renderTimelineItem = (entry: DisplayTimelineEntry, index: number) => {
+    const renderTimelineItem = (entry: DisplayTimelineEntry, index: number, options?: TimelineRenderOptions) => {
         const coverWidth = isMobile ? 42 : 48;
         const coverHeight = isMobile ? 63 : 72;
         const placeholderFontSize = Math.round(coverWidth * LIBRARY_PLACEHOLDER_TEXT_WIDTH_RATIO);
@@ -590,17 +643,25 @@ export default function LibraryTimeline({visible, items, onClose, onItemClick}: 
             && isLibraryAutoRoundStartComment(trimmedComment, entry.roundName)
         ) || trimmedComment === actionText;
 
+        const exportEntryKey = buildTimelineEntryKey(entry);
+        const exportChecked = !options?.excludedEntryKeys?.has(exportEntryKey);
+
         return (
             <Timeline.Item
                 key={`${entry.itemId}-${entry.time}-${index}`}
                 dot={getLogIcon(entry)}
                 color={getEntryColor(entry)}
+                className={options?.exportPreview && !exportChecked ? 'library-export-preview-excluded' : undefined}
             >
                 <Flex
                     align="flex-start"
                     gap={12}
-                    style={{cursor: onItemClick ? 'pointer' : 'default'}}
-                    onClick={() => onItemClick?.(entry.itemId)}
+                    style={{cursor: options?.exportPreview ? 'default' : (onItemClick ? 'pointer' : 'default')}}
+                    onClick={() => {
+                        if (!options?.exportPreview) {
+                            onItemClick?.(entry.itemId);
+                        }
+                    }}
                 >
                     {/* 封面缩略图 */}
                     <div
@@ -687,21 +748,42 @@ export default function LibraryTimeline({visible, items, onClose, onItemClick}: 
                             </Text>
                         )}
                     </Space>
+
+                    {options?.exportPreview ? (
+                        <div
+                            className="library-export-preview-control"
+                            onClick={(event) => event.stopPropagation()}
+                            style={{
+                                flexShrink: 0,
+                                paddingTop: 2,
+                            }}
+                        >
+                            <Checkbox
+                                checked={exportChecked}
+                                onChange={(event) => options.onToggleEntry?.(entry, event.target.checked)}
+                            >
+                                导出
+                            </Checkbox>
+                        </div>
+                    ) : null}
                 </Flex>
             </Timeline.Item>
         );
     };
 
     // 按日期分组渲染（同一天的合并显示）
-    const renderGroupedTimeline = () => {
-        if (displayEntries.length === 0) {
+    const renderGroupedTimeline = (
+        entries: DisplayTimelineEntry[] = displayEntries,
+        options?: TimelineRenderOptions
+    ) => {
+        if (entries.length === 0) {
             return <Empty description="暂无记录"/>;
         }
 
         let currentDay = '';
         const elements: React.ReactNode[] = [];
 
-        displayEntries.forEach((entry, index) => {
+        entries.forEach((entry, index) => {
             const entryDay = formatDate(entry.time);
             
             if (entryDay !== currentDay) {
@@ -719,7 +801,7 @@ export default function LibraryTimeline({visible, items, onClose, onItemClick}: 
                 );
             }
             
-            elements.push(renderTimelineItem(entry, index));
+            elements.push(renderTimelineItem(entry, index, options));
         });
 
         return <Timeline>{elements}</Timeline>;
@@ -741,7 +823,7 @@ export default function LibraryTimeline({visible, items, onClose, onItemClick}: 
                             type="text"
                             size="small"
                             icon={<DownloadOutlined/>}
-                            onClick={() => setShowExportPreview(true)}
+                            onClick={openExportPreview}
                         >
                             预览导出
                         </Button>
@@ -867,6 +949,11 @@ export default function LibraryTimeline({visible, items, onClose, onItemClick}: 
                 onCancel={() => setShowExportPreview(false)}
                 footer={
                     <Space>
+                        {excludedExportCount > 0 ? (
+                            <Button onClick={restoreAllExportEntries}>
+                                恢复全部
+                            </Button>
+                        ) : null}
                         <Button onClick={() => setShowExportPreview(false)}>关闭</Button>
                         <Button
                             type="primary"
@@ -881,9 +968,28 @@ export default function LibraryTimeline({visible, items, onClose, onItemClick}: 
                 width={isMobile ? '100%' : 680}
                 style={{top: 20}}
             >
+                <Flex justify="space-between" align="center" style={{marginBottom: 8}}>
+                    <Text type="secondary" style={{fontSize: 12}}>
+                        将导出 {exportPreviewEntries.length} 条记录
+                        {excludedExportCount > 0 ? `，未勾选 ${excludedExportCount} 条` : ''}
+                    </Text>
+                    {excludedExportCount > 0 ? (
+                        <Button
+                            size="small"
+                            type="text"
+                            onClick={restoreAllExportEntries}
+                        >
+                            恢复全部
+                        </Button>
+                    ) : null}
+                </Flex>
                 <div style={{maxHeight: '70vh', overflowY: 'auto', background: '#fff', paddingBottom: 8}}>
                     <div ref={exportPreviewRef} style={{padding: '0 12px'}}>
-                        {renderGroupedTimeline()}
+                        {renderGroupedTimeline(displayEntries, {
+                            exportPreview: true,
+                            excludedEntryKeys: excludedExportEntryKeys,
+                            onToggleEntry: toggleExportEntry,
+                        })}
                     </div>
                 </div>
             </Modal>

@@ -80,6 +80,7 @@ export const AllPermission = [
     "auto",
     "auto.report",
     "note.cfg",
+    "ai",
     "gpt",
     "todone",
     "file"

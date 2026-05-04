@@ -1,6 +1,6 @@
 # Backend Config And AI
 
-Last verified: 2026-04-29
+Last verified: 2026-05-04
 
 ## Scope
 
@@ -60,6 +60,7 @@ Last verified: 2026-04-29
    - `PLAT.openai.scene.rewrite`
    - `PLAT.openai.scene.summary`
    - `PLAT.openai.scene.translate`
+   - `PLAT.openai.scene.library_review_digest`
 
 ## AI config defaults
 
@@ -71,6 +72,7 @@ Last verified: 2026-04-29
    - `rewrite -> fast`
    - `summary -> cheap`
    - `translate -> cheap`
+   - `library_review_digest -> cheap`
 3. Default placeholder values for `PLAT.openai.base` and `PLAT.openai.token` are `need input`.
 4. The reusable AI wrapper in `backend/mian_go_lib/tool/ai/openai.go` now uses the official Go SDK `github.com/openai/openai-go/v3`.
 5. The wrapper still sends requests through the Chat Completions API for compatibility with existing callers and OpenAI-compatible base URLs.
@@ -97,6 +99,35 @@ Last verified: 2026-04-29
    - `openai.token is empty`
    - `openai init error`
    - `svr error`
+
+## AI Gateway endpoint
+
+1. Endpoint: `POST /misc/ai/run`
+2. Required permission:
+   - action-specific permission, or
+   - `admin`
+3. Request payload:
+   - `action`: fixed backend allowlisted enum string
+   - `payload`: action-specific structured JSON
+4. Current action:
+   - `library.reviewNotesDigest`
+   - permission: `ai` or `admin`
+   - scene: `library_review_digest`
+   - payload: library item title/category/author/roundName plus current-round note list
+   - response: positive points, negative points, recordable items, and draft phrases grouped for main/objective/subjective/innovation review fields
+   - backend trims this action to at most 80 notes and 2000 runes per note before building the AI prompt
+5. Frontend caller should use `frontend/src/common/aiGateway.ts` so action/payload/response types stay paired.
+6. Common failure signatures:
+   - `no permission`
+   - `unknown ai action`
+   - `invalid payload`
+   - `empty notes`
+   - `openai config error`
+   - `openai.base is empty`
+   - `openai.token is empty`
+   - `openai init error`
+   - `svr error`
+   - `ai response parse error`
 
 ## Config read behavior in admin flows
 

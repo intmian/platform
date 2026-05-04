@@ -268,30 +268,10 @@ func (m *webMgr) gptRewrite(c *gin.Context) {
 		return
 	}
 
-	aiCfg, err := share.GetAIConfig(m.plat.cfg)
-	if err != nil {
-		c.JSON(200, makeErrReturn("openai config error"))
-		return
-	}
-	if aiCfg.Base == "" || aiCfg.Base == "need input" {
-		c.JSON(200, makeErrReturn("openai.base is empty"))
-		return
-	}
-	if aiCfg.Token == "" || aiCfg.Token == "need input" {
-		c.JSON(200, makeErrReturn("openai.token is empty"))
-		return
-	}
-	mode := aiCfg.ModeForScene(share.AISceneRewrite, ai.ModelModeFast)
-	bot := ai.NewOpenAIWithMode(aiCfg.Base, aiCfg.Token, mode, aiCfg.ModelPools)
-	if bot == nil {
-		c.JSON(200, makeErrReturn("openai init error"))
-		return
-	}
-
 	ask := "以下是我的语音输入内容，其中可能包含口误、口语化表达或识别错误。请对其进行优化和重写，使其语法正确、逻辑清晰，去除重复和冗长的表述。确保不遗漏任何内容，对于不确定的部分，请使用括号标注。无需添加任何官话或套话:\n" + req.Content
-	newContent, err := bot.Chat(ask)
+	newContent, err := m.chatAI(share.AISceneRewrite, ai.ModelModeFast, ask)
 	if err != nil {
-		c.JSON(200, makeErrReturn("svr error"))
+		c.JSON(200, makeErrReturn(err.Error()))
 		return
 	}
 	// 将双换行替换为单换行

@@ -10,9 +10,10 @@ import (
 type AIScene string
 
 const (
-	AISceneRewrite   AIScene = "rewrite"
-	AISceneSummary   AIScene = "summary"
-	AISceneTranslate AIScene = "translate"
+	AISceneRewrite             AIScene = "rewrite"
+	AISceneSummary             AIScene = "summary"
+	AISceneTranslate           AIScene = "translate"
+	AISceneLibraryReviewDigest AIScene = "library_review_digest"
 )
 
 func defaultAIModelPools() map[ai.ModelMode][]string {
@@ -80,6 +81,13 @@ func DefaultAIConfigParams() []*xstorage.CfgParam {
 			ValueType: xstorage.ValueTypeString,
 			CanUser:   false,
 			RealKey:   "openai.scene.translate",
+			Default:   *xstorage.ToUnit[string](string(ai.ModelModeCheap), xstorage.ValueTypeString),
+		},
+		{
+			Key:       "PLAT.openai.scene.library_review_digest",
+			ValueType: xstorage.ValueTypeString,
+			CanUser:   false,
+			RealKey:   "openai.scene.library_review_digest",
 			Default:   *xstorage.ToUnit[string](string(ai.ModelModeCheap), xstorage.ValueTypeString),
 		},
 	}
@@ -155,9 +163,14 @@ func GetAIConfig(cfg *xstorage.CfgExt) (AIConfig, error) {
 	if err != nil {
 		return conf, err
 	}
+	libraryReviewDigestMode, err := readCfgString(cfg, "PLAT", "openai", "scene", "library_review_digest")
+	if err != nil {
+		libraryReviewDigestMode = string(ai.ModelModeCheap)
+	}
 	conf.SceneModes[AISceneRewrite] = ai.NormalizeModelMode(rewriteMode, ai.ModelModeFast)
 	conf.SceneModes[AISceneSummary] = ai.NormalizeModelMode(summaryMode, ai.ModelModeCheap)
 	conf.SceneModes[AISceneTranslate] = ai.NormalizeModelMode(translateMode, ai.ModelModeCheap)
+	conf.SceneModes[AISceneLibraryReviewDigest] = ai.NormalizeModelMode(libraryReviewDigestMode, ai.ModelModeCheap)
 	return conf, nil
 }
 
