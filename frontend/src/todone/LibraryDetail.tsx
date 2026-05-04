@@ -10,6 +10,7 @@ import {
     Divider,
     Dropdown,
     Drawer,
+    Empty,
     Flex,
     Form,
     Input,
@@ -32,11 +33,13 @@ import dayjs from 'dayjs';
 import {
     CheckOutlined,
     ClockCircleOutlined,
+    CopyOutlined,
     DeleteOutlined,
     DownloadOutlined,
     EllipsisOutlined,
     EditOutlined,
     EyeOutlined,
+    FileTextOutlined,
     PauseOutlined,
     PlayCircleOutlined,
     PlusOutlined,
@@ -101,6 +104,8 @@ import {prepareLibraryCoverFiles} from '../common/imageCrop';
 import {FileShow, UploadFile} from '../common/newSendHttp';
 import {
     AiAction,
+    LibraryReviewDigestNote,
+    LibraryReviewDigestPoint,
     LibraryReviewNotesDigestResp,
     sendAiAction,
 } from '../common/aiGateway';
@@ -120,7 +125,6 @@ type DetailLogFilter = 'withoutNote' | 'compactNote' | 'all';
 type RoundDisplayEntry =
     | {kind: 'log'; log: LibraryLogEntry; logIndex: number}
     | {kind: 'noteGroup'; noteCount: number; firstLog: LibraryLogEntry; lastLog: LibraryLogEntry};
-type AiDraftTarget = 'main' | 'objective' | 'subjective' | 'innovation';
 
 function guessExtFromMimeType(mimeType: string): string {
     if (mimeType === 'image/png') return 'png';
@@ -822,12 +826,6 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
                 positives: ret.positives || [],
                 negatives: ret.negatives || [],
                 records: ret.records || [],
-                draftPhrases: {
-                    main: ret.draftPhrases?.main || [],
-                    objective: ret.draftPhrases?.objective || [],
-                    subjective: ret.draftPhrases?.subjective || [],
-                    innovation: ret.draftPhrases?.innovation || [],
-                },
             });
             message.success('AI 助手已整理备注');
         } finally {
@@ -2044,6 +2042,7 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
                 onCancel={() => setShowAddScore(false)}
                 initialMode={mainScoreSnapshot.mode}
                 notesCount={currentRoundNoteLogs.length}
+                notes={currentRoundNoteLogs}
                 aiDigest={scoreAiDigest}
                 aiLoading={scoreAiLoading}
                 onRequestAiDigest={handleRequestScoreAiDigest}
@@ -2431,6 +2430,7 @@ interface AddScoreModalProps {
     onCancel: () => void;
     initialMode?: 'simple' | 'complex';
     notesCount: number;
+    notes: LibraryReviewDigestNote[];
     aiDigest: LibraryReviewNotesDigestResp | null;
     aiLoading: boolean;
     onRequestAiDigest: () => void;
@@ -2454,6 +2454,7 @@ function AddScoreModal({
     onCancel,
     initialMode = 'simple',
     notesCount,
+    notes,
     aiDigest,
     aiLoading,
     onRequestAiDigest,
@@ -2461,6 +2462,7 @@ function AddScoreModal({
     const isMobile = useIsMobile();
     const [mode, setMode] = useState<'simple' | 'complex'>(initialMode);
     const [aiPanelOpen, setAiPanelOpen] = useState(false);
+    const [notesPanelOpen, setNotesPanelOpen] = useState(false);
     const [mainScoreText, setMainScoreText] = useState('合');
     const [enableObjScore, setEnableObjScore] = useState(true);
     const [enableSubScore, setEnableSubScore] = useState(true);
@@ -2538,46 +2540,31 @@ function AddScoreModal({
         onCancel();
         resetForm();
         setAiPanelOpen(false);
+        setNotesPanelOpen(false);
     };
 
-    const appendText = (target: AiDraftTarget, text: string) => {
+    const copyText = async (text: string) => {
         const finalText = text.trim();
-        if (!finalText) {
-            return;
-        }
-        const joinText = (prev: string) => {
-            const trimmedPrev = prev.trim();
-            return trimmedPrev ? `${trimmedPrev}\n${finalText}` : finalText;
-        };
-
-        if (target === 'main') {
-            setComment(joinText);
-        } else if (target === 'objective') {
-            setObjComment(joinText);
-            setEnableObjScore(true);
-            setMode('complex');
-        } else if (target === 'subjective') {
-            setSubComment(joinText);
-            setEnableSubScore(true);
-            setMode('complex');
-        } else {
-            setInnovateComment(joinText);
-            setEnableInnovateScore(true);
-            setMode('complex');
+        if (!finalText) return;
+        try {
+            await navigator.clipboard.writeText(finalText);
+            message.success('已复制');
+        } catch {
+            message.error('复制失败');
         }
     };
 
-    const openAiPanel = () => {
-        setAiPanelOpen(true);
-        if (!aiDigest && !aiLoading && notesCount > 0) {
+    const toggleAiPanel = () => {
+        const nextOpen = !aiPanelOpen;
+        setAiPanelOpen(nextOpen);
+        if (nextOpen && !aiDigest && !aiLoading && notesCount > 0) {
             onRequestAiDigest();
         }
     };
 
     const renderAiPointList = (
         title: string,
-        points: LibraryReviewNotesDigestResp['positives'],
-        target: AiDraftTarget,
+        points: LibraryReviewDigestPoint[],
     ) => (
         <div>
             <Text strong>{title}</Text>
@@ -2591,48 +2578,20 @@ function AddScoreModal({
                             {item.evidence ? (
                                 <Text type="secondary" style={{fontSize: 12}}>{item.evidence}</Text>
                             ) : null}
-                            <Space size={6} wrap>
-                                <Button size="small" onClick={() => appendText('main', item.point)}>
-                                    加到总评
-                                </Button>
-                                {target !== 'main' ? (
-                                    <Button size="small" onClick={() => appendText(target, item.point)}>
-                                        加到维度
-                                    </Button>
-                                ) : null}
-                            </Space>
+                            <Button
+                                size="small"
+                                icon={<CopyOutlined/>}
+                                onClick={() => copyText(item.evidence ? `${item.point}\n依据：${item.evidence}` : item.point)}
+                                style={{alignSelf: 'flex-start'}}
+                            >
+                                复制
+                            </Button>
                         </Space>
                     </Card>
                 ))}
             </Space>
         </div>
     );
-
-    const renderDraftButtons = (
-        title: string,
-        phrases: string[] | undefined,
-        target: AiDraftTarget,
-    ) => {
-        const finalPhrases = (phrases || []).filter(Boolean);
-        return (
-            <div>
-                <Text strong>{title}</Text>
-                <Flex gap={6} wrap="wrap" style={{marginTop: 8}}>
-                    {finalPhrases.length === 0 ? (
-                        <Text type="secondary" style={{fontSize: 12}}>暂无</Text>
-                    ) : finalPhrases.map((phrase, index) => (
-                        <Button
-                            key={`${title}-${index}`}
-                            size="small"
-                            onClick={() => appendText(target, phrase)}
-                        >
-                            {phrase}
-                        </Button>
-                    ))}
-                </Flex>
-            </div>
-        );
-    };
 
     const renderAiPanel = () => (
         <Card
@@ -2641,8 +2600,7 @@ function AddScoreModal({
             extra={(
                 <Button
                     size="small"
-                    loading={aiLoading}
-                    disabled={notesCount === 0}
+                    disabled={notesCount === 0 || aiLoading}
                     onClick={onRequestAiDigest}
                 >
                     重新整理
@@ -2654,7 +2612,7 @@ function AddScoreModal({
                 <Text type="secondary">当前周目暂无备注，先添加备注后再整理。</Text>
             ) : !aiDigest && !aiLoading ? (
                 <Space direction="vertical" size={10} style={{width: '100%'}}>
-                    <Text type="secondary">从当前周目的 {notesCount} 条备注中提取观点和可写入评价的短句。</Text>
+                    <Text type="secondary">从当前周目的 {notesCount} 条备注中完整提取正面、负面和可记录观点。</Text>
                     <Button type="primary" loading={aiLoading} onClick={onRequestAiDigest}>
                         开始整理
                     </Button>
@@ -2664,13 +2622,9 @@ function AddScoreModal({
                     {aiLoading ? <Text type="secondary">正在整理备注...</Text> : null}
                     {aiDigest ? (
                         <>
-                            {renderAiPointList('正面观点', aiDigest.positives || [], 'subjective')}
-                            {renderAiPointList('负面观点', aiDigest.negatives || [], 'subjective')}
-                            {renderAiPointList('可记录条目', aiDigest.records || [], 'main')}
-                            {renderDraftButtons('总评短句', aiDigest.draftPhrases?.main, 'main')}
-                            {renderDraftButtons('客观维度', aiDigest.draftPhrases?.objective, 'objective')}
-                            {renderDraftButtons('主观维度', aiDigest.draftPhrases?.subjective, 'subjective')}
-                            {renderDraftButtons('创新维度', aiDigest.draftPhrases?.innovation, 'innovation')}
+                            {renderAiPointList('正面观点', aiDigest.positives || [])}
+                            {renderAiPointList('负面观点', aiDigest.negatives || [])}
+                            {renderAiPointList('可记录条目', aiDigest.records || [])}
                         </>
                     ) : null}
                 </Space>
@@ -2678,22 +2632,63 @@ function AddScoreModal({
         </Card>
     );
 
+    const renderNotesPanel = () => (
+        <Space direction="vertical" size={10} style={{width: '100%'}}>
+            <Text type="secondary">共 {notes.length} 条备注</Text>
+            {notes.length === 0 ? (
+                <Empty description="当前周目暂无备注"/>
+            ) : notes.map((note, index) => (
+                <Card key={`${note.time}-${index}`} size="small" style={{borderRadius: 6}}>
+                    <Space direction="vertical" size={6} style={{width: '100%'}}>
+                        <Flex justify="space-between" align="center" gap={8}>
+                            <Text type="secondary" style={{fontSize: 12}}>
+                                {note.time ? dayjs(note.time).format('YYYY-MM-DD HH:mm') : `备注 ${index + 1}`}
+                            </Text>
+                            <Button
+                                size="small"
+                                type="text"
+                                icon={<CopyOutlined/>}
+                                onClick={() => copyText(note.content)}
+                            />
+                        </Flex>
+                        <Paragraph style={{marginBottom: 0, whiteSpace: 'pre-wrap'}}>
+                            {note.content}
+                        </Paragraph>
+                    </Space>
+                </Card>
+            ))}
+        </Space>
+    );
+
     return (
         <Modal
             title={(
-                <Flex justify="space-between" align="center" gap={12}>
+                <Flex justify="space-between" align="center" gap={12} style={{paddingRight: 48}}>
                     <span>添加评分</span>
-                    <Button
-                        size="small"
-                        loading={aiLoading}
-                        disabled={notesCount === 0}
-                        onClick={(event) => {
-                            event.stopPropagation();
-                            openAiPanel();
-                        }}
-                    >
-                        AI助手
-                    </Button>
+                    <Space size={8}>
+                        <Button
+                            size="small"
+                            icon={<FileTextOutlined/>}
+                            disabled={notesCount === 0}
+                            onClick={(event) => {
+                                event.stopPropagation();
+                                setNotesPanelOpen(true);
+                            }}
+                        >
+                            本周目备注
+                        </Button>
+                        <Button
+                            size="small"
+                            loading={aiLoading}
+                            disabled={notesCount === 0}
+                            onClick={(event) => {
+                                event.stopPropagation();
+                                toggleAiPanel();
+                            }}
+                        >
+                            {aiPanelOpen ? '隐藏AI助手' : 'AI助手'}
+                        </Button>
+                    </Space>
                 </Flex>
             )}
             open={visible}
@@ -2840,6 +2835,23 @@ function AddScoreModal({
                     {renderAiPanel()}
                 </Drawer>
             ) : null}
+
+            <Drawer
+                title="本周目备注"
+                placement={isMobile ? 'bottom' : 'right'}
+                height={isMobile ? '72vh' : undefined}
+                width={isMobile ? undefined : 420}
+                open={notesPanelOpen}
+                onClose={() => setNotesPanelOpen(false)}
+                styles={{
+                    body: {
+                        padding: isMobile ? 12 : 16,
+                        overflowY: 'auto',
+                    },
+                }}
+            >
+                {renderNotesPanel()}
+            </Drawer>
         </Modal>
     );
 }

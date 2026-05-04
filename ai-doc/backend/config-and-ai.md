@@ -114,8 +114,10 @@ Last verified: 2026-05-04
    - permission: `ai` or `admin`
    - scene: `library_review_digest`
    - payload: library item title/category/author/roundName plus current-round note list
-   - response: positive points, negative points, recordable items, and draft phrases grouped for main/objective/subjective/innovation review fields
-   - backend trims this action to at most 80 notes and 2000 runes per note before building the AI prompt
+   - response: positive points, negative points, and recordable items
+   - prompt requires covering every viewpoint from the notes, with no point-count or point-length cap
+   - prompt treats notes as possible speech-input text and asks uncertain corrections/guesses to be marked with Chinese parentheses
+   - backend returns AI/model/JSON failures directly to frontend instead of generating local fallback content
 5. Frontend caller should use `frontend/src/common/aiGateway.ts` so action/payload/response types stay paired.
 6. Common failure signatures:
    - `no permission`

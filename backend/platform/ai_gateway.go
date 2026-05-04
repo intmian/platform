@@ -14,8 +14,6 @@ type aiAction string
 
 const (
 	aiActionLibraryReviewNotesDigest aiAction = "library.reviewNotesDigest"
-	libraryReviewDigestMaxNotes               = 80
-	libraryReviewDigestMaxNoteRunes           = 2000
 )
 
 type aiRunReq struct {
@@ -46,18 +44,10 @@ type libraryReviewDigestPoint struct {
 	Evidence string `json:"evidence,omitempty"`
 }
 
-type libraryReviewDigestDrafts struct {
-	Main       []string `json:"main"`
-	Objective  []string `json:"objective,omitempty"`
-	Subjective []string `json:"subjective,omitempty"`
-	Innovation []string `json:"innovation,omitempty"`
-}
-
 type libraryReviewDigestResp struct {
-	Positives    []libraryReviewDigestPoint `json:"positives"`
-	Negatives    []libraryReviewDigestPoint `json:"negatives"`
-	Records      []libraryReviewDigestPoint `json:"records"`
-	DraftPhrases libraryReviewDigestDrafts  `json:"draftPhrases"`
+	Positives []libraryReviewDigestPoint `json:"positives"`
+	Negatives []libraryReviewDigestPoint `json:"negatives"`
+	Records   []libraryReviewDigestPoint `json:"records"`
 }
 
 func (m *webMgr) aiRun(c *gin.Context) {
@@ -108,16 +98,13 @@ func (m *webMgr) handleLibraryReviewNotesDigest(payload json.RawMessage) (librar
 
 	notes := make([]libraryReviewDigestNote, 0, len(req.Notes))
 	for _, note := range req.Notes {
-		if len(notes) >= libraryReviewDigestMaxNotes {
-			break
-		}
 		content := strings.TrimSpace(note.Content)
 		if content == "" {
 			continue
 		}
 		notes = append(notes, libraryReviewDigestNote{
 			Time:    strings.TrimSpace(note.Time),
-			Content: trimRunes(content, libraryReviewDigestMaxNoteRunes),
+			Content: content,
 		})
 	}
 	if len(notes) == 0 {
@@ -130,7 +117,19 @@ func (m *webMgr) handleLibraryReviewNotesDigest(payload json.RawMessage) (librar
 		return libraryReviewDigestResp{}, errors.New("invalid payload")
 	}
 
-	prompt := "你是一个帮助用户整理作品体验笔记的中文写作助手。请只基于输入备注提取信息，不要编造。输出必须是合法 JSON，不要使用 Markdown 代码块。JSON 结构为：{\"positives\":[{\"point\":\"正面观点\",\"evidence\":\"原备注依据，可为空\"}],\"negatives\":[{\"point\":\"负面观点\",\"evidence\":\"原备注依据，可为空\"}],\"records\":[{\"point\":\"可记录的事实/事件/细节\",\"evidence\":\"原备注依据，可为空\"}],\"draftPhrases\":{\"main\":[\"可直接放入总评的短句\"],\"objective\":[\"客观维度短句\"],\"subjective\":[\"主观维度短句\"],\"innovation\":[\"创新维度短句\"]}}。每组最多 6 条，短句自然克制，保留用户原本的判断语气。\n输入：\n" + string(promptBytes)
+	prompt := strings.Join([]string{
+		"你是一个帮助用户整理作品体验笔记的中文写作助手。",
+		"只基于输入备注提取信息，不要编造，不要评价备注作者。",
+		"必须覆盖备注中的所有观点，不能因为观点数量多、文字长、表达重复就省略。",
+		"输入备注可能来自语音输入，存在口癖、停顿、重复词、错别字或语音识别错误；请结合上下文做合理猜测和整理。",
+		"如果某个词、对象、因果关系拿捏不准，请在对应 point 或 evidence 中用中文括号标注猜测，例如：（可能指模型质量）或（此处含义不确定）。",
+		"point 可以长，不限制数量；需要完整保留观点含义，但要把口癖和无意义重复清理掉。",
+		"evidence 放对应原备注依据，可以保留原文片段，方便用户回看来源。",
+		"输出必须是合法 JSON，不要使用 Markdown 代码块。",
+		"JSON 结构为：{\"positives\":[{\"point\":\"正面观点\",\"evidence\":\"原备注依据，可为空\"}],\"negatives\":[{\"point\":\"负面观点\",\"evidence\":\"原备注依据，可为空\"}],\"records\":[{\"point\":\"可记录的事实/事件/细节\",\"evidence\":\"原备注依据，可为空\"}]}。",
+		"输入：",
+		string(promptBytes),
+	}, "\n")
 
 	content, err := m.chatAI(share.AISceneLibraryReviewDigest, ai.ModelModeCheap, prompt)
 	if err != nil {
@@ -139,9 +138,9 @@ func (m *webMgr) handleLibraryReviewNotesDigest(payload json.RawMessage) (librar
 
 	var ret libraryReviewDigestResp
 	if err := json.Unmarshal([]byte(extractJSONObject(content)), &ret); err != nil {
-		return buildLibraryReviewDigestFallback(req), nil
+		return libraryReviewDigestResp{}, errors.New("ai response parse error")
 	}
-	return normalizeLibraryReviewDigestResp(ret, req), nil
+	return normalizeLibraryReviewDigestResp(ret), nil
 }
 
 func (m *webMgr) chatAI(scene share.AIScene, fallback ai.ModelMode, prompt string) (string, error) {
@@ -186,99 +185,30 @@ func extractJSONObject(content string) string {
 	return trimmed
 }
 
-func trimRunes(content string, maxRunes int) string {
-	if maxRunes <= 0 {
-		return ""
-	}
-	runes := []rune(content)
-	if len(runes) <= maxRunes {
-		return content
-	}
-	return string(runes[:maxRunes])
-}
-
-func normalizeLibraryReviewDigestResp(ret libraryReviewDigestResp, req libraryReviewNoteDigestPayload) libraryReviewDigestResp {
-	ret.Positives = limitDigestPoints(ret.Positives, 6)
-	ret.Negatives = limitDigestPoints(ret.Negatives, 6)
-	ret.Records = limitDigestPoints(ret.Records, 6)
-	ret.DraftPhrases.Main = limitStrings(ret.DraftPhrases.Main, 6)
-	ret.DraftPhrases.Objective = limitStrings(ret.DraftPhrases.Objective, 6)
-	ret.DraftPhrases.Subjective = limitStrings(ret.DraftPhrases.Subjective, 6)
-	ret.DraftPhrases.Innovation = limitStrings(ret.DraftPhrases.Innovation, 6)
-	if len(ret.Positives) == 0 && len(ret.Negatives) == 0 && len(ret.Records) == 0 && len(ret.DraftPhrases.Main) == 0 {
-		return buildLibraryReviewDigestFallback(req)
+func normalizeLibraryReviewDigestResp(ret libraryReviewDigestResp) libraryReviewDigestResp {
+	ret.Positives = normalizeDigestPoints(ret.Positives)
+	ret.Negatives = normalizeDigestPoints(ret.Negatives)
+	ret.Records = normalizeDigestPoints(ret.Records)
+	if len(ret.Positives) == 0 && len(ret.Negatives) == 0 && len(ret.Records) == 0 {
+		return libraryReviewDigestResp{}
 	}
 	return ret
 }
 
-func buildLibraryReviewDigestFallback(req libraryReviewNoteDigestPayload) libraryReviewDigestResp {
-	records := make([]libraryReviewDigestPoint, 0, 6)
-	for _, note := range req.Notes {
-		content := strings.TrimSpace(note.Content)
-		if content == "" {
-			continue
-		}
-		records = append(records, libraryReviewDigestPoint{
-			Point:    trimRunes(content, 80),
-			Evidence: trimRunes(content, 120),
-		})
-		if len(records) >= 6 {
-			break
-		}
-	}
-
-	title := strings.TrimSpace(req.Title)
-	if title == "" {
-		title = "这部作品"
-	}
-	mainPhrase := title + "留下了一些明确体验点，可以结合当前周目备注继续整理评价。"
-	if len(records) > 0 {
-		mainPhrase = records[0].Point
-	}
-
-	return libraryReviewDigestResp{
-		Records: records,
-		DraftPhrases: libraryReviewDigestDrafts{
-			Main: []string{mainPhrase},
-		},
-	}
-}
-
-func limitDigestPoints(points []libraryReviewDigestPoint, max int) []libraryReviewDigestPoint {
-	if max <= 0 || len(points) == 0 {
+func normalizeDigestPoints(points []libraryReviewDigestPoint) []libraryReviewDigestPoint {
+	if len(points) == 0 {
 		return nil
 	}
-	result := make([]libraryReviewDigestPoint, 0, max)
+	result := make([]libraryReviewDigestPoint, 0, len(points))
 	for _, point := range points {
 		text := strings.TrimSpace(point.Point)
 		if text == "" {
 			continue
 		}
 		result = append(result, libraryReviewDigestPoint{
-			Point:    trimRunes(text, 120),
-			Evidence: trimRunes(strings.TrimSpace(point.Evidence), 160),
+			Point:    text,
+			Evidence: strings.TrimSpace(point.Evidence),
 		})
-		if len(result) >= max {
-			break
-		}
-	}
-	return result
-}
-
-func limitStrings(items []string, max int) []string {
-	if max <= 0 || len(items) == 0 {
-		return nil
-	}
-	result := make([]string, 0, max)
-	for _, item := range items {
-		text := strings.TrimSpace(item)
-		if text == "" {
-			continue
-		}
-		result = append(result, trimRunes(text, 120))
-		if len(result) >= max {
-			break
-		}
 	}
 	return result
 }

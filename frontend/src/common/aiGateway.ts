@@ -23,18 +23,10 @@ export interface LibraryReviewDigestPoint {
     evidence?: string;
 }
 
-export interface LibraryReviewDigestDraftPhrases {
-    main: string[];
-    objective?: string[];
-    subjective?: string[];
-    innovation?: string[];
-}
-
 export interface LibraryReviewNotesDigestResp {
     positives: LibraryReviewDigestPoint[];
     negatives: LibraryReviewDigestPoint[];
     records: LibraryReviewDigestPoint[];
-    draftPhrases: LibraryReviewDigestDraftPhrases;
 }
 
 export interface AiRequestMap {

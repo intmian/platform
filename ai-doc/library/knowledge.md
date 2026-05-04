@@ -175,8 +175,11 @@ Score AI assistant rules:
 
 1. Add-score modal can call `library.reviewNotesDigest` through the shared AI Gateway.
 2. Input notes are only note logs from the current round (`LibraryLogType.note`), not all historical rounds.
-3. AI output is draft assistance only; it is kept in component state and is persisted to `LibraryExtra` only when the user inserts text and saves the score log.
-4. Desktop shows the assistant as a side panel beside the score form; mobile opens it as a bottom drawer, and closing that drawer keeps the current AI result while the score modal remains open.
+3. AI output only contains positive points, negative points, and recordable items. It does not return draft phrases or auto-fill score fields.
+4. Each AI point can be copied by the user; copied text is not persisted to `LibraryExtra` unless the user manually pastes/saves it.
+5. The prompt tells AI that notes may come from speech input with filler words or recognition errors; uncertain guesses must be marked with Chinese parentheses.
+6. Desktop shows the assistant as a side panel beside the score form; mobile opens it as a bottom drawer, and closing that drawer keeps the current AI result while the score modal remains open.
+7. Add-score modal also provides a current-round notes viewer with scrollable note cards and per-note copy action.
 
 ## Common failure signatures
 
