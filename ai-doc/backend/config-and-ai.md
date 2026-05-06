@@ -1,6 +1,6 @@
 # Backend Config And AI
 
-Last verified: 2026-05-05
+Last verified: 2026-05-06
 
 ## Scope
 
@@ -80,9 +80,10 @@ Last verified: 2026-05-05
 7. New provider capability code lives under `backend/mian_go_lib/tool/ai/v2` with Go package name `ai`; it does not replace the existing `tool/ai` wrapper.
 8. `OpenAIProvider` in `tool/ai/v2` is for OpenAI-compatible providers only, currently `OpenAI` and `DeepSeek`; model availability is read through the SDK Models API with pagination, while reasoning capability lists are source-type based.
 9. `OpenAIProvider.Chat` and `ChatStream` expose plain message chat plus reasoning controls and DeepSeek `thinking`; external tools/functions are intentionally left out of the first v2 chat slice, so `AvailableTools()` returns no callable tools.
-10. `tool/ai/v2` also owns the first Agent layer: it uses one package-level registry singleton for `AgentID -> IAgentSetting` and `ProviderID -> IProvider`, where `ProviderID` is a `uint32`; callers register through `AddProvider` and `AddAgentSetting`, `NewBaseAgent` reads the registered `BaseAgentSetting` by default, and `NewBaseAgentWithSetting` creates an agent from an explicit setting while still resolving providers from the singleton.
-11. `BaseAgent` and `BaseAgentSetting` live in `tool/ai/v2/base_agent.go`; `BaseAgent.Chat(ctx, content)` is stateful per agent instance: it prepends `SysPrompt`, reuses successful user/assistant history, tries `Models` in order as a fallback list, writes history only after a successful response, and returns errors instead of local fallback content.
-12. v2 agent settings use `IAgentSetting` plus reflection helpers for JSON import/export and JSON doc generation; the supported setting surface is exported scalar fields and scalar slices/arrays only, with zero values treated as not configured.
+10. `tool/ai/v2` provides base agent components and configuration helpers, not an agent-by-ID factory layer: the package-level singleton stores `ProviderID -> IProvider` and `AgentID -> IAgentSetting`, while callers still create and initialize agents explicitly.
+11. `IAgent[S]` is the typed lifecycle surface for v2 agents: `GetID`, `Init`, and `InitWithSetting`; chat/streaming/factory/middleware behavior and provider/setting getters are intentionally outside this interface.
+12. `BaseAgent` and `BaseAgentSetting` live in `tool/ai/v2/base_agent.go`; `BaseAgent` is a thin built-in reference implementation composed from public provider binding, generic setting state, and message history components that external agents can also reuse directly. `BaseAgent.Chat(ctx, content)` is stateful per agent instance: it prepends `SysPrompt`, reuses successful user/assistant history, tries `Models` in order as a fallback list, writes history only after a successful response, and returns errors instead of local fallback content.
+13. v2 agent settings use `IAgentSetting` plus reflection helpers for JSON import/export and JSON doc generation; the supported setting surface is exported scalar fields and scalar slices/arrays only, with zero values treated as not configured.
 
 ## AI rewrite endpoint
 
