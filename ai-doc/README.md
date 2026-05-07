@@ -2,18 +2,18 @@
 
 Purpose: provide repository-local, task-scoped knowledge for AI agents.
 
-Last verified: 2026-04-26
+Last verified: 2026-05-07
 
 ## Core rules
 
-1. Solve user tasks with minimal safe changes.
+1. Fix the owning layer, not the symptom. Prefer one coherent change over scattered patches.
+   Do not add compatibility shims, speculative mechanisms, or future-proof abstractions.
+   When a new abstraction or mechanism seems warranted, confirm the user's outlook before designing it.
+   Do not encode business policy in shared code.
 2. Keep before/after evidence for behavior-impacting fixes and run at least one adjacent regression path.
 3. When stable facts change, update matching `ai-doc` files in the same turn.
-4. UI behavior-impacting fixes require browser interaction evidence (pre/post); build/test output alone is insufficient.
-5. Backend behavior-impacting fixes require at least one direct API verification path (not only compile/lint).
-6. When splitting reusable components/hooks/utilities, keep them generic-first: avoid business-specific hardcoding, expose behavior through explicit props/options.
-7. Any frontend code change must include interaction verification that simulates a normal user flow and at least one adjacent regression path.
-8. UI changes must include screenshot evidence focused on the changed area and a nearby non-target area, with an explicit no-unintended-impact check.
+4. Evidence and verification standards: follow `shared/engineering-workflow.md` Evidence standard (browser interaction, screenshots, API verification, etc.).
+5. When splitting reusable components/hooks/utilities, keep them generic-first: avoid business-specific hardcoding, expose behavior through explicit props/options.
 
 ## Loading rules
 
@@ -70,12 +70,7 @@ Last verified: 2026-04-26
 
 ## Completion gate
 
-1. Do not declare completion without evidence summary and regression result.
-2. Explicitly report AI-doc updates performed (or state none).
-3. After development and testing are complete, provide one commit text draft in this format:
-   - `feat/fix/refac 模块: 一句话总结`
-   - `- 改动需求或修复bug1`
-   - `- ...`
+Follow `shared/engineering-workflow.md` Completion gate — it is the single authoritative completion checklist.
 
 ## Update policy
 
@@ -84,6 +79,7 @@ Last verified: 2026-04-26
 3. Unknown or conflicting facts: add `TODO-verify` instead of replacing existing fact blindly.
 4. For behavior-change tasks, update docs only when the change creates reusable behavior contracts or constraints; otherwise report change in task summary only.
 5. Prefer rewriting/merging existing bullets over appending new ones, so docs stay concise and deduplicated.
+6. Staleness guard: when loading a doc whose `Last verified` is older than 30 days, spot-check its core facts (API surface, file paths, config keys, data contracts) against current code before relying on it. Update `Last verified` if still accurate; fix stale facts if found.
 
 ## Knowledge curation gate
 

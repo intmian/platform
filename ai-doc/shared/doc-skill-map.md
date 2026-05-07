@@ -1,16 +1,16 @@
 # Doc And Skill Loading Map
 
-Last verified: 2026-03-06
+Last verified: 2026-05-07
 
 ## Goal
 
 1. Keep AI context small but complete.
 2. Prevent frontend-only bias on full-stack tasks.
-3. Make skill behavior deterministic and auditable.
+3. This is the single authoritative task→doc routing table. Other docs reference this one for loading decisions.
 
-## Applicable skill
+## Entry point
 
-1. `$platform-developer-assistant` must always start from `ai-doc/README.md`.
+1. Always start from `ai-doc/README.md`.
 2. After index read, load docs by task shape using the matrix below.
 
 ## Loading matrix
@@ -77,3 +77,4 @@ Last verified: 2026-03-06
 
 1. Facts live in `ai-doc`; skills should reference docs, not restate contracts.
 2. When a fact changes, update doc once and keep skills unchanged unless routing logic changed.
+3. Engineering workflow gates (completion, evidence, reporting) are defined in `shared/engineering-workflow.md` only; other docs reference them, never redefine.

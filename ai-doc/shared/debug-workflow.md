@@ -1,12 +1,12 @@
 # Shared Debug Workflow
 
-Last verified: 2026-03-25
+Last verified: 2026-05-07
 
 ## Positioning
 
-1. This file is a specialized playbook for debugging tasks.
-2. Always apply `shared/engineering-workflow.md` first.
-3. This file only adds debug-specific constraints and tactics.
+1. This file defines debug-specific additions to `shared/engineering-workflow.md`.
+2. Always apply engineering first; this file only adds steps and checks unique to debugging.
+3. Completion, evidence, and reporting gates are defined in engineering — do not redefine them here.
 
 ## Service startup baseline
 
@@ -21,43 +21,35 @@ Last verified: 2026-03-25
    - request base path is `frontend/src/config.json` -> `api_base_url="/api"`
    - Vite proxy (`frontend/vite.config.js`) maps `/api/*` -> `http://127.0.0.1:8080/*` by stripping `/api` prefix
 
-## Debug-specific mandatory flow
+## Delta: fault-domain classification
 
-1. Keep engineering workflow gates, then apply debug gates below.
-2. Confirm runtime readiness before any UI conclusion:
-   - backend reachable (`POST /check` direct call success, or `POST /api/check` success via Vite proxy)
-   - frontend reachable on one stable URL
-   - login/auth is actually successful via normal user flow
-   - do not bypass auth blockers (for example closing login modal to force operations on disabled/unauthorized UI)
-   - when a config/UI result looks inconsistent with code, verify the backend process PID/cwd/version before patching around the symptom
-3. Reproduce with the smallest failing path first.
-4. Capture baseline evidence before code change:
-   - browser snapshot
-   - screenshot (if UI visible)
-   - console/network for failure path
-   - for performance tasks, include at least one quantitative baseline metric
-5. Classify fault domain before editing:
+Insert after engineering step 3 (Plan with risk map):
+
+1. Before patching, classify which layer owns the fault:
    - route/handler
    - auth/account
    - storage/config
    - frontend-backend contract mismatch
    - shared-library boundary mismatch
-   - if the suspected fix requires changing a shared lib, first prove the bug is not better owned by the business caller or adapter layer
-6. Apply minimal patch with explicit fault hypothesis.
-7. Re-run the same path and capture post-change evidence.
-8. Run at least one adjacent regression path.
-9. For config/default-value issues, verify the final displayed value comes from the owning backend/config path; do not accept a frontend fallback as proof of backend correctness.
-10. For performance tasks, compare pre/post with the same interaction path and same dataset context.
-11. Report repro, evidence, patch summary, regression, residual risk.
-12. UI behavior fixes (including sort/filter/display order) must include browser pre/post interaction evidence; compile/build success cannot replace this requirement.
-13. Run a short retrospective before final response:
-   - what went wrong in this task
-   - root cause
-   - prevention rule
-   - process/doc update applied in this turn
-14. If verification mutates real data, record changed entities and provide cleanup plan (or execute cleanup when safe).
+2. If the suspected fix requires changing a shared lib, first prove the bug is not better owned by the business caller or adapter layer.
+3. Reproduce with the smallest failing path first before expanding to edge cases.
 
-## Frontend-first checks
+## Delta: pre-verification checks
+
+Insert into engineering step 5 (Runtime readiness), before verification:
+
+1. Confirm runtime readiness before any UI conclusion:
+   - backend reachable (`POST /check` direct call success, or `POST /api/check` success via Vite proxy)
+   - frontend reachable on one stable URL
+   - login/auth is actually successful via normal user flow
+   - do not bypass auth blockers (for example closing login modal to force operations on disabled/unauthorized UI)
+   - when a config/UI result looks inconsistent with code, verify the backend process PID/cwd/version before patching around the symptom
+2. For config/default-value issues, verify the final displayed value comes from the owning backend/config path; do not accept a frontend fallback as proof of backend correctness.
+3. For performance tasks, compare pre/post with the same interaction path and same dataset context.
+
+## Delta: frontend-first checks
+
+Apply before classifying a frontend issue as resolved:
 
 1. Confirm route and required params.
 2. Confirm auth state and account context.
@@ -65,17 +57,9 @@ Last verified: 2026-03-25
 4. Confirm render conditions and fallback paths.
 5. When a page requires login, start backend and complete real login before interactive verification; if login is unavailable, mark verification blocked instead of using hack paths.
 
-## Playwright/browser troubleshooting
+## Delta: backend-first checks
 
-1. Prefer `playwright-cli` when browser automation is available; do not switch to non-CLI browser tooling unless `playwright-cli` is unavailable or the task explicitly requires it.
-2. Prefer headless runs by default so verification does not interrupt active desktop work; switch to headed only when visual observation is required or explicitly requested.
-3. If Playwright browser launch fails with message indicating existing browser session, close local Chrome processes and retry.
-   - recommended command: `pkill -f "Google Chrome"`
-   - if needed, target profile: `pkill -f "/Users/<user>/Library/Caches/ms-playwright/mcp-chrome"`
-4. Keep one stable dev server URL for the full pre/post comparison path (`127.0.0.1` preferred when explicitly specified).
-5. Treat framework deprecation warnings (for example AntD/rc component deprecations) as non-regression unless new runtime errors or behavior drift appears.
-
-## Backend-first checks (debug)
+Apply when debugging backend issues:
 
 1. Collect evidence from:
    - `backend/test/log`
@@ -98,23 +82,6 @@ Last verified: 2026-03-25
 ## Performance/refactor guard
 
 1. Unless user explicitly requests backend/database schema changes, assume frontend/module-local changes only.
-
-## Fix output checklist
-
-1. Repro steps.
-2. Pre-change evidence summary.
-3. Patch summary.
-4. Post-change evidence summary.
-5. Regression checklist and results.
-6. AI-doc updates performed.
-7. Retrospective: mistake, root cause, prevention.
-8. Process update made from retrospective (or explicit `none` with reason).
-9. Residual risk.
-
-## Completion gate
-
-1. Do not declare completion without evidence summary and regression result.
-2. For UI behavior fixes, if browser pre/post interaction evidence is missing, task is not complete.
 
 ## Conflict handling
 
