@@ -439,7 +439,24 @@ function Tags({TagsChange, setting, style, tags, onCtrlEnter, maxTagTextLength}:
 }
 
 
-// HideInput 用于输入并展示当前输入的内容，如果隐藏的模式下会对展示数据进行隐藏，ref用于清空，获得内容，触发隐藏逻辑等。
+// 把 textarea 的新值映射回 realText：旧显示串是全 '*'（每个 code point 一个），
+// 用公共前后缀算出用户改动的 [start, start+removed) 区间，再把 inserted 切成 code point 后 splice 回原文。
+function applyHideEdit(real: string, newDisplay: string): string {
+    const realArr = Array.from(real);
+    const oldLen = realArr.length;
+    const newLen = newDisplay.length;
+    let i = 0;
+    while (i < oldLen && i < newLen && newDisplay.charCodeAt(i) === 0x2a /* '*' */) i++;
+    let j = 0;
+    while (j < oldLen - i && j < newLen - i && newDisplay.charCodeAt(newLen - 1 - j) === 0x2a) j++;
+    const removed = oldLen - i - j;
+    const inserted = Array.from(newDisplay.slice(i, newLen - j));
+    realArr.splice(i, removed, ...inserted);
+    return realArr.join('');
+}
+
+// HideInput 用于输入并展示当前内容。隐藏模式下 textarea 显示星号，但原文始终保存在 realText 里，
+// hide/show 只切开关，永远不搬运文本；隐藏态下继续输入会通过 diff 把改动映射回原文，再重新派生为星号。
 function HideInput({
                        functionsRef,
                        onChange,
@@ -459,189 +476,162 @@ function HideInput({
     onHideModeChange: (hideMode: boolean) => void,
     onPasteFile: (file: File) => void,
 }) {
-    // 目前显示的内容，输入的内容也同步在这里
-    const [showText, setShowText] = useState('');
-    // 隐藏的内容
-    const hideTextRef: React.MutableRefObject<string> = useRef('');
+    const [realText, setRealText] = useState('');
+    const realTextRef = useRef('');
+    const [hideMode, setHideMode] = useState(false);
+    // 同步守卫：state 还没刷新前的同 tick 重入也能正确拦截
+    const hideModeRef = useRef(false);
     const inputRef: React.RefObject<TextAreaRef> = useRef(null);
     const [inAiRewrite, setInAiRewrite] = useState(false);
     const [oldText, setOldText] = useState('');
     const [waitAi, setWaitAi] = useState(false);
-    const [hideMode, setHideMode] = useState(false);
-    const lastInputTime = useRef<Date | null>(null);
+    // IME composition 期间不更新 realText；用 composingValue 直接受控显示用户正在输入的字符
+    const composingRef = useRef(false);
+    const [composingValue, setComposingValue] = useState<string | null>(null);
 
-    // 从浏览器缓存加载数据
-    useEffect(() => {
-        const cachedInput = localStorage.getItem('note.lastInput');
-        if (cachedInput) {
-            setShowText(cachedInput);
-        }
+    const writeReal = useCallback((next: string) => {
+        realTextRef.current = next;
+        setRealText(next);
     }, []);
 
-    const get = useCallback(() => {
-        // 将inputHidden提取input中剩余的前缀*数放在前面，input中*后的内容放在后面.
-        let starCount = 0;
-        for (let i = 0; i < showText.length; i++) {
-            if (showText[i] === '*') {
-                starCount++;
-            } else {
-                break;
-            }
-        }
-        return hideTextRef.current.slice(0, starCount) + showText.slice(starCount);
-    }, [showText]);
-
-    // 实时保存输入框的内容到浏览器缓存
     useEffect(() => {
-        if (showText === '') {
+        const cached = localStorage.getItem('note.lastInput');
+        if (cached) writeReal(cached);
+    }, [writeReal]);
+
+    useEffect(() => {
+        if (realText === '') {
             localStorage.removeItem('note.lastInput');
-            return;
+        } else {
+            localStorage.setItem('note.lastInput', realText);
         }
-        localStorage.setItem('note.lastInput', get());
-    }, [get, showText]);
+    }, [realText]);
+
+    useEffect(() => {
+        onChange(realText);
+    }, [realText, onChange]);
 
     useEffect(() => {
         onHideModeChange(hideMode);
     }, [hideMode, onHideModeChange]);
 
+    // 原文清空时自动退出隐藏，避免 hidden 状态滞留
     useEffect(() => {
-        if (hideMode && showText === '') {
-            hideTextRef.current = '';
+        if (hideMode && realText === '') {
+            hideModeRef.current = false;
             setHideMode(false);
         }
-    }, [hideMode, showText]);
+    }, [hideMode, realText]);
 
-    // 给父组件提供的方法
     const clear = useCallback(() => {
-        setShowText('');
-        hideTextRef.current = '';
-        localStorage.removeItem('note.lastInput'); // 清空缓存
+        realTextRef.current = '';
+        setRealText('');
+        hideModeRef.current = false;
+        setHideMode(false);
         setInAiRewrite(false);
         setOldText('');
+        setWaitAi(false);
+        localStorage.removeItem('note.lastInput');
+    }, []);
+
+    const get = useCallback(() => realTextRef.current, []);
+
+    const hide = useCallback(() => {
+        if (hideModeRef.current) return;
+        if (realTextRef.current === '') return;
+        hideModeRef.current = true;
+        setHideMode(true);
+    }, []);
+
+    const show = useCallback(() => {
+        if (!hideModeRef.current) return;
+        hideModeRef.current = false;
         setHideMode(false);
     }, []);
 
-    const hide = useCallback(() => {
-        if (showText === '') {
-            hideTextRef.current = '';
-            setHideMode(false);
-            return;
-        }
-        hideTextRef.current = showText;
-        setShowText('*'.repeat(showText.length));
-        setHideMode(true);
-    }, [showText]);
-
-    const show = useCallback(() => {
-        let starCount = 0;
-        for (let i = 0; i < showText.length; i++) {
-            if (showText[i] === '*') {
-                starCount++;
-            } else {
-                break;
-            }
-        }
-        setShowText(hideTextRef.current.slice(0, starCount) + showText.slice(starCount));
-        setHideMode(false);
-    }, [showText]);
-
-    const moreHide = useCallback(() => {
-        // 将星星后的内容隐藏起来
-        let starCount = 0;
-        for (let i = 0; i < showText.length; i++) {
-            if (showText[i] === '*') {
-                starCount++;
-            } else {
-                break;
-            }
-        }
-        hideTextRef.current = hideTextRef.current.slice(0, starCount) + showText.slice(starCount);
-        setShowText('*'.repeat(hideTextRef.current.length));
-    }, [showText]);
-
     const focus = useCallback(() => {
-        if (inputRef.current) {
-            inputRef.current.focus();
-        }
+        inputRef.current?.focus();
     }, []);
 
     const gptReWrite = useCallback(() => {
         show();
         setWaitAi(true);
-        setOldText(get());
-        sendGptRewrite(get()).then((ret) => {
+        setOldText(realTextRef.current);
+        sendGptRewrite(realTextRef.current).then((ret) => {
             if (ret === "") {
                 message.error("AI重写失败");
+                setWaitAi(false);
                 return;
             }
             setInAiRewrite(true);
-            setShowText(ret);
+            writeReal(ret);
             setWaitAi(false);
-        })
-
-    }, [get, show]);
+        });
+    }, [show, writeReal]);
 
     const addFile = useCallback((file: FileShow) => {
-        let needenter = false;
-        if (showText.length > 0 && !showText.endsWith('\n')) {
-            needenter = true;
-        }
-        if (file.isImage) {
-            // 插入图片
-            const imgTag = `![${file.name}](${file.publishUrl})`;
-            setShowText((prev) => prev + (needenter ? '\n' : '') + imgTag);
-        } else {
-            // 插入链接
-            const linkTag = `[${file.name}](${file.publishUrl})`;
-            setShowText((prev) => prev + (needenter ? '\n' : '') + linkTag);
-        }
-    }, [showText]);
+        const prev = realTextRef.current;
+        const needEnter = prev.length > 0 && !prev.endsWith('\n');
+        const tag = file.isImage
+            ? `![${file.name}](${file.publishUrl})`
+            : `[${file.name}](${file.publishUrl})`;
+        writeReal(prev + (needEnter ? '\n' : '') + tag);
+    }, [writeReal]);
 
     useImperativeHandle(functionsRef, () => ({
-        clear,
-        get,
-        hide,
-        show,
-        focus,
-        gptReWrite,
-        addFile
-    }), [clear, focus, get, hide, show, gptReWrite, addFile]);
+        clear, get, hide, show, focus, gptReWrite, addFile,
+    }), [clear, get, hide, show, focus, gptReWrite, addFile]);
 
-    useEffect(() => {
-        onChange(get());
-    }, [get, onChange, showText]);
+    const display = hideMode ? '*'.repeat(Array.from(realText).length) : realText;
+    const textareaValue = composingValue !== null ? composingValue : display;
 
-    const style = {
-        flexGrow: 1,
-        fontSize: '16px',
-    }
-    const style2 = {
-        flex: 1,
-        fontSize: '16px',
-    }
+    const commitFromTextarea = useCallback((v: string) => {
+        if (hideModeRef.current) {
+            writeReal(applyHideEdit(realTextRef.current, v));
+        } else {
+            writeReal(v);
+        }
+    }, [writeReal]);
+
+    const handleChange = useCallback((v: string) => {
+        if (composingRef.current) {
+            // IME 组词中：让 textarea 显示用户正在打的字符，不动 realText
+            setComposingValue(v);
+            return;
+        }
+        commitFromTextarea(v);
+    }, [commitFromTextarea]);
+
+    const handleCompositionStart = useCallback(() => {
+        composingRef.current = true;
+        setComposingValue(hideModeRef.current ? '*'.repeat(Array.from(realTextRef.current).length) : realTextRef.current);
+    }, []);
+
+    const handleCompositionEnd = useCallback((e: React.CompositionEvent<HTMLTextAreaElement>) => {
+        composingRef.current = false;
+        const v = (e.target as HTMLTextAreaElement).value;
+        setComposingValue(null);
+        commitFromTextarea(v);
+    }, [commitFromTextarea]);
+
+    const style = {flexGrow: 1, fontSize: '16px'};
+    const style2 = {flex: 1, fontSize: '16px'};
+
     return <>
         {inAiRewrite || waitAi ? <Flex
             vertical
             gap={"small"}
-            style={{
-                marginBottom: '10px',
-                flexGrow: 1,
-                display: 'flex',
-            }}
+            style={{marginBottom: '10px', flexGrow: 1, display: 'flex'}}
         >
-            <TextArea
-                value={oldText}
-                style={style2}
-                disabled={true}
-            />
-            {waitAi ? <Spin style={{flex: 1, display: 'flex',}}>
+            <TextArea value={oldText} style={style2} disabled={true}/>
+            {waitAi ? <Spin style={{flex: 1, display: 'flex'}}>
                     <TextArea
                         disabled={!inAiRewrite}
                         ref={inputRef}
                         autoFocus
                         style={style2}
                         value={"正在请求AI重写中，请稍等..."}
-                        onChange={(e) => setShowText(e.target.value)}
+                        onChange={() => {}}
                         placeholder={inAiRewrite ? "loading…" : 'Enter换行\nCtrl+Enter发送\ntab切换标签输入'}
                     />
                 </Spin>
@@ -651,67 +641,27 @@ function HideInput({
                     ref={inputRef}
                     autoFocus
                     style={style2}
-                    value={showText}
-                    onChange={(e) => {
-                        setShowText(e.target.value)
-                        // 如果showText出现中文超过两个字则再调用一次hide
-                        if (hideMode) {
-                            let chinineseCount = 0;
-                            for (let i = 0; i < e.target.value.length; i++) {
-                                if (e.target.value.charCodeAt(i) > 255) {
-                                    chinineseCount++;
-                                }
-                            }
-                            if (chinineseCount > 1) {
-                                // 一秒后如果之间没有输入，则调用moreHide
-                                setTimeout(() => {
-                                    if (lastInputTime.current && new Date().getTime() - lastInputTime.current.getTime() > 1000) {
-                                        moreHide();
-                                    }
-                                }, 1000);
-                            }
-                        }
-                    }}
+                    value={textareaValue}
+                    onChange={(e) => handleChange(e.target.value)}
+                    onCompositionStart={handleCompositionStart}
+                    onCompositionEnd={handleCompositionEnd}
                     placeholder={inAiRewrite ? "loading…" : 'Enter换行\nCtrl+Enter发送\ntab切换标签输入'}
                 />
             }
         </Flex> : <div
-            style={{
-                display: 'flex',
-                flexGrow: 1,
-                marginBottom: '10px',
-            }}
+            style={{display: 'flex', flexGrow: 1, marginBottom: '10px'}}
         ><TextArea
             ref={inputRef}
             autoFocus
             style={style}
-            value={showText}
-            onChange={(e) => {
-                setShowText(e.target.value)
-                lastInputTime.current = new Date();
-                // 如果showText出现中文超过两个字则再调用一次hide
-                if (hideMode) {
-                    let chinineseCount = 0;
-                    for (let i = 0; i < e.target.value.length; i++) {
-                        if (e.target.value.charCodeAt(i) > 255) {
-                            chinineseCount++;
-                        }
-                    }
-                    if (chinineseCount > 1) {
-                        // 一秒后如果之间没有输入，则调用moreHide
-                        setTimeout(() => {
-                            if (lastInputTime.current && new Date().getTime() - lastInputTime.current.getTime() > 1000) {
-                                moreHide();
-                            }
-                        }, 1000);
-                    }
-                }
-            }}
+            value={textareaValue}
+            onChange={(e) => handleChange(e.target.value)}
+            onCompositionStart={handleCompositionStart}
+            onCompositionEnd={handleCompositionEnd}
             placeholder={'Enter换行\nCtrl+Enter发送\ntab切换标签输入'}
             onPaste={e => {
                 if (onPasteFile && e.clipboardData && e.clipboardData.files && e.clipboardData.files.length > 0) {
                     e.preventDefault();
-                    // support pasting multiple files, call upload for each
                     const files = Array.from(e.clipboardData.files);
                     files.forEach(f => onPasteFile(f));
                 }
