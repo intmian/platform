@@ -436,16 +436,19 @@
 }
 
 .library-score-gradient-board {
-    border: 1px solid #1f1f1f;
-    background: #141414;
+    border: 1px solid #f0f0f0;
+    border-radius: 8px;
+    background: #fff;
     overflow-x: auto;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
 }
 
 .library-score-gradient-row {
     display: grid;
-    grid-template-columns: 64px minmax(360px, 1fr);
-    min-height: 82px;
-    border-bottom: 1px solid #262626;
+    grid-template-columns: 58px minmax(360px, 1fr);
+    min-height: 88px;
+    border-bottom: 1px solid #f0f0f0;
+    background: #fff;
 }
 
 .library-score-gradient-row:last-child {
@@ -456,11 +459,11 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    color: #000;
-    font-size: 28px;
-    font-weight: 800;
+    color: rgba(0, 0, 0, 0.78);
+    font-size: 24px;
+    font-weight: 700;
     line-height: 1;
-    border-right: 1px solid #1f1f1f;
+    border-right: 1px solid #f0f0f0;
 }
 
 .library-score-gradient-track {
@@ -468,23 +471,27 @@
     align-items: center;
     gap: 8px;
     min-width: 0;
-    padding: 8px;
+    padding: 10px 12px;
+    background: #fafafa;
 }
 
 .library-score-gradient-card {
     position: relative;
     flex: 0 0 auto;
     padding: 0;
-    border: 1px solid rgba(255, 255, 255, 0.16);
-    border-radius: 4px;
+    border: 1px solid #d9d9d9;
+    border-radius: 6px;
     overflow: hidden;
     background: #fff;
     cursor: pointer;
-    box-shadow: none;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+    transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
 }
 
 .library-score-gradient-card:hover {
-    border-color: rgba(255, 255, 255, 0.5);
+    border-color: #1677ff;
+    box-shadow: 0 4px 12px rgba(22, 119, 255, 0.16);
+    transform: translateY(-2px);
 }
 
 .library-score-gradient-placeholder {
@@ -532,17 +539,17 @@
 }
 
 .library-score-gradient-empty {
-    color: rgba(255, 255, 255, 0.45) !important;
+    color: rgba(0, 0, 0, 0.35) !important;
 }
 
 @media (max-width: 768px) {
     .library-score-gradient-row {
-        grid-template-columns: 52px minmax(260px, 1fr);
-        min-height: 74px;
+        grid-template-columns: 48px minmax(260px, 1fr);
+        min-height: 78px;
     }
 
     .library-score-gradient-label {
-        font-size: 24px;
+        font-size: 22px;
     }
 
     .library-score-gradient-track {
