@@ -8,6 +8,7 @@ import {
     Flex,
     message,
     Modal,
+    Segmented,
     Select,
     Space,
     Tag,
@@ -48,12 +49,21 @@ import {
 import {useIsMobile} from '../common/hooksv2';
 import LibraryLoadingImage from './LibraryLoadingImage';
 
-const {Text, Title} = Typography;
+const {Text} = Typography;
 const UNCATEGORIZED_KEY = '__uncategorized__';
 type TimelineStatusOption = LibraryItemStatus | 'addToLibrary' | 'score' | 'note' | 'waitExpired';
+type LibraryTimelineViewMode = 'timeline' | 'scoreGradient';
 const WAIT_EXPIRED_TIMELINE_COLOR = LibraryStatusColors[LibraryItemStatus.GIVE_UP];
 const LIBRARY_PLACEHOLDER_TEXT_WIDTH_RATIO = 0.1;
 const LIBRARY_PLACEHOLDER_PADDING_WIDTH_RATIO = 0.086;
+const SCORE_GRADIENT_LEVELS = [5, 4, 3, 2, 1] as const;
+const SCORE_GRADIENT_COLORS: Record<number, string> = {
+    1: '#ff7875',
+    2: '#ffa940',
+    3: '#fadb14',
+    4: '#73d13d',
+    5: '#40a9ff',
+};
 
 interface DisplayTimelineEntry extends TimelineEntry {
     mergedStartStatus?: LibraryItemStatus.DONE | LibraryItemStatus.GIVE_UP;
@@ -174,6 +184,7 @@ interface LibraryTimelineProps {
 export default function LibraryTimeline({visible, items, onClose, onItemClick}: LibraryTimelineProps) {
     const isMobile = useIsMobile();
     const [selectedYear, setSelectedYear] = useState<number | 'all'>('all');
+    const [viewMode, setViewMode] = useState<LibraryTimelineViewMode>('timeline');
     const [exporting, setExporting] = useState(false);
     const [showExportPreview, setShowExportPreview] = useState(false);
     const exportPreviewRef = useRef<HTMLDivElement>(null);
@@ -469,6 +480,31 @@ export default function LibraryTimeline({visible, items, onClose, onItemClick}: 
         [displayEntries, excludedExportEntryKeys]
     );
     const excludedExportCount = Math.max(0, displayEntries.length - exportPreviewEntries.length);
+
+    const scoreGradientEntriesByLevel = useMemo(() => {
+        const result = new Map<number, DisplayTimelineEntry[]>();
+        SCORE_GRADIENT_LEVELS.forEach((level) => result.set(level, []));
+
+        baseEntries.forEach((entry) => {
+            if (entry.logType !== LibraryLogType.score || !entry.score) {
+                return;
+            }
+            const normalizedScore = Math.max(1, Math.min(5, entry.score));
+            result.get(normalizedScore)?.push(entry);
+        });
+
+        SCORE_GRADIENT_LEVELS.forEach((level) => {
+            result.get(level)?.sort((a, b) => new Date(a.time).getTime() - new Date(b.time).getTime());
+        });
+
+        return result;
+    }, [baseEntries]);
+
+    const scoreGradientTotal = useMemo(() => {
+        return SCORE_GRADIENT_LEVELS.reduce((total, level) => (
+            total + (scoreGradientEntriesByLevel.get(level)?.length || 0)
+        ), 0);
+    }, [scoreGradientEntriesByLevel]);
 
     const getCategoryLabel = (value: string) => {
         if (value === UNCATEGORIZED_KEY) {
@@ -807,6 +843,92 @@ export default function LibraryTimeline({visible, items, onClose, onItemClick}: 
         return <Timeline>{elements}</Timeline>;
     };
 
+    const renderScoreGradientCover = (entry: DisplayTimelineEntry, index: number) => {
+        const coverWidth = isMobile ? 44 : 54;
+        const coverHeight = Math.round(coverWidth * 1.5);
+        const originalCoverUrl = entry.pictureAddress?.trim() || '';
+        const previewCoverUrl = entry.picturePreview?.trim() || entry.pictureAddressPreview?.trim() || '';
+        const realCoverUrl = previewCoverUrl || originalCoverUrl;
+        const placeholderColor = getLibraryCoverPaletteByTitle(entry.itemTitle || '未命名');
+        const scoreText = getScoreText(entry.score || 0, entry.scorePlus, entry.scoreSub);
+        const title = `${entry.itemTitle || '未命名'} · ${scoreText} · ${formatDate(entry.time)}`;
+
+        return (
+            <button
+                key={`${entry.itemId}-${entry.time}-${index}`}
+                type="button"
+                className="library-score-gradient-card"
+                title={title}
+                style={{
+                    width: coverWidth,
+                    height: coverHeight,
+                }}
+                onClick={() => onItemClick?.(entry.itemId)}
+            >
+                <LibraryLoadingImage
+                    src={realCoverUrl}
+                    alt={entry.itemTitle || '未命名'}
+                    containerStyle={{position: 'absolute', inset: 0}}
+                    sizes={isMobile ? '100px' : '140px'}
+                    imageStyle={{
+                        width: '100%',
+                        height: '100%',
+                        objectFit: 'cover',
+                        objectPosition: 'center',
+                        display: 'block',
+                    }}
+                    placeholder={(
+                        <div
+                            className="library-score-gradient-placeholder"
+                            style={{
+                                background: `linear-gradient(140deg, ${placeholderColor.bg} 0%, #ffffff 100%)`,
+                                color: placeholderColor.text,
+                            }}
+                        >
+                            {entry.itemTitle || '未命名'}
+                        </div>
+                    )}
+                />
+                <span className="library-score-gradient-date">{formatDate(entry.time).slice(5)}</span>
+                {(entry.scorePlus || entry.scoreSub) ? (
+                    <span className="library-score-gradient-sign">{entry.scorePlus ? '+' : '-'}</span>
+                ) : null}
+            </button>
+        );
+    };
+
+    const renderScoreGradient = () => {
+        if (scoreGradientTotal === 0) {
+            return <Empty description="暂无评分记录"/>;
+        }
+
+        return (
+            <div className="library-score-gradient-board">
+                {SCORE_GRADIENT_LEVELS.map((level) => {
+                    const entries = scoreGradientEntriesByLevel.get(level) || [];
+                    const label = getScoreText(level);
+                    return (
+                        <div className="library-score-gradient-row" key={level}>
+                            <div
+                                className="library-score-gradient-label"
+                                style={{background: SCORE_GRADIENT_COLORS[level]}}
+                            >
+                                {label}
+                            </div>
+                            <div className="library-score-gradient-track">
+                                {entries.length > 0 ? (
+                                    entries.map(renderScoreGradientCover)
+                                ) : (
+                                    <Text type="secondary" className="library-score-gradient-empty">暂无</Text>
+                                )}
+                            </div>
+                        </div>
+                    );
+                })}
+            </div>
+        );
+    };
+
     return (
         <Drawer
             title={
@@ -817,16 +939,18 @@ export default function LibraryTimeline({visible, items, onClose, onItemClick}: 
                     </Space>
                     <Space>
                         <Text type="secondary" style={{fontSize: 12}}>
-                            共 {displayEntries.length} 条记录
+                            共 {viewMode === 'timeline' ? displayEntries.length : scoreGradientTotal} 条记录
                         </Text>
-                        <Button
-                            type="text"
-                            size="small"
-                            icon={<DownloadOutlined/>}
-                            onClick={openExportPreview}
-                        >
-                            预览导出
-                        </Button>
+                        {viewMode === 'timeline' ? (
+                            <Button
+                                type="text"
+                                size="small"
+                                icon={<DownloadOutlined/>}
+                                onClick={openExportPreview}
+                            >
+                                预览导出
+                            </Button>
+                        ) : null}
                     </Space>
                 </Flex>
             }
@@ -837,6 +961,15 @@ export default function LibraryTimeline({visible, items, onClose, onItemClick}: 
         >
             <div>
                 <Space direction="vertical" size={10} style={{width: '100%', marginBottom: 14}}>
+                    <Segmented
+                        value={viewMode}
+                        onChange={(value) => setViewMode(value as LibraryTimelineViewMode)}
+                        options={[
+                            {value: 'timeline', label: '时间线'},
+                            {value: 'scoreGradient', label: '评分梯度'},
+                        ]}
+                    />
+
                     <Flex gap={8} wrap="wrap" align="center">
                         <Select
                             value={selectedYear}
@@ -890,57 +1023,61 @@ export default function LibraryTimeline({visible, items, onClose, onItemClick}: 
                         </Flex>
                     </Checkbox.Group>
 
-                    <Checkbox.Group
-                        value={selectedStatuses}
-                        onChange={(values) => setSelectedStatuses(values as TimelineStatusOption[])}
-                    >
-                        <Flex gap={8} wrap="wrap">
-                            {statusOptions.map((option) => (
-                                <Checkbox key={String(option.value)} value={option.value}>
-                                    {option.label}
-                                </Checkbox>
-                            ))}
-                        </Flex>
-                    </Checkbox.Group>
+                    {viewMode === 'timeline' ? (
+                        <>
+                            <Checkbox.Group
+                                value={selectedStatuses}
+                                onChange={(values) => setSelectedStatuses(values as TimelineStatusOption[])}
+                            >
+                                <Flex gap={8} wrap="wrap">
+                                    {statusOptions.map((option) => (
+                                        <Checkbox key={String(option.value)} value={option.value}>
+                                            {option.label}
+                                        </Checkbox>
+                                    ))}
+                                </Flex>
+                            </Checkbox.Group>
 
-                    <Space size={8}>
-                        {[
-                            LibraryItemStatus.DOING,
-                            LibraryItemStatus.DONE,
-                            LibraryItemStatus.WAIT,
-                            'waitExpired' as TimelineStatusOption,
-                            LibraryItemStatus.ARCHIVED,
-                        ].map(status => {
-                            const count = displayEntries.reduce((total, entry) => {
-                                const option = getEntryStatusOption(entry);
-                                if (option === status) {
-                                    return total + 1;
-                                }
-                                if (status === LibraryItemStatus.DOING && entry.mergedStartStatus) {
-                                    return total + 1;
-                                }
-                                return total;
-                            }, 0);
-                            if (count === 0) return null;
-                            const color = status === 'waitExpired' ? WAIT_EXPIRED_TIMELINE_COLOR : LibraryStatusColors[status as LibraryItemStatus];
-                            const text = status === 'waitExpired'
-                                ? '鸽了'
-                                : getLogTypeText(LibraryLogType.changeStatus, status as LibraryItemStatus);
-                            return (
-                                <Tag
-                                    key={status}
-                                    color={color}
-                                    style={{margin: 0}}
-                                >
-                                    {text} {count}
-                                </Tag>
-                            );
-                        })}
-                    </Space>
+                            <Space size={8}>
+                                {[
+                                    LibraryItemStatus.DOING,
+                                    LibraryItemStatus.DONE,
+                                    LibraryItemStatus.WAIT,
+                                    'waitExpired' as TimelineStatusOption,
+                                    LibraryItemStatus.ARCHIVED,
+                                ].map(status => {
+                                    const count = displayEntries.reduce((total, entry) => {
+                                        const option = getEntryStatusOption(entry);
+                                        if (option === status) {
+                                            return total + 1;
+                                        }
+                                        if (status === LibraryItemStatus.DOING && entry.mergedStartStatus) {
+                                            return total + 1;
+                                        }
+                                        return total;
+                                    }, 0);
+                                    if (count === 0) return null;
+                                    const color = status === 'waitExpired' ? WAIT_EXPIRED_TIMELINE_COLOR : LibraryStatusColors[status as LibraryItemStatus];
+                                    const text = status === 'waitExpired'
+                                        ? '鸽了'
+                                        : getLogTypeText(LibraryLogType.changeStatus, status as LibraryItemStatus);
+                                    return (
+                                        <Tag
+                                            key={status}
+                                            color={color}
+                                            style={{margin: 0}}
+                                        >
+                                            {text} {count}
+                                        </Tag>
+                                    );
+                                })}
+                            </Space>
+                        </>
+                    ) : null}
 
                 </Space>
 
-                {renderGroupedTimeline()}
+                {viewMode === 'timeline' ? renderGroupedTimeline() : renderScoreGradient()}
             </div>
 
             <Modal

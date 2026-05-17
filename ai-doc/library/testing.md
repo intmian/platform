@@ -1,6 +1,6 @@
 # Library Module Testing
 
-Last verified: 2026-04-22 (interaction verified)
+Last verified: 2026-05-17 (interaction partially verified)
 
 ## Preconditions
 
@@ -104,34 +104,40 @@ Last verified: 2026-04-22 (interaction verified)
    - if `DOING` exists but is hidden by year/cutoff, keep `DONE` / `GIVE_UP` as plain status text
    - timeline filter default should not preselect plain `WAIT` (`搁置`)
    - selecting plain `WAIT` still shows `搁置`; `waitExpired` (`鸽了`) remains a separate filter option
-8. Guide modal:
+8. Timeline score-gradient view:
+   - open timeline drawer and switch `时间线 -> 评分梯度`
+   - verify year selector supports `全部年份` and individual years for score logs
+   - verify category filters also narrow score-gradient rows
+   - verify rows render from top to bottom as `满/优/合/差/零`, each score log appears in its matching row, and score `+/-` markers remain visible
+   - click a cover in the gradient board and verify it opens that item detail
+9. Guide modal:
    - click title-row `?` button
    - verify modal `娱乐库状态与评分说明` opens
    - verify status section contains `等待/进行中/搁置/鸽了/已完成/放弃` tags
    - verify scoring section contains total-score summary plus `SE / CA / IV` dimension explanations
-9. `updatedAt` trigger regression:
+10. `updatedAt` trigger regression:
    - click detail `刷新` => `updatedAt` changes
    - add/edit only `备注` or set `时间线断点` => `updatedAt` unchanged
    - add status/score log and ensure it becomes latest non-note/non-cutoff log => `updatedAt` follows latest log time
-10. Score log interaction:
+11. Score log interaction:
     - simple-score and complex-score rows should both be clickable
     - clicking either should open the score detail popover
     - `设为主评分` star button should still work without being swallowed by the popover trigger
-11. Score comment preview:
+12. Score comment preview:
     - timeline/detail score comment preview should stay on a single line
     - long preview should render as `前缀...(N字)`
-12. Detail note visibility selector:
+13. Detail note visibility selector:
     - verify header selector options `隐藏 / 缩略 / 显示`
     - default should be `缩略`
     - in `缩略`, consecutive note logs collapse into `x条备注` and no right-side edit/delete/time controls are rendered for the collapsed note row
     - collapsed time range should show plain `开始时间 - 结束时间` text, without `（开始）/（结束）` suffixes
     - in `隐藏`, note rows disappear
     - in `显示`, each note row renders content plus edit/delete/time controls
-13. Detail quick note entry:
+14. Detail quick note entry:
     - click `体验记录` header `新增最新备注`
     - verify it opens the same `添加备注` modal as the current-round footer button
     - submit and verify the new note is appended into the current/latest round
-14. Round maintenance regression:
+15. Round maintenance regression:
     - open detail -> current round header should show icon-only actions for rename / adjust start time / delete
     - hover the icons and verify tooltip text matches the action
     - when only one round exists, delete-round icon should stay disabled

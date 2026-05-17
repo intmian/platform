@@ -1029,6 +1029,8 @@ export function extractTimeline(items: LibraryItemFull[]): TimelineEntry[] {
                     logType: log.type,
                     status: log.status,
                     score: log.score,
+                    scorePlus: log.scorePlus,
+                    scoreSub: log.scoreSub,
                     comment: log.comment,
                 });
             }

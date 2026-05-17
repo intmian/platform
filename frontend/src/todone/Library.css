@@ -435,6 +435,122 @@
     font-size: 11px;
 }
 
+.library-score-gradient-board {
+    border: 1px solid #1f1f1f;
+    background: #141414;
+    overflow-x: auto;
+}
+
+.library-score-gradient-row {
+    display: grid;
+    grid-template-columns: 64px minmax(360px, 1fr);
+    min-height: 82px;
+    border-bottom: 1px solid #262626;
+}
+
+.library-score-gradient-row:last-child {
+    border-bottom: 0;
+}
+
+.library-score-gradient-label {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #000;
+    font-size: 28px;
+    font-weight: 800;
+    line-height: 1;
+    border-right: 1px solid #1f1f1f;
+}
+
+.library-score-gradient-track {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+    padding: 8px;
+}
+
+.library-score-gradient-card {
+    position: relative;
+    flex: 0 0 auto;
+    padding: 0;
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    border-radius: 4px;
+    overflow: hidden;
+    background: #fff;
+    cursor: pointer;
+    box-shadow: none;
+}
+
+.library-score-gradient-card:hover {
+    border-color: rgba(255, 255, 255, 0.5);
+}
+
+.library-score-gradient-placeholder {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 5px;
+    box-sizing: border-box;
+    text-align: center;
+    font-size: 9px;
+    font-weight: 600;
+    line-height: 1.25;
+    word-break: normal;
+    overflow-wrap: anywhere;
+    overflow: hidden;
+}
+
+.library-score-gradient-date,
+.library-score-gradient-sign {
+    position: absolute;
+    z-index: 2;
+    border-radius: 3px;
+    background: rgba(0, 0, 0, 0.68);
+    color: #fff;
+    font-size: 10px;
+    line-height: 16px;
+    pointer-events: none;
+}
+
+.library-score-gradient-date {
+    left: 3px;
+    right: 3px;
+    bottom: 3px;
+    text-align: center;
+}
+
+.library-score-gradient-sign {
+    top: 3px;
+    right: 3px;
+    min-width: 16px;
+    text-align: center;
+    font-weight: 700;
+}
+
+.library-score-gradient-empty {
+    color: rgba(255, 255, 255, 0.45) !important;
+}
+
+@media (max-width: 768px) {
+    .library-score-gradient-row {
+        grid-template-columns: 52px minmax(260px, 1fr);
+        min-height: 74px;
+    }
+
+    .library-score-gradient-label {
+        font-size: 24px;
+    }
+
+    .library-score-gradient-track {
+        gap: 6px;
+        padding: 6px;
+    }
+}
+
 /* 底部信息条 */
 .library-container .library-card-hover-title {
     position: absolute;

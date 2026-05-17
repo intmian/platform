@@ -204,6 +204,8 @@ export interface TimelineEntry {
     logType: LibraryLogType
     status?: LibraryItemStatus
     score?: number
+    scorePlus?: boolean
+    scoreSub?: boolean
     comment?: string
 }
 
