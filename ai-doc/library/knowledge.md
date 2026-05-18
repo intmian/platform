@@ -1,6 +1,6 @@
 # Library Module Knowledge
 
-Last verified: 2026-05-17 (code inspected; interaction partially run)
+Last verified: 2026-05-18 (code inspected; interaction skipped by request)
 
 ## Module role and loading boundary
 
@@ -153,7 +153,7 @@ Timeline rules:
    - once matched during rename/start-time edit, the log is normalized by writing back `autoRoundStart=true`
 8. Timeline drawer has two views:
    - `时间线`: existing chronological log list with status/category/year filters and export preview.
-   - `评分梯度`: score-log-only board grouped by main score levels from top to bottom as `满/优/合/差/零`; it reuses the timeline year and category filters, keeps score `+/-` markers, orders covers chronologically within each score row, and clicking a cover opens the item detail.
+   - `评分梯度`: score-log-only board grouped by main score levels from top to bottom as `满/优/合/差/零`; it reuses the timeline year and category filters, keeps score `+/-` markers, orders covers within each score row by sign (`+`, none, `-`) and then chronologically within the same sign, wraps many covers onto additional lines, and clicking a cover opens the item detail.
 
 Timeline export preview rules:
 

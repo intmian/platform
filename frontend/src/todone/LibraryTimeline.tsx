@@ -494,7 +494,18 @@ export default function LibraryTimeline({visible, items, onClose, onItemClick}: 
         });
 
         SCORE_GRADIENT_LEVELS.forEach((level) => {
-            result.get(level)?.sort((a, b) => new Date(a.time).getTime() - new Date(b.time).getTime());
+            result.get(level)?.sort((a, b) => {
+                const signRank = (entry: DisplayTimelineEntry) => {
+                    if (entry.scorePlus) return 0;
+                    if (entry.scoreSub) return 2;
+                    return 1;
+                };
+                const signDiff = signRank(a) - signRank(b);
+                if (signDiff !== 0) {
+                    return signDiff;
+                }
+                return new Date(a.time).getTime() - new Date(b.time).getTime();
+            });
         });
 
         return result;

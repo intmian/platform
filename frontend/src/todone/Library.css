@@ -439,13 +439,13 @@
     border: 1px solid #f0f0f0;
     border-radius: 8px;
     background: #fff;
-    overflow-x: auto;
+    overflow-x: hidden;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
 }
 
 .library-score-gradient-row {
     display: grid;
-    grid-template-columns: 58px minmax(360px, 1fr);
+    grid-template-columns: 58px minmax(0, 1fr);
     min-height: 88px;
     border-bottom: 1px solid #f0f0f0;
     background: #fff;
@@ -468,7 +468,9 @@
 
 .library-score-gradient-track {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
+    align-content: flex-start;
     gap: 8px;
     min-width: 0;
     padding: 10px 12px;
@@ -544,7 +546,7 @@
 
 @media (max-width: 768px) {
     .library-score-gradient-row {
-        grid-template-columns: 48px minmax(260px, 1fr);
+        grid-template-columns: 48px minmax(0, 1fr);
         min-height: 78px;
     }
 

@@ -1,6 +1,6 @@
 # Library Module Testing
 
-Last verified: 2026-05-17 (interaction partially verified)
+Last verified: 2026-05-18 (code inspected; interaction skipped by request)
 
 ## Preconditions
 
@@ -108,7 +108,7 @@ Last verified: 2026-05-17 (interaction partially verified)
    - open timeline drawer and switch `时间线 -> 评分梯度`
    - verify year selector supports `全部年份` and individual years for score logs
    - verify category filters also narrow score-gradient rows
-   - verify rows render from top to bottom as `满/优/合/差/零`, each score log appears in its matching row, and score `+/-` markers remain visible
+   - verify rows render from top to bottom as `满/优/合/差/零`, each score log appears in its matching row, score `+/-` markers remain visible, same-row entries sort by `+`, none, `-` before time, and many entries wrap inside the row instead of overflowing horizontally
    - click a cover in the gradient board and verify it opens that item detail
 9. Guide modal:
    - click title-row `?` button
