@@ -44,7 +44,7 @@ func TestParseSubscriptionInfo(t *testing.T) {
 - {name: "Expire: 2026-10-16", server: example.com, port: 10011, type: ss}
 `)
 	now := time.Date(2026, 10, 10, 12, 0, 0, 0, time.Local)
-	info, err := parseSubscriptionInfo(body, now)
+	info, err := parseSubscriptionInfo(nil, body, now)
 	if err != nil {
 		t.Fatalf("parse info failed: %v", err)
 	}
@@ -59,6 +59,25 @@ func TestParseSubscriptionInfo(t *testing.T) {
 	}
 	if info.UsagePercent < 10.5 || info.UsagePercent > 10.6 {
 		t.Fatalf("unexpected usage percent: %f", info.UsagePercent)
+	}
+}
+
+func TestParseSubscriptionInfoFromHeader(t *testing.T) {
+	header := http.Header{}
+	header.Set("subscription-userinfo", "upload=289100185; download=13717073152; total=161061273600; expire=1792080000")
+	now := time.Date(2026, 10, 10, 12, 0, 0, 0, time.Local)
+	info, err := parseSubscriptionInfo(header, []byte("proxies:\n  - name: demo"), now)
+	if err != nil {
+		t.Fatalf("parse info failed: %v", err)
+	}
+	if info.TrafficRaw != "13 GB | 150 GB" {
+		t.Fatalf("unexpected traffic raw: %s", info.TrafficRaw)
+	}
+	if info.UsagePercent != 8.7 {
+		t.Fatalf("unexpected usage percent: %f", info.UsagePercent)
+	}
+	if info.ExpireAt.Format("2006-01-02") != "2026-10-16" {
+		t.Fatalf("unexpected expire: %s", info.ExpireAt.Format("2006-01-02"))
 	}
 }
 
@@ -348,6 +367,71 @@ func TestSubscriptionDownloadUsesUpstreamContentDispositionFirst(t *testing.T) {
 	}
 	if got := recorder.Header().Get("Content-Disposition"); strings.Contains(got, "from-query.yaml") {
 		t.Fatalf("expected not to use query filename when upstream header exists, got %s", got)
+	}
+}
+
+func TestSubscriptionShareLinkFallsBackToCache(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	mgr := newTestSubscriptionMgr(t)
+	upstreamOK := true
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if !upstreamOK {
+			w.WriteHeader(http.StatusBadGateway)
+			return
+		}
+		w.Header().Set("Content-Type", "text/plain;charset=utf-8")
+		w.Header().Set("Content-Disposition", `attachment; filename="cached.yaml"`)
+		_, _ = w.Write([]byte("cached subscription"))
+	}))
+	defer upstream.Close()
+
+	item, err := mgr.create("alice", subscriptionCreateReq{
+		Name:         "cache",
+		UpstreamURL:  upstream.URL,
+		CacheEnabled: true,
+	})
+	if err != nil {
+		t.Fatalf("create failed: %v", err)
+	}
+
+	web := &webMgr{plat: mgr.plat}
+	recorder := httptest.NewRecorder()
+	ctx, _ := gin.CreateTestContext(recorder)
+	req := httptest.NewRequest(http.MethodGet, item.ShareURL, nil)
+	ctx.Request = req
+	ctx.Params = gin.Params{
+		{Key: "username", Value: "alice"},
+		{Key: "token", Value: item.ShareURL[strings.LastIndex(item.ShareURL, "/")+1:]},
+	}
+	web.shareLinkDownload(ctx)
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", recorder.Code)
+	}
+	if recorder.Body.String() != "cached subscription" {
+		t.Fatalf("unexpected body: %s", recorder.Body.String())
+	}
+
+	upstreamOK = false
+	recorder = httptest.NewRecorder()
+	ctx, _ = gin.CreateTestContext(recorder)
+	req = httptest.NewRequest(http.MethodGet, item.ShareURL, nil)
+	ctx.Request = req
+	ctx.Params = gin.Params{
+		{Key: "username", Value: "alice"},
+		{Key: "token", Value: item.ShareURL[strings.LastIndex(item.ShareURL, "/")+1:]},
+	}
+	web.shareLinkDownload(ctx)
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("expected cache 200, got %d", recorder.Code)
+	}
+	if recorder.Header().Get("X-Subscription-Cache") != "HIT" {
+		t.Fatalf("expected cache hit header")
+	}
+	if recorder.Body.String() != "cached subscription" {
+		t.Fatalf("unexpected cached body: %s", recorder.Body.String())
+	}
+	if got := recorder.Header().Get("Content-Disposition"); !strings.Contains(got, "cached.yaml") {
+		t.Fatalf("expected cached content-disposition, got %s", got)
 	}
 }
 

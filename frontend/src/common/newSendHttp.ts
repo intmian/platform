@@ -80,6 +80,9 @@ export interface SubscriptionItem {
     workerForwardUrl: string
     workerForwardEnabled: boolean
     monitorEnabled: boolean
+    cacheEnabled: boolean
+    cacheAvailable: boolean
+    cachedAt: string
     shareUrl: string
     lastCheckAt: string
     lastCheckStatus: string
@@ -108,6 +111,7 @@ export async function sendSubscriptionCreate(req: {
     workerForwardUrl: string
     workerForwardEnabled: boolean
     monitorEnabled: boolean
+    cacheEnabled: boolean
 }) {
     return UniPost(config.api_base_url + '/misc/subscription/create', req)
 }
@@ -119,6 +123,7 @@ export async function sendSubscriptionUpdate(req: {
     workerForwardUrl: string
     workerForwardEnabled: boolean
     monitorEnabled: boolean
+    cacheEnabled: boolean
 }) {
     return UniPost(config.api_base_url + '/misc/subscription/update', req)
 }

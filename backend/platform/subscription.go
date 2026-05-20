@@ -32,27 +32,33 @@ const (
 )
 
 type subscriptionRecord struct {
-	ID               string                    `json:"id"`
-	User             string                    `json:"user"`
-	Name             string                    `json:"name"`
-	UpstreamURL      string                    `json:"upstreamUrl"`
-	WorkerForwardURL string                    `json:"workerForwardUrl"`
-	WorkerEnabled    bool                      `json:"workerForwardEnabled"`
-	ShareToken       string                    `json:"shareToken"`
-	MonitorEnabled   bool                      `json:"monitorEnabled"`
-	CreatedAt        time.Time                 `json:"createdAt"`
-	UpdatedAt        time.Time                 `json:"updatedAt"`
-	LastCheckAt      time.Time                 `json:"lastCheckAt"`
-	LastCheckStatus  string                    `json:"lastCheckStatus"`
-	LastError        string                    `json:"lastError"`
-	LastTrafficRaw   string                    `json:"lastTrafficRaw"`
-	LastUsedBytes    int64                     `json:"lastUsedBytes"`
-	LastTotalBytes   int64                     `json:"lastTotalBytes"`
-	LastUsagePercent float64                   `json:"lastUsagePercent"`
-	LastExpireAt     time.Time                 `json:"lastExpireAt"`
-	LastExpireRemain int                       `json:"lastExpireRemainDays"`
-	UsageAlerted     subscriptionUsageAlerted  `json:"usageAlerted"`
-	ExpireAlerted    subscriptionExpireAlerted `json:"expireAlerted"`
+	ID                       string                    `json:"id"`
+	User                     string                    `json:"user"`
+	Name                     string                    `json:"name"`
+	UpstreamURL              string                    `json:"upstreamUrl"`
+	WorkerForwardURL         string                    `json:"workerForwardUrl"`
+	WorkerEnabled            bool                      `json:"workerForwardEnabled"`
+	ShareToken               string                    `json:"shareToken"`
+	MonitorEnabled           bool                      `json:"monitorEnabled"`
+	CacheEnabled             bool                      `json:"cacheEnabled"`
+	CachedBody               []byte                    `json:"cachedBody,omitempty"`
+	CachedContentType        string                    `json:"cachedContentType"`
+	CachedContentEncoding    string                    `json:"cachedContentEncoding"`
+	CachedContentDisposition string                    `json:"cachedContentDisposition"`
+	CachedAt                 time.Time                 `json:"cachedAt"`
+	CreatedAt                time.Time                 `json:"createdAt"`
+	UpdatedAt                time.Time                 `json:"updatedAt"`
+	LastCheckAt              time.Time                 `json:"lastCheckAt"`
+	LastCheckStatus          string                    `json:"lastCheckStatus"`
+	LastError                string                    `json:"lastError"`
+	LastTrafficRaw           string                    `json:"lastTrafficRaw"`
+	LastUsedBytes            int64                     `json:"lastUsedBytes"`
+	LastTotalBytes           int64                     `json:"lastTotalBytes"`
+	LastUsagePercent         float64                   `json:"lastUsagePercent"`
+	LastExpireAt             time.Time                 `json:"lastExpireAt"`
+	LastExpireRemain         int                       `json:"lastExpireRemainDays"`
+	UsageAlerted             subscriptionUsageAlerted  `json:"usageAlerted"`
+	ExpireAlerted            subscriptionExpireAlerted `json:"expireAlerted"`
 }
 
 type subscriptionUsageAlerted struct {
@@ -74,6 +80,9 @@ type subscriptionListItem struct {
 	WorkerForwardURL string  `json:"workerForwardUrl"`
 	WorkerEnabled    bool    `json:"workerForwardEnabled"`
 	MonitorEnabled   bool    `json:"monitorEnabled"`
+	CacheEnabled     bool    `json:"cacheEnabled"`
+	CacheAvailable   bool    `json:"cacheAvailable"`
+	CachedAt         string  `json:"cachedAt"`
 	ShareURL         string  `json:"shareUrl"`
 	LastCheckAt      string  `json:"lastCheckAt"`
 	LastCheckStatus  string  `json:"lastCheckStatus"`
@@ -94,6 +103,7 @@ type subscriptionCreateReq struct {
 	WorkerForwardURL     string `json:"workerForwardUrl"`
 	WorkerForwardEnabled bool   `json:"workerForwardEnabled"`
 	MonitorEnabled       bool   `json:"monitorEnabled"`
+	CacheEnabled         bool   `json:"cacheEnabled"`
 }
 
 type subscriptionUpdateReq struct {
@@ -103,6 +113,7 @@ type subscriptionUpdateReq struct {
 	WorkerForwardURL     string `json:"workerForwardUrl"`
 	WorkerForwardEnabled bool   `json:"workerForwardEnabled"`
 	MonitorEnabled       bool   `json:"monitorEnabled"`
+	CacheEnabled         bool   `json:"cacheEnabled"`
 }
 
 type subscriptionDeleteReq struct {
@@ -308,11 +319,16 @@ func (m *subscriptionMgr) toListItem(record subscriptionRecord) subscriptionList
 		WorkerForwardURL: record.WorkerForwardURL,
 		WorkerEnabled:    record.WorkerEnabled,
 		MonitorEnabled:   record.MonitorEnabled,
+		CacheEnabled:     record.CacheEnabled,
+		CacheAvailable:   record.hasCache(),
 		ShareURL:         m.buildPublicShareURL(record.User, record.ShareToken),
 		LastCheckStatus:  record.LastCheckStatus,
 		LastError:        record.LastError,
 		TrafficSummary:   record.LastTrafficRaw,
 		UsagePercent:     record.LastUsagePercent,
+	}
+	if !record.CachedAt.IsZero() {
+		item.CachedAt = record.CachedAt.Format(time.RFC3339)
 	}
 	if !record.LastCheckAt.IsZero() {
 		item.LastCheckAt = record.LastCheckAt.Format(time.RFC3339)
@@ -372,6 +388,7 @@ func (m *subscriptionMgr) create(user string, req subscriptionCreateReq) (subscr
 		WorkerEnabled:    req.WorkerForwardEnabled,
 		ShareToken:       newSubscriptionToken(),
 		MonitorEnabled:   req.MonitorEnabled,
+		CacheEnabled:     req.CacheEnabled,
 		CreatedAt:        time.Now(),
 		UpdatedAt:        time.Now(),
 		LastCheckStatus:  subscriptionStatusNever,
@@ -428,17 +445,26 @@ func (m *subscriptionMgr) update(user string, req subscriptionUpdateReq) (subscr
 	oldURL := record.UpstreamURL
 	oldWorkerURL := record.WorkerForwardURL
 	oldWorkerEnabled := record.WorkerEnabled
+	oldCacheEnabled := record.CacheEnabled
 	record.Name = strings.TrimSpace(req.Name)
 	record.UpstreamURL = strings.TrimSpace(req.UpstreamURL)
 	record.WorkerForwardURL = normalizeWorkerForwardURL(req.WorkerForwardURL)
 	record.WorkerEnabled = req.WorkerForwardEnabled
 	record.MonitorEnabled = req.MonitorEnabled
+	record.CacheEnabled = req.CacheEnabled
 	record.UpdatedAt = time.Now()
 	if oldURL != record.UpstreamURL ||
 		oldWorkerURL != record.WorkerForwardURL ||
 		oldWorkerEnabled != record.WorkerEnabled ||
 		!record.MonitorEnabled {
 		record.resetMonitorState()
+	}
+	if oldURL != record.UpstreamURL ||
+		oldWorkerURL != record.WorkerForwardURL ||
+		oldWorkerEnabled != record.WorkerEnabled ||
+		oldCacheEnabled != record.CacheEnabled ||
+		!record.CacheEnabled {
+		record.clearCache()
 	}
 	records[index] = record
 	if err = m.saveRecordsLocked(user, records); err != nil {
@@ -626,6 +652,37 @@ func (m *subscriptionMgr) updateMonitorSuccess(user, recordID string, info subsc
 	}
 }
 
+func (m *subscriptionMgr) updateCache(user, recordID string, body []byte, header http.Header, disposition string) {
+	if len(body) == 0 {
+		return
+	}
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	records, err := m.loadRecordsLocked(user)
+	if err != nil {
+		m.logWarning("load records failed on cache update: %v", err)
+		return
+	}
+	for i := range records {
+		if records[i].ID != recordID {
+			continue
+		}
+		if !records[i].CacheEnabled {
+			return
+		}
+		records[i].CachedBody = append([]byte(nil), body...)
+		records[i].CachedContentType = header.Get("Content-Type")
+		records[i].CachedContentEncoding = header.Get("Content-Encoding")
+		records[i].CachedContentDisposition = disposition
+		records[i].CachedAt = time.Now()
+		records[i].UpdatedAt = time.Now()
+		if err = m.saveRecordsLocked(user, records); err != nil {
+			m.logWarning("save records failed on cache update: %v", err)
+		}
+		return
+	}
+}
+
 func (m *subscriptionMgr) monitorLoop() {
 	ticker := time.NewTicker(time.Hour)
 	defer ticker.Stop()
@@ -675,9 +732,9 @@ func (m *subscriptionMgr) monitorRecord(record subscriptionRecord) {
 		m.updateMonitorFailure(record.User, record.ID, subscriptionStatusRequestFail, err.Error())
 		return
 	}
-	body, err := m.fetchSubscriptionBody(fetchURL)
+	body, header, err := m.fetchSubscriptionBody(fetchURL)
 	if err != nil {
-		body, err = m.fetchSubscriptionBody(fetchURL)
+		body, header, err = m.fetchSubscriptionBody(fetchURL)
 		if err != nil {
 			msg := fmt.Sprintf("user=%s name=%s upstream=%s fetch=%s check failed: %v", record.User, record.Name, record.UpstreamURL, fetchURL, err)
 			m.logInfo(msg)
@@ -686,7 +743,8 @@ func (m *subscriptionMgr) monitorRecord(record subscriptionRecord) {
 			return
 		}
 	}
-	info, err := parseSubscriptionInfo(body, time.Now())
+	m.updateCache(record.User, record.ID, body, header, buildDownloadContentDisposition(record, header.Get("Content-Disposition")))
+	info, err := parseSubscriptionInfo(header, body, time.Now())
 	if err != nil {
 		m.logInfo("user=%s name=%s parse failed: %v", record.User, record.Name, err)
 		m.updateMonitorFailure(record.User, record.ID, subscriptionStatusParseFail, err.Error())
@@ -695,16 +753,17 @@ func (m *subscriptionMgr) monitorRecord(record subscriptionRecord) {
 	m.updateMonitorSuccess(record.User, record.ID, info)
 }
 
-func (m *subscriptionMgr) fetchSubscriptionBody(url string) ([]byte, error) {
+func (m *subscriptionMgr) fetchSubscriptionBody(url string) ([]byte, http.Header, error) {
 	resp, err := m.client.Get(url)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return nil, fmt.Errorf("status %d", resp.StatusCode)
+		return nil, nil, fmt.Errorf("status %d", resp.StatusCode)
 	}
-	return io.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
+	return body, resp.Header.Clone(), err
 }
 
 func (record *subscriptionRecord) resetMonitorState() {
@@ -718,6 +777,18 @@ func (record *subscriptionRecord) resetMonitorState() {
 	record.LastExpireAt = time.Time{}
 	record.LastExpireRemain = 0
 	record.clearAlerts()
+}
+
+func (record subscriptionRecord) hasCache() bool {
+	return record.CacheEnabled && len(record.CachedBody) > 0
+}
+
+func (record *subscriptionRecord) clearCache() {
+	record.CachedBody = nil
+	record.CachedContentType = ""
+	record.CachedContentEncoding = ""
+	record.CachedContentDisposition = ""
+	record.CachedAt = time.Time{}
 }
 
 func (record *subscriptionRecord) clearAlerts() {
@@ -773,7 +844,10 @@ func shouldResetAlertState(record subscriptionRecord, info subscriptionInfo) boo
 	return false
 }
 
-func parseSubscriptionInfo(body []byte, now time.Time) (subscriptionInfo, error) {
+func parseSubscriptionInfo(header http.Header, body []byte, now time.Time) (subscriptionInfo, error) {
+	if info, err := parseSubscriptionUserinfo(header.Get("subscription-userinfo"), now); err == nil {
+		return info, nil
+	}
 	text := string(body)
 	trafficRaw := extractSubscriptionField(text, `Traffic:\s*([^"]+)`)
 	expireRaw := extractSubscriptionField(text, `Expire:\s*([0-9]{4}-[0-9]{2}-[0-9]{2})`)
@@ -800,6 +874,56 @@ func parseSubscriptionInfo(body []byte, now time.Time) (subscriptionInfo, error)
 		ExpireAt:         expireAt,
 		ExpireRemainDays: calcExpireRemainDays(expireAt, now),
 	}, nil
+}
+
+func parseSubscriptionUserinfo(raw string, now time.Time) (subscriptionInfo, error) {
+	if strings.TrimSpace(raw) == "" {
+		return subscriptionInfo{}, errors.New("subscription-userinfo not found")
+	}
+	fields := map[string]int64{}
+	for _, part := range strings.Split(raw, ";") {
+		keyValue := strings.SplitN(strings.TrimSpace(part), "=", 2)
+		if len(keyValue) != 2 {
+			continue
+		}
+		value, err := strconv.ParseInt(strings.TrimSpace(keyValue[1]), 10, 64)
+		if err != nil {
+			return subscriptionInfo{}, err
+		}
+		fields[strings.ToLower(strings.TrimSpace(keyValue[0]))] = value
+	}
+	upload, hasUpload := fields["upload"]
+	download, hasDownload := fields["download"]
+	totalBytes, hasTotal := fields["total"]
+	expireUnix, hasExpire := fields["expire"]
+	if !hasUpload || !hasDownload || !hasTotal || !hasExpire || totalBytes <= 0 {
+		return subscriptionInfo{}, errors.New("subscription-userinfo invalid")
+	}
+	usedBytes := upload + download
+	expireAt := time.Unix(expireUnix, 0)
+	trafficRaw := fmt.Sprintf("%s | %s", formatSubscriptionBytes(usedBytes), formatSubscriptionBytes(totalBytes))
+	return subscriptionInfo{
+		TrafficRaw:       trafficRaw,
+		UsedBytes:        usedBytes,
+		TotalBytes:       totalBytes,
+		UsagePercent:     math.Round(float64(usedBytes)/float64(totalBytes)*1000) / 10,
+		ExpireAt:         expireAt,
+		ExpireRemainDays: calcExpireRemainDays(expireAt, now),
+	}, nil
+}
+
+func formatSubscriptionBytes(size int64) string {
+	units := []string{"B", "KB", "MB", "GB", "TB", "PB"}
+	value := float64(size)
+	unitIndex := 0
+	for value >= 1024 && unitIndex < len(units)-1 {
+		value = value / 1024
+		unitIndex++
+	}
+	if value >= 10 || unitIndex == 0 {
+		return fmt.Sprintf("%.0f %s", math.Round(value), units[unitIndex])
+	}
+	return fmt.Sprintf("%.1f %s", math.Round(value*10)/10, units[unitIndex])
 }
 
 func extractSubscriptionField(text, pattern string) string {
@@ -993,34 +1117,79 @@ func (m *webMgr) shareLinkDownload(c *gin.Context) {
 	}
 	fetchURL, err := m.plat.subscriptionMgr.buildFetchURL(*record)
 	if err != nil {
+		if writeCachedSubscription(c, *record) {
+			return
+		}
 		c.String(http.StatusBadGateway, "bad upstream")
 		return
 	}
 	req, err := http.NewRequestWithContext(c.Request.Context(), http.MethodGet, fetchURL, nil)
 	if err != nil {
+		if writeCachedSubscription(c, *record) {
+			return
+		}
 		c.String(http.StatusBadGateway, "bad upstream")
 		return
 	}
 	resp, err := m.plat.subscriptionMgr.client.Do(req)
 	if err != nil {
+		if writeCachedSubscription(c, *record) {
+			return
+		}
 		c.String(http.StatusBadGateway, "bad upstream")
 		return
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		if writeCachedSubscription(c, *record) {
+			return
+		}
 		c.String(http.StatusBadGateway, "bad upstream")
 		return
 	}
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		if writeCachedSubscription(c, *record) {
+			return
+		}
+		c.String(http.StatusBadGateway, "bad upstream")
+		return
+	}
+	disposition := buildDownloadContentDisposition(*record, resp.Header.Get("Content-Disposition"))
+	m.plat.subscriptionMgr.updateCache(record.User, record.ID, body, resp.Header, disposition)
 	for _, key := range []string{"Content-Type", "Content-Encoding"} {
 		value := resp.Header.Get(key)
 		if value != "" {
 			c.Header(key, value)
 		}
 	}
-	c.Header("Content-Disposition", buildDownloadContentDisposition(*record, resp.Header.Get("Content-Disposition")))
+	c.Header("Content-Disposition", disposition)
 	if c.Writer.Header().Get("Content-Type") == "" {
 		c.Header("Content-Type", "application/octet-stream")
 	}
 	c.Status(resp.StatusCode)
-	_, _ = io.Copy(c.Writer, resp.Body)
+	_, _ = c.Writer.Write(body)
+}
+
+func writeCachedSubscription(c *gin.Context, record subscriptionRecord) bool {
+	if !record.hasCache() {
+		return false
+	}
+	if record.CachedContentType != "" {
+		c.Header("Content-Type", record.CachedContentType)
+	} else {
+		c.Header("Content-Type", "application/octet-stream")
+	}
+	if record.CachedContentEncoding != "" {
+		c.Header("Content-Encoding", record.CachedContentEncoding)
+	}
+	if record.CachedContentDisposition != "" {
+		c.Header("Content-Disposition", record.CachedContentDisposition)
+	} else {
+		c.Header("Content-Disposition", buildDownloadContentDisposition(record, ""))
+	}
+	c.Header("X-Subscription-Cache", "HIT")
+	c.Status(http.StatusOK)
+	_, _ = c.Writer.Write(record.CachedBody)
+	return true
 }

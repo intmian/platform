@@ -23,6 +23,7 @@ import {
     CopyOutlined,
     DeleteOutlined,
     EditOutlined,
+    HddOutlined,
     LinkOutlined,
     PlusOutlined,
     RedoOutlined
@@ -53,6 +54,7 @@ type FormValue = {
     workerForwardUrl: string
     workerForwardEnabled: boolean
     monitorEnabled: boolean
+    cacheEnabled: boolean
 }
 
 function getSubscriptionColumnCount(viewportWidth: number, isMobile: boolean) {
@@ -204,6 +206,31 @@ function renderProxyOnlyTag(item: SubscriptionItem) {
     </Tag>;
 }
 
+function renderCacheTag(item: SubscriptionItem) {
+    if (!item.cacheEnabled) {
+        return null;
+    }
+    return <Tag
+        bordered
+        color={item.cacheAvailable ? "processing" : undefined}
+        style={{
+            borderRadius: 999,
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 4,
+            minHeight: 24,
+            marginInlineEnd: 0,
+            paddingInline: 8,
+            fontSize: 12,
+            fontWeight: 500,
+            lineHeight: 1,
+        }}
+    >
+        <HddOutlined/>
+        Cache {item.cacheAvailable ? "Ready" : "On"}
+    </Tag>;
+}
+
 function MetricCard(props: {
     label: string
     value: string
@@ -285,6 +312,7 @@ export default function SubscriptionPage() {
             workerForwardUrl: "",
             workerForwardEnabled: false,
             monitorEnabled: false,
+            cacheEnabled: false,
         });
         setModalOpen(true);
     };
@@ -297,6 +325,7 @@ export default function SubscriptionPage() {
             workerForwardUrl: item.workerForwardUrl,
             workerForwardEnabled: item.workerForwardEnabled,
             monitorEnabled: item.monitorEnabled,
+            cacheEnabled: item.cacheEnabled,
         });
         setModalOpen(true);
     };
@@ -312,6 +341,7 @@ export default function SubscriptionPage() {
                 workerForwardUrl: values.workerForwardUrl,
                 workerForwardEnabled: values.workerForwardEnabled,
                 monitorEnabled: values.monitorEnabled,
+                cacheEnabled: values.cacheEnabled,
             })
             : await sendSubscriptionCreate(values);
         setSaving(false);
@@ -448,6 +478,7 @@ export default function SubscriptionPage() {
                             <span style={{fontWeight: 600, minWidth: 0}}>{item.name}</span>
                             {renderMonitorTag(item)}
                             {renderProxyOnlyTag(item)}
+                            {renderCacheTag(item)}
                         </Flex>}
                         extra={<Space size="small">
                             {shouldShowHeaderStatus(item) ? formatCheckStatus(item) : null}
@@ -530,7 +561,7 @@ export default function SubscriptionPage() {
             okText={editingItem ? "保存" : "创建"}
             confirmLoading={saving}
         >
-            <Form form={form} layout="vertical" initialValues={{monitorEnabled: false, workerForwardEnabled: false, workerForwardUrl: ""}}>
+            <Form form={form} layout="vertical" initialValues={{monitorEnabled: false, workerForwardEnabled: false, workerForwardUrl: "", cacheEnabled: false}}>
                 <Form.Item
                     name="name"
                     label="名称"
@@ -560,6 +591,14 @@ export default function SubscriptionPage() {
                     />
                 </Form.Item>
                 <Form.Item name="monitorEnabled" label="开启自动检查" valuePropName="checked">
+                    <Switch/>
+                </Form.Item>
+                <Form.Item
+                    name="cacheEnabled"
+                    label="开启订阅缓存"
+                    valuePropName="checked"
+                    extra="巡检或分享下载成功时保存一份内容；分享下载远端不可用时返回最后一次缓存。"
+                >
                     <Switch/>
                 </Form.Item>
             </Form>
