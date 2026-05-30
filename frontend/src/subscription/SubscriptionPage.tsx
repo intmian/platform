@@ -43,7 +43,7 @@ import {
 } from "../common/newSendHttp";
 
 const {Text, Title} = Typography;
-const SUBSCRIPTION_CARD_MIN_WIDTH = 420;
+const SUBSCRIPTION_CARD_MIN_WIDTH = 360;
 const SUBSCRIPTION_GRID_GAP = 12;
 const SUBSCRIPTION_PAGE_PADDING = 20;
 const NO_DATA_TEXT = "无数据";
