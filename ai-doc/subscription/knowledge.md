@@ -9,7 +9,7 @@ Last verified: 2026-05-30
 
 ## UI behavior
 
-1. Desktop subscription cards keep a fixed breakpoint-based grid (`4 / 3 / 2 / 1` columns by viewport range) sized so each card stays at or above `335px`; the page should reduce column count before cards are compressed below that width.
+1. Desktop subscription cards keep a fixed breakpoint-based grid (`4 / 3 / 2 / 1` columns by viewport range) sized so each card stays at or above `420px`; the page should reduce column count before cards are compressed below that width.
 2. Mobile subscription cards render as a single column.
 3. Card headers keep the link icon, name, status tags, and edit/delete actions in one custom header row so `Cache Ready` does not wrap under the title before the action buttons on two-column desktop layouts.
 4. Each card always renders the three metric blocks:

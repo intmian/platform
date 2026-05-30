@@ -43,7 +43,7 @@ import {
 } from "../common/newSendHttp";
 
 const {Text, Title} = Typography;
-const SUBSCRIPTION_CARD_MIN_WIDTH = 335;
+const SUBSCRIPTION_CARD_MIN_WIDTH = 420;
 const SUBSCRIPTION_GRID_GAP = 12;
 const SUBSCRIPTION_PAGE_PADDING = 20;
 const NO_DATA_TEXT = "无数据";
@@ -171,6 +171,7 @@ function renderMonitorTag(item: SubscriptionItem) {
             minHeight: 24,
             marginInlineEnd: 0,
             paddingInline: 8,
+            whiteSpace: "nowrap",
         }}
     >
         <span style={monitorTextStyle}>Auto Check</span>
@@ -200,6 +201,7 @@ function renderProxyOnlyTag(item: SubscriptionItem) {
             fontSize: 12,
             fontWeight: 500,
             lineHeight: 1,
+            whiteSpace: "nowrap",
         }}
     >
         Proxy On
@@ -224,6 +226,7 @@ function renderCacheTag(item: SubscriptionItem) {
             fontSize: 12,
             fontWeight: 500,
             lineHeight: 1,
+            whiteSpace: "nowrap",
         }}
     >
         <HddOutlined/>
@@ -487,7 +490,7 @@ export default function SubscriptionPage() {
                             <div style={{
                                 display: "flex",
                                 alignItems: "center",
-                                flexWrap: "wrap",
+                                flexWrap: isMobile ? "wrap" : "nowrap",
                                 gap: 8,
                                 minWidth: 0,
                                 flex: 1,
@@ -496,6 +499,7 @@ export default function SubscriptionPage() {
                                 <span style={{
                                     fontWeight: 600,
                                     minWidth: 0,
+                                    flexShrink: 1,
                                     overflow: "hidden",
                                     textOverflow: "ellipsis",
                                     whiteSpace: "nowrap",
