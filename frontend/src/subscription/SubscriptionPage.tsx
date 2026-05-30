@@ -472,38 +472,69 @@ export default function SubscriptionPage() {
                         size="small"
                         key={item.id}
                         style={{height: "100%", minWidth: 0}}
-                        styles={{body: {padding: isMobile ? 14 : 16}}}
-                        title={<Flex align="center" gap={8} wrap="wrap" style={{minWidth: 0}}>
-                            <LinkOutlined/>
-                            <span style={{fontWeight: 600, minWidth: 0}}>{item.name}</span>
-                            {renderMonitorTag(item)}
-                            {renderProxyOnlyTag(item)}
-                            {renderCacheTag(item)}
-                        </Flex>}
-                        extra={<Space size="small">
-                            {shouldShowHeaderStatus(item) ? formatCheckStatus(item) : null}
-                            <Button
-                                size="small"
-                                type="text"
-                                aria-label="编辑"
-                                icon={<EditOutlined/>}
-                                onClick={() => openEditModal(item)}
-                            />
-                            <Popconfirm
-                                title="确定删除这个订阅吗？"
-                                okText="确定"
-                                cancelText="取消"
-                                onConfirm={() => onDelete(item.id)}
-                            >
+                        styles={{
+                            header: {paddingInline: isMobile ? 14 : 16},
+                            title: {minWidth: 0},
+                            body: {padding: isMobile ? 14 : 16},
+                        }}
+                        title={<div style={{
+                            display: "flex",
+                            alignItems: "flex-start",
+                            gap: 8,
+                            minWidth: 0,
+                            width: "100%",
+                        }}>
+                            <div style={{
+                                display: "flex",
+                                alignItems: "center",
+                                flexWrap: "wrap",
+                                gap: 8,
+                                minWidth: 0,
+                                flex: 1,
+                            }}>
+                                <LinkOutlined style={{flexShrink: 0}}/>
+                                <span style={{
+                                    fontWeight: 600,
+                                    minWidth: 0,
+                                    overflow: "hidden",
+                                    textOverflow: "ellipsis",
+                                    whiteSpace: "nowrap",
+                                }}>{item.name}</span>
+                                {renderMonitorTag(item)}
+                                {renderProxyOnlyTag(item)}
+                                {renderCacheTag(item)}
+                            </div>
+                            <div style={{
+                                display: "flex",
+                                alignItems: "center",
+                                gap: 4,
+                                flexShrink: 0,
+                                marginLeft: "auto",
+                            }}>
+                                {shouldShowHeaderStatus(item) ? formatCheckStatus(item) : null}
                                 <Button
                                     size="small"
                                     type="text"
-                                    danger
-                                    aria-label="删除"
-                                    icon={<DeleteOutlined/>}
+                                    aria-label="编辑"
+                                    icon={<EditOutlined/>}
+                                    onClick={() => openEditModal(item)}
                                 />
-                            </Popconfirm>
-                        </Space>}
+                                <Popconfirm
+                                    title="确定删除这个订阅吗？"
+                                    okText="确定"
+                                    cancelText="取消"
+                                    onConfirm={() => onDelete(item.id)}
+                                >
+                                    <Button
+                                        size="small"
+                                        type="text"
+                                        danger
+                                        aria-label="删除"
+                                        icon={<DeleteOutlined/>}
+                                    />
+                                </Popconfirm>
+                            </div>
+                        </div>}
                     >
                         <Flex vertical gap={12}>
                             <div style={{

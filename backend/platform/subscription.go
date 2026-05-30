@@ -743,13 +743,13 @@ func (m *subscriptionMgr) monitorRecord(record subscriptionRecord) {
 			return
 		}
 	}
-	m.updateCache(record.User, record.ID, body, header, buildDownloadContentDisposition(record, header.Get("Content-Disposition")))
 	info, err := parseSubscriptionInfo(header, body, time.Now())
 	if err != nil {
 		m.logInfo("user=%s name=%s parse failed: %v", record.User, record.Name, err)
 		m.updateMonitorFailure(record.User, record.ID, subscriptionStatusParseFail, err.Error())
 		return
 	}
+	m.updateCache(record.User, record.ID, body, header, buildDownloadContentDisposition(record, header.Get("Content-Disposition")))
 	m.updateMonitorSuccess(record.User, record.ID, info)
 }
 
@@ -764,6 +764,13 @@ func (m *subscriptionMgr) fetchSubscriptionBody(url string) ([]byte, http.Header
 	}
 	body, err := io.ReadAll(resp.Body)
 	return body, resp.Header.Clone(), err
+}
+
+func isSubscriptionBodyUsable(header http.Header, body []byte) bool {
+	if _, err := parseSubscriptionInfo(header, body, time.Now()); err == nil {
+		return true
+	}
+	return false
 }
 
 func (record *subscriptionRecord) resetMonitorState() {
@@ -1156,6 +1163,13 @@ func (m *webMgr) shareLinkDownload(c *gin.Context) {
 		return
 	}
 	disposition := buildDownloadContentDisposition(*record, resp.Header.Get("Content-Disposition"))
+	if !isSubscriptionBodyUsable(resp.Header, body) {
+		if writeCachedSubscription(c, *record) {
+			return
+		}
+		c.String(http.StatusBadGateway, "bad upstream")
+		return
+	}
 	m.plat.subscriptionMgr.updateCache(record.User, record.ID, body, resp.Header, disposition)
 	for _, key := range []string{"Content-Type", "Content-Encoding"} {
 		value := resp.Header.Get(key)

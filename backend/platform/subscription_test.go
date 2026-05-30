@@ -38,6 +38,15 @@ func newTestSubscriptionMgr(t *testing.T) *subscriptionMgr {
 	return mgr
 }
 
+func testSubscriptionBody(traffic string) []byte {
+	return []byte(`
+proxies:
+  - {name: demo, server: example.com, port: 10011, type: ss}
+- {name: "Traffic: ` + traffic + `", server: example.com, port: 10011, type: ss}
+- {name: "Expire: 2026-10-16", server: example.com, port: 10011, type: ss}
+`)
+}
+
 func TestParseSubscriptionInfo(t *testing.T) {
 	body := []byte(`
 - {name: "Traffic: 15.8 GB | 150 GB", server: example.com, port: 10011, type: ss}
@@ -117,7 +126,7 @@ func TestShouldResetAlertState(t *testing.T) {
 func TestSubscriptionRotateAndShareLink(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	mgr := newTestSubscriptionMgr(t)
-	upstreamBody := []byte("hello subscription")
+	upstreamBody := testSubscriptionBody("15.8 GB | 150 GB")
 	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		_, _ = w.Write(upstreamBody)
 	}))
@@ -336,7 +345,7 @@ func TestSubscriptionDownloadUsesUpstreamContentDispositionFirst(t *testing.T) {
 	mgr := newTestSubscriptionMgr(t)
 	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Disposition", `attachment; filename="from-header.yaml"`)
-		_, _ = w.Write([]byte("hello"))
+		_, _ = w.Write(testSubscriptionBody("15.8 GB | 150 GB"))
 	}))
 	defer upstream.Close()
 
@@ -374,6 +383,7 @@ func TestSubscriptionShareLinkFallsBackToCache(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	mgr := newTestSubscriptionMgr(t)
 	upstreamOK := true
+	upstreamBody := testSubscriptionBody("15.8 GB | 150 GB")
 	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if !upstreamOK {
 			w.WriteHeader(http.StatusBadGateway)
@@ -381,7 +391,7 @@ func TestSubscriptionShareLinkFallsBackToCache(t *testing.T) {
 		}
 		w.Header().Set("Content-Type", "text/plain;charset=utf-8")
 		w.Header().Set("Content-Disposition", `attachment; filename="cached.yaml"`)
-		_, _ = w.Write([]byte("cached subscription"))
+		_, _ = w.Write(upstreamBody)
 	}))
 	defer upstream.Close()
 
@@ -407,7 +417,7 @@ func TestSubscriptionShareLinkFallsBackToCache(t *testing.T) {
 	if recorder.Code != http.StatusOK {
 		t.Fatalf("expected 200, got %d", recorder.Code)
 	}
-	if recorder.Body.String() != "cached subscription" {
+	if recorder.Body.String() != string(upstreamBody) {
 		t.Fatalf("unexpected body: %s", recorder.Body.String())
 	}
 
@@ -427,11 +437,120 @@ func TestSubscriptionShareLinkFallsBackToCache(t *testing.T) {
 	if recorder.Header().Get("X-Subscription-Cache") != "HIT" {
 		t.Fatalf("expected cache hit header")
 	}
-	if recorder.Body.String() != "cached subscription" {
+	if recorder.Body.String() != string(upstreamBody) {
 		t.Fatalf("unexpected cached body: %s", recorder.Body.String())
 	}
 	if got := recorder.Header().Get("Content-Disposition"); !strings.Contains(got, "cached.yaml") {
 		t.Fatalf("expected cached content-disposition, got %s", got)
+	}
+}
+
+func TestSubscriptionShareLinkFallsBackToCacheOnInvalidSuccess(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	mgr := newTestSubscriptionMgr(t)
+	upstreamBody := testSubscriptionBody("15.8 GB | 150 GB")
+	upstreamInvalid := false
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/plain;charset=utf-8")
+		w.Header().Set("Content-Disposition", `attachment; filename="cached.yaml"`)
+		if upstreamInvalid {
+			_, _ = w.Write([]byte("目标拒绝"))
+			return
+		}
+		_, _ = w.Write(upstreamBody)
+	}))
+	defer upstream.Close()
+
+	item, err := mgr.create("alice", subscriptionCreateReq{
+		Name:         "cache-invalid-200",
+		UpstreamURL:  upstream.URL,
+		CacheEnabled: true,
+	})
+	if err != nil {
+		t.Fatalf("create failed: %v", err)
+	}
+
+	web := &webMgr{plat: mgr.plat}
+	recorder := httptest.NewRecorder()
+	ctx, _ := gin.CreateTestContext(recorder)
+	req := httptest.NewRequest(http.MethodGet, item.ShareURL, nil)
+	ctx.Request = req
+	ctx.Params = gin.Params{
+		{Key: "username", Value: "alice"},
+		{Key: "token", Value: item.ShareURL[strings.LastIndex(item.ShareURL, "/")+1:]},
+	}
+	web.shareLinkDownload(ctx)
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("expected initial 200, got %d", recorder.Code)
+	}
+
+	upstreamInvalid = true
+	recorder = httptest.NewRecorder()
+	ctx, _ = gin.CreateTestContext(recorder)
+	req = httptest.NewRequest(http.MethodGet, item.ShareURL, nil)
+	ctx.Request = req
+	ctx.Params = gin.Params{
+		{Key: "username", Value: "alice"},
+		{Key: "token", Value: item.ShareURL[strings.LastIndex(item.ShareURL, "/")+1:]},
+	}
+	web.shareLinkDownload(ctx)
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("expected cache 200, got %d", recorder.Code)
+	}
+	if recorder.Header().Get("X-Subscription-Cache") != "HIT" {
+		t.Fatalf("expected cache hit header")
+	}
+	if recorder.Body.String() != string(upstreamBody) {
+		t.Fatalf("expected cached body, got %s", recorder.Body.String())
+	}
+}
+
+func TestSubscriptionCheckDoesNotOverwriteCacheOnParseFailure(t *testing.T) {
+	mgr := newTestSubscriptionMgr(t)
+	upstreamBody := testSubscriptionBody("15.8 GB | 150 GB")
+	upstreamInvalid := false
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/plain;charset=utf-8")
+		if upstreamInvalid {
+			_, _ = w.Write([]byte("目标拒绝"))
+			return
+		}
+		_, _ = w.Write(upstreamBody)
+	}))
+	defer upstream.Close()
+
+	item, err := mgr.create("alice", subscriptionCreateReq{
+		Name:         "check-cache",
+		UpstreamURL:  upstream.URL,
+		CacheEnabled: true,
+	})
+	if err != nil {
+		t.Fatalf("create failed: %v", err)
+	}
+	if _, err = mgr.check("alice", item.ID); err != nil {
+		t.Fatalf("initial check failed: %v", err)
+	}
+
+	upstreamInvalid = true
+	checked, err := mgr.check("alice", item.ID)
+	if err != nil {
+		t.Fatalf("invalid check failed: %v", err)
+	}
+	if checked.LastCheckStatus != subscriptionStatusParseFail {
+		t.Fatalf("expected parse failed status, got %s", checked.LastCheckStatus)
+	}
+
+	mgr.mu.Lock()
+	records, err := mgr.loadRecordsLocked("alice")
+	mgr.mu.Unlock()
+	if err != nil {
+		t.Fatalf("load failed: %v", err)
+	}
+	if len(records) != 1 {
+		t.Fatalf("unexpected records len: %d", len(records))
+	}
+	if string(records[0].CachedBody) != string(upstreamBody) {
+		t.Fatalf("cache was overwritten: %s", string(records[0].CachedBody))
 	}
 }
 
