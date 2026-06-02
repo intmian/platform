@@ -1,7 +1,6 @@
 package mods
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"math/rand"
@@ -36,6 +35,7 @@ type DayReport struct {
 	Weather      spider.WeatherReturn
 	WeatherIndex spider.IndexReturn
 	Summary      string
+	Digest       *DayDigest `json:"digest,omitempty"`
 	BbcNews      []spider.BBCRssItem
 	NytNews      []spider.NYTimesRssItem
 	GoogleNews   []struct {
@@ -395,161 +395,34 @@ func translateNews(newsBBC []spider.BBCRssItem, newsNYT []spider.NYTimesRssItem,
 }
 
 func summary(report *DayReport) error {
-	// 获取配置
+	setDayDigestFailure(report)
+
 	base, token, modelPools, mode, err := getOpenAIConfig(backendshare.AISceneSummary, ai.ModelModeCheap)
 	if err != nil {
 		return err
 	}
 
-	// 创建 OpenAI 实例
 	chat := ai.NewOpenAIWithMode(base, token, mode, modelPools)
 	if chat == nil {
 		return errors.New("NewOpenAI error")
 	}
 
-	type Query struct {
-		HotNews []struct {
-			Title       string `json:"title"`
-			Description string `json:"description"`
-		} `json:"hot_news"`
-	}
-
-	// 生成查询
-	query := Query{
-		HotNews: make([]struct {
-			Title       string `json:"title"`
-			Description string `json:"description"`
-		}, 0, len(report.NytNews)),
-	}
-	for _, news := range report.BbcNews {
-		query.HotNews = append(query.HotNews, struct {
-			Title       string `json:"title"`
-			Description string `json:"description"`
-		}{Title: news.Title, Description: news.Description})
-	}
-	for _, news := range report.NytNews {
-		query.HotNews = append(query.HotNews, struct {
-			Title       string `json:"title"`
-			Description string `json:"description"`
-		}{Title: news.Title, Description: news.Description})
-	}
-
-	// 转换为json
-	queryJson, err := json.Marshal(query)
-	if err != nil {
-		return errors.Join(errors.New("func summary() json.Marshal error"), err)
-	}
-	prompt := "请作为每日新闻整合器，阅读以下以 JSON 形式提供的新闻。请撰写一份约 600 字的每日新闻汇报，允许分为若干自然段，但不使用 Markdown、不添加标题、不使用项目符号。\n要求：\n所有重要新闻必须被覆盖，不得遗漏任何新闻内的事实信息；\n允许对相关或相似新闻进行整合，但需保留各自的关键信息点；\n按新闻主题进行自然分段，使读者能够快速区分不同领域的重要动态；\n各段内部应突出信息主次，避免机械罗列；\n语言克制、准确，不做评价、不使用套话；\n目标读者为每天快速了解世界动态的中国普通读者，优先考虑可读性。"
-	ans, err := chat.Chat(prompt + "\n" + string(queryJson))
+	digest, err := generateDayDigest(report, chat)
 	if err != nil {
 		return err
 	}
-	// 清除多余的空格和换行符
-	strs := strings.Split(ans, "\n")
-	ans = ""
-	for i, str := range strs {
-		str = strings.TrimSpace(str)
-		if str == "" {
-			continue
-		}
-		ans += str
-		if i != len(strs)-1 {
-			ans += "\n"
-		}
-	}
 
-	// 生成 GoogleNews 汇总段落
-	googleSummary, err := summaryGoogleNews(report.GoogleNews, chat)
-	if err != nil {
-		tool.GLog.WarningErr("auto.Day", errors.Join(errors.New("func summary() summaryGoogleNews error"), err))
-		// GoogleNews 汇总失败不影响整体，继续执行
-	} else if googleSummary != "" {
-		ans += "\n新闻新动向: " + googleSummary
-	}
-
-	report.Summary = ans
+	report.Digest = digest
+	report.Summary = buildSummaryFromDigest(digest)
 	return nil
 }
 
-// summaryGoogleNews 生成 GoogleNews 的汇总段落
-func summaryGoogleNews(googleNews []struct {
-	KeyWord string
-	News    []spider.GoogleRssItem
-}, chat *ai.OpenAI) (string, error) {
-	// 筛选有数据的关键词
-	type KeywordNews struct {
-		KeyWord string `json:"keyword"`
-		News    []struct {
-			Title string `json:"title"`
-		} `json:"news"`
+func setDayDigestFailure(report *DayReport) {
+	if report == nil {
+		return
 	}
-
-	validNews := make([]KeywordNews, 0)
-	for _, item := range googleNews {
-		if len(item.News) == 0 {
-			continue
-		}
-		kn := KeywordNews{
-			KeyWord: item.KeyWord,
-			News: make([]struct {
-				Title string `json:"title"`
-			}, 0, len(item.News)),
-		}
-		for _, news := range item.News {
-			kn.News = append(kn.News, struct {
-				Title string `json:"title"`
-			}{Title: news.Title})
-		}
-		validNews = append(validNews, kn)
-	}
-
-	// 如果没有有效新闻，返回空
-	if len(validNews) == 0 {
-		return "", nil
-	}
-
-	// 转换为 JSON
-	queryJson, err := json.Marshal(validNews)
-	if err != nil {
-		return "", errors.Join(errors.New("func summaryGoogleNews() json.Marshal error"), err)
-	}
-
-	// 定义需要特殊处理的媒体列表
-	prompt := `请阅读以下按关键词分组的 Google 新闻数据（JSON 格式），为每个有新闻的关键词撰写一句简短的汇总说明。最后将所有关键词的汇总说明合并成一个自然段，句子之间用顿号分隔。\n
-
-要求：
-1. 仅汇总有新闻数据的关键词，无数据的跳过；
-2. 每个关键词用一句话概括主要动态；
-3. 不使用 Markdown、不添加标题、不使用项目符号，直接用自然段落呈现；
-4. 对于以下媒体来源的报道，如果涉及价值判断或评价，请以第三方客观口吻阐述，不可直接采纳其观点，需注明"据XX报道"或"XX称"，如果仅阐述事实或数据不需要：
-   - 中国的商业媒体：汽车之家、太平洋汽车、中关村在线、快科技等
-   - 中国的建制派政治倾向性媒体：风闻、观察者网、环球时报等
-5. 语言简洁、客观，不做主观评价；
-6. 整体控制在 200 字以内。
-
-新闻数据：
-`
-
-	ans, err := chat.Chat(prompt + string(queryJson))
-	if err != nil {
-		return "", err
-	}
-
-	// 清除多余的空格和换行符
-	strs := strings.Split(ans, "\n")
-	ans = ""
-	for i, str := range strs {
-		str = strings.TrimSpace(str)
-		if str == "" {
-			continue
-		}
-		ans += str
-		if i != len(strs)-1 {
-			ans += "\n"
-		}
-	}
-
-	return ans, nil
+	report.Digest = nil
+	report.Summary = dayDigestFailureSummary
 }
 
 func translate(report *DayReport) error {
@@ -603,60 +476,10 @@ func (d *Day) Do() {
 
 	// 推送
 	todayStr := time.Now().Format("01月02日")
-	md := misc.MarkdownTool{}
-	md.AddTitle(fmt.Sprintf("日安，%s的播报", todayStr), 2)
-	weatherDone := false
-	weather := ""
-	if len(report.Weather.Daily) > 0 {
-		weatherDone = true
-		weather, err = spider.MakeMiniWeatherMD("杭州", report.Weather)
-		if err != nil {
-			tool.GLog.WarningErr("auto.Day", errors.Join(errors.New("func Do() MakeTodayWeatherMD error"), err))
-		}
-	}
-	if !weatherDone || weather == "" {
-		md.AddContent("今日天气获取失败")
-	} else {
-		md.AddMd(weather)
-	}
-
-	// 生成今日谷歌新闻的摘要，有哪些关键词的新闻更新了。
-	keyWordsUpdate := []string{}
-	for _, news := range report.GoogleNews {
-		if len(news.News) > 0 {
-			keyWordsUpdate = append(keyWordsUpdate, news.KeyWord)
-		}
-	}
-	if len(keyWordsUpdate) > 0 {
-		str := strings.Join(keyWordsUpdate, "、")
-		md.AddContent(fmt.Sprintf("今日关注新闻更新：%s", str))
-	} else {
-		md.AddContent("今日关注新闻无更新")
-	}
-
-	// 生成今日BBC、NYT新闻的摘要
-	str := `今日有%d条BBC新闻，%d条纽约时报新闻`
-	str = fmt.Sprintf(str, len(report.BbcNews), len(report.NytNews))
-	md.AddContent(str)
-	md.AddTitle("摘要", 3)
-	// 拆分段落分别添加
-	if strings.Contains(report.Summary, "\n") {
-		paragraphs := strings.Split(report.Summary, "\n")
-		for _, p := range paragraphs {
-			md.AddContent(p)
-		}
-	} else {
-		md.AddContent(report.Summary)
-	}
-
-	// 后续加入大盘和美元的简单摘要。
-	// TODO: 后续加入大盘和美元的简单摘要。
-
-	// 生成分享链接
 	// TODO: 日后可以做成配置的基础url方便别人用
 	reportLink := fmt.Sprintf("[点击查看日报](https://plat.intmian.com/day-report/%s)", time.Now().Format("2006-01-02"))
-	md.AddTitle(reportLink, 3)
-	err = tool.GPush.Push("日报", md.ToStr(), true)
+	pushContent := buildDailyPushMarkdown(report, todayStr, reportLink)
+	err = tool.GPush.Push("日报", pushContent, true)
 	if err != nil {
 		tool.GLog.WarningErr("auto.Day", errors.Join(errors.New("func Do() Push error"), err))
 	}

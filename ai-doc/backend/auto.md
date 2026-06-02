@@ -1,6 +1,6 @@
 # Auto Service
 
-Last verified: 2026-03-06
+Last verified: 2026-06-02
 
 ## Scope
 
@@ -80,6 +80,7 @@ Last verified: 2026-03-06
    - `translate`
 3. Auto service reads AI config through shared `GetAIConfig(setting.GCfg)`.
 4. Missing `openai.base` or `openai.token` degrades generation paths with explicit errors.
+5. Daily summary generation now asks AI for structured `DayDigest` JSON, not one long free-text paragraph.
 
 ## Day report generation flow
 
@@ -90,9 +91,30 @@ Last verified: 2026-03-06
 3. Collect previous-day BBC/NYT/Google RSS plus weather data.
 4. Filter NYT `Briefing` items and wrap NYT links with `removepaywall`.
 5. Translate news content through AI.
-6. Generate AI summary.
+6. Generate structured AI digest.
 7. Persist report and update `report_list`.
-8. Scheduled `Do()` path also renders markdown and pushes a daily message.
+8. Scheduled `Do()` path renders markdown from `DayReport.Digest.PushBrief` and pushes a daily message.
+9. `DayReport.Summary` remains as a text fallback generated from the digest; old reports without `Digest` remain readable.
+
+## Daily digest contract
+
+1. `DayReport` may include `Digest *DayDigest` serialized as JSON field `digest`.
+2. `DayDigest` contains:
+   - `pushBrief`
+   - `overview`
+   - `importantNews`
+   - `keywordBriefs`
+   - `topicBriefs`
+   - `coverage`
+3. Source references use stored report indexes:
+   - `bbc:<itemIndex>`
+   - `nyt:<itemIndex>`
+   - `google:<groupIndex>:<itemIndex>`
+4. Digest normalization drops invalid, duplicate, or malformed source references.
+5. `keywordBriefs` are required only when the report contains active Google news.
+6. Digest generation retries once with a repair prompt when the first AI response is invalid.
+7. If summary setup or digest generation fails, the report keeps raw news data, clears `Digest`, and stores a deterministic failure `Summary`.
+8. Push markdown uses `pushBrief.weatherLine`, `pushBrief.overview`, important news, keyword briefs, and the report link; it does not push the full fallback `Summary`.
 
 ## Common failure signatures
 

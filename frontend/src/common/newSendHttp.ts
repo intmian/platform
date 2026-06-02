@@ -500,32 +500,83 @@ type WeatherPtl = {
 };
 
 type WeatherIndexPtl = {
-    Code: string;
-    UpdateTime: string;
-    FxLink: string;
-    Daily: {
-        Date: string;
-        Type: string;
-        Name: string;
-        Level: string;
-        Category: string;
-        Text: string;
+    code: string;
+    updateTime: string;
+    fxLink: string;
+    daily: {
+        date: string;
+        type: string;
+        name: string;
+        level: string;
+        category: string;
+        text: string;
     }[];
-    Refer: {
-        Sources: string[];
-        License: string[];
+    refer: {
+        sources: string[];
+        license: string[];
     };
 };
 
-type RssItem = {
-    Title: string;
-    Link: string;
-    PubDate: string;
-};
+export interface RssItem {
+    title: string;
+    description?: string;
+    link: string;
+    pubDate: string;
+    Title?: string;
+    Description?: string;
+    Link?: string;
+    PubDate?: string;
+}
+
+export interface DigestItem {
+    title: string;
+    summary: string;
+    topic: string;
+    importance: number;
+    sourceRefs: string[];
+}
+
+export interface KeywordBrief {
+    keyword: string;
+    summary: string;
+    count: number;
+    sourceRefs: string[];
+}
+
+export interface TopicBrief {
+    topic: string;
+    summary: string;
+    sourceRefs: string[];
+}
+
+export interface DigestCoverage {
+    ref: string;
+    topic: string;
+    inPush: boolean;
+    importance: number;
+}
+
+export interface DailyPushBrief {
+    weatherLine: string;
+    overview: string;
+    importantNews: DigestItem[];
+    keywordBriefs: KeywordBrief[];
+}
+
+export interface DayDigest {
+    pushBrief: DailyPushBrief;
+    overview: string;
+    importantNews: DigestItem[];
+    keywordBriefs: KeywordBrief[];
+    topicBriefs: TopicBrief[];
+    coverage: DigestCoverage[];
+}
 
 export interface DayReport {
     Weather: WeatherPtl
     WeatherIndex: WeatherIndexPtl;
+    Summary?: string;
+    digest?: DayDigest;
     BbcNews: RssItem[]
     NytNews: RssItem[]
     GoogleNews: {

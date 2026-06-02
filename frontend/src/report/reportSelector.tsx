@@ -110,14 +110,14 @@ function ReportSelector({onSelect, loginReady, isLoggedIn}: {
                 allowClear={false}
             />
         </Col>
-        <Col span={screenType == ScreenType.SmallDesktop ? 24 : 12}>
+        <Col span={24}>
             <Button style={{width: "100%"}} onClick={() => {
                 if (window.confirm("确定要生成新闻汇总吗？")) {
                     onSelect("whole");
                 }
-            }} danger>{screenType != ScreenType.Desktop ? "新闻汇总" : "生成新闻汇总"}</Button>
+            }} danger>生成汇总</Button>
         </Col>
-        <Col span={screenType == ScreenType.SmallDesktop ? 24 : 12}>
+        <Col span={24}>
             <Popconfirm
                 title="确定要生成今日报告吗？"
                 onConfirm={() => generateReport()}
@@ -125,16 +125,16 @@ function ReportSelector({onSelect, loginReady, isLoggedIn}: {
                 cancelText="取消"
             >
                 <Button
-                    style={{width: "100%"}}>{screenType != ScreenType.Desktop ? "今日报告" : "生成今日报告"}</Button>
+                    style={{width: "100%"}}>生成日报</Button>
             </Popconfirm>
         </Col>
-        <Col span={screenType == ScreenType.SmallDesktop ? 24 : 12}>
+        <Col span={24}>
             <Button style={{width: "100%"}} onClick={() => {
                 const today = dayjs();
                 onSelect(today.format("YYYY-MM-DD"));
-            }}>选择今日</Button>
+            }}>选择今天</Button>
         </Col>
-        <Col span={screenType == ScreenType.SmallDesktop ? 24 : 12}>
+        <Col span={24}>
             <Button style={{width: "100%"}} onClick={handleRefresh}>刷新列表</Button>
         </Col>
     </Row>

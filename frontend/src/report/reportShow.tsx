@@ -1,11 +1,12 @@
 import {DayReport, sendGetReport, sendGetWholeReport, WholeReport} from "../common/newSendHttp";
+import type {DayDigest} from "../common/newSendHttp";
 import React, {useEffect, useRef, useState} from "react";
 import {Button, Card, Col, Collapse, List, Menu, Row, Tag, Typography} from 'antd';
 import {CloudOutlined, MenuOutlined, WindowsOutlined} from '@ant-design/icons';
-import {Link} from "react-router-dom";
 import {useIsMobile} from "../common/hooksv2";
+import {DigestConsole} from "./reportDigest";
 
-const {Title, Text} = Typography;
+const {Title, Text, Link: TypographyLink} = Typography;
 
 
 function ReportShow({selected, loginReady, isLoggedIn}: {
@@ -133,7 +134,7 @@ interface WeatherIndexData {
         name: string;
         category: string;
         text: string;
-        level: number;
+        level: string;
     }>;
 }
 
@@ -141,8 +142,12 @@ interface WeatherIndexData {
 interface NewsArticle {
     title: string;
     link: string;
-    description: string;
+    description?: string;
     pubDate: string;
+    Title?: string;
+    Link?: string;
+    Description?: string;
+    PubDate?: string;
 }
 
 // 谷歌新闻组
@@ -209,7 +214,7 @@ function WeatherCard({weather, weatherIndex}: WeatherCardProps) {
                                     </Col>
                                     <Col span={6}>
                                         <Tag
-                                            color={item.level > 3 ? "red" : item.level > 2 ? "orange" : item.level > 1 ? "yellow" : "green"}>
+                                            color={Number(item.level) > 3 ? "red" : Number(item.level) > 2 ? "orange" : Number(item.level) > 1 ? "yellow" : "green"}>
                                             {item.category}
                                         </Tag>
                                     </Col>
@@ -240,6 +245,23 @@ function SummaryCard({summary}: { summary: string }) {
             <Typography.Paragraph key={i}>{p}<br/></Typography.Paragraph>
         ))}
     </Card>;
+}
+
+function cleanNewsDescription(description?: string): string | undefined {
+    if (!description) {
+        return undefined;
+    }
+    const cleaned = description
+        .replace(/<[^>]*>/g, " ")
+        .replace(/&nbsp;/gi, " ")
+        .replace(/&amp;/gi, "&")
+        .replace(/&lt;/gi, "<")
+        .replace(/&gt;/gi, ">")
+        .replace(/&quot;/gi, "\"")
+        .replace(/&#39;/gi, "'")
+        .replace(/\s+/g, " ")
+        .trim();
+    return cleaned || undefined;
 }
 
 function NewsCard({title, articles}: { title: string, articles?: NewsArticle[] }) {
@@ -277,14 +299,14 @@ function NewsCard({title, articles}: { title: string, articles?: NewsArticle[] }
                                 alignItems: 'center',
                             }}
                         >
-                            <Link to={item.link} target="_blank" rel="noopener noreferrer"
-                                  style={{color: "black", fontWeight: 'normal'}}>{item.title}
-                            </Link>
+                            <TypographyLink href={item.link} target="_blank" rel="noopener noreferrer"
+                                            style={{color: "black", fontWeight: 'normal'}}>{item.title}
+                            </TypographyLink>
                             <Text type="secondary" style={{fontSize: '12px', fontWeight: 'normal'}}>
                                 {isMobile ? new Date(item.pubDate).toLocaleDateString('zh-CN', {timeZone: 'Asia/Shanghai'}) : new Date(item.pubDate).toLocaleString('zh-CN', {timeZone: 'Asia/Shanghai'})}
                             </Text>
                         </div>}
-                        description={item.description}
+                        description={cleanNewsDescription(item.description)}
                     />
                 </List.Item>
             )}
@@ -334,7 +356,7 @@ function GoogleNewsCard({title, articles}: { title: string, articles?: NewsArtic
                         }}>
                             <div style={{display: 'flex', alignItems: 'center'}}>
                                 {tag}
-                                <Link to={item.link} target="_blank" rel="noopener noreferrer">{item.title}</Link>
+                                <TypographyLink href={item.link} target="_blank" rel="noopener noreferrer">{item.title}</TypographyLink>
                             </div>
                             <Text type="secondary" style={{
                                 width: "20ch",
@@ -357,10 +379,11 @@ interface DashboardProps {
         Weather?: WeatherData;
         WeatherIndex?: WeatherIndexData;
         Summary?: string;
+        digest?: DayDigest;
         BbcNews: NewsArticle[];
         NytNews: NewsArticle[];
         GoogleNews: GoogleNewsGroup[];
-    };
+    } | null;
 }
 
 function Dashboard({data}: DashboardProps) {
@@ -379,29 +402,29 @@ function Dashboard({data}: DashboardProps) {
     if (!data) {
         return <Card title="Loading..." bordered={false} loading={true}/>;
     }
-    let {Weather, WeatherIndex, BbcNews, NytNews, GoogleNews} = data;
+    let {Weather, WeatherIndex, BbcNews, NytNews, GoogleNews, digest} = data;
 
     // 按时间升序排序
-    if (!BbcNews) BbcNews = [];
-    if (!NytNews) NytNews = [];
-    BbcNews = [...BbcNews].sort((a, b) => new Date(a.pubDate).getTime() - new Date(b.pubDate).getTime());
-    NytNews = [...NytNews].sort((a, b) => new Date(a.pubDate).getTime() - new Date(b.pubDate).getTime());
-    for (const group of GoogleNews) {
-        if (group.News && group.News.length > 0) {
-            group.News = [...group.News].sort((a, b) => new Date(a.pubDate).getTime() - new Date(b.pubDate).getTime());
-        }
-    }
+    const digestBbcNews = BbcNews || [];
+    const digestNytNews = NytNews || [];
+    const digestGoogleNews = GoogleNews || [];
+    const sortedBbcNews = [...digestBbcNews].sort((a, b) => new Date(a.pubDate).getTime() - new Date(b.pubDate).getTime());
+    const sortedNytNews = [...digestNytNews].sort((a, b) => new Date(a.pubDate).getTime() - new Date(b.pubDate).getTime());
+    const sortedGoogleNews = digestGoogleNews.map(group => ({
+        ...group,
+        News: group.News ? [...group.News].sort((a, b) => new Date(a.pubDate).getTime() - new Date(b.pubDate).getTime()) : group.News,
+    }));
 
     // 生成谷歌新闻组件，有数据的放在前面，没有数据的放在后面
     const GoogleNewsCards: React.ReactNode[] = [];
-    for (const group of GoogleNews) {
+    for (const group of sortedGoogleNews) {
         if (group.News && group.News.length > 0) {
-            GoogleNewsCards.push(<GoogleNewsCard title={group.KeyWord} articles={group.News}/>);
+            GoogleNewsCards.push(<GoogleNewsCard key={`google-news-${group.KeyWord}`} title={group.KeyWord} articles={group.News}/>);
         }
     }
-    for (const group of GoogleNews) {
+    for (const group of sortedGoogleNews) {
         if (!group.News || group.News.length === 0) {
-            GoogleNewsCards.push(<GoogleNewsCard title={group.KeyWord}/>);
+            GoogleNewsCards.push(<GoogleNewsCard key={`google-news-${group.KeyWord}`} title={group.KeyWord}/>);
         }
     }
 
@@ -420,7 +443,7 @@ function Dashboard({data}: DashboardProps) {
     // 通用导航菜单组件
     const renderNavMenu = () => (
         <Menu mode="vertical" style={{width: isMobile ? '100%' : '200px'}}>
-            {Weather && <Menu.Item onClick={() => scrollToRef(weatherRef)}>天气</Menu.Item>}
+            {Weather && WeatherIndex && <Menu.Item onClick={() => scrollToRef(weatherRef)}>天气</Menu.Item>}
             <Menu.Item onClick={() => scrollToRef(bbcNewsRef)}>BBC新闻</Menu.Item>
             <Menu.Item onClick={() => scrollToRef(nytNewsRef)}>纽约时报</Menu.Item>
             <Menu.Item onClick={() => scrollToRef(googleNewsRef)}>关注新闻</Menu.Item>
@@ -497,19 +520,21 @@ function Dashboard({data}: DashboardProps) {
         }}>
             {/* 左侧内容 */}
             <div style={{flex: 1}}>
-                {data.Summary && <SummaryCard summary={data.Summary}/>}
-                {Weather && <div ref={weatherRef}>
+                {digest
+                    ? <DigestConsole digest={digest} bbcNews={digestBbcNews} nytNews={digestNytNews} googleNews={digestGoogleNews}/>
+                    : data.Summary && <SummaryCard summary={data.Summary}/>}
+                {Weather && WeatherIndex && <div ref={weatherRef}>
                     <WeatherCard weather={Weather} weatherIndex={WeatherIndex}/>
                 </div>}
                 <div ref={bbcNewsRef} style={{
                     marginBottom: '16px',
                 }}>
-                    <NewsCard title={"BBC新闻"} articles={BbcNews}/>
+                    <NewsCard title={"BBC新闻"} articles={sortedBbcNews}/>
                 </div>
                 <div ref={nytNewsRef} style={{
                     marginBottom: '16px',
                 }}>
-                    <NewsCard title={"纽约时报"} articles={NytNews}/>
+                    <NewsCard title={"纽约时报"} articles={sortedNytNews}/>
                 </div>
                 <div ref={googleNewsRef}>
                     {GoogleNewsCards}
