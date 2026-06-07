@@ -32,6 +32,7 @@
     "react-responsive": "^10.0.0",
     "react-router-dom": "^6.22.0",
     "react-spring": "^9.7.4",
+    "recharts": "^3.8.1",
     "segmentit": "^2.0.3",
     "styled-component": "^2.8.0",
     "styled-components": "^6.1.13"

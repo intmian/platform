@@ -1,6 +1,6 @@
 # AI Doc Coverage Map
 
-Last verified: 2026-03-06
+Last verified: 2026-06-06
 
 ## Purpose
 
@@ -37,6 +37,8 @@ Last verified: 2026-03-06
    - `backend/todone-core.md`
 5. `backend/services/web-storage/*`:
    - `backend/web-storage.md`
+6. `backend/services/hardware/*`:
+   - `backend/hardware.md`
 
 ## Domain coverage
 
@@ -54,6 +56,10 @@ Last verified: 2026-03-06
    - `note-mini/knowledge.md`
    - `note-mini/testing.md`
    - code area: `frontend/src/misc/memos.tsx` + platform config/misc endpoints + external memos API
+4. Hardware:
+   - backend service facts live in `backend/hardware.md`
+   - frontend shell facts live in `frontend/architecture.md`
+   - code area: `frontend/src/hardware/*` + `backend/services/hardware/*` + platform-owned `/device/hardware/*` routes
 
 ## Intentionally thin or uncovered areas
 

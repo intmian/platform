@@ -47,4 +47,8 @@ func (m *webMgr) initSvrRoot(r *gin.Engine) {
 	r.POST("/misc/money/dashboard/get", m.moneyDashboardGet)
 	r.POST("/misc/money/import/excel/preview", m.moneyImportExcelPreview)
 	r.POST("/misc/money/import/excel/confirm", m.moneyImportExcelConfirm)
+
+	r.POST("/device/hardware/ingest", m.hardwareDeviceIngest)
+	r.POST("/device/hardware/poll-commands", m.hardwareDevicePollCommands)
+	r.POST("/device/hardware/command-result", m.hardwareDeviceCommandResult)
 }

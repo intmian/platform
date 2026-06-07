@@ -1,0 +1,232 @@
+.hardware-page {
+    min-height: 100vh;
+    background: #f6f8fb;
+    color: #111827;
+}
+
+.hardware-main {
+    width: min(1240px, calc(100vw - 32px));
+    margin: 0 auto;
+    padding: 24px 0 48px;
+}
+
+.hardware-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 18px;
+}
+
+.hardware-header h1 {
+    margin: 0;
+    font-size: 26px;
+    line-height: 1.2;
+    font-weight: 650;
+}
+
+.hardware-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+.hardware-toolbar .ant-space {
+    min-width: 0;
+}
+
+.hardware-toolbar .ant-btn,
+.hardware-card-actions .ant-btn {
+    flex: 0 0 auto;
+    white-space: nowrap;
+}
+
+.hardware-toolbar .ant-btn > span,
+.hardware-card-actions .ant-btn > span {
+    white-space: nowrap;
+}
+
+.hardware-panel {
+    min-width: 0;
+}
+
+.hardware-device-grid,
+.hardware-widget-grid,
+.hardware-credential-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 14px;
+}
+
+.hardware-widget-grid {
+    grid-template-columns: repeat(auto-fill, minmax(420px, 1fr));
+}
+
+.hardware-card {
+    min-width: 0;
+    background: #ffffff;
+    border: 1px solid #dde3ea;
+    border-radius: 8px;
+    padding: 16px;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+
+.hardware-card-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+    margin-bottom: 14px;
+}
+
+.hardware-card h2 {
+    margin: 0 0 8px;
+    font-size: 17px;
+    line-height: 1.3;
+    overflow-wrap: anywhere;
+}
+
+.hardware-card-meta {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.hardware-kv {
+    display: grid;
+    grid-template-columns: minmax(72px, auto) minmax(0, 1fr);
+    gap: 8px 12px;
+    align-items: baseline;
+}
+
+.hardware-kv.compact {
+    font-size: 13px;
+}
+
+.hardware-kv span {
+    color: #6b7280;
+}
+
+.hardware-kv strong {
+    min-width: 0;
+    font-weight: 520;
+    overflow-wrap: anywhere;
+}
+
+.hardware-card-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-top: 14px;
+}
+
+.hardware-control {
+    min-width: 150px;
+}
+
+.hardware-token-box {
+    margin: 12px 0;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+.hardware-value-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 10px;
+}
+
+.hardware-value-item {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 10px;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    background: #f9fafb;
+}
+
+.hardware-value-item strong {
+    font-size: 18px;
+    line-height: 1.25;
+}
+
+.hardware-widget-card {
+    overflow: hidden;
+}
+
+.hardware-chart-wrap {
+    width: 100%;
+    min-width: 0;
+}
+
+.hardware-chart-canvas {
+    width: 100%;
+    height: 280px;
+    min-width: 0;
+}
+
+.hardware-chart-summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 6px;
+}
+
+.hardware-chart-empty {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 180px;
+    color: #64748b;
+    border: 1px dashed #cbd5e1;
+    border-radius: 8px;
+    background: #f8fafc;
+}
+
+.recharts-default-tooltip {
+    border-radius: 6px;
+    border-color: #d1d5db !important;
+    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);
+}
+
+.hardware-form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+}
+
+@media (max-width: 720px) {
+    .hardware-main {
+        width: min(100vw - 20px, 100%);
+        padding-top: 16px;
+    }
+
+    .hardware-header,
+    .hardware-toolbar {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .hardware-device-grid,
+    .hardware-widget-grid,
+    .hardware-credential-list {
+        grid-template-columns: 1fr;
+    }
+
+    .hardware-card {
+        padding: 14px;
+    }
+
+    .hardware-card-head {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .hardware-form-row {
+        grid-template-columns: 1fr;
+        gap: 0;
+    }
+}

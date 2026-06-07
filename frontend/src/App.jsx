@@ -15,6 +15,7 @@ import dayjs from 'dayjs';
 import 'dayjs/locale/zh-cn';
 import {JianXing} from "./library/JianXingTemp.tsx";
 import SubscriptionPage from "./subscription/SubscriptionPage.tsx";
+import HardwarePage from "./hardware/HardwarePage.tsx";
 import {
     MoneyBookList,
     MoneyConfigPage,
@@ -99,6 +100,10 @@ const router = createBrowserRouter([
     {
         path: '/subscription',
         element: <SubscriptionPage/>
+    },
+    {
+        path: '/hardware',
+        element: <HardwarePage/>
     },
     {
         path: '/money',

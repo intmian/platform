@@ -1,6 +1,6 @@
 # Backend Services Catalog
 
-Last verified: 2026-03-06
+Last verified: 2026-06-06
 
 ## Scope
 
@@ -14,6 +14,7 @@ Last verified: 2026-03-06
    - `backend/auto.md`
    - `backend/cmd.md`
    - `backend/todone-core.md`
+   - `backend/hardware.md`
    - `backend/web-storage.md`
 
 ## Registered services
@@ -22,6 +23,7 @@ Last verified: 2026-03-06
 2. `account`: account + permission token management.
 3. `cmd`: script tool + runtime env execution service.
 4. `todone`: todone domain service (dir/group/subgroup/task/tag).
+5. `hardware`: access credentials, automatic hardware device discovery, env-mov sample ingestion, gateway command queue, and single dashboard service.
 
 ## Not currently registered
 
@@ -170,6 +172,43 @@ Last verified: 2026-03-06
 19. `taskMove`
 20. `taskAddTag`
 21. `taskDelTag`
+
+## Service: hardware
+
+## Responsibility
+
+1. Manage system-level access credentials.
+2. Automatically discover gateway and env-mov devices from authenticated hardware reports.
+3. Track device state, latest samples, command queue, deletion tombstones, and one dashboard.
+4. See `backend/hardware.md` for device auth and protocol details.
+
+## Permission gate
+
+1. Browser RPC requires `admin` or `hardware`.
+2. Device upload/control routes authenticate via access credential bearer token instead of browser cookie.
+
+## Runtime data
+
+1. Service base dir: `services/hardware`
+2. Local sqlite file: `services/hardware/hardware.db`
+
+## Public commands
+
+1. `listGateways`
+2. `createGateway`
+3. `rotateGatewayToken`
+4. `disableGateway`
+5. `updateGateway`
+6. `listNodes`
+7. `updateNode`
+8. `queryLatest`
+9. `querySamples`
+10. `listCommands`
+11. `createCommand`
+12. `cancelCommand`
+13. `getDashboard`
+14. `saveDashboard`
+15. `queryDashboard`
 
 ## Service: web-storage
 

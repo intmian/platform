@@ -1,6 +1,6 @@
 # Backend Architecture
 
-Last verified: 2026-04-26
+Last verified: 2026-06-06
 
 ## Scope
 
@@ -36,6 +36,7 @@ Last verified: 2026-04-26
 8. Platform-owned non-service web handlers now also include:
    - authenticated `POST /misc/subscription/*` CRUD + manual-check endpoints
    - authenticated `POST /misc/money/*` family money book endpoints for book/item/record/dashboard/Excel import/JSON archive flows
+   - device-authenticated `POST /device/hardware/ingest`, `POST /device/hardware/poll-commands`, and `POST /device/hardware/command-result` endpoints owned by the registered hardware service
    - anonymous `GET /share-link/:username/:token` proxy downloads
    - an in-process subscription monitor loop owned by `platform`, not by a registered service; checks request the configured upstream URL directly and only use `/share-link/*` for public download traffic
    - subscription list responses return relative share paths like `/share-link/{username}/{token}`; frontend is responsible for resolving them against the current origin when needed
@@ -47,6 +48,7 @@ Last verified: 2026-04-26
    - `account`
    - `cmd`
    - `todone`
+   - `hardware`
 2. Service flags include `note`, but `note` is currently not registered into `core.service`.
 3. Stop gate:
    - services with `SvrPropCore` or `SvrPropCoreOptional` cannot be stopped via admin API.

@@ -2,7 +2,7 @@
 
 Purpose: provide repository-local, task-scoped knowledge for AI agents.
 
-Last verified: 2026-05-07
+Last verified: 2026-06-06
 
 ## Core rules
 
@@ -49,6 +49,7 @@ Last verified: 2026-05-07
    - `backend/account.md`
    - `backend/auto.md`
    - `backend/cmd.md`
+   - `backend/hardware.md`
    - `backend/todone-core.md`
    - `backend/web-storage.md`
 8. Backend verification baseline: `backend/testing.md`

@@ -1,6 +1,6 @@
 # Frontend Architecture
 
-Last verified: 2026-04-26
+Last verified: 2026-06-06
 
 ## Scope
 
@@ -39,6 +39,7 @@ Last verified: 2026-04-26
    - `/money/:bookId/history`
    - `/money/:bookId/dashboard`
    - `/money/:bookId/import`
+   - `/hardware`
 5. Misc pages:
    - `/love47`
    - `/loss-fat`
@@ -50,6 +51,7 @@ Last verified: 2026-04-26
 8. `/subscription` is a logged-in user page with manual subscription checks, and does not require `admin` permission.
 9. Subscription API returns relative share paths; the page resolves them against `window.location.origin` for display/copy.
 10. `/money` is a logged-in family money book module; admin users can manage books/items/records/Excel imports/JSON archives/delete flows, while viewer users only receive dashboard access from the backend per-book ACL.
+11. `/hardware` is a logged-in global hardware module; `admin` or `hardware` permission can view automatically discovered devices, enter device management mode for rename/hide/delete, configure the dashboard, and manage access credentials.
 
 ## Shared request model
 

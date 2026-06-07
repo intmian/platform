@@ -32,11 +32,12 @@ type (
 type SvrName string
 
 const (
-	NameAuto    SvrName = "auto"
-	NameNote    SvrName = "note"
-	NameAccount SvrName = "account"
-	NameCmd     SvrName = "cmd"
-	NameTodone  SvrName = "todone"
+	NameAuto     SvrName = "auto"
+	NameNote     SvrName = "note"
+	NameAccount  SvrName = "account"
+	NameCmd      SvrName = "cmd"
+	NameTodone   SvrName = "todone"
+	NameHardware SvrName = "hardware"
 )
 
 const (
@@ -46,6 +47,7 @@ const (
 	FlagAccount
 	FlagCmd
 	FlagTodone
+	FlagHardware
 )
 
 type ServiceStatus int
@@ -79,6 +81,7 @@ const (
 	PermissionAuto       Permission = "auto"
 	PermissionAutoReport Permission = "auto.report"
 	PermissionAI         Permission = "ai"
+	PermissionHardware   Permission = "hardware"
 )
 
 type Valid struct {

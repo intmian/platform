@@ -160,6 +160,7 @@ func (p *PlatForm) Init(c context.Context) error {
 	p.tool.flag2name[share.FlagAccount] = share.NameAccount
 	p.tool.flag2name[share.FlagCmd] = share.NameCmd
 	p.tool.flag2name[share.FlagTodone] = share.NameTodone
+	p.tool.flag2name[share.FlagHardware] = share.NameHardware
 	// 新增服务要在这里注册
 	for k, v := range p.tool.flag2name {
 		p.tool.name2flag[v] = k
