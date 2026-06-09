@@ -20,6 +20,7 @@ import User from "../common/User";
 import {LoginCtx} from "../common/loginCtx";
 import {FileShow, sendGptRewrite} from "../common/newSendHttp";
 import {useImageUpload} from "../common/useImageUpload";
+import {shouldShowMemosHistoryHover} from "./memosHistoryHover";
 
 // TODO: 使用ios打开网页时，当浏览器切换到后台，立刻重新切回前台，网页并未被回收，但是浏览器会自动刷新一次，此时如果停止刷新，使用是完全正常的，似乎是底层问题后面看看
 
@@ -253,7 +254,9 @@ function GetMemosTags(url: string, key: string, sucCallback: (data: {
 // }
 
 function MemosQueue({reqs, url, apiKey}: { reqs: MemosReq[], url: string, apiKey: string }) {
+    const isMobile = useIsMobile();
     const [reqHisMap, setReqHisMap] = useState(new Map<number, MemosReqStatus>());
+    const [openPopoverId, setOpenPopoverId] = useState<number | null>(null);
     const sendingIdsRef = useRef(new Set<number>());
     const saveReqHisMap = useCallback((id: number, status: MemosReqStatus) => {
         setReqHisMap((prev) => {
@@ -321,11 +324,17 @@ function MemosQueue({reqs, url, apiKey}: { reqs: MemosReq[], url: string, apiKey
                 statusText = '发送失败';
             }
         }
+        const popoverOpen = openPopoverId === req.id;
+        const historyHoverOpen = shouldShowMemosHistoryHover({isMobile, popoverOpen});
 
         queue.push(
             <Popover
                 key={req.id}
                 trigger="click"
+                open={popoverOpen}
+                onOpenChange={(open) => {
+                    setOpenPopoverId(open ? req.id : null);
+                }}
                 title={statusText}
                 content={
                     <Space direction="vertical" size="small" style={{maxWidth: 320}}>
@@ -355,7 +364,7 @@ function MemosQueue({reqs, url, apiKey}: { reqs: MemosReq[], url: string, apiKey
                     </Space>
                 }
             >
-                <Tooltip title={realText}>
+                <Tooltip title={realText} open={historyHoverOpen ? undefined : false}>
                     <Button
                         size="small"
                         type="text"

@@ -1,6 +1,6 @@
 # Note Mini Knowledge
 
-Last verified: 2026-04-27
+Last verified: 2026-06-09
 
 ## Module role
 
@@ -71,6 +71,7 @@ Last verified: 2026-04-27
 4. The top status bar is hidden when there is no send history.
 5. The top status bar is horizontally scrollable when history exists; overflow history remains hidden until the user scrolls.
 6. Queue status items open a click popover for text review/copy. Failure retry is an explicit popover action, not the icon's default click behavior.
+7. Queue status hover preview is desktop-only and is disabled while that item's click popover is open; mobile shows only the click popover path.
 
 ## Advanced menu behavior (verified from code)
 
