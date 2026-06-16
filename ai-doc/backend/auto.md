@@ -1,6 +1,6 @@
 # Auto Service
 
-Last verified: 2026-06-02
+Last verified: 2026-06-16
 
 ## Scope
 
@@ -112,9 +112,17 @@ Last verified: 2026-06-02
    - `google:<groupIndex>:<itemIndex>`
 4. Digest normalization drops invalid, duplicate, or malformed source references.
 5. `keywordBriefs` are required only when the report contains active Google news.
-6. Digest generation retries once with a repair prompt when the first AI response is invalid.
-7. If summary setup or digest generation fails, the report keeps raw news data, clears `Digest`, and stores a deterministic failure `Summary`.
-8. Push markdown uses `pushBrief.weatherLine`, `pushBrief.overview`, important news, keyword briefs, and the report link; it does not push the full fallback `Summary`.
+6. Digest generation splits AI input by content role:
+   - Public digest generation receives only weather plus BBC/NYT news.
+   - Keyword digest generation receives only Google keyword news.
+7. Public digest areas are BBC/NYT-only:
+   - `pushBrief.overview` summarizes only the BBC/NYT public news line.
+   - `importantNews` and `pushBrief.importantNews` cannot reference `google:*`.
+   - `topicBriefs` cannot reference `google:*`.
+8. Google keyword news is only valid in `keywordBriefs` and `pushBrief.keywordBriefs`; those refs must be `google:*` when present.
+9. Digest generation retries once per split pass with a repair prompt when an AI response is invalid.
+10. If summary setup or digest generation fails, the report keeps raw news data, clears `Digest`, and stores a deterministic failure `Summary`.
+11. Push markdown uses `pushBrief.weatherLine`, `pushBrief.overview`, important news, keyword briefs, and the report link; it does not push the full fallback `Summary`.
 
 ## Common failure signatures
 
