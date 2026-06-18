@@ -256,11 +256,11 @@ func buildDailyPushMarkdown(report *DayReport, nowTitle string, reportLink strin
 		if line == "" {
 			continue
 		}
-		md.AddContent(line)
+		md.AddList(line, 1)
 		importantNewsDone = true
 	}
 	if !importantNewsDone {
-		md.AddContent("重要新闻生成失败，请打开完整日报查看。")
+		md.AddList("重要新闻生成失败，请打开完整日报查看。", 1)
 	}
 
 	md.AddTitle("关注关键词", 3)
@@ -271,11 +271,11 @@ func buildDailyPushMarkdown(report *DayReport, nowTitle string, reportLink strin
 		if keyword == "" || summary == "" {
 			continue
 		}
-		md.AddContent(fmt.Sprintf("%s：%s", keyword, summary))
+		md.AddList(fmt.Sprintf("%s：%s", keyword, summary), 1)
 		keywordBriefsDone = true
 	}
 	if !keywordBriefsDone {
-		md.AddContent("关注关键词生成失败，请打开完整日报查看。")
+		md.AddList("关注关键词生成失败，请打开完整日报查看。", 1)
 	}
 
 	md.AddTitle(reportLink, 3)

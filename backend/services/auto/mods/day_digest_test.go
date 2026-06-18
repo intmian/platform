@@ -146,11 +146,14 @@ func TestBuildDailyPushMarkdownUsesDigestPushBrief(t *testing.T) {
 	if !strings.Contains(got, "今日概览") || !strings.Contains(got, "推送短概览聚焦今日最重要变化。") {
 		t.Fatalf("push markdown should include push overview: %s", got)
 	}
-	if !strings.Contains(got, "推送重要新闻：短摘要只保留推送需要的信息。") {
+	if !strings.Contains(got, "- 推送重要新闻：短摘要只保留推送需要的信息。") {
 		t.Fatalf("push markdown should include push important news: %s", got)
 	}
-	if !strings.Contains(got, "FSD：推送关键词短摘要。") {
+	if !strings.Contains(got, "- FSD：推送关键词短摘要。") {
 		t.Fatalf("push markdown should include push keyword brief: %s", got)
+	}
+	if strings.Contains(got, "\n推送重要新闻：") || strings.Contains(got, "\nFSD：") {
+		t.Fatalf("push markdown list items should use markdown list syntax: %s", got)
 	}
 	if strings.Contains(got, report.Summary) {
 		t.Fatalf("push markdown should not include legacy summary: %s", got)

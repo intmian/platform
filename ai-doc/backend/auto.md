@@ -1,6 +1,6 @@
 # Auto Service
 
-Last verified: 2026-06-16
+Last verified: 2026-06-17
 
 ## Scope
 
@@ -122,7 +122,7 @@ Last verified: 2026-06-16
 8. Google keyword news is only valid in `keywordBriefs` and `pushBrief.keywordBriefs`; those refs must be `google:*` when present.
 9. Digest generation retries once per split pass with a repair prompt when an AI response is invalid.
 10. If summary setup or digest generation fails, the report keeps raw news data, clears `Digest`, and stores a deterministic failure `Summary`.
-11. Push markdown uses `pushBrief.weatherLine`, `pushBrief.overview`, important news, keyword briefs, and the report link; it does not push the full fallback `Summary`.
+11. Push markdown uses `pushBrief.weatherLine`, `pushBrief.overview`, important news, keyword briefs, and the report link; important news and keyword briefs render as Markdown lists for Feishu, and the push does not include the full fallback `Summary`.
 
 ## Common failure signatures
 
