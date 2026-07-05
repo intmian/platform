@@ -911,29 +911,29 @@ export default function Library({addr, groupTitle}: LibraryProps) {
     // 应用筛选和排序
     const filteredItems = useMemo(() => {
         const computeStart = performance.now();
+        const search = searchText.trim().toLowerCase();
         let result = [...allItems];
-        
-        if (selectedCategory !== 'all') {
-            if (selectedCategory === '_uncategorized_') {
-                result = result.filter(item => !item.normalizedCategory);
-            } else {
-                result = result.filter(item => item.normalizedCategory === selectedCategory);
-            }
-        }
-        
-        if (selectedStatuses.length > 0) {
-            result = result.filter(item => selectedStatuses.includes(getItemStatusForFilter(item)));
-        } else {
-            result = [];
-        }
 
-        if (selectedStatuses.includes(LibraryItemStatus.TODO) && todoReasonFilter !== 'all') {
-            result = result.filter(item => item.derived.statusSnapshot.todoReason === todoReasonFilter);
-        }
-        
-        if (searchText.trim()) {
-            const search = searchText.toLowerCase();
+        if (search) {
             result = result.filter(item => item.searchIndex.includes(search));
+        } else {
+            if (selectedCategory !== 'all') {
+                if (selectedCategory === '_uncategorized_') {
+                    result = result.filter(item => !item.normalizedCategory);
+                } else {
+                    result = result.filter(item => item.normalizedCategory === selectedCategory);
+                }
+            }
+
+            if (selectedStatuses.length > 0) {
+                result = result.filter(item => selectedStatuses.includes(getItemStatusForFilter(item)));
+            } else {
+                result = [];
+            }
+
+            if (selectedStatuses.includes(LibraryItemStatus.TODO) && todoReasonFilter !== 'all') {
+                result = result.filter(item => item.derived.statusSnapshot.todoReason === todoReasonFilter);
+            }
         }
         
         result.sort((a, b) => {

@@ -689,6 +689,22 @@ export default function LibraryTimeline({visible, items, onClose, onItemClick}: 
             && entry.status === LibraryItemStatus.DOING
             && isLibraryAutoRoundStartComment(trimmedComment, entry.roundName)
         ) || trimmedComment === actionText;
+        const commentStyle: React.CSSProperties = entry.logType === LibraryLogType.score
+            ? {
+                fontSize: 12,
+                display: 'block',
+                maxWidth: '100%',
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+            }
+            : {
+                fontSize: 12,
+                display: '-webkit-box',
+                WebkitLineClamp: 2,
+                WebkitBoxOrient: 'vertical',
+                overflow: 'hidden',
+            };
 
         const exportEntryKey = buildTimelineEntryKey(entry);
         const exportChecked = !options?.excludedEntryKeys?.has(exportEntryKey);
@@ -763,7 +779,7 @@ export default function LibraryTimeline({visible, items, onClose, onItemClick}: 
                     </div>
                     
                     {/* 内容 */}
-                    <Space direction="vertical" size={2} style={{flex: 1}}>
+                    <Space direction="vertical" size={2} style={{flex: 1, minWidth: 0}}>
                         <Text strong style={{fontSize: isMobile ? 13 : 14}}>
                             {entry.itemTitle}
                         </Text>
@@ -783,13 +799,7 @@ export default function LibraryTimeline({visible, items, onClose, onItemClick}: 
                         {trimmedComment && !shouldHideComment && (
                             <Text
                                 type="secondary"
-                                style={{
-                                    fontSize: 12,
-                                    display: '-webkit-box',
-                                    WebkitLineClamp: 2,
-                                    WebkitBoxOrient: 'vertical',
-                                    overflow: 'hidden',
-                                }}
+                                style={commentStyle}
                             >
                                 {trimmedComment}
                             </Text>
@@ -927,11 +937,7 @@ export default function LibraryTimeline({visible, items, onClose, onItemClick}: 
                                 {label}
                             </div>
                             <div className="library-score-gradient-track">
-                                {entries.length > 0 ? (
-                                    entries.map(renderScoreGradientCover)
-                                ) : (
-                                    <Text type="secondary" className="library-score-gradient-empty">暂无</Text>
-                                )}
+                                {entries.map(renderScoreGradientCover)}
                             </div>
                         </div>
                     );
