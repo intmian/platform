@@ -156,9 +156,10 @@ Last verified: 2026-07-03
    - default: `whisper-large-v3-turbo`
    - request-supplied model fields are ignored
 5. Backend upload/request guards:
-   - max audio upload size is 25 MB
+   - max audio upload size is 250 MB
    - prompt is capped at 4000 runes
    - language is capped at 32 bytes
+   - upstream transcription call timeout is 10 minutes
 6. Response payload:
    - `text`
    - optional `language`

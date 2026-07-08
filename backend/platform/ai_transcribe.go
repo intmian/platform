@@ -15,7 +15,7 @@ import (
 )
 
 const (
-	maxAITranscribeUploadBytes = 25 << 20
+	maxAITranscribeUploadBytes = 250 << 20
 	maxAITranscribePromptRunes = 4000
 	maxAITranscribeLanguageLen = 32
 )
@@ -64,7 +64,7 @@ func (m *webMgr) aiTranscribe(c *gin.Context) {
 	}
 	defer file.Close()
 
-	ctx, cancel := context.WithTimeout(c.Request.Context(), 2*time.Minute)
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 10*time.Minute)
 	defer cancel()
 	ret, err := m.transcribeAI(ctx, file, language, prompt)
 	if err != nil {
