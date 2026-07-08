@@ -49,16 +49,16 @@ export async function transcribeAudio(req: AiTranscribeReq): Promise<AiTranscrib
         });
         if (!response.ok || (response.status !== undefined && response.status !== 200)) {
             console.debug("transcribeAudio failed:", response);
-            return null;
+            throw new Error("语音转写请求失败");
         }
         const data = await response.json() as UniEnvelope<AiTranscribeResp>;
         if (data.code !== 0 || !data.data) {
             console.debug("transcribeAudio failed:", data.msg);
-            return null;
+            throw new Error(data.msg || "语音转写失败");
         }
         return data.data;
     } catch (error) {
         console.debug("transcribeAudio failed:", error);
-        return null;
+        throw error instanceof Error ? error : new Error("语音转写失败");
     }
 }

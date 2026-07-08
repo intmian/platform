@@ -1,6 +1,6 @@
 # Frontend Architecture
 
-Last verified: 2026-07-03
+Last verified: 2026-07-08
 
 ## Scope
 
@@ -96,9 +96,9 @@ Last verified: 2026-07-03
 
 ## Shared AI UI helpers
 
-1. `frontend/src/common/useAudioRecorder.ts` is the generic browser recording hook; it owns MediaRecorder setup, duration, stop/cancel, Blob output, and microphone track cleanup only.
-2. `frontend/src/common/WhisperButton.tsx` composes `useAudioRecorder` with `transcribeAudio`; it emits transcription text through `onText` and keeps business-specific insertion behavior in the caller.
-3. `WhisperButton` sends no language or prompt by default; long-press opens a settings modal, and saved `language`/`prompt` values persist in browser `localStorage` under `platform.ai.transcribe.settings.v1`.
+1. `frontend/src/common/useAudioRecorder.ts` is the generic browser recording hook; it prefers Web Audio PCM capture encoded as `audio/wav` for transcription-provider compatibility, falls back to MediaRecorder when Web Audio is unavailable, and owns duration, stop/cancel, Blob output, and microphone track cleanup only.
+2. `frontend/src/common/WhisperButton.tsx` composes `useAudioRecorder` with `transcribeAudio`; it emits transcription text through `onText` and keeps business-specific insertion behavior in the caller. When rendered without children, it defaults to an icon-only circular button with tooltip/ARIA labeling owned by the shared component. Long-press opens settings after a 900ms hold, but progress feedback is delayed for the first 300ms to avoid visual noise on normal taps.
+3. `WhisperButton` sends `zh` as the default transcription language; long-press opens a settings modal where language is selected from 简体中文/英文/日语 and saved as `zh`/`en`/`ja` along with `prompt` in browser `localStorage` under `platform.ai.transcribe.settings.v1`. Because the transcription API language hint identifies Chinese as `zh` without script variants, the shared component prepends a Simplified Chinese writing and punctuation style prompt when `zh` is selected, then appends any user-provided domain/context prompt.
 
 ## Loading guidance
 

@@ -7,7 +7,6 @@ import {
     DownOutlined,
     EyeInvisibleOutlined,
     EyeOutlined,
-    FileAddOutlined,
     SettingFilled,
     SyncOutlined
 } from "@ant-design/icons";
@@ -20,6 +19,7 @@ import User from "../common/User";
 import {LoginCtx} from "../common/loginCtx";
 import {FileShow, sendGptRewrite} from "../common/newSendHttp";
 import {useImageUpload} from "../common/useImageUpload";
+import {WhisperButton} from "../common/WhisperButton";
 
 // TODO: 使用ios打开网页时，当浏览器切换到后台，立刻重新切回前台，网页并未被回收，但是浏览器会自动刷新一次，此时如果停止刷新，使用是完全正常的，似乎是底层问题后面看看
 
@@ -60,6 +60,22 @@ async function encryptContentWithAesGcm(content: string, keyText: string): Promi
 interface MemosSetting {
     url: string
     key: string
+}
+
+const EMPTY_MEMOS_SETTING: MemosSetting = {url: '', key: ''};
+
+function normalizeMemosSetting(value: unknown): MemosSetting | null {
+    if (!value || typeof value !== 'object') {
+        return null;
+    }
+    const setting = value as Partial<MemosSetting>;
+    if (typeof setting.url !== 'string' || typeof setting.key !== 'string') {
+        return null;
+    }
+    return {
+        url: setting.url,
+        key: setting.key,
+    };
 }
 
 function SettingPanel({onSuccess, onFail}: { onSuccess: (setting: MemosSetting) => void, onFail: () => void }) {
@@ -471,6 +487,7 @@ function HideInput({
         focus: () => void,
         gptReWrite: () => void
         addFile: (file: FileShow) => void
+        addText: (text: string) => void
     }>,
     onChange: (text: string) => void,
     onHideModeChange: (hideMode: boolean) => void,
@@ -578,9 +595,20 @@ function HideInput({
         writeReal(prev + (needEnter ? '\n' : '') + tag);
     }, [writeReal]);
 
+    const addText = useCallback((text: string) => {
+        const nextText = text.trim();
+        if (!nextText) {
+            return;
+        }
+        const prev = realTextRef.current;
+        const needEnter = prev.length > 0 && !prev.endsWith('\n') && !prev.endsWith(' ');
+        writeReal(prev + (needEnter ? '\n' : '') + nextText);
+        inputRef.current?.focus();
+    }, [writeReal]);
+
     useImperativeHandle(functionsRef, () => ({
-        clear, get, hide, show, focus, gptReWrite, addFile,
-    }), [clear, get, hide, show, focus, gptReWrite, addFile]);
+        clear, get, hide, show, focus, gptReWrite, addFile, addText,
+    }), [clear, get, hide, show, focus, gptReWrite, addFile, addText]);
 
     const display = hideMode ? '*'.repeat(Array.from(realText).length) : realText;
     const textareaValue = composingValue !== null ? composingValue : display;
@@ -697,7 +725,7 @@ function Memos() {
 
     // 从localStorage中获取配置
     const loginCtr = useContext(LoginCtx);
-    const [NowSetting, setNowSetting] = useState<MemosSetting>({url: '', key: ''});
+    const [NowSetting, setNowSetting] = useState<MemosSetting>(EMPTY_MEMOS_SETTING);
     useEffect(() => {
         if (loginCtr.loginInfo.usr === "") {
             setLoadingUser(false);
@@ -708,10 +736,20 @@ function Memos() {
             data?: Record<string, { Data: string }>;
         }) => {
             if (ret.ok && ret.data && ret.data['note.setting']) {
-                const setting = JSON.parse(ret.data['note.setting'].Data);
-                setNowSetting(setting);
+                try {
+                    const setting = normalizeMemosSetting(JSON.parse(ret.data['note.setting'].Data));
+                    if (setting) {
+                        setNowSetting(setting);
+                    } else {
+                        setNowSetting(EMPTY_MEMOS_SETTING);
+                        setOpenSetting(true);
+                    }
+                } catch {
+                    setNowSetting(EMPTY_MEMOS_SETTING);
+                    setOpenSetting(true);
+                }
             } else {
-                setNowSetting({url: '', key: ''});
+                setNowSetting(EMPTY_MEMOS_SETTING);
                 setOpenSetting(true);
             }
             setLoadingSetting(false);
@@ -736,6 +774,7 @@ function Memos() {
         focus: () => void;
         gptReWrite: () => void;
         addFile: (file: FileShow) => void;
+        addText: (text: string) => void;
     }> = useRef({
         clear: () => {
         },
@@ -749,6 +788,8 @@ function Memos() {
         gptReWrite: () => {
         },
         addFile: () => {
+        },
+        addText: () => {
         }
     });
 
@@ -960,6 +1001,11 @@ function Memos() {
             label: '加密上传',
             disabled: advancedMenuDisabled,
         },
+        {
+            key: 'upload-file',
+            label: uploading ? '上传中' : '文件上传',
+            disabled: uploading || loadingSetting,
+        },
     ];
 
     const onAdvancedMenuClick: MenuProps['onClick'] = ({key}) => {
@@ -972,6 +1018,10 @@ function Memos() {
         }
         if (key === 'encrypted-upload') {
             showEncryptUploadModal();
+            return;
+        }
+        if (key === 'upload-file') {
+            UpdateFileWith();
         }
     };
 
@@ -1113,13 +1163,12 @@ function Memos() {
                             <DownOutlined/>
                         </Button>
                     </Dropdown>
-                    <Button
-                        // 上传按钮
-                        icon={<FileAddOutlined/>}
-                        // type={"text"}
-                        size={"small"}
-                        loading={uploading}
-                        onClick={UpdateFileWith}
+                    <WhisperButton
+                        size="small"
+                        tooltip="语音输入"
+                        onText={(text) => {
+                            inputRef.current.addText(text);
+                        }}
                     />
                     <Button
                         type="primary"

@@ -1,6 +1,6 @@
 # Note Mini Knowledge
 
-Last verified: 2026-04-27
+Last verified: 2026-07-08
 
 ## Module role
 
@@ -50,7 +50,8 @@ Last verified: 2026-04-27
 1. The page is a lightweight private memo sender:
    - input area supports markdown text
    - tag input supports Ctrl+Enter submit from tag area
-   - upload supports local files and clipboard images, then inserts markdown link/image
+   - upload supports local files and clipboard images from the `更多` menu, then inserts markdown link/image
+   - bottom action bar includes `WhisperButton` voice input; transcribed text is appended to the draft input
    - submit queue shows recent send status icons (success/failure/loading)
 3. Upload trigger path uses a reused hidden `input[type=file]` (not recreated per click), and resets `value` before click to avoid occasional "click upload but nothing happens" behavior.
 4. The top-right control area places a small eye toggle to the left of the logged-in user; it switches between visible/hidden draft display without moving the bottom action bar layout.
@@ -78,13 +79,15 @@ Last verified: 2026-04-27
 2. Advanced dropdown contains:
    - `AI重写`: same behavior as previous AI button
    - `加密上传`: opens modal for AES key + tip, then sends encrypted content
-3. Hide/show is no longer inside the advanced dropdown; it is controlled by the top-right eye button next to the login user display.
-4. AES key input uses `Input.Password` with `autoComplete="new-password"` and is not persisted to local storage.
-5. Encrypted submit content format is:
+   - `文件上传`: uses the previous upload flow, including clipboard-image detection on supported desktop browsers
+3. The original standalone upload button position now hosts the shared voice input button.
+4. Hide/show is no longer inside the advanced dropdown; it is controlled by the top-right eye button next to the login user display.
+5. AES key input uses `Input.Password` with `autoComplete="new-password"` and is not persisted to local storage.
+6. Encrypted submit content format is:
    - `<tip>\n<aes-gcm encrypted blob>`
    - encrypted blob format: `aes-gcm:<base64(iv)>:<base64(ciphertext)>`
-6. Encrypted submit still goes through the same normal submit queue path (`AddHis` -> `SendMemosReq`).
-7. Advanced dropdown trigger is disabled only during setting loading; when input text is empty and settings are ready, trigger remains enabled while both menu items stay disabled (verified via interaction).
+7. Encrypted submit still goes through the same normal submit queue path (`AddHis` -> `SendMemosReq`).
+8. Advanced dropdown trigger is disabled only during setting loading; when input text is empty and settings are ready, trigger remains enabled while text-dependent items stay disabled while upload remains available.
 
 ## Verification focus
 

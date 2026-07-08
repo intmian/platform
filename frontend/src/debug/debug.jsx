@@ -1,11 +1,11 @@
 import {useState} from "react";
-import {Button, Card, Col, InputNumber, Row, Slider, Space, Typography} from "antd";
+import {Alert, Button, Card, Col, Input, InputNumber, Row, Slider, Space, Typography} from "antd";
 import {CustomDeviceSimulator, DeviceSimulator} from "./DeviceSim.jsx";
 import {MenuPlus} from "../common/MenuPlus.jsx";
 import {EditableProps} from "./EditableProps.jsx";
 import {ConfigsType, ConfigType} from "../common/UniConfigDef.js";
 import {ConfigsCtr} from "../common/UniConfig.jsx";
-import TextRate from "../library/TextRate.tsx";
+import {WhisperButton} from "../common/WhisperButton.tsx";
 
 const {Text} = Typography;
 
@@ -14,12 +14,58 @@ const config = new ConfigsCtr(ConfigsType.Plat)
 config.addBaseConfig('test', '测试', ConfigType.SliceString, 'test')
 config.addBaseConfig('realKey', '真实2', ConfigType.String, 'realKey')
 
-const debug = <TextRate
-    sequence={["11", "22", "33", "44", "55"]}
-    initialValue={"33+"}
-    fontSize={12}
-    fontSize2={8}
-/>
+function WhisperDebugPanel() {
+    const [text, setText] = useState("");
+    const [lastResponse, setLastResponse] = useState(null);
+    const [lastError, setLastError] = useState("");
+
+    return (
+        <Card
+            title="语音转文字"
+            style={{
+                maxWidth: 720,
+                margin: 16,
+            }}
+        >
+            <Space direction="vertical" size="middle" style={{width: "100%"}}>
+                <Space wrap>
+                    <WhisperButton
+                        tooltip="点击开始 / 停止录音"
+                        onText={(nextText, response) => {
+                            setText(nextText);
+                            setLastResponse(response);
+                            setLastError("");
+                        }}
+                        onError={(error) => {
+                            setLastError(error);
+                        }}
+                    />
+                    <Button onClick={() => {
+                        setText("");
+                        setLastResponse(null);
+                        setLastError("");
+                    }}>
+                        清空
+                    </Button>
+                </Space>
+                {lastError ? <Alert type="error" showIcon message={lastError}/> : null}
+                <Input.TextArea
+                    value={text}
+                    onChange={(event) => setText(event.target.value)}
+                    autoSize={{minRows: 6, maxRows: 12}}
+                    placeholder="转写结果会显示在这里"
+                />
+                {lastResponse ? (
+                    <Typography.Text type="secondary">
+                        language: {lastResponse.language || "-"} / duration: {lastResponse.duration ?? "-"}
+                    </Typography.Text>
+                ) : null}
+            </Space>
+        </Card>
+    );
+}
+
+const debug = <WhisperDebugPanel/>
 
 // const settings = {
 //     init: false,

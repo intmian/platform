@@ -1,5 +1,5 @@
 import {AudioOutlined, LoadingOutlined} from "@ant-design/icons";
-import {Button, Input, message, Modal, Space, Tooltip} from "antd";
+import {Button, Input, message, Modal, Select, Space, Tooltip, Typography} from "antd";
 import type {ButtonProps} from "antd";
 import {useCallback, useMemo, useRef, useState} from "react";
 import {transcribeAudio} from "./aiGateway";
@@ -7,7 +7,15 @@ import type {AiTranscribeResp} from "./aiProtocol";
 import {useAudioRecorder} from "./useAudioRecorder";
 
 const STORAGE_KEY = "platform.ai.transcribe.settings.v1";
-const LONG_PRESS_MS = 650;
+const LONG_PRESS_MS = 900;
+const LONG_PRESS_PROGRESS_DELAY_MS = 300;
+const DEFAULT_LANGUAGE = "zh";
+const ZH_STYLE_PROMPT = "请使用简体中文写法和中文标点风格。";
+const LANGUAGE_OPTIONS = [
+    {label: "简体中文", value: "zh"},
+    {label: "英文", value: "en"},
+    {label: "日语", value: "ja"},
+];
 
 interface WhisperSettings {
     language?: string;
@@ -23,29 +31,38 @@ export interface WhisperButtonProps extends Omit<ButtonProps, "onClick" | "loadi
     tooltip?: string;
 }
 
+function normalizeLanguage(language?: string): string {
+    const next = language?.trim() || DEFAULT_LANGUAGE;
+    return LANGUAGE_OPTIONS.some((option) => option.value === next) ? next : DEFAULT_LANGUAGE;
+}
+
+function normalizeSettings(settings: WhisperSettings): WhisperSettings {
+    return {
+        language: normalizeLanguage(settings.language),
+        prompt: settings.prompt?.trim() || "",
+    };
+}
+
 function readStoredSettings(): WhisperSettings {
     try {
         const raw = window.localStorage.getItem(STORAGE_KEY);
         if (!raw) {
-            return {};
+            return normalizeSettings({});
         }
         const parsed = JSON.parse(raw) as WhisperSettings;
-        return {
+        return normalizeSettings({
             language: typeof parsed.language === "string" ? parsed.language : "",
             prompt: typeof parsed.prompt === "string" ? parsed.prompt : "",
-        };
+        });
     } catch {
-        return {};
+        return normalizeSettings({});
     }
 }
 
 function writeStoredSettings(settings: WhisperSettings) {
-    const next = {
-        language: settings.language?.trim() || "",
-        prompt: settings.prompt?.trim() || "",
-    };
+    const next = normalizeSettings(settings);
     try {
-        if (!next.language && !next.prompt) {
+        if (next.language === DEFAULT_LANGUAGE && !next.prompt) {
             window.localStorage.removeItem(STORAGE_KEY);
             return;
         }
@@ -53,6 +70,20 @@ function writeStoredSettings(settings: WhisperSettings) {
     } catch {
         // localStorage can be unavailable in private or restricted browser modes.
     }
+}
+
+function audioFileName(blob: Blob): string {
+    const type = blob.type.toLowerCase();
+    if (type.includes("mp4")) {
+        return `recording-${Date.now()}.mp4`;
+    }
+    if (type.includes("ogg")) {
+        return `recording-${Date.now()}.ogg`;
+    }
+    if (type.includes("wav")) {
+        return `recording-${Date.now()}.wav`;
+    }
+    return `recording-${Date.now()}.webm`;
 }
 
 export function WhisperButton({
@@ -80,8 +111,18 @@ export function WhisperButton({
     const holdFrameRef = useRef<number | null>(null);
     const skipClickRef = useRef(false);
 
-    const effectiveLanguage = useMemo(() => language ?? settings.language ?? "", [language, settings.language]);
+    const effectiveLanguage = useMemo(
+        () => normalizeLanguage(language ?? settings.language),
+        [language, settings.language],
+    );
     const effectivePrompt = useMemo(() => prompt ?? settings.prompt ?? "", [prompt, settings.prompt]);
+    const requestPrompt = useMemo(() => {
+        const nextPrompt = effectivePrompt.trim();
+        return [
+            effectiveLanguage === DEFAULT_LANGUAGE ? ZH_STYLE_PROMPT : "",
+            nextPrompt,
+        ].filter(Boolean).join("\n");
+    }, [effectiveLanguage, effectivePrompt]);
     const busy = transcribing || recorder.state === "stopping";
     const isDisabled = Boolean(disabled || busy);
 
@@ -110,7 +151,9 @@ export function WhisperButton({
 
     const animateLongPress = useCallback(() => {
         const elapsed = Date.now() - holdStartRef.current;
-        setHoldProgress(Math.min(1, elapsed / LONG_PRESS_MS));
+        const visibleElapsed = Math.max(0, elapsed - LONG_PRESS_PROGRESS_DELAY_MS);
+        const visibleDuration = LONG_PRESS_MS - LONG_PRESS_PROGRESS_DELAY_MS;
+        setHoldProgress(Math.min(1, visibleElapsed / visibleDuration));
         if (elapsed < LONG_PRESS_MS) {
             holdFrameRef.current = window.requestAnimationFrame(animateLongPress);
         }
@@ -147,9 +190,9 @@ export function WhisperButton({
                 setTranscribing(true);
                 const response = await transcribeAudio({
                     file: blob,
-                    fileName: fileName || `recording-${Date.now()}.webm`,
+                    fileName: fileName || audioFileName(blob),
                     language: effectiveLanguage,
-                    prompt: effectivePrompt,
+                    prompt: requestPrompt,
                 });
                 if (!response?.text) {
                     emitError("语音转写失败");
@@ -170,17 +213,17 @@ export function WhisperButton({
         }
     }, [
         effectiveLanguage,
-        effectivePrompt,
         emitError,
         fileName,
         isDisabled,
         onText,
         recorder,
+        requestPrompt,
     ]);
 
     const handleSaveSettings = useCallback(() => {
         const next = {
-            language: draftSettings.language?.trim() || "",
+            language: normalizeLanguage(draftSettings.language),
             prompt: draftSettings.prompt?.trim() || "",
         };
         writeStoredSettings(next);
@@ -190,6 +233,8 @@ export function WhisperButton({
 
     const progressDegrees = Math.round(holdProgress * 360);
     const defaultIcon = transcribing ? <LoadingOutlined spin/> : <AudioOutlined/>;
+    const iconOnly = children == null;
+    const iconOnlySize = buttonProps.size === "large" ? 40 : buttonProps.size === "small" ? 24 : 32;
 
     return <>
         <Tooltip title={tooltip}>
@@ -219,6 +264,8 @@ export function WhisperButton({
                     disabled={isDisabled}
                     loading={false}
                     icon={icon || defaultIcon}
+                    shape={buttonProps.shape || (iconOnly ? "circle" : undefined)}
+                    aria-label={buttonProps["aria-label"] || (iconOnly ? tooltip : undefined)}
                     onPointerDown={startLongPress}
                     onPointerUp={clearLongPress}
                     onPointerLeave={clearLongPress}
@@ -227,6 +274,11 @@ export function WhisperButton({
                     style={{
                         position: "relative",
                         zIndex: 1,
+                        ...(iconOnly ? {
+                            width: iconOnlySize,
+                            height: iconOnlySize,
+                            minWidth: iconOnlySize,
+                        } : {}),
                         ...buttonProps.style,
                     }}
                 >
@@ -237,6 +289,7 @@ export function WhisperButton({
         <Modal
             title="语音转写设置"
             open={configOpen}
+            width={480}
             okText="保存"
             cancelText="取消"
             onOk={handleSaveSettings}
@@ -244,20 +297,23 @@ export function WhisperButton({
             destroyOnClose={true}
         >
             <Space direction="vertical" size="middle" style={{width: "100%"}}>
-                <Input
-                    allowClear={true}
-                    addonBefore="language"
-                    placeholder="留空自动检测，例如 zh / en / ja"
-                    value={draftSettings.language}
-                    onChange={(event) => setDraftSettings((prev) => ({
-                        ...prev,
-                        language: event.target.value,
-                    }))}
-                />
+                <Space direction="vertical" size={4} style={{width: "100%"}}>
+                    <Typography.Text type="secondary">语言</Typography.Text>
+                    <Select
+                        aria-label="语言"
+                        value={normalizeLanguage(draftSettings.language)}
+                        options={LANGUAGE_OPTIONS}
+                        onChange={(value) => setDraftSettings((prev) => ({
+                            ...prev,
+                            language: value,
+                        }))}
+                        style={{width: "100%"}}
+                    />
+                </Space>
                 <Input.TextArea
                     allowClear={true}
-                    autoSize={{minRows: 4, maxRows: 8}}
-                    placeholder="prompt"
+                    autoSize={{minRows: 3, maxRows: 5}}
+                    placeholder="prompt（可补充专有名词、上下文或上一段转写）"
                     value={draftSettings.prompt}
                     onChange={(event) => setDraftSettings((prev) => ({
                         ...prev,

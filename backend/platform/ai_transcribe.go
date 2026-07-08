@@ -105,6 +105,9 @@ func (m *webMgr) transcribeAI(ctx context.Context, file io.Reader, language stri
 		Prompt:   prompt,
 	})
 	if err != nil {
+		if m.plat != nil && m.plat.log != nil {
+			m.plat.log.Warning("PLAT", "ai transcribe upstream error: %s", err.Error())
+		}
 		return ai.TranscriptionResult{}, errors.New("svr error")
 	}
 	return ret, nil
