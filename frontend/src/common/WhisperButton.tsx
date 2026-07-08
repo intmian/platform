@@ -191,7 +191,6 @@ export function WhisperButton({
                 const response = await transcribeAudio({
                     file: blob,
                     fileName: fileName || audioFileName(blob),
-                    language: effectiveLanguage,
                     prompt: requestPrompt,
                 });
                 if (!response?.text) {
@@ -212,7 +211,6 @@ export function WhisperButton({
             emitError(recorder.error || "无法开始录音");
         }
     }, [
-        effectiveLanguage,
         emitError,
         fileName,
         isDisabled,
