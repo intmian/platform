@@ -1,40 +1,23 @@
 import config from "../config.json";
 import {UniPost, UniResult} from "./newSendHttp";
+import {AiAction, AiRequestMap, AiResponseMap, AiTranscribeReq, AiTranscribeResp} from "./aiProtocol";
 
-export enum AiAction {
-    LibraryReviewNotesDigest = 'library.reviewNotesDigest',
-}
+export type {
+    AiRequestMap,
+    AiResponseMap,
+    AiTranscribeReq,
+    AiTranscribeResp,
+    LibraryReviewDigestNote,
+    LibraryReviewDigestPoint,
+    LibraryReviewNotesDigestReq,
+    LibraryReviewNotesDigestResp,
+} from "./aiProtocol";
+export {AiAction} from "./aiProtocol";
 
-export interface LibraryReviewDigestNote {
-    time: string;
-    content: string;
-}
-
-export interface LibraryReviewNotesDigestReq {
-    title: string;
-    category?: string;
-    author?: string;
-    roundName: string;
-    notes: LibraryReviewDigestNote[];
-}
-
-export interface LibraryReviewDigestPoint {
-    point: string;
-    evidence?: string;
-}
-
-export interface LibraryReviewNotesDigestResp {
-    positives: LibraryReviewDigestPoint[];
-    negatives: LibraryReviewDigestPoint[];
-    records: LibraryReviewDigestPoint[];
-}
-
-export interface AiRequestMap {
-    [AiAction.LibraryReviewNotesDigest]: LibraryReviewNotesDigestReq;
-}
-
-export interface AiResponseMap {
-    [AiAction.LibraryReviewNotesDigest]: LibraryReviewNotesDigestResp;
+interface UniEnvelope<T> {
+    code: number;
+    msg?: string;
+    data?: T;
 }
 
 export async function sendAiAction<T extends AiAction>(
@@ -46,4 +29,36 @@ export async function sendAiAction<T extends AiAction>(
         payload,
     });
     return res.ok ? (res.data as AiResponseMap[T]) : null;
+}
+
+export async function transcribeAudio(req: AiTranscribeReq): Promise<AiTranscribeResp | null> {
+    const form = new FormData();
+    const fileName = req.fileName || (req.file instanceof File ? req.file.name : "audio.webm");
+    form.append("file", req.file, fileName);
+    if (req.language?.trim()) {
+        form.append("language", req.language.trim());
+    }
+    if (req.prompt?.trim()) {
+        form.append("prompt", req.prompt.trim());
+    }
+
+    try {
+        const response = await fetch(config.api_base_url + "/misc/ai/transcribe", {
+            method: "POST",
+            body: form,
+        });
+        if (!response.ok || (response.status !== undefined && response.status !== 200)) {
+            console.debug("transcribeAudio failed:", response);
+            return null;
+        }
+        const data = await response.json() as UniEnvelope<AiTranscribeResp>;
+        if (data.code !== 0 || !data.data) {
+            console.debug("transcribeAudio failed:", data.msg);
+            return null;
+        }
+        return data.data;
+    } catch (error) {
+        console.debug("transcribeAudio failed:", error);
+        return null;
+    }
 }

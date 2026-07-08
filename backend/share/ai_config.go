@@ -16,6 +16,8 @@ const (
 	AISceneLibraryReviewDigest AIScene = "library_review_digest"
 )
 
+const DefaultAIAudioModel = "whisper-large-v3-turbo"
+
 func defaultAIModelPools() map[ai.ModelMode][]string {
 	return map[ai.ModelMode][]string{
 		ai.ModelModeCheap:  {"gpt-5.4-mini", "gpt-5.4-nano"},
@@ -63,6 +65,13 @@ func DefaultAIConfigParams() []*xstorage.CfgParam {
 			Default:   *xstorage.ToUnit(modelPools[ai.ModelModeNormal], xstorage.ValueTypeSliceString),
 		},
 		{
+			Key:       "PLAT.openai.audio.model",
+			ValueType: xstorage.ValueTypeString,
+			CanUser:   false,
+			RealKey:   "openai.audio.model",
+			Default:   *xstorage.ToUnit[string](DefaultAIAudioModel, xstorage.ValueTypeString),
+		},
+		{
 			Key:       "PLAT.openai.scene.rewrite",
 			ValueType: xstorage.ValueTypeString,
 			CanUser:   false,
@@ -96,6 +105,7 @@ func DefaultAIConfigParams() []*xstorage.CfgParam {
 type AIConfig struct {
 	Base       string
 	Token      string
+	AudioModel string
 	ModelPools map[ai.ModelMode][]string
 	SceneModes map[AIScene]ai.ModelMode
 }
@@ -150,6 +160,10 @@ func GetAIConfig(cfg *xstorage.CfgExt) (AIConfig, error) {
 	conf.ModelPools[ai.ModelModeNormal], err = readCfgStrings(cfg, "PLAT", "openai", "model", "normal")
 	if err != nil {
 		return conf, err
+	}
+	conf.AudioModel, err = readCfgString(cfg, "PLAT", "openai", "audio", "model")
+	if err != nil || conf.AudioModel == "" {
+		conf.AudioModel = DefaultAIAudioModel
 	}
 	rewriteMode, err := readCfgString(cfg, "PLAT", "openai", "scene", "rewrite")
 	if err != nil {

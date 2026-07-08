@@ -1,6 +1,6 @@
 # Shared Reusable Tools And Flows
 
-Last verified: 2026-05-04
+Last verified: 2026-07-03
 
 ## Format
 
@@ -18,3 +18,6 @@ Last verified: 2026-05-04
 6. `UniConfig` + `ConfigsCtr`: 通用配置表单/缓存容器；支持按 key 分组复用、机密字段 password 显示、slice 值折叠摘要、拖拽排序和右侧删除操作。
 7. `#ignoreDeploy`: 推送到 `master` 的提交消息包含该标记时，`.github/workflows/deploy.yml` 的前端构建、后端构建和部署 job 会跳过。
 8. `sendAiAction` + `POST /misc/ai/run`: 前后端类型化 AI Gateway；前端只传固定 action enum 和结构化 payload，后端按 action 白名单绑定权限、prompt 和响应结构。
+9. `transcribeAudio` + `POST /misc/ai/transcribe`: 通用音频转写入口；前端只上传音频和可选 language/prompt，后端从 `PLAT.openai.audio.model` 选择模型。
+10. `useAudioRecorder`: 通用浏览器录音 hook；只负责 MediaRecorder 生命周期、时长、Blob 输出和麦克风释放，不绑定业务回填。
+11. `WhisperButton`: 通用语音输入按钮；单击录音/停止转写，长按打开 language/prompt 本地记忆设置，业务侧通过 `onText` 接收文本。

@@ -20,6 +20,7 @@ func (m *webMgr) initSvrRoot(r *gin.Engine) {
 
 	// 未来可能迁移到misc
 	r.POST("/misc/ai/run", m.aiRun)
+	r.POST("/misc/ai/transcribe", m.aiTranscribe)
 	r.POST("/misc/gpt-rewrite", m.gptRewrite)
 	r.POST("/misc/r2-presigned-url", m.getR2PresignedURL)
 	r.POST("/misc/subscription/list", m.subscriptionList)

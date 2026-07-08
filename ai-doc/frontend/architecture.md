@@ -1,6 +1,6 @@
 # Frontend Architecture
 
-Last verified: 2026-04-26
+Last verified: 2026-07-03
 
 ## Scope
 
@@ -59,11 +59,12 @@ Last verified: 2026-04-26
 3. Shared HTTP helpers live mainly in:
    - `frontend/src/common/sendhttp.js`
    - `frontend/src/common/newSendHttp.ts`
-4. Common backend envelope assumption:
+4. Common AI protocol types live in `frontend/src/common/aiProtocol.ts`; `frontend/src/common/aiGateway.ts` owns typed JSON AI actions and multipart audio transcription sends.
+5. Common backend envelope assumption:
    - `code = 0` means success
    - `code != 0` means failure
    - payload is usually in `data`
-5. Most page/service requests use JSON `POST`, even for reads.
+6. Most page/service requests use JSON `POST`, even for reads; audio transcription is a multipart exception.
 
 ## Shared auth model
 
@@ -91,7 +92,13 @@ Last verified: 2026-04-26
 5. `UniConfig` supports `hideLabels` for grouped card layouts where the card title already names the config item.
 6. Slice config rows use a dedicated drag handle for reordering and keep the delete `X` on the far right of each row, matching the action alignment used by the save button column.
 7. Slice config inline editors keep focus during typing; row identity stays stable while values change, so editing a single character does not remount the input.
-8. Admin `AI 设置` page keeps `连接配置` on top, then uses a responsive two-column section layout on desktop: `模型池` on the left as a vertical stack and `场景档位` on the right; narrow screens collapse back to a single column.
+8. Admin `AI 设置` page keeps `连接配置` on top, then `语音模型`, then uses a responsive two-column section layout on desktop: `模型池` on the left as a vertical stack and `场景档位` on the right; narrow screens collapse back to a single column.
+
+## Shared AI UI helpers
+
+1. `frontend/src/common/useAudioRecorder.ts` is the generic browser recording hook; it owns MediaRecorder setup, duration, stop/cancel, Blob output, and microphone track cleanup only.
+2. `frontend/src/common/WhisperButton.tsx` composes `useAudioRecorder` with `transcribeAudio`; it emits transcription text through `onText` and keeps business-specific insertion behavior in the caller.
+3. `WhisperButton` sends no language or prompt by default; long-press opens a settings modal, and saved `language`/`prompt` values persist in browser `localStorage` under `platform.ai.transcribe.settings.v1`.
 
 ## Loading guidance
 

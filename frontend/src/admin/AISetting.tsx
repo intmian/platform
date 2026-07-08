@@ -16,6 +16,7 @@ AIConfigs.addBaseConfig("openai.token", "OpenAI Token", ConfigType.String, "AI �
 AIConfigs.addBaseConfig("openai.model.cheap", "模型列表", ConfigType.SliceString, "按顺序回退");
 AIConfigs.addBaseConfig("openai.model.fast", "模型列表", ConfigType.SliceString, "按顺序回退");
 AIConfigs.addBaseConfig("openai.model.normal", "模型列表", ConfigType.SliceString, "按顺序回退");
+AIConfigs.addBaseConfig("openai.audio.model", "语音转写模型", ConfigType.String, "默认 whisper-large-v3-turbo");
 AIConfigs.addEnumConfig("openai.scene.rewrite", "AI 重写模型档位", AI_MODE_OPTIONS, "默认 fast");
 AIConfigs.addEnumConfig("openai.scene.summary", "新闻汇总模型档位", AI_MODE_OPTIONS, "默认 cheap");
 AIConfigs.addEnumConfig("openai.scene.translate", "翻译模型档位", AI_MODE_OPTIONS, "默认 cheap");
@@ -39,6 +40,9 @@ export function AISetting() {
         </Paragraph>
         <Card size="small" title="连接配置" style={{marginBottom: 16}}>
             <UniConfig configCtr={AIConfigs} configKeys={["openai.base", "openai.token"]}/>
+        </Card>
+        <Card size="small" title="语音模型" style={{marginBottom: 16}}>
+            <UniConfig configCtr={AIConfigs} configKeys={["openai.audio.model"]}/>
         </Card>
         <Row gutter={[16, 16]}>
             <Col xs={24} xl={14}>
