@@ -1,6 +1,6 @@
 # Shared Reusable Tools And Flows
 
-Last verified: 2026-07-03
+Last verified: 2026-07-10
 
 ## Format
 
@@ -21,3 +21,5 @@ Last verified: 2026-07-03
 9. `transcribeAudio` + `POST /misc/ai/transcribe`: 通用音频转写入口；前端只上传音频和可选 language/prompt，后端从 `PLAT.openai.audio.model` 选择模型。
 10. `useAudioRecorder`: 通用浏览器录音 hook；只负责 MediaRecorder 生命周期、时长、Blob 输出和麦克风释放，不绑定业务回填。
 11. `WhisperButton`: 通用语音输入按钮；单击录音/停止转写，长按打开 language/prompt 本地记忆设置，业务侧通过 `onText` 接收文本。
+12. `docs/plan/d1-gorm/benchmarks/d1-gorm-adapter-baseline` + wrapper scripts: D1/GORM 重构前 baseline；独立 Go 项目单测原 fork adapter，platform-integration 脚本才读取 backend 测试运行配置并输出 todone SQL 分位数。
+13. `C:\GITHUB\gorm-d1-adapter\scripts\benchmark-v2.ps1` + `cmd/d1bench`: 新 adapter 的 REST/Worker 双模式验证与性能报告入口；不读取 platform 业务配置，输出 p50/p95/p99、失败率和 D1 meta。
