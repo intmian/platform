@@ -17,20 +17,16 @@ import Library from "./Library";
 import {useLoginGate} from "../common/useLoginGate";
 
 const TodoneConfigs = new ConfigsCtr(ConfigsType.Server, 'todone')
-TodoneConfigs.addBaseConfig('db.account_id', '数据库账号ID', ConfigType.String, 'cloudflare')
-TodoneConfigs.addBaseConfig('db.api_token', '数据库token', ConfigType.String, 'cloudflare', {secret: true})
-TodoneConfigs.addBaseConfig('db.db_id', '数据库ID', ConfigType.String, 'cloudflare')
+TodoneConfigs.addBaseConfig('db.worker_endpoint', 'Worker Endpoint', ConfigType.String, 'https://worker.example.com')
+TodoneConfigs.addBaseConfig('db.worker_token', 'Worker Token', ConfigType.String, '', {secret: true})
 TodoneConfigs.addCallback((isInit: boolean) => {
     if (!isInit) {
         message.warning('配置已经更新，需要重启服务').then()
     }
 })
 
-// TodoneConfigs.init()
-
-
 export function TodoneSetting() {
-    return <Card title="Todone 数据库配置" style={{marginBottom: 16}}>
+    return <Card title="Todone Worker 配置" style={{marginBottom: 16}}>
         <UniConfig configCtr={TodoneConfigs}/>
     </Card>
 }

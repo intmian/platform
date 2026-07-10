@@ -12,10 +12,12 @@ require (
 	github.com/bwmarrin/snowflake v0.3.0
 	github.com/gin-gonic/gin v1.9.1
 	github.com/google/uuid v1.6.0
+	github.com/intmian/gorm-d1-adapter v0.0.0-20260710141231-e21e83b1f399
 	github.com/intmian/mian_go_lib v0.0.0-20260119032423-6cbac09c2b60
 	github.com/pkg/errors v0.9.1
 	github.com/robfig/cron v1.2.0
 	github.com/shirou/gopsutil v3.21.10+incompatible
+	gorm.io/driver/sqlite v1.5.5
 	gorm.io/gorm v1.25.12
 )
 
@@ -79,6 +81,7 @@ require (
 	github.com/pelletier/go-toml/v2 v2.0.8 // indirect
 	github.com/pjbgf/sha1cd v0.3.0 // indirect
 	github.com/russross/blackfriday v1.6.0 // indirect
+	github.com/sashabaranov/go-openai v1.20.3 // indirect
 	github.com/sergi/go-diff v1.3.2-0.20230802210424-5b0b94c5c0d3 // indirect
 	github.com/skeema/knownhosts v1.2.2 // indirect
 	github.com/tklauser/go-sysconf v0.3.9 // indirect
@@ -97,5 +100,4 @@ require (
 	google.golang.org/protobuf v1.33.0 // indirect
 	gopkg.in/warnings.v0 v0.1.2 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
-	gorm.io/driver/sqlite v1.5.5 // indirect
 )

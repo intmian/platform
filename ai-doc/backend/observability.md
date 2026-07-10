@@ -1,6 +1,6 @@
 # Backend Observability
 
-Last verified: 2026-03-06
+Last verified: 2026-07-10
 
 ## Scope
 
@@ -28,10 +28,11 @@ Last verified: 2026-03-06
 
 ## BI and SQL tracing
 
-1. Platform initializes `xbi` with D1-backed storage during startup.
+1. Platform initializes `xbi` with the dedicated D1 log Worker during startup and fails startup when Worker health/auth validation fails.
 2. BI errors are routed into platform log channel `PLAT.XBI`.
 3. Todone DB layer registers BI log entity `todone_db_log`.
 4. For todone DB behavior, `/admin/bi_log/todone_db_log/search` is the reusable query path.
+5. The D1 Worker logs request ID, SQL hash, mode, latency, success, and D1 result metadata; full SQL and bearer tokens are not logged.
 
 ## Profiling
 

@@ -13,7 +13,8 @@ Last verified: 2026-07-10
 5. 正式 benchmark 已统一为真实 `hk` 部署主机口径：同一 D1、REST/Worker 各 100 samples、并发 8、完整写入与迁移，2200 次采样零失败；单查 p50 从 106.53 ms 降至 63.20 ms，batch CRUD p50 从 428.84 ms 降至 64.79 ms（6.62x）。
 6. 原始 v0 legacy 已在同一 `hk`、D1、Docker runtime 和 `10x` 设置下复测，正确性与 15 项 benchmark 全部通过；严格可比的单 SQL workload 提升 1.26x 至 1.85x，Open/Ping 提升 16.74x 至 18.10x。
 7. 本机 benchmark 仅用于正确性和排障，不进入性能汇报。发布稳定性能结论前还需完成两次同条件 `hk` 成功运行；当前数据可作为 v3 集成决策依据，不作为公开稳定性能承诺。
-8. v3 尚未开始，`platform` 业务依赖和 todone 初始化暂未切换。
+8. v3 集成代码与本地/真实 Worker 验证已完成：`platform` 固定 Worker-only，新 adapter 已锁定提交，xbi/Todone 都显式验证 Worker，Todone 五个逻辑连接复用一个 GORM 根连接并串行迁移。
+9. 测试、Todone 生产和日志生产三个 Worker 已部署；Todone 配置由 `CfgExt` 管理并自动从旧 token 迁移，生产 platform 仅剩正常提交触发 CI 部署与线上回归。
 
 ## 背景
 

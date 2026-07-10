@@ -1,6 +1,6 @@
 # Backend Testing Baseline
 
-Last verified: 2026-03-06
+Last verified: 2026-07-10
 
 ## Goal
 
@@ -23,6 +23,7 @@ Last verified: 2026-03-06
 1. Confirm whether backend is already running and healthy.
 2. Reuse existing healthy runtime instead of starting duplicates.
 3. Confirm current `base_setting.toml` points to intended test DB/log paths.
+4. Worker-only D1 runtime requires BI and Todone Worker endpoint/token pairs. Todone normally reads its pair from `CfgExt`; tests may override both connections through `PLATFORM_D1_LOG_WORKER_*` / `PLATFORM_TODONE_WORKER_*`, while real adapter/DB tests use `D1_WORKER_ENDPOINT` / `D1_WORKER_TOKEN`.
 
 ## Minimal API verification chain
 
@@ -72,6 +73,6 @@ Last verified: 2026-03-06
 ## Common blockers
 
 1. Missing `base_setting.toml` in current run dir.
-2. Invalid or missing todone D1 config keys (`todone/db/*`).
+2. Invalid or missing BI bootstrap Worker endpoint/token, or missing Todone Worker endpoint/token in `CfgExt` and environment overrides.
 3. Permission mismatch (`no permission`, `user err`).
 4. Cookie not persisted between login and `/service/*` calls.

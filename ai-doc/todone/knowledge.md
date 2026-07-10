@@ -52,12 +52,8 @@ Last verified: 2026-03-06
 1. Page-level login gate is handled by `useLoginGate()` in `Todone`, not by child components.
 2. Drawer `User` component uses `autoOpenLoginPanel={false}` to avoid duplicate login popup.
 3. Backend service requires permission `admin|todone` and enforces `req.UserID == valid.User`.
-4. Todone server config keys:
-   - `todone/db/account_id`
-   - `todone/db/api_token`
-   - `todone/db/db_id`
-5. Frontend `TodoneSetting` and backend service both bind to the same config keys; runtime config update prompt indicates restart is required.
-6. Health probe in frontend debug chain:
+4. Todone Worker connection uses `todone.db.worker_endpoint` / `todone.db.worker_token` in `CfgExt`, with `PLATFORM_TODONE_WORKER_*` environment overrides. The admin settings page exposes both fields and renders the token as a password input; the real endpoint has no backend or frontend default.
+5. Health probe in frontend debug chain:
    - browser request uses `POST /api/check` (because `api_base_url="/api"` in `frontend/src/config.json`)
    - Vite proxy rewrites `/api/check` -> backend `POST /check` (`frontend/vite.config.js`)
    - direct backend probe should call `POST /check`

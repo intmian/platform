@@ -3,6 +3,8 @@ package todone
 import (
 	"context"
 	"errors"
+	"os"
+	"strings"
 	"time"
 
 	"github.com/intmian/mian_go_lib/tool/misc"
@@ -19,42 +21,64 @@ type Service struct {
 	cancel  context.CancelFunc
 }
 
+func loadWorkerConfig(serviceShare backendshare.ServiceShare) (string, string, error) {
+	params := []*xstorage.CfgParam{
+		{
+			Key:       xstorage.Join("todone", "db", "worker_endpoint"),
+			ValueType: xstorage.ValueTypeString,
+		},
+		{
+			Key:       xstorage.Join("todone", "db", "worker_token"),
+			ValueType: xstorage.ValueTypeString,
+		},
+	}
+	for _, param := range params {
+		if err := serviceShare.Cfg.AddParam(param); err != nil && !errors.Is(err, xstorage.ErrKeyAlreadyExist) {
+			return "", "", errors.Join(errors.New("add worker cfg param failed"), err)
+		}
+	}
+
+	endpointUnit, err := serviceShare.Cfg.Get("todone", "db", "worker_endpoint")
+	if err != nil {
+		return "", "", errors.Join(errors.New("get worker endpoint failed"), err)
+	}
+	tokenUnit, err := serviceShare.Cfg.Get("todone", "db", "worker_token")
+	if err != nil {
+		return "", "", errors.Join(errors.New("get worker token failed"), err)
+	}
+	endpoint := strings.TrimSpace(xstorage.ToBase[string](endpointUnit))
+	token := strings.TrimSpace(xstorage.ToBase[string](tokenUnit))
+	if value := strings.TrimSpace(os.Getenv("PLATFORM_TODONE_WORKER_ENDPOINT")); value != "" {
+		endpoint = value
+	}
+	if value := strings.TrimSpace(os.Getenv("PLATFORM_TODONE_WORKER_TOKEN")); value != "" {
+		token = value
+	}
+	if endpoint == "" {
+		return "", "", errors.New("todone.db.worker_endpoint is empty")
+	}
+	if token == "" {
+		return "", "", errors.New("todone.db.worker_token is empty")
+	}
+	return endpoint, token, nil
+}
+
 func (s *Service) Start(share backendshare.ServiceShare) error {
 	s.share = share
 	logic.GTodoneShare = &s.share
 	logic.GTodoneCtx, s.cancel = context.WithCancel(s.share.Ctx)
 	begin := time.Now()
 	s.share.Log.Info("TODONE", "启动服务")
-	// 注册配置
-	err1 := share.Cfg.AddParam(&xstorage.CfgParam{
-		Key:       xstorage.Join("todone", "db", "account_id"),
-		ValueType: xstorage.ValueTypeString,
-	})
-	err2 := share.Cfg.AddParam(&xstorage.CfgParam{
-		Key:       xstorage.Join("todone", "db", "api_token"),
-		ValueType: xstorage.ValueTypeString,
-	})
-	err3 := share.Cfg.AddParam(&xstorage.CfgParam{
-		Key:       xstorage.Join("todone", "db", "db_id"),
-		ValueType: xstorage.ValueTypeString,
-	})
-	err := errors.Join(err1, err2, err3)
-	if err != nil && !errors.Is(err, xstorage.ErrKeyAlreadyExist) {
-		return errors.Join(errors.New("add cfg param failed"), err)
+	workerEndpoint, workerToken, err := loadWorkerConfig(share)
+	if err != nil {
+		return err
 	}
-
-	// 获取配置
-	accIDU, _ := share.Cfg.Get(xstorage.Join("todone", "db", "account_id"))
-	apiTokenU, _ := share.Cfg.Get(xstorage.Join("todone", "db", "api_token"))
-	dbIDU, _ := share.Cfg.Get(xstorage.Join("todone", "db", "db_id"))
-
-	// 初始化管理器就行
 	err = db.InitGMgr(db.Setting{
-		AccountID: xstorage.ToBase[string](accIDU),
-		ApiToken:  xstorage.ToBase[string](apiTokenU),
-		DBID:      xstorage.ToBase[string](dbIDU),
-		XBi:       share.Bi,
-		XLog:      share.Log,
+		WorkerEndpoint: workerEndpoint,
+		WorkerToken:    workerToken,
+		Ctx:            share.Ctx,
+		XBi:            share.Bi,
+		XLog:           share.Log,
 	})
 	if err != nil {
 		return errors.Join(errors.New("init db mgr failed"), err)

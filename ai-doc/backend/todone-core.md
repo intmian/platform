@@ -1,6 +1,6 @@
 # Todone Backend Core
 
-Last verified: 2026-02-27
+Last verified: 2026-07-10
 
 ## Scope
 
@@ -23,18 +23,17 @@ Last verified: 2026-02-27
 
 ## Service startup and DB connect
 
-1. Todone service registers config keys:
-   - `todone/db/account_id`
-   - `todone/db/api_token`
-   - `todone/db/db_id`
-2. `db.InitGMgr` creates D1 gorm connections for:
+1. Todone D1 is Worker-only. Startup registers and reads `todone.db.worker_endpoint` / `todone.db.worker_token` from `CfgExt`, with `PLATFORM_TODONE_WORKER_*` environment overrides for tests/operations. There is no production endpoint default and no legacy `todone.db.api_token` migration.
+2. `db.InitGMgr` opens one root `*gorm.DB`, then keeps the existing logical connection map for:
    - dir
    - group
    - task
    - tags
    - subgroup
-3. Auto-migrate runs on all todone tables at startup.
+   Every `ConnectType` maps to the same root GORM handle and underlying `database/sql` pool.
+3. Auto-migrate runs serially in the above order at startup; it no longer writes the connection map or migrates the same D1 concurrently.
 4. SQL trace is hooked into xbi table `todone_db_log`.
+5. GORM connection creation explicitly pings the Worker so missing endpoint, invalid bearer auth, or unavailable Worker fails service startup.
 
 ## Runtime model
 
@@ -109,4 +108,4 @@ Last verified: 2026-02-27
 1. User-level global mutex simplifies consistency but serializes all operations per user.
 2. Task order correctness depends on subgroup `taskSequence` integrity.
 3. Mixed soft/hard delete strategy means troubleshooting should inspect both logical flags and physical rows.
-4. `TODO-verify`: when a brand-new user has no dir row, root dir creation path in `buildDirTree` creates DB row but in-memory root binding should be rechecked during first request path.
+4. Confirmed via real Worker interaction (2026-07-10): when a brand-new user has no dir row, the first `getDirTree` creates the root DB row but leaves the in-memory root unbound and panics in `dirTreeToProtocol`; the next request succeeds after rebuilding from the persisted row.

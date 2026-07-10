@@ -1,6 +1,6 @@
 # Backend Config And AI
 
-Last verified: 2026-07-03
+Last verified: 2026-07-10
 
 ## Scope
 
@@ -13,6 +13,8 @@ Last verified: 2026-07-03
 2. Registered config params are added in `PlatForm.InitCfg()`.
 3. Config values are persisted through platform storage, not hardcoded in frontend.
 4. Config routes expose filtered reads/writes on top of `CfgExt`.
+5. BI D1 Worker values are required bootstrap configuration (`d1_log_worker_endpoint` / `d1_log_worker_token`, with `PLATFORM_D1_LOG_WORKER_*` overrides); they have no production code defaults or legacy API-token fallback.
+6. Todone Worker values are service-owned `CfgExt` keys (`todone.db.worker_endpoint` / `todone.db.worker_token`, with `PLATFORM_TODONE_WORKER_*` operational overrides). Both keys are registered for the admin config UI, but the real endpoint has no code default and the token does not migrate from legacy `todone.db.api_token`.
 
 ## Config route surface
 

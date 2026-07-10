@@ -3,12 +3,11 @@ package db
 import (
 	"context"
 	"errors"
-	"fmt"
 	"log"
-	"sync"
 	"time"
 
-	"github.com/intmian/mian_go_lib/fork/d1_gorm_adapter/gormd1"
+	d1 "github.com/intmian/gorm-d1-adapter"
+	"github.com/intmian/gorm-d1-adapter/gormd1"
 	"github.com/intmian/mian_go_lib/tool/misc"
 	"github.com/intmian/mian_go_lib/xbi"
 	"github.com/intmian/mian_go_lib/xlog"
@@ -19,16 +18,11 @@ import (
 )
 
 type Setting struct {
-	AccountID string
-	ApiToken  string
-	DBID      string
-	XBi       *xbi.XBi
-	XLog      *xlog.XLog
-}
-
-func (s *Setting) ToStr() string {
-	str := "d1://%s:%s@%s"
-	return fmt.Sprintf(str, s.AccountID, s.ApiToken, s.DBID)
+	WorkerEndpoint string
+	WorkerToken    string
+	Ctx            context.Context
+	XBi            *xbi.XBi
+	XLog           *xlog.XLog
 }
 
 // GTodoneDBMgr 全应用全局数据库管理器
@@ -39,32 +33,20 @@ func InitGMgr(setting Setting) error {
 	if err != nil {
 		return err
 	}
-	wait := sync.WaitGroup{}
-	wait.Add(5)
-	var err1, err2, err3, err4, err5 error
-	go func() {
-		err1 = GTodoneDBMgr.Connect(ConnectTypeDir, &DirDB{})
-		wait.Done()
-	}()
-	go func() {
-		err2 = GTodoneDBMgr.Connect(ConnectTypeGroup, &GroupDB{})
-		wait.Done()
-	}()
-	go func() {
-		err3 = GTodoneDBMgr.Connect(ConnectTypeTask, &TaskDB{})
-		wait.Done()
-	}()
-	go func() {
-		err4 = GTodoneDBMgr.Connect(ConnectTypeTags, &TagsDB{})
-		wait.Done()
-	}()
-	go func() {
-		err5 = GTodoneDBMgr.Connect(ConnectTypeSubGroup, &SubGroupDB{})
-		wait.Done()
-	}()
-	wait.Wait()
-	if err1 != nil || err2 != nil || err3 != nil || err4 != nil || err5 != nil {
-		return errors.Join(err1, err2, err3, err4, err5)
+	connections := []struct {
+		connectType ConnectType
+		model       any
+	}{
+		{ConnectTypeDir, &DirDB{}},
+		{ConnectTypeGroup, &GroupDB{}},
+		{ConnectTypeTask, &TaskDB{}},
+		{ConnectTypeTags, &TagsDB{}},
+		{ConnectTypeSubGroup, &SubGroupDB{}},
+	}
+	for _, connection := range connections {
+		if err = GTodoneDBMgr.Connect(connection.connectType, connection.model); err != nil {
+			return err
+		}
 	}
 	connectDir := GTodoneDBMgr.GetConnect(ConnectTypeDir)
 	connectGroup := GTodoneDBMgr.GetConnect(ConnectTypeGroup)
@@ -80,6 +62,7 @@ func InitGMgr(setting Setting) error {
 type Mgr struct {
 	Setting      Setting
 	type2connect map[ConnectType]*gorm.DB
+	db           *gorm.DB
 	logger       logger.Interface
 }
 
@@ -93,6 +76,16 @@ func NewMgr(setting Setting) (*Mgr, error) {
 }
 
 func (d *Mgr) Init(setting Setting) error {
+	if d.db != nil {
+		sqlDB, err := d.db.DB()
+		if err != nil {
+			return errors.Join(err, ErrConnectDbFailed)
+		}
+		if err = sqlDB.Close(); err != nil {
+			return errors.Join(err, ErrConnectDbFailed)
+		}
+		d.db = nil
+	}
 	d.Setting = setting
 	d.type2connect = make(map[ConnectType]*gorm.DB)
 
@@ -136,7 +129,7 @@ func (d *Mgr) Init(setting Setting) error {
 				setting.XLog.ErrorErr("todone.log", errors.Join(err, errors.New("写入数据库日志失败")))
 				return
 			}
-			
+
 		},
 	}
 
@@ -146,18 +139,36 @@ func (d *Mgr) Init(setting Setting) error {
 }
 
 func (d *Mgr) Connect(t ConnectType, orm interface{}) error {
-	db, err := gorm.Open(gormd1.Open(d.Setting.ToStr()), &gorm.Config{
-		Logger: d.logger,
-	})
-	if err != nil {
-		return errors.Join(err, ErrConnectDbFailed)
+	if d.db == nil {
+		db, err := gorm.Open(gormd1.OpenConfig(d1.Config{
+			Mode:           d1.ExecutorModeWorker,
+			WorkerEndpoint: d.Setting.WorkerEndpoint,
+			WorkerToken:    d.Setting.WorkerToken,
+		}), &gorm.Config{
+			Logger: d.logger,
+		})
+		if err != nil {
+			return errors.Join(err, ErrConnectDbFailed)
+		}
+		ctx := d.Setting.Ctx
+		if ctx == nil {
+			ctx = context.Background()
+		}
+		sqlDB, err := db.DB()
+		if err != nil {
+			return errors.Join(err, ErrConnectDbFailed)
+		}
+		if err = sqlDB.PingContext(ctx); err != nil {
+			return errors.Join(err, ErrConnectDbFailed)
+		}
+		d.db = db
 	}
-	d.type2connect[t] = db
-	// 自动创建表
-	err = db.AutoMigrate(orm)
+	// 同一个D1只使用一个GORM根连接，所有表按顺序迁移。
+	err := d.db.AutoMigrate(orm)
 	if err != nil {
 		return errors.Join(err, ErrAutoMigrateFailed)
 	}
+	d.type2connect[t] = d.db
 	return nil
 }
 

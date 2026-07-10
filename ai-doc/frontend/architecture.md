@@ -1,6 +1,6 @@
 # Frontend Architecture
 
-Last verified: 2026-07-08
+Last verified: 2026-07-10
 
 ## Scope
 
@@ -93,6 +93,7 @@ Last verified: 2026-07-08
 6. Slice config rows use a dedicated drag handle for reordering and keep the delete `X` on the far right of each row, matching the action alignment used by the save button column.
 7. Slice config inline editors keep focus during typing; row identity stays stable while values change, so editing a single character does not remount the input.
 8. Admin `AI 设置` page keeps `连接配置` on top, then `语音模型`, then uses a responsive two-column section layout on desktop: `模型池` on the left as a vertical stack and `场景档位` on the right; narrow screens collapse back to a single column.
+9. Admin settings expose `Todone Worker 配置` with Worker endpoint and a password-style Worker token. The endpoint placeholder is non-production, and changes require service restart.
 
 ## Shared AI UI helpers
 

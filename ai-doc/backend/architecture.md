@@ -1,6 +1,6 @@
 # Backend Architecture
 
-Last verified: 2026-04-26
+Last verified: 2026-07-10
 
 ## Scope
 
@@ -24,7 +24,7 @@ Last verified: 2026-04-26
    - `xpush` (Feishu webhook)
    - `xnews` topic `PLAT` for recent logs
    - `xlog` (and push on log)
-   - `xbi` (D1-backed, SQL metrics/log sink)
+   - `xbi` (D1 Worker-backed, SQL metrics/log sink)
    - `xstorage.WebPack` + `CfgExt`
 4. Global config keys registered in platform init:
    - base platform keys in `PlatForm.InitCfg()`
@@ -51,6 +51,7 @@ Last verified: 2026-04-26
 3. Stop gate:
    - services with `SvrPropCore` or `SvrPropCoreOptional` cannot be stopped via admin API.
 4. Startup gate uses storage key `<service>/open_when_start` design intent, but current code reads `auto/open_when_start` for all services (`platform/core.go`, code fact).
+5. D1 access is Worker-only in platform code. BI and Todone each require their own Worker endpoint/token because one proxy deployment binds one D1 database. BI uses required bootstrap TOML/environment configuration. Todone owns `todone.db.worker_endpoint` / `todone.db.worker_token` in `CfgExt`, with environment overrides for tests/operations and no code default for the real endpoint.
 
 ## Frontend hosting mode (optional)
 

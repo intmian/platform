@@ -2,26 +2,18 @@ package db
 
 import (
 	"encoding/json"
-	"github.com/intmian/mian_go_lib/tool/misc"
 	"gorm.io/gorm"
 	"math/rand"
 	"testing"
 )
 
 func debugGetConnect(t *testing.T, conType ConnectType) *gorm.DB {
-	account := misc.InputWithFile("account")
-	token := misc.InputWithFile("token")
-	dbid := misc.InputWithFile("dbid")
-	setting := Setting{
-		AccountID: account,
-		ApiToken:  token,
-		DBID:      dbid,
-	}
+	setting := realWorkerTestSetting(t)
 	mgr, err := NewMgr(setting)
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = mgr.Connect(conType, &DirDB{})
+	err = mgr.Connect(conType, &GroupDB{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -31,20 +23,23 @@ func debugGetConnect(t *testing.T, conType ConnectType) *gorm.DB {
 func TestGroupDB(t *testing.T) {
 	conn := debugGetConnect(t, ConnectTypeGroup)
 
-	group, err := CreateGroup(conn, "1", "debug", "title", 0)
+	group, err := CreateGroup(conn, "worker-test", "debug", "title", 0, GroupTypeNormal)
 	if err != nil {
 		t.Fatal(err)
 	}
+	t.Cleanup(func() {
+		_ = conn.Where("id = ?", group.ID).Delete(&GroupDB{}).Error
+	})
 	if group.ID == 0 {
 		t.Fatal("ID should not be 0")
 	}
 
-	data, err := GetGroupsByUser(conn, "1")
+	data, err := GetGroupsByUser(conn, "worker-test")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if data != nil {
-		t.Fatal("data should be nil")
+	if len(data) == 0 {
+		t.Fatal("created group was not returned")
 	}
 
 }

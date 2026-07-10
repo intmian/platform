@@ -1,19 +1,9 @@
 package db
 
-import (
-	"github.com/intmian/mian_go_lib/tool/misc"
-	"testing"
-)
+import "testing"
 
 func TestCreateDir(t *testing.T) {
-	account := misc.InputWithFile("account")
-	token := misc.InputWithFile("token")
-	dbid := misc.InputWithFile("dbid")
-	setting := Setting{
-		AccountID: account,
-		ApiToken:  token,
-		DBID:      dbid,
-	}
+	setting := realWorkerTestSetting(t)
 	mgr, err := NewMgr(setting)
 	if err != nil {
 		t.Fatal(err)
@@ -23,5 +13,11 @@ func TestCreateDir(t *testing.T) {
 		t.Fatal(err)
 	}
 	dirDB := mgr.GetConnect(ConnectTypeDir)
-	CreateDir(dirDB, "1", 2, "title", "content")
+	dir, err := CreateDir(dirDB, "worker-test", 2, "title", "content")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		_ = dirDB.Where("id = ?", dir.ID).Delete(&DirDB{}).Error
+	})
 }

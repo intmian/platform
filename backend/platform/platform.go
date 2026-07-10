@@ -2,16 +2,17 @@ package platform
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"net/http"
 	_ "net/http/pprof"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
-	"github.com/intmian/mian_go_lib/fork/d1_gorm_adapter/gormd1"
+	d1 "github.com/intmian/gorm-d1-adapter"
+	"github.com/intmian/gorm-d1-adapter/gormd1"
 	"github.com/intmian/mian_go_lib/tool/misc"
 	"github.com/intmian/mian_go_lib/xbi"
 	"github.com/intmian/mian_go_lib/xlog"
@@ -119,12 +120,26 @@ func (p *PlatForm) Init(c context.Context) error {
 			IgnoreRecordNotFoundError: true,            // 忽略 RecordNotFound 错误
 			Colorful:                  false,           // 禁用颜色输出
 		})
-	d1str := fmt.Sprintf("d1://%s:%s@%s", s.D1LogAccountID, s.D1LogApiToken, s.D1LogDBID)
-	db, err := gorm.Open(gormd1.Open(d1str), &gorm.Config{
+	d1LogWorkerEndpoint, d1LogWorkerToken, err := resolveD1LogWorkerConfig(s)
+	if err != nil {
+		return err
+	}
+	db, err := gorm.Open(gormd1.OpenConfig(d1.Config{
+		Mode:           d1.ExecutorModeWorker,
+		WorkerEndpoint: d1LogWorkerEndpoint,
+		WorkerToken:    d1LogWorkerToken,
+	}), &gorm.Config{
 		Logger: newLogger,
 	})
 	if err != nil {
 		return errors.WithMessage(err, "gorm.Open err")
+	}
+	sqlDB, err := db.DB()
+	if err != nil {
+		return errors.WithMessage(err, "get d1 log sql.DB err")
+	}
+	if err = sqlDB.PingContext(p.ctx); err != nil {
+		return errors.WithMessage(err, "ping d1 log worker err")
 	}
 	biS.Db = db
 	xBi, err := xbi.NewXBi(biS)
@@ -207,6 +222,24 @@ func (p *PlatForm) Init(c context.Context) error {
 	p.subscriptionMgr.Start()
 
 	return nil
+}
+
+func resolveD1LogWorkerConfig(s share.BaseSetting) (string, string, error) {
+	endpoint := strings.TrimSpace(s.D1LogWorkerEndpoint)
+	token := strings.TrimSpace(s.D1LogWorkerToken)
+	if value := strings.TrimSpace(os.Getenv("PLATFORM_D1_LOG_WORKER_ENDPOINT")); value != "" {
+		endpoint = value
+	}
+	if value := strings.TrimSpace(os.Getenv("PLATFORM_D1_LOG_WORKER_TOKEN")); value != "" {
+		token = value
+	}
+	if endpoint == "" {
+		return "", "", errors.New("d1_log_worker_endpoint is empty")
+	}
+	if token == "" {
+		return "", "", errors.New("d1_log_worker_token is empty")
+	}
+	return endpoint, token, nil
 }
 
 func (p *PlatForm) InitCfg() error {
