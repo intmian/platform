@@ -1,0 +1,4 @@
+interface:
+  display_name: "Platform Development"
+  short_description: "Implement scoped Platform code changes."
+  default_prompt: "Use $platform-dev to implement this Platform code change."

@@ -63,9 +63,17 @@
 ```text
 backend/      Go 后端与服务实现
 frontend/     React 前端
-docs/         流程图与设计草图
-skills/       本地技能相关文件
+ai-doc/       当前架构、领域知识与验证说明
+.agents/skills/ 仓库级 Codex 开发、测试、调试和知识维护技能
+docs/         设计、计划与历史材料
+plan/         中长期产品规划
 ```
+
+## CI 与部署
+
+- push 到 `master` 会触发前后端构建和自动部署。
+- 推送的提交消息中包含 `#ignoreDeploy` 时跳过构建和部署。
+- `backend/mian_go_lib` 是独立 Git submodule，但属于本项目的逻辑代码范围。
 
 ## 额外说明
 

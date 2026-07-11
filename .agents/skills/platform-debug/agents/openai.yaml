@@ -1,0 +1,4 @@
+interface:
+  display_name: "Platform Debugging"
+  short_description: "Diagnose Platform defects and requested fixes."
+  default_prompt: "Use $platform-debug to diagnose this Platform issue and fix it if requested."

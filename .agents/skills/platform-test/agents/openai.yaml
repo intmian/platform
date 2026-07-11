@@ -1,0 +1,4 @@
+interface:
+  display_name: "Platform Testing"
+  short_description: "Run proportionate tests for Platform changes."
+  default_prompt: "Use $platform-test to verify this Platform change at the requested scope."

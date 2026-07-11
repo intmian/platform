@@ -1,6 +1,6 @@
 # Shared Reusable Tools And Flows
 
-Last verified: 2026-07-10
+Last verified: 2026-07-11
 
 ## Format
 
@@ -14,7 +14,7 @@ Last verified: 2026-07-10
 2. `常见问题-登录弹窗重复`: 页面已使用 `useLoginGate` 时，局部 `User` 入口应关闭自动弹窗，只保留手动登录按钮。
 3. `prepareLibraryCoverFiles` + `prepareLibraryCoverFilesFromCenterCrop`: 可复用的 2:3 裁剪三图产物流程（original/detail/preview）；支持交互裁剪和中心裁剪（兼容补图）。
 4. `appendNoCacheParam`: 为远程图片 URL 追加 `__cf_bust` 随机参数，配合 `fetch cache: no-store` 缓解 CDN 旧缓存对象的 CORS 头不一致。
-5. `doc-skill-map`: 统一“任务类型 -> 需加载文档集合”的可复用流程，入口见 `shared/doc-skill-map.md`，用于避免 full-stack 任务只读前端文档。
+5. `.agents/skills/platform-*`: 仓库级开发、测试、调试、知识维护入口；各 skill 只加载对应短规范和任务相关领域文档。
 6. `UniConfig` + `ConfigsCtr`: 通用配置表单/缓存容器；支持按 key 分组复用、机密字段 password 显示、slice 值折叠摘要、拖拽排序和右侧删除操作。
 7. `#ignoreDeploy`: 推送到 `master` 的提交消息包含该标记时，`.github/workflows/deploy.yml` 的前端构建、后端构建和部署 job 会跳过。
 8. `sendAiAction` + `POST /misc/ai/run`: 前后端类型化 AI Gateway；前端只传固定 action enum 和结构化 payload，后端按 action 白名单绑定权限、prompt 和响应结构。

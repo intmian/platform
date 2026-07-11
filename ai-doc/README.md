@@ -1,97 +1,67 @@
 # AI Docs Index
 
-Purpose: provide repository-local, task-scoped knowledge for AI agents.
+Purpose: repository-local, task-scoped knowledge for Platform development.
 
-Last verified: 2026-05-07
+Last verified: 2026-07-11
 
-## Core rules
+## Authority and document types
 
-1. Fix the owning layer, not the symptom. Prefer one coherent change over scattered patches.
-   Do not add compatibility shims, speculative mechanisms, or future-proof abstractions.
-   When a new abstraction or mechanism seems warranted, confirm the user's outlook before designing it.
-   Do not encode business policy in shared code.
-2. Keep before/after evidence for behavior-impacting fixes and run at least one adjacent regression path.
-3. When stable facts change, update matching `ai-doc` files in the same turn.
-4. Evidence and verification standards: follow `shared/engineering-workflow.md` Evidence standard (browser interaction, screenshots, API verification, etc.).
-5. When splitting reusable components/hooks/utilities, keep them generic-first: avoid business-specific hardcoding, expose behavior through explicit props/options.
+1. Current code and verified runtime behavior are authoritative.
+2. `ai-doc` stores stable architecture, contracts, recurring constraints, and verification guidance.
+3. Root and module README files are user-facing orientation and usage documentation.
+4. `plan/` and `docs/plan/` contain future direction, implementation plans, benchmarks, and history; verify their claims against code before treating them as current behavior.
+5. If a document conflicts with code, follow code and use `$platform-knowledge` to correct the document.
 
-## Loading rules
+## Shared guidance
 
-1. Read this index first.
-2. Choose docs in this order:
-   - workflow
-   - system layer (backend/frontend)
-   - domain module
-3. Prefer code verification over stale notes when conflicts appear.
-4. After confirming new behavior from code or real interaction, update the matched doc.
-5. Record `Last verified` date on every updated document.
+1. Development decisions: `shared/development.md`
+2. Test selection and execution: `shared/testing.md`
+3. Bug diagnosis: `shared/debugging.md`
+4. CI, deployment, and external-operation boundaries: `shared/ci-deploy.md`
+5. Reusable helpers and flows: `shared/reusable-tools.md`
+6. Code-to-doc coverage: `shared/coverage-map.md`
 
-## Routing
+Load shared guidance through the matching repository skill under `.agents/skills/`; do not load every workflow document for every task.
 
-### Step 1: pick workflow docs
+## System knowledge
 
-1. Default engineering: `shared/engineering-workflow.md`
-2. Debug-heavy tasks: add `shared/debug-workflow.md`
-3. Learning/minimal-loading strategy: `shared/learning-workflow.md`
-4. Reusable utility/process index: `shared/reusable-tools.md`
-5. Doc+skill loading strategy: `shared/doc-skill-map.md`
-6. Code-to-doc coverage matrix: `shared/coverage-map.md`
+### Frontend
 
-### Step 2: pick system docs when task touches shared frontend/backend behavior
+- Shell, routing, auth, requests, shared config and AI UI: `frontend/architecture.md`
 
-1. Frontend shell/routing/auth/request conventions: `frontend/architecture.md`
-2. Backend bootstrap and service registration: `backend/architecture.md`
-3. Backend gateway/auth/cookie flow: `backend/gateway-auth.md`
-4. Backend config, AI, and R2 config surface: `backend/config-and-ai.md`
-5. Backend logs, BI, and profiling surface: `backend/observability.md`
-6. Service catalog and permission/command matrix: `backend/services.md`
-7. Matched service deep docs:
-   - `backend/account.md`
-   - `backend/auto.md`
-   - `backend/cmd.md`
-   - `backend/todone-core.md`
-   - `backend/web-storage.md`
-8. Backend verification baseline: `backend/testing.md`
+### Backend
 
-### Step 3: pick domain docs
+- Bootstrap and service registration: `backend/architecture.md`
+- Gateway, auth, cookies, and permission propagation: `backend/gateway-auth.md`
+- Config, AI, and R2: `backend/config-and-ai.md`
+- Logs, BI, SQL tracing, and profiling: `backend/observability.md`
+- Service catalog and command matrix: `backend/services.md`
+- Backend test/runtime baseline: `backend/testing.md`
+- Service deep docs: `backend/account.md`, `backend/auto.md`, `backend/cmd.md`, `backend/todone-core.md`, `backend/web-storage.md`
 
-1. Todone shared module logic: `todone/knowledge.md`
-2. Todone testing matrix: `todone/testing.md`
-3. Todone interactive UI map: `todone/ui-locator.md`
-4. Library domain logic: `library/knowledge.md`
-5. Library testing matrix: `library/testing.md`
-6. Library interactive UI map: `library/ui-locator.md`
-7. Note mini domain logic: `note-mini/knowledge.md`
-8. Note mini testing workflow: `note-mini/testing.md`
-9. Subscription page behavior: `subscription/knowledge.md`
-10. Family money book domain logic: `money/knowledge.md`
-11. Family money book testing matrix: `money/testing.md`
-12. Family money book interactive UI map: `money/ui-locator.md`
+## Domain knowledge
 
-## Completion gate
+- Todone: `todone/knowledge.md`, `todone/testing.md`, `todone/ui-locator.md`
+- Library: `library/knowledge.md`, `library/testing.md`, `library/ui-locator.md`
+- Note Mini: `note-mini/knowledge.md`, `note-mini/testing.md`
+- Subscription: `subscription/knowledge.md`
+- Family money book: `money/knowledge.md`, `money/testing.md`, `money/ui-locator.md`
 
-Follow `shared/engineering-workflow.md` Completion gate — it is the single authoritative completion checklist.
+## Reading rules
 
-## Update policy
+1. Load only documents that answer the current task's questions.
+2. For frontend/backend shared behavior, load the matching system document before the domain document.
+3. For testing, load only the relevant shared, backend, or domain testing document.
+4. When a loaded fact looks stale or affects a risky decision, spot-check it against code or runtime before relying on it.
+5. Do not refresh `Last verified` unless the document's material facts were actually checked.
 
-1. Facts from code: update immediately.
-2. Facts from UI interaction: add with `verified via interaction` note.
-3. Unknown or conflicting facts: add `TODO-verify` instead of replacing existing fact blindly.
-4. For behavior-change tasks, update docs only when the change creates reusable behavior contracts or constraints; otherwise report change in task summary only.
-5. Prefer rewriting/merging existing bullets over appending new ones, so docs stay concise and deduplicated.
-6. Staleness guard: when loading a doc whose `Last verified` is older than 30 days, spot-check its core facts (API surface, file paths, config keys, data contracts) against current code before relying on it. Update `Last verified` if still accurate; fix stale facts if found.
+## Writing rules
 
-## Knowledge curation gate
-
-1. Only persist context that is likely reusable in future turns (cross-task or recurring value).
-2. Do not persist patch-only process traces:
-   - temporary debugging steps
-   - one-off command outputs
-   - trial-and-error path that does not change stable understanding
-3. Prefer stable conclusions over implementation noise:
-   - behavior contracts
-   - root-cause patterns
-   - environment constraints that can block future verification
-4. If uncertain whether a detail is reusable, do not add it to domain docs; keep it in task report only.
-5. Domain docs should capture "what is true" and "what must be verified", not "how this specific patch was implemented".
-6. When a section grows noisy, consolidate it in the same turn (replace overlapping bullets instead of stacking patch history).
+1. Persist only reusable facts: contracts, ownership, stable behavior, recurring failure patterns, and durable environment constraints.
+2. Do not persist one-off command output, patch history, temporary debugging steps, or trial-and-error notes.
+3. Mark facts verified through UI or runtime interaction explicitly when that distinction matters.
+4. Use `TODO-verify` for unresolved conflicts; do not overwrite uncertain facts.
+5. Merge or rewrite overlapping content instead of appending duplicate bullets.
+6. Update `shared/coverage-map.md` when adding or removing a documented service or domain.
+7. Update `shared/reusable-tools.md` when adding a reusable helper or preferred recurring flow.
+8. Update user-facing README files when installation, operation, or usage instructions change.

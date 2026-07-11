@@ -1,0 +1,4 @@
+interface:
+  display_name: "Platform Knowledge"
+  short_description: "Maintain verified Platform repository knowledge."
+  default_prompt: "Use $platform-knowledge to locate or update the relevant Platform documentation."
