@@ -51,7 +51,7 @@ import LibraryLoadingImage from './LibraryLoadingImage';
 
 const {Text} = Typography;
 const UNCATEGORIZED_KEY = '__uncategorized__';
-type TimelineStatusOption = LibraryItemStatus | 'addToLibrary' | 'score' | 'note' | 'waitExpired';
+type TimelineStatusOption = LibraryItemStatus | 'addToLibrary' | 'score' | 'waitExpired';
 type LibraryTimelineViewMode = 'timeline' | 'scoreGradient';
 const WAIT_EXPIRED_TIMELINE_COLOR = LibraryStatusColors[LibraryItemStatus.GIVE_UP];
 const LIBRARY_PLACEHOLDER_TEXT_WIDTH_RATIO = 0.1;
@@ -274,9 +274,6 @@ export default function LibraryTimeline({visible, items, onClose, onItemClick}: 
         if (entry.logType === LibraryLogType.score) {
             return 'score';
         }
-        if (entry.logType === LibraryLogType.note) {
-            return 'note';
-        }
         if (entry.logType === LibraryLogType.changeStatus) {
             if (entry.status === LibraryItemStatus.WAIT && isWaitExpiredEntry(entry)) {
                 return 'waitExpired';
@@ -290,7 +287,6 @@ export default function LibraryTimeline({visible, items, onClose, onItemClick}: 
         () => [
             {value: 'addToLibrary' as TimelineStatusOption, label: '添加到库'},
             {value: 'score' as TimelineStatusOption, label: '评分'},
-            {value: 'note' as TimelineStatusOption, label: '备注'},
             {
                 value: LibraryItemStatus.TODO as TimelineStatusOption,
                 label: '等待',
@@ -620,9 +616,6 @@ export default function LibraryTimeline({visible, items, onClose, onItemClick}: 
         if (entry.logType === LibraryLogType.score) {
             return <StarFilled style={{color: '#faad14'}}/>;
         }
-        if (entry.logType === LibraryLogType.note) {
-            return <CalendarOutlined style={{color: '#1890ff'}}/>;
-        }
         if (entry.logType === LibraryLogType.addToLibrary) {
             return <PlusCircleFilled style={{color: '#722ed1'}}/>;
         }
@@ -652,9 +645,6 @@ export default function LibraryTimeline({visible, items, onClose, onItemClick}: 
         }
         if (entry.logType === LibraryLogType.score) {
             return '#faad14';
-        }
-        if (entry.logType === LibraryLogType.note) {
-            return '#1890ff';
         }
         if (entry.logType === LibraryLogType.addToLibrary) {
             return '#722ed1';

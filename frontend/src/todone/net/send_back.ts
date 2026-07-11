@@ -1,5 +1,5 @@
 import {UniPost, UniResult} from "../../common/newSendHttp";
-import {PDirTree, PSubGroup, PTask} from "./protocal";
+import {LibraryNote, PDirTree, PSubGroup, PTask} from "./protocal";
 import config from "../../config.json";
 
 export interface GetDirTreeReq {
@@ -136,6 +136,41 @@ export interface ChangeTaskReq {
 }
 
 export type ChangeTaskRet = object
+
+export interface LibraryTaskScope {
+    DirID: number
+    GroupID: number
+    SubGroupID: number
+    TaskID: number
+}
+
+export interface GetLibraryNotesReq extends LibraryTaskScope { UserID: string }
+export interface GetLibraryNotesRet { Notes: LibraryNote[] }
+
+export interface CreateLibraryNoteReq extends LibraryTaskScope {
+    UserID: string
+    RoundID: string
+    EventTime: string
+    Content: string
+    ClientRequestID: string
+}
+export interface CreateLibraryNoteRet { Note: LibraryNote }
+
+export interface ChangeLibraryNoteReq extends LibraryTaskScope {
+    UserID: string
+    NoteID: string
+    EventTime: string
+    Content: string
+    Revision: number
+}
+export interface ChangeLibraryNoteRet { Note: LibraryNote }
+
+export interface DelLibraryNoteReq extends LibraryTaskScope {
+    UserID: string
+    NoteID: string
+    Revision: number
+}
+export type DelLibraryNoteRet = object
 
 
 export interface CreateTaskReq {
@@ -299,6 +334,34 @@ export function sendChangeTask(req: ChangeTaskReq, callback: (ret: { data: Chang
 
         callback(result);
     });
+}
+
+export function sendGetLibraryNotes(req: GetLibraryNotesReq, callback: (ret: {data: GetLibraryNotesRet, ok: boolean}) => void) {
+    UniPost(api_base_url + 'getLibraryNotes', req).then((res: UniResult) => callback({
+        data: res.data as GetLibraryNotesRet,
+        ok: res.ok,
+    }));
+}
+
+export function sendCreateLibraryNote(req: CreateLibraryNoteReq, callback: (ret: {data: CreateLibraryNoteRet, ok: boolean}) => void) {
+    UniPost(api_base_url + 'createLibraryNote', req).then((res: UniResult) => callback({
+        data: res.data as CreateLibraryNoteRet,
+        ok: res.ok,
+    }));
+}
+
+export function sendChangeLibraryNote(req: ChangeLibraryNoteReq, callback: (ret: {data: ChangeLibraryNoteRet, ok: boolean}) => void) {
+    UniPost(api_base_url + 'changeLibraryNote', req).then((res: UniResult) => callback({
+        data: res.data as ChangeLibraryNoteRet,
+        ok: res.ok,
+    }));
+}
+
+export function sendDelLibraryNote(req: DelLibraryNoteReq, callback: (ret: {data: DelLibraryNoteRet, ok: boolean}) => void) {
+    UniPost(api_base_url + 'delLibraryNote', req).then((res: UniResult) => callback({
+        data: res.data as DelLibraryNoteRet,
+        ok: res.ok,
+    }));
 }
 
 export function sendCreateTask(req: CreateTaskReq, callback: (ret: { data: CreateTaskRet, ok: boolean }) => void) {
@@ -493,4 +556,3 @@ export function sendTaskDelTag(req: TaskDelTagReq, callback: (ret: { data: TaskD
         callback(result);
     });
 }
-

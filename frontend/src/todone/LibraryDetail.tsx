@@ -54,6 +54,7 @@ import {
     LibraryExtra,
     LibraryItemFull,
     LibraryItemStatus,
+    LibraryNote,
     LibraryLogEntry,
     LibraryLogType,
     LibraryRound,
@@ -63,7 +64,6 @@ import {
 } from './net/protocal';
 import {
     appendNoCacheParam,
-    addNoteLog,
     addScoreLog,
     addStatusLog,
     addTimelineCutoffLog,
@@ -109,6 +109,7 @@ import {
     LibraryReviewNotesDigestResp,
     sendAiAction,
 } from '../common/aiGateway';
+import {LibraryNoteContext, useLibraryNotes} from './useLibraryNotes';
 
 const {Text, Paragraph} = Typography;
 const {TextArea} = Input;
@@ -124,7 +125,8 @@ const LIBRARY_PREVIEW_WIDTH = 480;
 type DetailLogFilter = 'withoutNote' | 'compactNote' | 'all';
 type RoundDisplayEntry =
     | {kind: 'log'; log: LibraryLogEntry; logIndex: number}
-    | {kind: 'noteGroup'; noteCount: number; firstLog: LibraryLogEntry; lastLog: LibraryLogEntry};
+    | {kind: 'note'; note: LibraryNote}
+    | {kind: 'noteGroup'; notes: LibraryNote[]};
 
 function guessExtFromMimeType(mimeType: string): string {
     if (mimeType === 'image/png') return 'png';
@@ -249,19 +251,23 @@ async function inlineExportImages(container: HTMLElement): Promise<void> {
 interface LibraryDetailProps {
     visible: boolean;
     item: LibraryItemFull | null;
-    subGroupId: number;
+    noteContext: LibraryNoteContext | null;
     categories?: string[];
     todoReasonOptions?: string[];
     onClose: () => void;
-    onSave: (item: LibraryItemFull) => void;
+    onSave: (item: LibraryItemFull) => Promise<boolean>;
     onToggleFavorite?: (item: LibraryItemFull) => void;
     onDelete?: (item: LibraryItemFull) => void;
 }
 
-export default function LibraryDetail({visible, item, subGroupId, categories = [], todoReasonOptions = [], onClose, onSave, onToggleFavorite, onDelete}: LibraryDetailProps) {
+export default function LibraryDetail({visible, item, noteContext, categories = [], todoReasonOptions = [], onClose, onSave, onToggleFavorite, onDelete}: LibraryDetailProps) {
     const isMobile = useIsMobile();
     const [editMode, setEditMode] = useState(false);
     const [localItem, setLocalItem] = useState<LibraryItemFull | null>(null);
+    const [coreSaving, setCoreSaving] = useState(false);
+    const [noteSaving, setNoteSaving] = useState(false);
+    const {notes, loading: notesLoading, error: notesError, reload: reloadNotes, createNote, updateNote, deleteNote} =
+        useLibraryNotes(visible, noteContext, item?.taskId || null);
     
     // 弹窗状态
     const [showNewRound, setShowNewRound] = useState(false);
@@ -283,9 +289,11 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
     const [showEditLogTime, setShowEditLogTime] = useState(false);
     const [editingLogPos, setEditingLogPos] = useState<{roundIndex: number; logIndex: number} | null>(null);
     const [editingLogTime, setEditingLogTime] = useState('');
+    const [editingNoteTime, setEditingNoteTime] = useState<LibraryNote | null>(null);
     const [showEditLogContent, setShowEditLogContent] = useState(false);
     const [editingContentPos, setEditingContentPos] = useState<{roundIndex: number; logIndex: number} | null>(null);
     const [editingContentType, setEditingContentType] = useState<LibraryLogType | null>(null);
+    const [editingNote, setEditingNote] = useState<LibraryNote | null>(null);
     const [editingContentText, setEditingContentText] = useState('');
     const [editingScoreText, setEditingScoreText] = useState('合');
     const [editingObjScoreText, setEditingObjScoreText] = useState('普通');
@@ -427,13 +435,13 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
         if (!round) {
             return [];
         }
-        return round.logs
-            .filter((log) => log.type === LibraryLogType.note && (log.comment || '').trim())
-            .map((log) => ({
-                time: log.time,
-                content: (log.comment || '').trim(),
+        return notes
+            .filter((note) => note.RoundID === round.id && note.Content.trim())
+            .map((note) => ({
+                time: note.EventTime,
+                content: note.Content.trim(),
             }));
-    }, [localItem]);
+    }, [localItem, notes]);
 
     const originalCoverUrl = useMemo(() => localItem?.extra.pictureAddress?.trim() || '', [localItem?.extra.pictureAddress]);
     const detailCoverUrl = useMemo(() => (localItem ? getLibraryDetailCoverUrl(localItem.extra) : ''), [localItem]);
@@ -784,19 +792,23 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
     };
 
     // 开始新周目
-    const handleStartNewRound = () => {
+    const handleStartNewRound = async () => {
         if (!localItem || !newRoundName.trim()) {
             message.warning('请输入周目名称');
             return;
         }
         
-        const newExtra = startNewRound({...localItem.extra}, newRoundName.trim());
+        const newExtra = startNewRound(JSON.parse(JSON.stringify(localItem.extra)), newRoundName.trim());
         const newItem = {...localItem, extra: newExtra};
-        setLocalItem(newItem);
-        onSave(newItem);
-        setShowNewRound(false);
-        setNewRoundName('');
-        message.success(`开始${newRoundName}`);
+        setCoreSaving(true);
+        const saved = await onSave(newItem);
+        setCoreSaving(false);
+        if (saved) {
+            setLocalItem(newItem);
+            setShowNewRound(false);
+            setNewRoundName('');
+            message.success(`开始${newRoundName}`);
+        }
     };
 
     const handleRequestScoreAiDigest = useCallback(async () => {
@@ -924,18 +936,27 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
     };
 
     // 添加备注
-    const handleAddNote = () => {
+    const handleAddNote = async () => {
         if (!localItem || !noteContent.trim()) {
             message.warning('请输入备注内容');
             return;
         }
         
-        const newExtra = addNoteLog({...localItem.extra}, noteContent.trim());
-        const newItem = {...localItem, extra: newExtra};
-        setLocalItem(newItem);
-        onSave(newItem);
+        const round = localItem.extra.rounds[localItem.extra.currentRound];
+        if (!round?.id) {
+            message.error('当前周目缺少有效 ID');
+            return;
+        }
+        setNoteSaving(true);
+        const created = await createNote(round.id, noteContent.trim(), new Date().toISOString());
+        setNoteSaving(false);
+        if (!created) {
+            message.error('备注保存失败，内容已保留');
+            return;
+        }
         setShowAddNote(false);
         setNoteContent('');
+        message.success('备注已添加');
     };
 
     // 设置主评分
@@ -956,18 +977,27 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
     };
 
     const getRoundDisplayEntries = (round: LibraryRound): RoundDisplayEntry[] => {
-        const sortedEntries = getSortedLogEntries(round);
+        const sortedEntries: RoundDisplayEntry[] = [
+            ...getSortedLogEntries(round).map(({log, index}) => ({kind: 'log' as const, log, logIndex: index})),
+            ...notes.filter((note) => note.RoundID === round.id).map((note) => ({kind: 'note' as const, note})),
+        ].sort((a, b) => {
+            const aTime = a.kind === 'log' ? a.log.time : a.note.EventTime;
+            const bTime = b.kind === 'log' ? b.log.time : b.note.EventTime;
+            const timeDelta = new Date(aTime).getTime() - new Date(bTime).getTime();
+            if (timeDelta !== 0) return timeDelta;
+            const aKey = a.kind === 'log' ? `0-${a.logIndex}` : `1-${a.note.ID}`;
+            const bKey = b.kind === 'log' ? `0-${b.logIndex}` : `1-${b.note.ID}`;
+            return aKey.localeCompare(bKey);
+        });
         if (detailLogFilter === 'withoutNote') {
-            return sortedEntries
-                .filter(({log}) => log.type !== LibraryLogType.note)
-                .map(({log, index}) => ({kind: 'log' as const, log, logIndex: index}));
+            return sortedEntries.filter((entry) => entry.kind === 'log');
         }
         if (detailLogFilter === 'all') {
-            return sortedEntries.map(({log, index}) => ({kind: 'log' as const, log, logIndex: index}));
+            return sortedEntries;
         }
 
         const result: RoundDisplayEntry[] = [];
-        let pendingNotes: typeof sortedEntries = [];
+        let pendingNotes: LibraryNote[] = [];
 
         const flushPendingNotes = () => {
             if (pendingNotes.length === 0) {
@@ -975,20 +1005,18 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
             }
             result.push({
                 kind: 'noteGroup',
-                noteCount: pendingNotes.length,
-                firstLog: pendingNotes[0].log,
-                lastLog: pendingNotes[pendingNotes.length - 1].log,
+                notes: pendingNotes,
             });
             pendingNotes = [];
         };
 
         sortedEntries.forEach((entry) => {
-            if (entry.log.type === LibraryLogType.note) {
-                pendingNotes.push(entry);
+            if (entry.kind === 'note') {
+                pendingNotes.push(entry.note);
                 return;
             }
             flushPendingNotes();
-            result.push({kind: 'log', log: entry.log, logIndex: entry.index});
+            result.push(entry);
         });
 
         flushPendingNotes();
@@ -999,6 +1027,7 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
         setShowEditLogContent(false);
         setEditingContentPos(null);
         setEditingContentType(null);
+        setEditingNote(null);
         setEditingContentText('');
         setEditingScoreText('合');
         setEditingObjScoreText('普通');
@@ -1014,12 +1043,21 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
     };
 
     const openLogTimeEditor = (roundIndex: number, logIndex: number, time: string) => {
+        setEditingNoteTime(null);
         setEditingLogPos({roundIndex, logIndex});
         setEditingLogTime(time);
         setShowEditLogTime(true);
     };
 
+    const openNoteTimeEditor = (note: LibraryNote) => {
+        setEditingLogPos(null);
+        setEditingNoteTime(note);
+        setEditingLogTime(note.EventTime);
+        setShowEditLogTime(true);
+    };
+
     const openLogContentEditor = (roundIndex: number, logIndex: number, log: LibraryLogEntry) => {
+        setEditingNote(null);
         setEditingContentPos({roundIndex, logIndex});
         setEditingContentType(log.type);
         if (log.type === LibraryLogType.score) {
@@ -1054,9 +1092,15 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
                 setEditingEnableSubScore(false);
                 setEditingEnableInnovateScore(false);
             }
-        } else {
-            setEditingContentText(log.comment || '');
         }
+        setShowEditLogContent(true);
+    };
+
+    const openNoteContentEditor = (note: LibraryNote) => {
+        setEditingContentPos(null);
+        setEditingContentType(LibraryLogType.note);
+        setEditingNote(note);
+        setEditingContentText(note.Content);
         setShowEditLogContent(true);
     };
 
@@ -1100,8 +1144,25 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
         };
     };
 
-    const handleSaveLogContent = () => {
-        if (!localItem || !editingContentPos || !editingContentType) {
+    const handleSaveLogContent = async () => {
+        if (editingNote) {
+            const content = editingContentText.trim();
+            if (!content) {
+                message.warning('请输入备注内容');
+                return;
+            }
+            setNoteSaving(true);
+            const updated = await updateNote(editingNote, content, editingNote.EventTime);
+            setNoteSaving(false);
+            if (!updated) {
+                message.error('备注更新失败，可能已在其他页面修改');
+                return;
+            }
+            resetEditingContentState();
+            message.success('备注已更新');
+            return;
+        }
+        if (!localItem || !editingContentPos || editingContentType !== LibraryLogType.score) {
             resetEditingContentState();
             return;
         }
@@ -1173,8 +1234,6 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
             delete newItem.extra.innovateScore;
             delete newItem.extra.mainScore;
             delete newItem.extra.comment;
-        } else if (editingContentType === LibraryLogType.note) {
-            targetLog.comment = editingContentText;
         }
 
         if (isUpdatedAtDrivenLogType(targetLog.type)) {
@@ -1187,7 +1246,24 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
         message.success('内容已更新');
     };
 
-    const handleSaveLogTime = () => {
+    const handleSaveLogTime = async () => {
+        if (editingNoteTime) {
+            if (!editingLogTime) {
+                return;
+            }
+            setNoteSaving(true);
+            const updated = await updateNote(editingNoteTime, editingNoteTime.Content, editingLogTime);
+            setNoteSaving(false);
+            if (!updated) {
+                message.error('备注时间更新失败，可能已在其他页面修改');
+                return;
+            }
+            setShowEditLogTime(false);
+            setEditingNoteTime(null);
+            setEditingLogTime('');
+            message.success('备注时间已更新');
+            return;
+        }
         if (!localItem || !editingLogPos || !editingLogTime) {
             setShowEditLogTime(false);
             setEditingLogPos(null);
@@ -1215,6 +1291,17 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
         setShowEditLogTime(false);
         setEditingLogPos(null);
         setEditingLogTime('');
+    };
+
+    const handleDeleteNote = async (note: LibraryNote) => {
+        setNoteSaving(true);
+        const deleted = await deleteNote(note);
+        setNoteSaving(false);
+        if (!deleted) {
+            message.error('备注删除失败，可能已在其他页面修改');
+            return;
+        }
+        message.success('备注已删除');
     };
 
     const handleDeleteLog = (roundIndex: number, logIndex: number) => {
@@ -1338,7 +1425,7 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
                     </Space>
                 );
                 break;
-            case LibraryLogType.score:
+            case LibraryLogType.score: {
                 color = '#faad14';
                 const scoreStarColor = getScoreStarColor(log.score || 0);
                 const scoreCommentPreview = getScoreCommentPreview(log.comment || '', isMobile ? 10 : 16);
@@ -1394,39 +1481,7 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
                     </Space>
                 );
                 break;
-            case LibraryLogType.note:
-                color = '#1890ff';
-                const noteText = (log.comment || '').trim();
-                content = (
-                    <Space direction="vertical" size={0} style={{width: '100%'}}>
-                        <Text type="secondary" style={{fontSize: 12}}>备注</Text>
-                        <div
-                            style={{
-                                margin: 0,
-                                maxWidth: '100%',
-                                display: '-webkit-box',
-                                WebkitLineClamp: '2',
-                                WebkitBoxOrient: 'vertical',
-                                overflow: 'hidden',
-                                textOverflow: 'ellipsis',
-                                wordBreak: 'break-word',
-                                overflowWrap: 'anywhere',
-                                cursor: noteText ? 'pointer' : 'default',
-                            }}
-                            onClick={() => {
-                                if (!noteText) {
-                                    return;
-                                }
-                                setLogNotePreviewText(noteText);
-                                setShowLogNotePreview(true);
-                            }}
-                            title={noteText ? '点击查看完整备注' : undefined}
-                        >
-                            {noteText || '-'}
-                        </div>
-                    </Space>
-                );
-                break;
+            }
         }
         
         return (
@@ -1436,7 +1491,7 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
                         {content}
                     </div>
                     <Space size={2}>
-                        {(log.type === LibraryLogType.score || log.type === LibraryLogType.note) ? (
+                        {log.type === LibraryLogType.score ? (
                             <Button
                                 type="text"
                                 size="small"
@@ -1474,19 +1529,68 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
         );
     };
 
+    const renderNoteItem = (note: LibraryNote) => {
+        const noteText = note.Content.trim();
+        return (
+            <Timeline.Item key={`note-${note.ID}`} color="#1890ff">
+                <Flex justify="space-between" align="flex-start">
+                    <div style={{flex: 1, minWidth: 0}}>
+                        <Space direction="vertical" size={0} style={{width: '100%'}}>
+                            <Text type="secondary" style={{fontSize: 12}}>备注</Text>
+                            <div
+                                style={{
+                                    margin: 0, maxWidth: '100%', display: '-webkit-box', WebkitLineClamp: '2',
+                                    WebkitBoxOrient: 'vertical', overflow: 'hidden', textOverflow: 'ellipsis',
+                                    wordBreak: 'break-word', overflowWrap: 'anywhere', cursor: noteText ? 'pointer' : 'default',
+                                }}
+                                onClick={() => {
+                                    if (!noteText) return;
+                                    setLogNotePreviewText(noteText);
+                                    setShowLogNotePreview(true);
+                                }}
+                                title={noteText ? '点击查看完整备注' : undefined}
+                            >
+                                {noteText || '-'}
+                            </div>
+                        </Space>
+                    </div>
+                    <Space size={2}>
+                        <Button type="text" size="small" icon={<EditOutlined/>} onClick={() => openNoteContentEditor(note)}/>
+                        <Popconfirm
+                            title="删除该备注？"
+                            description="删除后将不再显示"
+                            onConfirm={() => handleDeleteNote(note)}
+                            okText="删除"
+                            cancelText="取消"
+                            okButtonProps={{danger: true}}
+                        >
+                            <Button type="text" size="small" danger icon={<DeleteOutlined/>}/>
+                        </Popconfirm>
+                        <Button type="text" size="small" icon={<ClockCircleOutlined/>} onClick={() => openNoteTimeEditor(note)}/>
+                        <Text type="secondary" style={{fontSize: 11, whiteSpace: 'nowrap'}}>
+                            {formatDateTime(note.EventTime)}
+                        </Text>
+                    </Space>
+                </Flex>
+            </Timeline.Item>
+        );
+    };
+
     const renderCompactNoteGroup = (
         entry: Extract<RoundDisplayEntry, {kind: 'noteGroup'}>,
         roundIndex: number,
         displayIndex: number,
     ) => {
-        const timeRangeText = entry.noteCount > 1
-            ? `${formatDateTime(entry.firstLog.time)} - ${formatDateTime(entry.lastLog.time)}`
-            : formatDateTime(entry.firstLog.time);
+        const firstNote = entry.notes[0];
+        const lastNote = entry.notes[entry.notes.length - 1];
+        const timeRangeText = entry.notes.length > 1
+            ? `${formatDateTime(firstNote.EventTime)} - ${formatDateTime(lastNote.EventTime)}`
+            : formatDateTime(firstNote.EventTime);
 
         return (
             <Timeline.Item key={`${roundIndex}-note-group-${displayIndex}`} color="#1890ff">
                 <Space direction="vertical" size={0} style={{width: '100%'}}>
-                    <Text strong>{entry.noteCount}条备注</Text>
+                    <Text strong>{entry.notes.length}条备注</Text>
                     <Text type="secondary" style={{fontSize: 12}}>
                         {timeRangeText}
                     </Text>
@@ -1565,7 +1669,9 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
                     {getRoundDisplayEntries(round).map((entry, displayIndex) => (
                         entry.kind === 'log'
                             ? renderLogItem(entry.log, roundIndex, entry.logIndex)
-                            : renderCompactNoteGroup(entry, roundIndex, displayIndex)
+                            : entry.kind === 'note'
+                                ? renderNoteItem(entry.note)
+                                : renderCompactNoteGroup(entry, roundIndex, displayIndex)
                     ))}
                 </Timeline>
                 
@@ -1582,6 +1688,7 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
                         <Button
                             size="small"
                             icon={<EditOutlined/>}
+                            disabled={coreSaving || noteSaving}
                             onClick={() => setShowAddNote(true)}
                             style={isMobile ? {flex: '1 1 calc(50% - 4px)'} : undefined}
                         >
@@ -1951,6 +2058,7 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
                             <Button
                                 size="small"
                                 icon={<EditOutlined/>}
+                                disabled={coreSaving || noteSaving}
                                 onClick={() => setShowAddNote(true)}
                             >
                                 新增最新备注
@@ -1966,6 +2074,7 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
                             <Button
                                 size="small"
                                 icon={<EditOutlined/>}
+                                disabled={coreSaving || noteSaving}
                                 onClick={() => setShowAddNote(true)}
                             >
                                 新增最新备注
@@ -1981,6 +2090,13 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
                 >
                     {localItem.extra.rounds.map((round, index) => renderRound(round, index))}
                 </Collapse>
+                {notesLoading ? <Text type="secondary">正在加载备注...</Text> : null}
+                {notesError ? (
+                    <Space style={{marginTop: 8}}>
+                        <Text type="danger">备注加载失败，不影响其他详情内容。</Text>
+                        <Button size="small" onClick={reloadNotes}>重试</Button>
+                    </Space>
+                ) : null}
             </div>
             
             {/* 新周目弹窗 */}
@@ -1988,6 +2104,7 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
                 title="开始新周目"
                 open={showNewRound}
                 onOk={handleStartNewRound}
+                confirmLoading={coreSaving}
                 onCancel={() => {
                     setShowNewRound(false);
                     setNewRoundName('');
@@ -2053,6 +2170,7 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
                 title="添加备注"
                 open={showAddNote}
                 onOk={handleAddNote}
+                confirmLoading={noteSaving}
                 onCancel={() => {
                     setShowAddNote(false);
                     setNoteContent('');
@@ -2101,9 +2219,11 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
                 title="编辑历史时间"
                 open={showEditLogTime}
                 onOk={handleSaveLogTime}
+                confirmLoading={noteSaving}
                 onCancel={() => {
                     setShowEditLogTime(false);
                     setEditingLogPos(null);
+                    setEditingNoteTime(null);
                     setEditingLogTime('');
                 }}
             >
@@ -2119,6 +2239,7 @@ export default function LibraryDetail({visible, item, subGroupId, categories = [
                 title={editingContentType === LibraryLogType.score ? '编辑评分内容' : '编辑备注内容'}
                 open={showEditLogContent}
                 onOk={handleSaveLogContent}
+                confirmLoading={noteSaving}
                 onCancel={resetEditingContentState}
             >
                 {editingContentType === LibraryLogType.score ? (

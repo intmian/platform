@@ -1099,11 +1099,11 @@ export default function Library({addr, groupTitle}: LibraryProps) {
     }, [addr, mainSubGroup, allItems, taskById]);
 
     // 保存 item 变更
-    const handleSaveItem = useCallback((item: LibraryItemFull) => {
-        if (!addr || !mainSubGroup) return;
+    const handleSaveItem = useCallback((item: LibraryItemFull): Promise<boolean> => {
+        if (!addr || !mainSubGroup) return Promise.resolve(false);
         
         const originalTask = taskById.get(item.taskId);
-        if (!originalTask) return;
+        if (!originalTask) return Promise.resolve(false);
         
         const updatedTask: PTask = {
             ...originalTask,
@@ -1120,15 +1120,19 @@ export default function Library({addr, groupTitle}: LibraryProps) {
             Data: updatedTask,
         };
         
-        sendChangeTask(req, (ret) => {
-            if (ret.ok) {
-                setTasks(prev => prev.map(t => t.ID === item.taskId ? updatedTask : t));
-                const savedItem = parseLibraryFromTask(updatedTask);
-                setDetailItem(prev => prev && prev.taskId === item.taskId ? savedItem : prev);
-                message.success('保存成功');
-            } else {
-                message.error('保存失败');
-            }
+        return new Promise((resolve) => {
+            sendChangeTask(req, (ret) => {
+                if (ret.ok) {
+                    setTasks(prev => prev.map(t => t.ID === item.taskId ? updatedTask : t));
+                    const savedItem = parseLibraryFromTask(updatedTask);
+                    setDetailItem(prev => prev && prev.taskId === item.taskId ? savedItem : prev);
+                    message.success('保存成功');
+                    resolve(true);
+                } else {
+                    message.error('保存失败');
+                    resolve(false);
+                }
+            });
         });
     }, [addr, mainSubGroup, taskById]);
 
@@ -2313,17 +2317,19 @@ export default function Library({addr, groupTitle}: LibraryProps) {
             <LibraryDetail
                 visible={showDetail}
                 item={detailItem}
-                subGroupId={mainSubGroup?.ID || 0}
+                noteContext={addr && mainSubGroup ? {
+                    UserID: addr.userID,
+                    DirID: addr.getLastDirID(),
+                    GroupID: addr.getLastGroupID(),
+                    SubGroupID: mainSubGroup.ID,
+                } : null}
                 categories={categories}
                 todoReasonOptions={todoReasonOptions}
                 onClose={() => {
                     setShowDetail(false);
                     setDetailItem(null);
                 }}
-                onSave={(item) => {
-                    handleSaveItem(item);
-                    setDetailItem(item);
-                }}
+                onSave={handleSaveItem}
                 onToggleFavorite={(item) => {
                     handleToggleFavorite(item);
                     setDetailItem({...item, extra: {...item.extra, isFavorite: !item.extra.isFavorite}});

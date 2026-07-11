@@ -1,6 +1,6 @@
 # Library Module Testing
 
-Last verified: 2026-05-18 (code inspected; interaction skipped by request)
+Last verified: 2026-07-11 (real frontend/backend + test D1 interaction, offline migration drill, backend tests, frontend production build)
 
 ## Preconditions
 
@@ -136,7 +136,12 @@ Last verified: 2026-05-18 (code inspected; interaction skipped by request)
 14. Detail quick note entry:
     - click `体验记录` header `新增最新备注`
     - verify it opens the same `添加备注` modal as the current-round footer button
-    - submit and verify the new note is appended into the current/latest round
+    - submit and verify `createLibraryNote` writes a D1 note for the current round UUID
+    - verify `Task.Note` and Library `updatedAt` are unchanged
+    - edit content/time and verify revision increases
+    - simulate a stale revision and verify the edit is rejected without losing draft content
+    - delete and verify the note is soft-deleted and no longer returned
+    - make `getLibraryNotes` fail and verify status/score/core detail still render with a retry action
 15. Round maintenance regression:
     - open detail -> current round header should show icon-only actions for rename / adjust start time / delete
     - hover the icons and verify tooltip text matches the action
@@ -147,6 +152,16 @@ Last verified: 2026-05-18 (code inspected; interaction skipped by request)
     - edit round start time in UI
       - verify round header time changes
       - verify saved `Task.Note` updates both `round.startTime` and the auto-start log `time`
+    - verify new/default rounds persist a stable UUID and rename/start-time edits keep it unchanged
+    - after deleting a round, verify its retained D1 notes are not returned because the round UUID is no longer active
+16. All-library timeline:
+    - verify the status filter no longer offers `备注`
+    - verify D1 notes never enter timeline rendering or timeline export
+17. Offline migration command:
+    - default mode is read-only planning
+    - `--apply` requires `--confirm-stopped`, a new mode-0600 JSONL backup path, and migrates notes before rewriting `Task.Note`
+    - `--verify` checks migrated data from the backup; `--rollback` restores original `Task.Note` and removes deterministic migrated note IDs
+    - verify legacy `note + 添加到库` becomes `addToLibrary`, main score indexes stay correct, unknown JSON fields remain, and business `updatedAt` is unchanged
 
 ## Failure isolation
 

@@ -132,7 +132,7 @@ Last verified: 2026-03-06
 
 ## Responsibility
 
-1. Dir/group/subgroup/task/tag CRUD and move flows.
+1. Dir/group/subgroup/task/tag CRUD and move flows, plus private Library round-note CRUD.
 2. Backend authority for task tree/state/order.
 3. See `backend/todone-core.md` for runtime model, cache, and move semantics.
 
@@ -143,9 +143,8 @@ Last verified: 2026-03-06
 
 ## Startup config keys
 
-1. `todone/db/account_id`
-2. `todone/db/api_token`
-3. `todone/db/db_id`
+1. `todone.db.worker_endpoint`
+2. `todone.db.worker_token`
 
 ## Public commands
 
@@ -170,6 +169,10 @@ Last verified: 2026-03-06
 19. `taskMove`
 20. `taskAddTag`
 21. `taskDelTag`
+22. `getLibraryNotes`
+23. `createLibraryNote`
+24. `changeLibraryNote`
+25. `delLibraryNote`
 
 ## Service: web-storage
 

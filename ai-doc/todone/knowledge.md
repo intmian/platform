@@ -1,6 +1,6 @@
 # Todone Module Knowledge
 
-Last verified: 2026-03-06
+Last verified: 2026-07-11
 
 ## Scope and loading boundary
 
@@ -46,6 +46,8 @@ Last verified: 2026-03-06
    - `getSubGroup`, `createSubGroup`, `changeSubGroup`, `delSubGroup`
 4. Task commands:
    - `getTask`, `getTasks`, `createTask`, `changeTask`, `delTask`, `taskMove`, `taskAddTag`, `taskDelTag`
+5. Library private-note commands in the same todone namespace:
+   - `getLibraryNotes`, `createLibraryNote`, `changeLibraryNote`, `delLibraryNote`
 
 ## Backend dependency
 

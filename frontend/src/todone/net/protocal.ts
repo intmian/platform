@@ -82,7 +82,7 @@ export interface LibraryLog {
     type: LibraryLogType
     time: string
     score?: number // 评分
-    note?: LibraryNote // 备注
+    note?: LibraryLegacyNote // 历史内嵌备注，仅兼容旧数据
 }
 
 // 单个体验周目
@@ -97,7 +97,7 @@ export interface LibraryLogs {
 }
 
 // 备注
-export interface LibraryNote {
+export interface LibraryLegacyNote {
     name: string
     author: string
     pictureAddress: string
@@ -160,10 +160,22 @@ export interface LibraryExtra {
 
 // 单个周目
 export interface LibraryRound {
+    id: string                      // 稳定周目 UUID；Library Note 通过它归属
     name: string                    // 周目名称（如：首周目、二周目、DLC1等）
     logs: LibraryLogEntry[]         // 该周目的日志
     startTime: string               // 开始时间
     endTime?: string                // 结束时间
+}
+
+export interface LibraryNote {
+    ID: string
+    TaskID: number
+    RoundID: string
+    EventTime: string
+    Content: string
+    Revision: number
+    CreatedAt: string
+    UpdatedAt: string
 }
 
 // 日志条目（扩展 LibraryLog）

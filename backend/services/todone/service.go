@@ -163,6 +163,14 @@ func (s *Service) HandleRpc(msg backendshare.Msg, valid backendshare.Valid) (int
 		return backendshare.HandleRpcTool("taskAddTag", msg, valid, s.OnTaskAddTag)
 	case CmdTaskDelTag:
 		return backendshare.HandleRpcTool("taskDelTag", msg, valid, s.OnTaskDelTag)
+	case CmdGetLibraryNotes:
+		return backendshare.HandleRpcTool("getLibraryNotes", msg, valid, s.OnGetLibraryNotes)
+	case CmdCreateLibraryNote:
+		return backendshare.HandleRpcTool("createLibraryNote", msg, valid, s.OnCreateLibraryNote)
+	case CmdChangeLibraryNote:
+		return backendshare.HandleRpcTool("changeLibraryNote", msg, valid, s.OnChangeLibraryNote)
+	case CmdDelLibraryNote:
+		return backendshare.HandleRpcTool("delLibraryNote", msg, valid, s.OnDelLibraryNote)
 	}
 
 	return nil, errors.New("cmd not found")

@@ -48,3 +48,14 @@ type PTask struct {
 	EndTime time.Time
 	Wait4   string
 }
+
+type PLibraryNote struct {
+	ID        string
+	TaskID    uint32
+	RoundID   string
+	EventTime time.Time
+	Content   string
+	Revision  uint32
+	CreatedAt time.Time
+	UpdatedAt time.Time
+}

@@ -13,6 +13,10 @@ import {
 
 const LIBRARY_AUTO_ROUND_START_COMMENT_PREFIXES = ['开始', '开始了'] as const;
 
+export function createLibraryRoundID(): string {
+    return crypto.randomUUID();
+}
+
 /**
  * 创建默认的 LibraryExtra 数据
  */
@@ -30,6 +34,7 @@ export function createDefaultLibraryExtra(): LibraryExtra {
         isFavorite: false,
         currentRound: 0,
         rounds: [{
+            id: createLibraryRoundID(),
             name: '首周目',
             logs: [{
                 type: LibraryLogType.addToLibrary,
@@ -55,6 +60,7 @@ export function parseLibraryExtra(note: string): LibraryExtra {
         // 确保必要字段存在
         if (!parsed.rounds || parsed.rounds.length === 0) {
             parsed.rounds = [{
+                id: createLibraryRoundID(),
                 name: '首周目',
                 logs: [],
                 startTime: parsed.createdAt || new Date().toISOString(),
@@ -793,22 +799,6 @@ export function addScoreLog(
 }
 
 /**
- * 添加备注日志
- */
-export function addNoteLog(extra: LibraryExtra, comment: string): LibraryExtra {
-    const now = new Date().toISOString();
-    const currentRound = extra.rounds[extra.currentRound];
-    if (currentRound) {
-        currentRound.logs.push({
-            type: LibraryLogType.note,
-            time: now,
-            comment: comment,
-        });
-    }
-    return extra;
-}
-
-/**
  * 开始新周目
  */
 export function startNewRound(extra: LibraryExtra, roundName: string): LibraryExtra {
@@ -822,6 +812,7 @@ export function startNewRound(extra: LibraryExtra, roundName: string): LibraryEx
     
     // 创建新周目
     const newRound: LibraryRound = {
+        id: createLibraryRoundID(),
         name: roundName,
         logs: [{
             type: LibraryLogType.changeStatus,
@@ -1010,6 +1001,9 @@ export function extractTimeline(items: LibraryItemFull[]): TimelineEntry[] {
         const cutoffMs = getTimelineCutoffTime(item.extra);
         for (const round of item.extra.rounds) {
             for (const log of round.logs) {
+                if (log.type === LibraryLogType.note) {
+                    continue;
+                }
                 if (log.type === LibraryLogType.timelineCutoff) {
                     continue;
                 }

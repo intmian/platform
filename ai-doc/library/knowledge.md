@@ -1,13 +1,13 @@
 # Library Module Knowledge
 
-Last verified: 2026-05-18 (code inspected; interaction skipped by request)
+Last verified: 2026-07-11 (code inspected; interaction not run)
 
 ## Module role and loading boundary
 
 1. Library is rendered under `/todone/:group` and is activated only when `group type = 1` (`GroupType.Library`).
 2. Shared `todone` behavior (route parsing, login gate, dir/group/subgroup baseline, permission gate, common RPC contract) is defined in `ai-doc/todone/knowledge.md`.
 3. If current task涉及 todone 基础设定、共享路由鉴权、或入口问题，先加载 `ai-doc/todone/knowledge.md`；如果问题落在前端壳层，再补 `ai-doc/frontend/architecture.md`，再回到本文件处理 library 特有逻辑。
-4. Library has no dedicated backend service; it is a behavior layer built on todone task storage plus `LibraryExtra` JSON in `Task.Note`.
+4. Library has no dedicated backend service; core state remains in todone `Task.Note`, while private round notes use a todone-owned D1 side table.
 
 ## Frontend entry
 
@@ -24,38 +24,45 @@ Last verified: 2026-05-18 (code inspected; interaction skipped by request)
    - `createTask`
    - `changeTask`
    - `delTask`
+   - `getLibraryNotes`
+   - `createLibraryNote`
+   - `changeLibraryNote`
+   - `delLibraryNote`
 
 ## Backend dependency
 
 1. Backend persistence is still todone `Task`.
-2. Library-specific structure is serialized into `Task.Note`.
+2. Library core structure is serialized into `Task.Note`; private round note bodies are stored in D1 table `library_notes`.
 3. Subgroup convention prefers `_library_items_`, with legacy fallback to first subgroup and auto-create when none exists.
 
 ## Data model
 
 1. Library item is stored as TODONE `Task`.
-2. `Task.Note` stores `LibraryExtra` JSON.
-3. Parse fallback:
+2. `Task.Note` stores `LibraryExtra` JSON, but `LibraryLogType.note` is legacy/migration-only and must not be written at runtime.
+3. Every `LibraryRound` has a stable UUID `id`; D1 notes bind through `task_id + round_id`, never round array index or name.
+4. `library_notes` owns note content, event time, revision, idempotency request id, timestamps, and soft-delete state.
+5. Note create/edit/delete does not rewrite `Task.Note` or refresh Library `updatedAt`.
+6. Parse fallback:
    - empty or parse fail => default `LibraryExtra`
    - missing rounds => create `首周目`
-4. Serialize cleans deprecated fields but does not auto-refresh `updatedAt`.
-5. `updatedAt` refresh trigger:
+7. Serialize cleans deprecated fields but does not auto-refresh `updatedAt`.
+8. `updatedAt` refresh trigger:
    - manual `刷新` button
    - latest non-note/non-`timelineCutoff` log change (time-based sync)
-6. List page derives runtime meta via `deriveLibraryMeta(extra)` with one log scan per item:
+9. List page derives runtime meta via `deriveLibraryMeta(extra)` with one log scan per item:
    - status snapshot (`status`, `todoReason`)
    - wait-expired flag (`鸽了`)
    - main score
    - parsed `createdAt/updatedAt` timestamps for sort
-7. Derived meta is in-memory only and must not add new backend/database fields.
-8. Cover asset contract:
+10. Derived meta is in-memory only and must not add new backend/database fields.
+11. Cover asset contract:
    - `extra.pictureAddress`: original cover URL.
    - `extra.pictureAddressDetail` (optional): detail cover URL (cropped 2:3).
    - `extra.picturePreview` (optional): preview cover URL (list/timeline).
    - `extra.pictureAddressPreview` is kept as deprecated alias for legacy compatibility.
    - list/timeline read order is `picturePreview -> pictureAddressPreview -> pictureAddress -> placeholder`.
    - detail/share read order is `pictureAddressDetail -> pictureAddress -> picturePreview -> placeholder`.
-9. Cover upload strategy:
+12. Cover upload strategy:
    - always keep 2:3 crop interaction and upload 3 assets together:
      - original file => `pictureAddress`
      - cropped detail => `pictureAddressDetail` (`quality=0.92`; PNG source converts to JPEG for detail)
@@ -82,11 +89,12 @@ Last verified: 2026-05-18 (code inspected; interaction skipped by request)
    - `showCategory`
 7. `showAuthor / showStartTime / showUpdateTime` are removed because they are no longer bound to card rendering.
 8. Main-page title row includes a help button that opens `娱乐库状态与评分说明`, covering status semantics and scoring rules.
-9. Detail drawer `体验记录` area exposes a note-visibility selector with 3 modes:
+9. Detail drawer loads D1 notes only while a Library item is open; note loading failure is isolated from core detail rendering.
+10. Detail drawer `体验记录` area merges core logs and D1 notes in memory and exposes a note-visibility selector with 3 modes:
    - `隐藏`: hide note logs entirely
    - `缩略`: default mode; consecutive note logs collapse into `x条备注` and only show the plain start/end time range in the left content area
    - `显示`: render note logs in full with edit/delete/time controls
-10. Detail drawer `体验记录` header adds `新增最新备注`, which opens the same add-note modal as `当前周目 -> 添加备注` and still writes to `extra.currentRound`.
+11. Detail drawer `体验记录` header adds `新增最新备注`, which writes a D1 note bound to the current round UUID.
 
 URL sync contract (list + detail):
 
@@ -134,7 +142,7 @@ Wait-expired (`鸽了`) rule:
 
 Timeline rules:
 
-1. Aggregate logs across rounds by time descending.
+1. Aggregate core logs across rounds by time descending; private notes never enter the all-library timeline, filters, or exports.
 2. `timelineCutoff` log itself is hidden.
 3. Logs before cutoff are excluded.
 4. Legacy `note: 添加到库` is normalized to `addToLibrary`.
@@ -177,7 +185,7 @@ Score log display rules:
 Score AI assistant rules:
 
 1. Add-score modal can call `library.reviewNotesDigest` through the shared AI Gateway.
-2. Input notes are only note logs from the current round (`LibraryLogType.note`), not all historical rounds.
+2. Input notes are only D1 notes whose `round_id` matches the current round UUID, not all historical rounds.
 3. AI output only contains positive points, negative points, and recordable items. It does not return draft phrases or auto-fill score fields.
 4. Each AI point can be copied by the user; copied text is not persisted to `LibraryExtra` unless the user manually pastes/saves it.
 5. The prompt tells AI that notes may come from speech input with filler words or recognition errors; uncertain guesses must be marked with Chinese parentheses.

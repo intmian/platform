@@ -1,6 +1,6 @@
 # Todone Backend Core
 
-Last verified: 2026-07-10
+Last verified: 2026-07-11
 
 ## Scope
 
@@ -14,6 +14,7 @@ Last verified: 2026-07-10
 3. `SubGroupDB`: subgroup node (`parent_group_id`, `index`, `task_sequence`).
 4. `TaskDB`: task entity (`parent_sub_group_id`, `parent_task_id`, `done`, `deleted`, time fields, task type/status fields).
 5. `TagsDB`: task-tag relation (`task_id`, `tag`, user).
+6. `LibraryNoteDB`: private Library round notes (`task_id`, stable `round_id`, content, event time, revision, idempotency id, soft delete).
 
 ## Group type contract
 
@@ -30,10 +31,13 @@ Last verified: 2026-07-10
    - task
    - tags
    - subgroup
+   - library note
    Every `ConnectType` maps to the same root GORM handle and underlying `database/sql` pool.
 3. Auto-migrate runs serially in the above order at startup; it no longer writes the connection map or migrates the same D1 concurrently.
-4. SQL trace is hooked into xbi table `todone_db_log`.
-5. GORM connection creation explicitly pings the Worker so missing endpoint, invalid bearer auth, or unavailable Worker fails service startup.
+4. `library_notes.revision` is initialized explicitly by application/migration writes and intentionally has no GORM database-default tag. The D1 adapter cannot introspect column defaults, so adding one makes a second `AutoMigrate` incorrectly request a destructive alteration. UUID columns likewise use D1 `TEXT` without GORM size declarations.
+5. SQL trace is hooked into xbi table `todone_db_log`.
+6. GORM connection creation explicitly pings the Worker so missing endpoint, invalid bearer auth, or unavailable Worker fails service startup.
+7. GORM SQL logging uses parameterized queries so private note bodies and other values do not enter local SQL/BI logs.
 
 ## Runtime model
 
@@ -63,6 +67,16 @@ Last verified: 2026-07-10
    - loads all non-deleted tasks
    - keeps finished tasks but places them after unfinished tasks in output index mapping
 3. Tag batch query uses chunked `IN` (`MaxInSize=50`) for D1/SQLite friendliness.
+4. Library notes are loaded only for an open Library task and only for round UUIDs currently present in `Task.Note`; removed-round notes remain stored but inaccessible.
+
+## Library note contract
+
+1. Public commands are `getLibraryNotes`, `createLibraryNote`, `changeLibraryNote`, and `delLibraryNote` under the existing todone RPC namespace.
+2. Handlers require the normal `admin|todone` gate, exact user match, a Library group, a live task, and valid stable round UUIDs.
+3. Create uses a client request UUID for idempotency; edit/delete use revision-based optimistic locking.
+4. Delete is soft delete. Note operations never mutate `Task.Note` or Library business `updatedAt`.
+5. Note bodies are capped at 64 KiB and a single task read fails rather than silently truncating beyond 500 active notes.
+6. Historical embedded notes are moved only by the stopped-service command `backend/cmd/migrate_library_notes`; runtime code does not perform online migration or dual reads.
 
 ## Subgroup autosave behavior
 

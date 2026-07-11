@@ -42,6 +42,7 @@ func InitGMgr(setting Setting) error {
 		{ConnectTypeTask, &TaskDB{}},
 		{ConnectTypeTags, &TagsDB{}},
 		{ConnectTypeSubGroup, &SubGroupDB{}},
+		{ConnectTypeLibraryNote, &LibraryNoteDB{}},
 	}
 	for _, connection := range connections {
 		if err = GTodoneDBMgr.Connect(connection.connectType, connection.model); err != nil {
@@ -53,7 +54,8 @@ func InitGMgr(setting Setting) error {
 	connectTask := GTodoneDBMgr.GetConnect(ConnectTypeTask)
 	connectTags := GTodoneDBMgr.GetConnect(ConnectTypeTags)
 	connectSubGroup := GTodoneDBMgr.GetConnect(ConnectTypeSubGroup)
-	if connectDir == nil || connectGroup == nil || connectTask == nil || connectTags == nil || connectSubGroup == nil {
+	connectLibraryNote := GTodoneDBMgr.GetConnect(ConnectTypeLibraryNote)
+	if connectDir == nil || connectGroup == nil || connectTask == nil || connectTags == nil || connectSubGroup == nil || connectLibraryNote == nil {
 		return errors.New("connect is nil")
 	}
 	return nil
@@ -100,6 +102,7 @@ func (d *Mgr) Init(setting Setting) error {
 			SlowThreshold:             5 * time.Second, // 慢查询日志阈值
 			IgnoreRecordNotFoundError: true,            // 忽略 RecordNotFound 错误
 			Colorful:                  false,           // 禁用颜色输出
+			ParameterizedQueries:      true,            // 私有正文等参数不能进入 SQL/BI 日志
 		},
 	)
 
@@ -185,4 +188,5 @@ const (
 	ConnectTypeTask
 	ConnectTypeTags
 	ConnectTypeSubGroup
+	ConnectTypeLibraryNote
 )
