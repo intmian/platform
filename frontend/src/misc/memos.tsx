@@ -660,7 +660,7 @@ function HideInput({
                         style={style2}
                         value={"正在请求AI重写中，请稍等..."}
                         onChange={() => {}}
-                        placeholder={inAiRewrite ? "loading…" : 'Enter换行\nCtrl+Enter发送\ntab切换标签输入'}
+                        placeholder={inAiRewrite ? "loading…" : 'Enter换行\nCtrl/Command+Enter发送\ntab切换标签输入'}
                     />
                 </Spin>
                 :
@@ -673,7 +673,7 @@ function HideInput({
                     onChange={(e) => handleChange(e.target.value)}
                     onCompositionStart={handleCompositionStart}
                     onCompositionEnd={handleCompositionEnd}
-                    placeholder={inAiRewrite ? "loading…" : 'Enter换行\nCtrl+Enter发送\ntab切换标签输入'}
+                    placeholder={inAiRewrite ? "loading…" : 'Enter换行\nCtrl/Command+Enter发送\ntab切换标签输入'}
                 />
             }
         </Flex> : <div
@@ -686,7 +686,7 @@ function HideInput({
             onChange={(e) => handleChange(e.target.value)}
             onCompositionStart={handleCompositionStart}
             onCompositionEnd={handleCompositionEnd}
-            placeholder={'Enter换行\nCtrl+Enter发送\ntab切换标签输入'}
+            placeholder={'Enter换行\nCtrl/Command+Enter发送\ntab切换标签输入'}
             onPaste={e => {
                 if (onPasteFile && e.clipboardData && e.clipboardData.files && e.clipboardData.files.length > 0) {
                     e.preventDefault();
@@ -916,19 +916,22 @@ function Memos() {
         });
     }, [submitByContent]);
 
-    // ctrl+enter发送
+    // Ctrl+Enter / Command+Enter 发送
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
-            if (e.ctrlKey && e.key === 'Enter') {
+            if ((e.ctrlKey || e.metaKey) && e.key === 'Enter' && !e.isComposing) {
+                e.preventDefault();
                 e.stopPropagation();
-                submit();
+                if (canSubmit && !loadingSetting) {
+                    submit();
+                }
             }
         };
         document.addEventListener('keydown', handleKeyDown);
         return () => {
             document.removeEventListener('keydown', handleKeyDown);
         };
-    }, [submit]);
+    }, [canSubmit, loadingSetting, submit]);
 
     const tagsChange = useCallback((tags: string[]) => {
         setTagsSelected(tags);

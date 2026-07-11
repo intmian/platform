@@ -83,7 +83,7 @@ export function TagInput({
             onSearch={handleSearch}
             onSelect={handleSelect}
             onInputKeyDown={(e) => {
-                if (e.ctrlKey && e.key === 'Enter') {
+                if ((e.ctrlKey || e.metaKey) && e.key === 'Enter' && !e.nativeEvent.isComposing) {
                     e.preventDefault();
                     e.stopPropagation();
                     if (onCtrlEnter) {

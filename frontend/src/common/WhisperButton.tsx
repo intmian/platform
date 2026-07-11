@@ -102,7 +102,7 @@ function formatDuration(durationMs: number): string {
     return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
 }
 
-function RecordingWave({durationMs}: {durationMs: number}) {
+function RecordingWave({waveform}: {waveform: number[]}) {
     return <span
         aria-hidden={true}
         style={{
@@ -112,18 +112,18 @@ function RecordingWave({durationMs}: {durationMs: number}) {
             height: 16,
         }}
     >
-        {[0, 1, 2, 3, 4].map((index) => {
-            const phase = (durationMs / 180) + index * 1.35;
-            const height = 4 + Math.round((Math.sin(phase) + 1) * 4);
+        {waveform.map((level, index) => {
+            const height = Math.max(2, Math.round(level * 16));
             return <span
                 key={index}
                 style={{
                     display: "block",
-                    width: 2,
+                    width: 1.5,
                     height,
                     borderRadius: 999,
                     background: "currentColor",
-                    transition: "height 180ms ease",
+                    opacity: level > 0.02 ? 1 : 0.45,
+                    transition: "height 80ms linear, opacity 80ms linear",
                 }}
             />;
         })}
@@ -340,7 +340,7 @@ export function WhisperButton({
             <span aria-hidden={true} style={{fontSize: 9}}>●</span>
             <span>{formatDuration(recorder.durationMs)}</span>
         </span>
-        <RecordingWave durationMs={recorder.durationMs}/>
+        <RecordingWave waveform={recorder.waveform}/>
     </span>;
 
     return <>

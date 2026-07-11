@@ -10,6 +10,25 @@ interface WebAudioRecorder {
     sampleRate: number;
 }
 
+const WAVEFORM_BAR_COUNT = 16;
+const EMPTY_WAVEFORM = Array.from({length: WAVEFORM_BAR_COUNT}, () => 0);
+
+function sampleWaveform(samples: Float32Array): number[] {
+    const bucketSize = Math.max(1, Math.floor(samples.length / WAVEFORM_BAR_COUNT));
+    return EMPTY_WAVEFORM.map((_, index) => {
+        const start = index * bucketSize;
+        const end = index === WAVEFORM_BAR_COUNT - 1
+            ? samples.length
+            : Math.min(samples.length, start + bucketSize);
+        let peak = 0;
+        for (let sampleIndex = start; sampleIndex < end; sampleIndex += 1) {
+            peak = Math.max(peak, Math.abs(samples[sampleIndex]));
+        }
+        // Lift normal speech while retaining a zero baseline for actual silence.
+        return Math.min(1, Math.sqrt(peak));
+    });
+}
+
 const AUDIO_MIME_TYPES = [
     "audio/webm;codecs=opus",
     "audio/webm",
@@ -92,6 +111,7 @@ export function useAudioRecorder() {
     const [state, setState] = useState<AudioRecorderState>("idle");
     const [durationMs, setDurationMs] = useState(0);
     const [error, setError] = useState<string>("");
+    const [waveform, setWaveform] = useState<number[]>(EMPTY_WAVEFORM);
     const recorderRef = useRef<MediaRecorder | null>(null);
     const webAudioRecorderRef = useRef<WebAudioRecorder | null>(null);
     const streamRef = useRef<MediaStream | null>(null);
@@ -156,7 +176,9 @@ export function useAudioRecorder() {
                 const processor = context.createScriptProcessor(4096, 1, 1);
                 const chunks: Float32Array[] = [];
                 processor.onaudioprocess = (event) => {
-                    chunks.push(new Float32Array(event.inputBuffer.getChannelData(0)));
+                    const samples = new Float32Array(event.inputBuffer.getChannelData(0));
+                    chunks.push(samples);
+                    setWaveform(sampleWaveform(samples));
                     event.outputBuffer.getChannelData(0).fill(0);
                 };
                 source.connect(processor);
@@ -197,6 +219,7 @@ export function useAudioRecorder() {
             }
             startedAtRef.current = Date.now();
             setDurationMs(0);
+            setWaveform(EMPTY_WAVEFORM);
             timerRef.current = window.setInterval(() => {
                 setDurationMs(Date.now() - startedAtRef.current);
             }, 250);
@@ -267,6 +290,7 @@ export function useAudioRecorder() {
         state,
         recording: state === "recording",
         durationMs,
+        waveform,
         error,
         isSupported: canRecordAudio(),
         start,

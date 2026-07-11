@@ -110,6 +110,7 @@ import {
     sendAiAction,
 } from '../common/aiGateway';
 import {LibraryNoteContext, useLibraryNotes} from './useLibraryNotes';
+import {WhisperButton} from '../common/WhisperButton';
 
 const {Text, Paragraph} = Typography;
 const {TextArea} = Input;
@@ -177,6 +178,17 @@ function getScoreCommentPreview(comment: string, maxChars: number): string {
         return trimmed;
     }
     return `${trimmed.slice(0, maxChars)}...(${trimmed.length}字)`;
+}
+
+function appendTranscriptionText(current: string, transcription: string): string {
+    const next = transcription.trim();
+    if (!next) {
+        return current;
+    }
+    if (!current || /\s$/.test(current)) {
+        return current + next;
+    }
+    return `${current}\n${next}`;
 }
 
 async function waitForImagesLoaded(container: HTMLElement): Promise<void> {
@@ -2169,6 +2181,7 @@ export default function LibraryDetail({visible, item, noteContext, categories = 
             <Modal
                 title="添加备注"
                 open={showAddNote}
+                destroyOnClose={true}
                 onOk={handleAddNote}
                 confirmLoading={noteSaving}
                 onCancel={() => {
@@ -2176,12 +2189,21 @@ export default function LibraryDetail({visible, item, noteContext, categories = 
                     setNoteContent('');
                 }}
             >
-                <TextArea
-                    rows={4}
-                    placeholder="请输入备注内容..."
-                    value={noteContent}
-                    onChange={(e) => setNoteContent(e.target.value)}
-                />
+                <Space direction="vertical" size={8} style={{width: '100%'}}>
+                    <TextArea
+                        rows={4}
+                        placeholder="请输入备注内容..."
+                        value={noteContent}
+                        onChange={(e) => setNoteContent(e.target.value)}
+                    />
+                    <Flex justify="flex-end">
+                        <WhisperButton
+                            disabled={noteSaving}
+                            tooltip="语音输入备注"
+                            onText={(text) => setNoteContent((current) => appendTranscriptionText(current, text))}
+                        />
+                    </Flex>
+                </Space>
             </Modal>
 
             <Modal
@@ -2238,6 +2260,7 @@ export default function LibraryDetail({visible, item, noteContext, categories = 
             <Modal
                 title={editingContentType === LibraryLogType.score ? '编辑评分内容' : '编辑备注内容'}
                 open={showEditLogContent}
+                destroyOnClose={true}
                 onOk={handleSaveLogContent}
                 confirmLoading={noteSaving}
                 onCancel={resetEditingContentState}
@@ -2374,12 +2397,21 @@ export default function LibraryDetail({visible, item, noteContext, categories = 
                         </div>
                     </Space>
                 ) : (
-                    <TextArea
-                        rows={4}
-                        value={editingContentText}
-                        onChange={(e) => setEditingContentText(e.target.value)}
-                        placeholder="请输入备注内容"
-                    />
+                    <Space direction="vertical" size={8} style={{width: '100%'}}>
+                        <TextArea
+                            rows={4}
+                            value={editingContentText}
+                            onChange={(e) => setEditingContentText(e.target.value)}
+                            placeholder="请输入备注内容"
+                        />
+                        <Flex justify="flex-end">
+                            <WhisperButton
+                                disabled={noteSaving}
+                                tooltip="语音输入备注"
+                                onText={(text) => setEditingContentText((current) => appendTranscriptionText(current, text))}
+                            />
+                        </Flex>
+                    </Space>
                 )}
             </Modal>
 

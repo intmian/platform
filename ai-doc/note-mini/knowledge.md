@@ -49,7 +49,7 @@ Last verified: 2026-07-11
 
 1. The page is a lightweight private memo sender:
    - input area supports markdown text
-   - tag input supports Ctrl+Enter submit from tag area
+   - keyboard submit supports Ctrl+Enter on Windows/Linux and Command+Enter on macOS, including from the tag area
    - upload supports local files and clipboard images from the `更多` menu, then inserts markdown link/image
    - bottom action bar includes `WhisperButton` voice input; transcribed text is appended to the draft input
    - while voice recording is active, the send button is removed and the shared expanded recording pill occupies that action-bar space; the send button returns after recording stops
