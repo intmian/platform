@@ -17,6 +17,7 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/robfig/cron v1.2.0
 	github.com/shirou/gopsutil v3.21.10+incompatible
+	golang.org/x/term v0.28.0
 	gorm.io/driver/sqlite v1.5.5
 	gorm.io/gorm v1.25.12
 )

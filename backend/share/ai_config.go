@@ -2,6 +2,7 @@ package share
 
 import (
 	"errors"
+	"strings"
 
 	"github.com/intmian/mian_go_lib/tool/ai"
 	"github.com/intmian/mian_go_lib/xstorage"
@@ -16,7 +17,7 @@ const (
 	AISceneLibraryReviewDigest AIScene = "library_review_digest"
 )
 
-const DefaultAIAudioModel = "whisper-large-v3-turbo"
+const DefaultAIAudioModel = "gpt-4o-mini-transcribe"
 
 func defaultAIModelPools() map[ai.ModelMode][]string {
 	return map[ai.ModelMode][]string{
@@ -65,6 +66,20 @@ func DefaultAIConfigParams() []*xstorage.CfgParam {
 			Default:   *xstorage.ToUnit(modelPools[ai.ModelModeNormal], xstorage.ValueTypeSliceString),
 		},
 		{
+			Key:       "PLAT.openai.audio.base",
+			ValueType: xstorage.ValueTypeString,
+			CanUser:   false,
+			RealKey:   "openai.audio.base",
+			Default:   *xstorage.ToUnit[string]("", xstorage.ValueTypeString),
+		},
+		{
+			Key:       "PLAT.openai.audio.token",
+			ValueType: xstorage.ValueTypeString,
+			CanUser:   false,
+			RealKey:   "openai.audio.token",
+			Default:   *xstorage.ToUnit[string]("", xstorage.ValueTypeString),
+		},
+		{
 			Key:       "PLAT.openai.audio.model",
 			ValueType: xstorage.ValueTypeString,
 			CanUser:   false,
@@ -105,6 +120,8 @@ func DefaultAIConfigParams() []*xstorage.CfgParam {
 type AIConfig struct {
 	Base       string
 	Token      string
+	AudioBase  string
+	AudioToken string
 	AudioModel string
 	ModelPools map[ai.ModelMode][]string
 	SceneModes map[AIScene]ai.ModelMode
@@ -161,6 +178,8 @@ func GetAIConfig(cfg *xstorage.CfgExt) (AIConfig, error) {
 	if err != nil {
 		return conf, err
 	}
+	conf.AudioBase, _ = readCfgString(cfg, "PLAT", "openai", "audio", "base")
+	conf.AudioToken, _ = readCfgString(cfg, "PLAT", "openai", "audio", "token")
 	conf.AudioModel, err = readCfgString(cfg, "PLAT", "openai", "audio", "model")
 	if err != nil || conf.AudioModel == "" {
 		conf.AudioModel = DefaultAIAudioModel
@@ -186,6 +205,18 @@ func GetAIConfig(cfg *xstorage.CfgExt) (AIConfig, error) {
 	conf.SceneModes[AISceneTranslate] = ai.NormalizeModelMode(translateMode, ai.ModelModeCheap)
 	conf.SceneModes[AISceneLibraryReviewDigest] = ai.NormalizeModelMode(libraryReviewDigestMode, ai.ModelModeCheap)
 	return conf, nil
+}
+
+func (c AIConfig) AudioProvider() (base string, token string, err error) {
+	audioBase := strings.TrimSpace(c.AudioBase)
+	audioToken := strings.TrimSpace(c.AudioToken)
+	if audioBase == "" && audioToken == "" {
+		return c.Base, c.Token, nil
+	}
+	if audioBase == "" || audioToken == "" {
+		return "", "", errors.New("openai.audio provider config incomplete")
+	}
+	return audioBase, audioToken, nil
 }
 
 func (c AIConfig) ModeForScene(scene AIScene, fallback ai.ModelMode) ai.ModelMode {

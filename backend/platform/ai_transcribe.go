@@ -66,7 +66,7 @@ func (m *webMgr) aiTranscribe(c *gin.Context) {
 
 	ctx, cancel := context.WithTimeout(c.Request.Context(), 10*time.Minute)
 	defer cancel()
-	ret, err := m.transcribeAI(ctx, file, language, prompt)
+	ret, err := m.transcribeAI(ctx, file, fileHeader.Filename, language, prompt)
 	if err != nil {
 		c.JSON(200, makeErrReturn(err.Error()))
 		return
@@ -79,22 +79,36 @@ func (m *webMgr) aiTranscribe(c *gin.Context) {
 	}))
 }
 
-func (m *webMgr) transcribeAI(ctx context.Context, file io.Reader, language string, prompt string) (ai.TranscriptionResult, error) {
+func (m *webMgr) transcribeAI(ctx context.Context, file io.Reader, fileName string, language string, prompt string) (ai.TranscriptionResult, error) {
 	aiCfg, err := share.GetAIConfig(m.plat.cfg)
 	if err != nil {
 		return ai.TranscriptionResult{}, errors.New("openai config error")
 	}
-	if aiCfg.Base == "" || aiCfg.Base == "need input" {
+	base, token, err := aiCfg.AudioProvider()
+	if err != nil {
+		return ai.TranscriptionResult{}, err
+	}
+	if base == "" || base == "need input" {
 		return ai.TranscriptionResult{}, errors.New("openai.base is empty")
 	}
-	if aiCfg.Token == "" || aiCfg.Token == "need input" {
+	if token == "" || token == "need input" {
 		return ai.TranscriptionResult{}, errors.New("openai.token is empty")
 	}
 	if strings.TrimSpace(aiCfg.AudioModel) == "" {
 		return ai.TranscriptionResult{}, errors.New("openai.audio.model is empty")
 	}
+	if isOpenRouterBaseURL(base) {
+		ret, err := transcribeOpenRouter(ctx, base, token, file, fileName, aiCfg.AudioModel, language)
+		if err != nil {
+			if m.plat != nil && m.plat.log != nil {
+				m.plat.log.Warning("PLAT", "ai transcribe upstream error: %s", err.Error())
+			}
+			return ai.TranscriptionResult{}, errors.New("svr error")
+		}
+		return ret, nil
+	}
 
-	bot := ai.NewOpenAIWithModels(aiCfg.Base, aiCfg.Token, false, aiCfg.AudioModel)
+	bot := ai.NewOpenAIWithModels(base, token, false, aiCfg.AudioModel)
 	if bot == nil {
 		return ai.TranscriptionResult{}, errors.New("openai init error")
 	}

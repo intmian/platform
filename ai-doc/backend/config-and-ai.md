@@ -1,6 +1,6 @@
 # Backend Config And AI
 
-Last verified: 2026-07-10
+Last verified: 2026-07-11
 
 ## Scope
 
@@ -59,6 +59,8 @@ Last verified: 2026-07-10
    - `PLAT.openai.model.cheap`
    - `PLAT.openai.model.fast`
    - `PLAT.openai.model.normal`
+   - `PLAT.openai.audio.base`
+   - `PLAT.openai.audio.token`
    - `PLAT.openai.audio.model`
    - `PLAT.openai.scene.rewrite`
    - `PLAT.openai.scene.summary`
@@ -77,18 +79,20 @@ Last verified: 2026-07-10
    - `translate -> cheap`
    - `library_review_digest -> cheap`
 3. Default placeholder values for `PLAT.openai.base` and `PLAT.openai.token` are `need input`.
-4. Default `PLAT.openai.audio.model` is `whisper-large-v3-turbo`; frontend users cannot choose this per request.
-5. The reusable AI wrapper in `backend/mian_go_lib/tool/ai/openai.go` now uses the official Go SDK `github.com/openai/openai-go/v3`.
-6. The wrapper still sends text requests through the Chat Completions API for compatibility with existing callers and OpenAI-compatible base URLs.
-7. The wrapper also exposes audio transcription; callers must pass the model explicitly from the owning config layer.
-8. The wrapper is provider-neutral and no longer exposes provider enums or DeepSeek-specific defaults/response cleanup; compatible providers must be configured through `PLAT.openai.base`, `PLAT.openai.model.*`, and `PLAT.openai.audio.model`.
-9. New provider capability code lives under `backend/mian_go_lib/tool/ai/v2` with Go package name `ai`; it does not replace the existing `tool/ai` wrapper.
-10. `OpenAIProvider` in `tool/ai/v2` is for OpenAI-compatible providers only, currently `OpenAI` and `DeepSeek`; model availability is read through the SDK Models API with pagination, while reasoning capability lists are source-type based.
-11. `OpenAIProvider.Chat` and `ChatStream` expose plain message chat plus reasoning controls and DeepSeek `thinking`; external tools/functions are intentionally left out of the first v2 chat slice, so `AvailableTools()` returns no callable tools.
-12. `tool/ai/v2` provides base agent components and configuration helpers, not an agent-by-ID factory layer: `AgentID` and `ProviderID` are `uint32`, and the package-level singleton stores `ProviderID -> IProvider` and `AgentID -> IAgentSetting`, while callers still create and initialize agents explicitly.
-13. `IAgent[S]` is the typed lifecycle surface for v2 agents: `GetID`, `Init`, and `InitWithSetting`; chat/streaming/factory/middleware behavior and provider/setting getters are intentionally outside this interface.
-14. `BaseAgent` and `BaseAgentSetting` live in `tool/ai/v2/base_agent.go`; `BaseAgent` is a thin built-in reference implementation composed from public provider binding, generic setting state, and message history components that external agents can also reuse directly. `BaseAgent.Chat(ctx, content)` is stateful per agent instance: it prepends `SysPrompt`, reuses successful user/assistant history, tries `Models` in order as a fallback list, writes history only after a successful response, and returns errors instead of local fallback content. Chat calls on the same `BaseAgent` are serialized, including provider network I/O, to preserve strict history ordering.
-15. v2 agent settings use `IAgentSetting` plus reflection helpers for JSON import/export and JSON doc generation; the supported setting surface is exported scalar fields and scalar slices/arrays only, with zero values treated as not configured. Importing zero values is a no-op for existing values, so JSON import cannot clear a previously configured scalar or slice by passing `""`, `0`, `false`, or `[]`.
+4. Default `PLAT.openai.audio.model` is `gpt-4o-mini-transcribe`; frontend users cannot choose this per request.
+5. `PLAT.openai.audio.base` and `PLAT.openai.audio.token` select an optional transcription-only OpenAI-compatible upstream. When both are empty, transcription inherits `PLAT.openai.base` and `PLAT.openai.token`; when only one is configured, transcription fails with `openai.audio provider config incomplete` so credentials are not mixed across upstreams.
+6. The reusable AI wrapper in `backend/mian_go_lib/tool/ai/openai.go` now uses the official Go SDK `github.com/openai/openai-go/v3`.
+7. The wrapper still sends text requests through the Chat Completions API for compatibility with existing callers and OpenAI-compatible base URLs.
+8. The wrapper also exposes audio transcription; callers must pass the model explicitly from the owning config layer.
+9. The wrapper is provider-neutral and no longer exposes provider enums or DeepSeek-specific defaults/response cleanup; compatible providers must be configured through `PLAT.openai.base`, `PLAT.openai.model.*`, and the optional `PLAT.openai.audio.*` override.
+10. The platform transcription route has a narrow OpenRouter request-format branch pending the broader v2 provider refactor: audio is streamed as Base64 JSON using OpenRouter's `input_audio` contract. The configured Base URL and model are otherwise used verbatim, so OpenRouter requires `https://openrouter.ai/api/v1` and a full model ID such as `openai/gpt-4o-mini-transcribe`. Other providers continue through the official OpenAI SDK multipart transcription path.
+11. New provider capability code lives under `backend/mian_go_lib/tool/ai/v2` with Go package name `ai`; it does not replace the existing `tool/ai` wrapper.
+12. `OpenAIProvider` in `tool/ai/v2` is for OpenAI-compatible providers only, currently `OpenAI` and `DeepSeek`; model availability is read through the SDK Models API with pagination, while reasoning capability lists are source-type based.
+13. `OpenAIProvider.Chat` and `ChatStream` expose plain message chat plus reasoning controls and DeepSeek `thinking`; external tools/functions are intentionally left out of the first v2 chat slice, so `AvailableTools()` returns no callable tools.
+14. `tool/ai/v2` provides base agent components and configuration helpers, not an agent-by-ID factory layer: `AgentID` and `ProviderID` are `uint32`, and the package-level singleton stores `ProviderID -> IProvider` and `AgentID -> IAgentSetting`, while callers still create and initialize agents explicitly.
+15. `IAgent[S]` is the typed lifecycle surface for v2 agents: `GetID`, `Init`, and `InitWithSetting`; chat/streaming/factory/middleware behavior and provider/setting getters are intentionally outside this interface.
+16. `BaseAgent` and `BaseAgentSetting` live in `tool/ai/v2/base_agent.go`; `BaseAgent` is a thin built-in reference implementation composed from public provider binding, generic setting state, and message history components that external agents can also reuse directly. `BaseAgent.Chat(ctx, content)` is stateful per agent instance: it prepends `SysPrompt`, reuses successful user/assistant history, tries `Models` in order as a fallback list, writes history only after a successful response, and returns errors instead of local fallback content. Chat calls on the same `BaseAgent` are serialized, including provider network I/O, to preserve strict history ordering.
+17. v2 agent settings use `IAgentSetting` plus reflection helpers for JSON import/export and JSON doc generation; the supported setting surface is exported scalar fields and scalar slices/arrays only, with zero values treated as not configured. Importing zero values is a no-op for existing values, so JSON import cannot clear a previously configured scalar or slice by passing `""`, `0`, `false`, or `[]`.
 
 ## AI rewrite endpoint
 
@@ -152,21 +156,26 @@ Last verified: 2026-07-10
 3. Request body uses `multipart/form-data`:
    - `file`: required audio file/blob
    - `language`: optional; forwarded as the transcription language hint
-   - `prompt`: optional; forwarded as transcription context
+   - `prompt`: optional; forwarded as transcription context for the standard OpenAI-compatible SDK path; OpenRouter's generic STT JSON contract does not expose this field, so the narrow OpenRouter branch ignores it
 4. Model selection is server-owned:
    - read from `PLAT.openai.audio.model`
-   - default: `whisper-large-v3-turbo`
+   - default: `gpt-4o-mini-transcribe`
    - request-supplied model fields are ignored
-5. Backend upload/request guards:
+5. Provider selection is server-owned:
+   - use `PLAT.openai.audio.base` and `PLAT.openai.audio.token` when both are configured
+   - otherwise inherit `PLAT.openai.base` and `PLAT.openai.token`
+   - reject a partial audio provider override rather than mixing credentials and base URLs
+   - OpenRouter Base URLs use the route's Base64 JSON compatibility path; other OpenAI-compatible providers use multipart transcription through the official SDK
+6. Backend upload/request guards:
    - max audio upload size is 250 MB
    - prompt is capped at 4000 runes
    - language is capped at 32 bytes
    - upstream transcription call timeout is 10 minutes
-6. Response payload:
+7. Response payload:
    - `text`
    - optional `language`
    - optional `duration`
-7. Common failure signatures:
+8. Common failure signatures:
    - `no permission`
    - `audio file is required`
    - `audio file is empty`
@@ -174,11 +183,13 @@ Last verified: 2026-07-10
    - `language is too long`
    - `prompt is too long`
    - `openai config error`
+   - `openai.audio provider config incomplete`
    - `openai.base is empty`
    - `openai.token is empty`
    - `openai.audio.model is empty`
    - `openai init error`
    - `svr error`
+9. An opt-in live provider check is available on macOS. Run `go test -tags live_ai -run '^TestLiveAudioProvider$' -count=1 -v ./platform` from `backend/`; it prompts for the provider URL and reads the API key with terminal echo disabled, generates a temporary WAV fixture, and does not persist credentials.
 
 ## Config read behavior in admin flows
 
