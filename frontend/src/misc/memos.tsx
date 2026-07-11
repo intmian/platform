@@ -704,6 +704,7 @@ function Memos() {
     const [openSetting, setOpenSetting] = useState(false);
     const [hidden, setHidden] = useState(false);
     const [hasInputText, setHasInputText] = useState(false);
+    const [voiceRecording, setVoiceRecording] = useState(false);
     const isMobile = useIsMobile();
     // const [uploading, setUploading] = useState(false); // Removed for useImageUpload
     // const fileInputRef = useRef<HTMLInputElement>(null); // Removed for useImageUpload
@@ -1166,17 +1167,20 @@ function Memos() {
                     <WhisperButton
                         size="small"
                         tooltip="语音输入"
+                        onRecordingChange={setVoiceRecording}
                         onText={(text) => {
                             inputRef.current.addText(text);
                         }}
                     />
-                    <Button
-                        type="primary"
-                        disabled={!canSubmit || loadingSetting}
-                        onClick={submit}
-                    >
-                        发送
-                    </Button>
+                    {!voiceRecording ? (
+                        <Button
+                            type="primary"
+                            disabled={!canSubmit || loadingSetting}
+                            onClick={submit}
+                        >
+                            发送
+                        </Button>
+                    ) : null}
                 </Space>
             </div>
         </div>

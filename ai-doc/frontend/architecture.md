@@ -1,6 +1,6 @@
 # Frontend Architecture
 
-Last verified: 2026-07-10
+Last verified: 2026-07-11
 
 ## Scope
 
@@ -98,8 +98,10 @@ Last verified: 2026-07-10
 ## Shared AI UI helpers
 
 1. `frontend/src/common/useAudioRecorder.ts` is the generic browser recording hook; it prefers Web Audio PCM capture encoded as `audio/wav` for transcription-provider compatibility, falls back to MediaRecorder when Web Audio is unavailable, and owns duration, stop/cancel, Blob output, and microphone track cleanup only.
-2. `frontend/src/common/WhisperButton.tsx` composes `useAudioRecorder` with `transcribeAudio`; it emits transcription text through `onText` and keeps business-specific insertion behavior in the caller. When rendered without children, it defaults to an icon-only circular button with tooltip/ARIA labeling owned by the shared component. Long-press opens settings after a 900ms hold, but progress feedback is delayed for the first 300ms to avoid visual noise on normal taps.
-3. `WhisperButton` defaults to Simplified Chinese transcription style; long-press opens a settings modal where language is selected from 简体中文/英文/日语 and saved as `zh`/`en`/`ja` along with `prompt` in browser `localStorage` under `platform.ai.transcribe.settings.v1`. Because some OpenAI-compatible transcription providers reject the `language` field, the shared component uses the selected language only to build the prompt: Simplified Chinese prepends a Simplified Chinese writing and punctuation style prompt, then appends any user-provided domain/context prompt.
+2. `frontend/src/common/WhisperButton.tsx` composes `useAudioRecorder` with `transcribeAudio`; it emits transcription text through `onText` and keeps business-specific insertion behavior in the caller. When rendered without children, it defaults to an icon-only circular button with tooltip/ARIA labeling owned by the shared component. During recording it expands into a pill that shows elapsed `mm:ss`, an animated recording waveform, and stops/transcribes when clicked again.
+3. `WhisperButton` defaults to a 120-second maximum recording and stops automatically at the configured limit. Long-press opens settings after a 900ms hold, with progress feedback delayed for the first 300ms; the modal stores a configurable 10–600 second limit together with language and prompt in browser `localStorage` under `platform.ai.transcribe.settings.v1`.
+4. `WhisperButton` defaults to Simplified Chinese transcription style; language is selected from 简体中文/英文/日语 and saved as `zh`/`en`/`ja`. Because some OpenAI-compatible transcription providers reject the `language` field, the shared component uses the selected language only to build the prompt: Simplified Chinese prepends a Simplified Chinese writing and punctuation style prompt, then appends any user-provided domain/context prompt.
+5. Callers that need layout changes while recording use `onRecordingChange`; recording mechanics and transcription still remain owned by the shared component.
 
 ## Loading guidance
 

@@ -1,6 +1,6 @@
 # Note Mini Knowledge
 
-Last verified: 2026-07-08
+Last verified: 2026-07-11
 
 ## Module role
 
@@ -52,6 +52,7 @@ Last verified: 2026-07-08
    - tag input supports Ctrl+Enter submit from tag area
    - upload supports local files and clipboard images from the `更多` menu, then inserts markdown link/image
    - bottom action bar includes `WhisperButton` voice input; transcribed text is appended to the draft input
+   - while voice recording is active, the send button is removed and the shared expanded recording pill occupies that action-bar space; the send button returns after recording stops
    - submit queue shows recent send status icons (success/failure/loading)
 3. Upload trigger path uses a reused hidden `input[type=file]` (not recreated per click), and resets `value` before click to avoid occasional "click upload but nothing happens" behavior.
 4. The top-right control area places a small eye toggle to the left of the logged-in user; it switches between visible/hidden draft display without moving the bottom action bar layout.
