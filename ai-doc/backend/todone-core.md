@@ -38,6 +38,7 @@ Last verified: 2026-07-11
 5. SQL trace is hooked into xbi table `todone_db_log`.
 6. GORM connection creation explicitly pings the Worker so missing endpoint, invalid bearer auth, or unavailable Worker fails service startup.
 7. GORM SQL logging uses parameterized queries so private note bodies and other values do not enter local SQL/BI logs.
+8. Production Worker deployment, secret rotation, diagnosis, and D1 recovery are owned by `backend/d1-worker-operations.md`.
 
 ## Runtime model
 

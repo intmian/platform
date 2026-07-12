@@ -70,7 +70,11 @@ Last verified: 2026-07-10
    - config routes and defaults
    - AI config and `/misc/gpt-rewrite`
    - R2 config and upload contract
-3. Load `backend/observability.md` for:
+3. Load `backend/d1-worker-operations.md` for:
+   - production D1 Worker inventory and config ownership
+   - Wrangler deploy/secret/log/rollback commands
+   - D1 audit, export, and Time Travel recovery
+4. Load `backend/observability.md` for:
    - logs
    - BI
    - SQL trace

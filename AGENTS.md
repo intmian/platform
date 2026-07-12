@@ -18,6 +18,7 @@
 
 - Preserve unrelated user changes in the working tree.
 - Do not push, trigger deployment, call external state-changing HTTP endpoints or webhooks, use production APIs, or SSH to production unless the user explicitly asks. Localhost HTTP and read-only public documentation access are allowed.
+- Before any authorized production deployment, service, configuration, secret, schema, or data operation, read `ai-doc/shared/production-operations.md` and maintain its operation record and state gates.
 - A push to `master` triggers the repository deployment workflow unless the pushed commit set contains `#ignoreDeploy`; see `ai-doc/shared/ci-deploy.md`.
 - Do not modify code in another repository unless explicitly authorized. `backend/mian_go_lib` is the declared exception because it is part of this project's logical scope.
 

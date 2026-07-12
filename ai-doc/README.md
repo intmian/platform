@@ -2,7 +2,7 @@
 
 Purpose: repository-local, task-scoped knowledge for Platform development.
 
-Last verified: 2026-07-11
+Last verified: 2026-07-12
 
 ## Authority and document types
 
@@ -18,8 +18,9 @@ Last verified: 2026-07-11
 2. Test selection and execution: `shared/testing.md`
 3. Bug diagnosis: `shared/debugging.md`
 4. CI, deployment, and external-operation boundaries: `shared/ci-deploy.md`
-5. Reusable helpers and flows: `shared/reusable-tools.md`
-6. Code-to-doc coverage: `shared/coverage-map.md`
+5. Production operations and stopped-service data migrations: `shared/production-operations.md`
+6. Reusable helpers and flows: `shared/reusable-tools.md`
+7. Code-to-doc coverage: `shared/coverage-map.md`
 
 Load shared guidance through the matching repository skill under `.agents/skills/`; do not load every workflow document for every task.
 
@@ -34,6 +35,7 @@ Load shared guidance through the matching repository skill under `.agents/skills
 - Bootstrap and service registration: `backend/architecture.md`
 - Gateway, auth, cookies, and permission propagation: `backend/gateway-auth.md`
 - Config, AI, and R2: `backend/config-and-ai.md`
+- D1 Worker topology and Cloudflare operations: `backend/d1-worker-operations.md`
 - Logs, BI, SQL tracing, and profiling: `backend/observability.md`
 - Service catalog and command matrix: `backend/services.md`
 - Backend test/runtime baseline: `backend/testing.md`

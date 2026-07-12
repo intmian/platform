@@ -1,6 +1,6 @@
 # AI Doc Coverage Map
 
-Last verified: 2026-07-11
+Last verified: 2026-07-12
 
 ## Shared guidance
 
@@ -8,6 +8,7 @@ Last verified: 2026-07-11
 - Testing: `shared/testing.md`
 - Debugging: `shared/debugging.md`
 - CI and deployment: `shared/ci-deploy.md`
+- Production operations and data migrations: `shared/production-operations.md`
 - Reusable tools and flows: `shared/reusable-tools.md`
 - Documentation coverage: this file
 
@@ -17,6 +18,7 @@ Last verified: 2026-07-11
 - Backend bootstrap: `backend/architecture.md`
 - Gateway and auth: `backend/gateway-auth.md`
 - Config, AI, and R2: `backend/config-and-ai.md`
+- D1 Worker topology and Cloudflare operations: `backend/d1-worker-operations.md`
 - Logs, BI, tracing, and profiling: `backend/observability.md`
 - Services and permissions: `backend/services.md`
 - Backend runtime/testing: `backend/testing.md`

@@ -1,6 +1,6 @@
 # Development Guidance
 
-Last verified: 2026-07-11
+Last verified: 2026-07-12
 
 ## Principles
 
@@ -31,3 +31,4 @@ Everything else may be treated as a small change when its expected behavior and 
 5. When the task also requests verification, hand off to `$platform-test` after implementation.
 6. Without a test request, limit checks to inexpensive formatting, type, or compile checks when useful and state clearly what was not tested.
 7. When the change creates or changes a stable reusable contract, use `$platform-knowledge` before finishing.
+8. Before proposing or executing a production deployment, service, configuration, secret, schema, or data action, load `shared/production-operations.md` and follow its authorization, operation-record, and state-gate rules.
