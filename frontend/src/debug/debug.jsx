@@ -1,5 +1,5 @@
 import {useState} from "react";
-import {Alert, Button, Card, Col, Input, InputNumber, Row, Slider, Space, Typography} from "antd";
+import {Alert, Button, Card, Col, Flex, Input, InputNumber, Modal, Row, Slider, Space, Typography} from "antd";
 import {CustomDeviceSimulator, DeviceSimulator} from "./DeviceSim.jsx";
 import {MenuPlus} from "../common/MenuPlus.jsx";
 import {EditableProps} from "./EditableProps.jsx";
@@ -65,7 +65,77 @@ function WhisperDebugPanel() {
     );
 }
 
-const debug = <WhisperDebugPanel/>
+function appendTranscriptionText(current, transcription) {
+    const next = transcription.trim();
+    if (!next) return current;
+    if (!current || /\s$/.test(current)) return current + next;
+    return `${current}\n${next}`;
+}
+
+function LibraryNoteModalDebugPanel() {
+    const [mode, setMode] = useState(null);
+    const [draft, setDraft] = useState("");
+    const [recording, setRecording] = useState(false);
+    const [confirmedText, setConfirmedText] = useState("");
+
+    const openModal = (nextMode) => {
+        setMode(nextMode);
+        setDraft(nextMode === "edit" ? "这是一条待编辑的备注。" : "");
+        setRecording(false);
+    };
+
+    const closeModal = () => {
+        setMode(null);
+        setRecording(false);
+    };
+
+    const confirm = () => {
+        setConfirmedText(draft.trim());
+        closeModal();
+    };
+
+    return <Card title="Library 备注弹窗样例" style={{maxWidth: 720, margin: 16}}>
+        <Space direction="vertical" size="middle" style={{width: "100%"}}>
+            <Space wrap>
+                <Button type="primary" onClick={() => openModal("add")}>打开新增备注</Button>
+                <Button onClick={() => openModal("edit")}>打开编辑备注</Button>
+            </Space>
+            {confirmedText ? <Alert type="success" showIcon message={`最近确认：${confirmedText}`}/> : null}
+        </Space>
+        <Modal
+            title={mode === "edit" ? "编辑备注内容" : "添加备注"}
+            open={mode !== null}
+            destroyOnClose={true}
+            onCancel={closeModal}
+            footer={(
+                <Flex justify="flex-end" align="center" gap={8}>
+                    <WhisperButton
+                        tooltip="语音输入备注"
+                        onRecordingChange={setRecording}
+                        onText={(text) => setDraft((current) => appendTranscriptionText(current, text))}
+                    />
+                    {!recording ? (
+                        <Button type="primary" disabled={!draft.trim()} onClick={confirm}>
+                            确认
+                        </Button>
+                    ) : null}
+                </Flex>
+            )}
+        >
+            <Input.TextArea
+                rows={4}
+                value={draft}
+                placeholder="请输入备注内容..."
+                onChange={(event) => setDraft(event.target.value)}
+            />
+        </Modal>
+    </Card>;
+}
+
+const debug = <Space direction="vertical" style={{width: "100%"}}>
+    <LibraryNoteModalDebugPanel/>
+    <WhisperDebugPanel/>
+</Space>
 
 // const settings = {
 //     init: false,

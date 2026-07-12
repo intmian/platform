@@ -94,7 +94,7 @@ Last verified: 2026-07-11 (code inspected; interaction not run)
    - `隐藏`: hide note logs entirely
    - `缩略`: default mode; consecutive note logs collapse into `x条备注` and only show the plain start/end time range in the left content area
    - `显示`: render note logs in full with edit/delete/time controls
-11. Detail drawer `体验记录` header adds `新增最新备注`, which writes a D1 note bound to the current round UUID. Add/edit note modals provide the shared `WhisperButton`; transcription is appended to the current note draft and is persisted only when the user saves the modal.
+11. Detail drawer `体验记录` header adds `新增最新备注`, which writes a D1 note bound to the current round UUID. Add/edit note modals have no footer cancel button; their shared `WhisperButton` and confirm button share the footer row, the confirm button is hidden while recording, and transcription is appended to the current draft before the user saves it.
 
 URL sync contract (list + detail):
 

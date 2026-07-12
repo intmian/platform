@@ -289,6 +289,7 @@ export default function LibraryDetail({visible, item, noteContext, categories = 
     const [scoreAiLoading, setScoreAiLoading] = useState(false);
     const [showAddNote, setShowAddNote] = useState(false);
     const [noteContent, setNoteContent] = useState('');
+    const [addNoteVoiceRecording, setAddNoteVoiceRecording] = useState(false);
     const [showStatusReason, setShowStatusReason] = useState(false);
     const [statusReasonInput, setStatusReasonInput] = useState('');
     const [pendingStatus, setPendingStatus] = useState<LibraryItemStatus | null>(null);
@@ -307,6 +308,7 @@ export default function LibraryDetail({visible, item, noteContext, categories = 
     const [editingContentType, setEditingContentType] = useState<LibraryLogType | null>(null);
     const [editingNote, setEditingNote] = useState<LibraryNote | null>(null);
     const [editingContentText, setEditingContentText] = useState('');
+    const [editingNoteVoiceRecording, setEditingNoteVoiceRecording] = useState(false);
     const [editingScoreText, setEditingScoreText] = useState('合');
     const [editingObjScoreText, setEditingObjScoreText] = useState('普通');
     const [editingSubScoreText, setEditingSubScoreText] = useState('消磨');
@@ -1037,6 +1039,7 @@ export default function LibraryDetail({visible, item, noteContext, categories = 
 
     const resetEditingContentState = () => {
         setShowEditLogContent(false);
+        setEditingNoteVoiceRecording(false);
         setEditingContentPos(null);
         setEditingContentType(null);
         setEditingNote(null);
@@ -2182,28 +2185,37 @@ export default function LibraryDetail({visible, item, noteContext, categories = 
                 title="添加备注"
                 open={showAddNote}
                 destroyOnClose={true}
-                onOk={handleAddNote}
-                confirmLoading={noteSaving}
                 onCancel={() => {
                     setShowAddNote(false);
                     setNoteContent('');
+                    setAddNoteVoiceRecording(false);
                 }}
-            >
-                <Space direction="vertical" size={8} style={{width: '100%'}}>
-                    <TextArea
-                        rows={4}
-                        placeholder="请输入备注内容..."
-                        value={noteContent}
-                        onChange={(e) => setNoteContent(e.target.value)}
-                    />
-                    <Flex justify="flex-end">
+                footer={(
+                    <Flex justify="flex-end" align="center" gap={8}>
                         <WhisperButton
                             disabled={noteSaving}
                             tooltip="语音输入备注"
+                            onRecordingChange={setAddNoteVoiceRecording}
                             onText={(text) => setNoteContent((current) => appendTranscriptionText(current, text))}
                         />
+                        {!addNoteVoiceRecording ? (
+                            <Button
+                                type="primary"
+                                loading={noteSaving}
+                                onClick={() => void handleAddNote()}
+                            >
+                                确认
+                            </Button>
+                        ) : null}
                     </Flex>
-                </Space>
+                )}
+            >
+                <TextArea
+                    rows={4}
+                    placeholder="请输入备注内容..."
+                    value={noteContent}
+                    onChange={(e) => setNoteContent(e.target.value)}
+                />
             </Modal>
 
             <Modal
@@ -2264,6 +2276,25 @@ export default function LibraryDetail({visible, item, noteContext, categories = 
                 onOk={handleSaveLogContent}
                 confirmLoading={noteSaving}
                 onCancel={resetEditingContentState}
+                footer={editingContentType === LibraryLogType.note ? (
+                    <Flex justify="flex-end" align="center" gap={8}>
+                        <WhisperButton
+                            disabled={noteSaving}
+                            tooltip="语音输入备注"
+                            onRecordingChange={setEditingNoteVoiceRecording}
+                            onText={(text) => setEditingContentText((current) => appendTranscriptionText(current, text))}
+                        />
+                        {!editingNoteVoiceRecording ? (
+                            <Button
+                                type="primary"
+                                loading={noteSaving}
+                                onClick={() => void handleSaveLogContent()}
+                            >
+                                确认
+                            </Button>
+                        ) : null}
+                    </Flex>
+                ) : undefined}
             >
                 {editingContentType === LibraryLogType.score ? (
                     <Space direction="vertical" style={{width: '100%'}}>
@@ -2397,21 +2428,12 @@ export default function LibraryDetail({visible, item, noteContext, categories = 
                         </div>
                     </Space>
                 ) : (
-                    <Space direction="vertical" size={8} style={{width: '100%'}}>
-                        <TextArea
-                            rows={4}
-                            value={editingContentText}
-                            onChange={(e) => setEditingContentText(e.target.value)}
-                            placeholder="请输入备注内容"
-                        />
-                        <Flex justify="flex-end">
-                            <WhisperButton
-                                disabled={noteSaving}
-                                tooltip="语音输入备注"
-                                onText={(text) => setEditingContentText((current) => appendTranscriptionText(current, text))}
-                            />
-                        </Flex>
-                    </Space>
+                    <TextArea
+                        rows={4}
+                        value={editingContentText}
+                        onChange={(e) => setEditingContentText(e.target.value)}
+                        placeholder="请输入备注内容"
+                    />
                 )}
             </Modal>
 
