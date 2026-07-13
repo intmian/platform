@@ -10,7 +10,7 @@
 }
 
 .task-detail-editor-shell--display {
-    min-height: 52px;
+    min-height: 240px;
     max-height: min(50vh, 420px);
 }
 
@@ -22,7 +22,7 @@
 
 .task-detail-markdown-display {
     width: 100%;
-    min-height: 52px;
+    min-height: 240px;
     max-height: min(50vh, 420px);
     padding: 12px 52px 12px 12px;
     overflow: auto;

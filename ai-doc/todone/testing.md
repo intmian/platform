@@ -1,6 +1,6 @@
 # Todone Module Testing
 
-Last verified: 2026-02-28
+Last verified: 2026-07-13
 
 ## Preconditions
 
@@ -45,7 +45,7 @@ Last verified: 2026-02-28
    - verify action buttons: `清除高级`、`移动`、`删除`
    - verify task note defaults to Markdown display mode, enters simple editing, switches to MD editing with its toolbar, and exits back to display without losing the draft
    - verify AI polish replaces the current draft and ordinary selected/pasted files insert Markdown links
-   - verify an empty note keeps a usable editor height, long notes scroll inside every mode, and the formatting toolbar/action group remain contained at narrow drawer widths
+   - verify an empty display-mode note keeps a 240 px content-area minimum height, long notes scroll inside every mode, and the formatting toolbar/action group remain contained at narrow drawer widths
 8. Task context menu:
    - right-click task title text
    - verify menu items: `复制内容`、`复制路径`、`标记任务/取消标记`、`移动`、`删除`
@@ -99,7 +99,7 @@ Last verified: 2026-02-28
 1. The production task-note editor is mounted with local state in the `/debug` harness without login or Todone data.
 2. Browser interaction verified display -> simple -> Markdown -> display transitions and draft preservation across modes.
 3. Mocked AI response directly replaced the draft; mocked R2 upload accepted a selected `.txt` file and a pasted `.pdf` file, inserting ordinary Markdown links for both.
-4. Empty/short/30-line fixtures verified that display mode stays compact without collapsing, simple/Markdown modes retain a usable input area, long content scrolls internally, and the toolbar/action group do not overlap at a 323 px component width.
+4. Empty/short fixtures verified a 240 px minimum display content area; a 30-line fixture scrolls internally, simple/Markdown modes retain a usable input area, and the toolbar/action group do not overlap at a 323 px component width.
 
 ## Known non-blocking console messages
 
