@@ -82,7 +82,7 @@ Last verified: 2026-07-11
 8. Task quick-create is in `TaskList`:
    - supports `TODO/DOING` type + auto-start
    - uses `createTask`.
-9. Task detail (`TaskDetail`) edits title/note/time/status/type and saves via `changeTask`; deletes via `delTask`; move uses `taskMove`.
+9. Task detail (`TaskDetail`) edits title/note/time/status/type and saves via `changeTask`; deletes via `delTask`; move uses `taskMove`. Task notes default to rendered Markdown display mode; the bottom-right action enters simple editing, whose action group provides voice input, AI polish, file upload, Markdown editing, and exit. Markdown editing shows the formatting toolbar and replaces its mode action with simple editing. All modes share the same unsaved note value, AI polish directly replaces that value, and persistence still uses the task save action. File selection and clipboard-file paste accept ordinary files as well as images, inserting Markdown links for files and image syntax for images.
 10. Row-level context menu supports copy content/path, flag tag (`[system]flag` via `taskAddTag/taskDelTag`), move, delete.
 11. Drag sorting and bulk move both call `taskMove`.
 12. Drag-and-drop now supports cross-subgroup move in the same group page (single shared `DndContext` in `Group.tsx`), and refreshes both source/target subgroup task lists after move.

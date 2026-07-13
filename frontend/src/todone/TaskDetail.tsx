@@ -284,7 +284,7 @@ export function TaskDetail(props: TaskDetailProps) {
                 }}
             />
         </Flex>
-        <Editor value={note} onChange={setNote} onUpload={sendSave}/>
+        <Editor key={task.ID} value={note} onChange={setNote}/>
         <div>
             <Typography.Text type={"secondary"}>
                 {isMobile ? "回车保存" : "Ctrl|Cmd+Enter保存"}

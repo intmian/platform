@@ -6,6 +6,7 @@ import {EditableProps} from "./EditableProps.jsx";
 import {ConfigsType, ConfigType} from "../common/UniConfigDef.js";
 import {ConfigsCtr} from "../common/UniConfig.jsx";
 import {WhisperButton} from "../common/WhisperButton.tsx";
+import {Editor as TaskDetailEditor} from "../todone/TaskDetailEditor.tsx";
 
 const {Text} = Typography;
 
@@ -132,7 +133,21 @@ function LibraryNoteModalDebugPanel() {
     </Card>;
 }
 
+function TaskDetailEditorDebugPanel() {
+    const [value, setValue] = useState("# 示例任务\n\n这是一段用于纯前端测试的备注。");
+
+    return <Card title="任务备注编辑器" style={{width: 400, height: 520, margin: 16}}>
+        <Flex vertical gap={12} style={{height: "100%"}}>
+            <TaskDetailEditor value={value} onChange={setValue}/>
+            <Typography.Text data-testid="task-note-value" type="secondary">
+                当前值：{value}
+            </Typography.Text>
+        </Flex>
+    </Card>;
+}
+
 const debug = <Space direction="vertical" style={{width: "100%"}}>
+    <TaskDetailEditorDebugPanel/>
     <LibraryNoteModalDebugPanel/>
     <WhisperDebugPanel/>
 </Space>

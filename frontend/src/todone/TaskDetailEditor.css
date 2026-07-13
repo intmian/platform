@@ -1,0 +1,54 @@
+.task-detail-editor-shell {
+    position: relative;
+    flex: 1;
+    min-height: 240px;
+    width: 100%;
+    overflow: hidden;
+    border: 1px solid #d9d9d9;
+    border-radius: 6px;
+    background: #fff;
+}
+
+.task-detail-markdown-display,
+.task-detail-simple-editor {
+    width: 100%;
+    height: 100% !important;
+    min-height: 240px;
+    padding: 12px 12px 52px;
+    overflow: auto;
+    border: 0;
+    resize: none;
+}
+
+.task-detail-simple-editor:focus,
+.task-detail-simple-editor:hover {
+    border: 0;
+    box-shadow: none;
+}
+
+.task-detail-md-editor {
+    border: 0;
+}
+
+.task-detail-md-editor .button-type-mode {
+    display: none;
+}
+
+.task-detail-md-editor .section-container {
+    padding-bottom: 48px;
+}
+
+.task-detail-editor-controls {
+    position: absolute;
+    right: 12px;
+    bottom: 12px;
+    z-index: 20;
+    display: flex;
+    align-items: center;
+    padding: 4px;
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.94);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+    backdrop-filter: blur(4px);
+}

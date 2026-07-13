@@ -29,6 +29,10 @@ export type BeforeUploadHandler = (file: File) => Promise<File | null> | File | 
 
 export interface UseImageUploadOptions {
     beforeUpload?: BeforeUploadHandler;
+    /**
+     * 原生文件选择器的 accept 值；默认只选择图片，传空字符串允许所有文件。
+     */
+    accept?: string;
 }
 
 /**
@@ -84,13 +88,13 @@ export function useImageUpload(
         if (!fileInputRef.current) {
             const input = document.createElement('input');
             input.type = 'file';
-            input.accept = "image/*";
             input.style.display = 'none';
             document.body.appendChild(input);
             fileInputRef.current = input;
         }
+        fileInputRef.current.accept = options?.accept ?? "image/*";
         return fileInputRef.current;
-    }, []);
+    }, [options?.accept]);
 
     const selectLocalFile = useCallback((multiple: boolean = false) => {
         const input = getOrCreateFileInput();

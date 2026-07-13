@@ -43,6 +43,8 @@ Last verified: 2026-02-28
    - click task title opens right drawer `任务详情`
    - verify fields: `任务标题`、`任务类型`、`任务状态`、`等待`、日期控件、编辑器
    - verify action buttons: `清除高级`、`移动`、`删除`
+   - verify task note defaults to Markdown display mode, enters simple editing, switches to MD editing with its toolbar, and exits back to display without losing the draft
+   - verify AI polish replaces the current draft and ordinary selected/pasted files insert Markdown links
 8. Task context menu:
    - right-click task title text
    - verify menu items: `复制内容`、`复制路径`、`标记任务/取消标记`、`移动`、`删除`
@@ -90,6 +92,12 @@ Last verified: 2026-02-28
 1. Cross-subgroup drag produced `POST /api/service/todone/taskMove` and subsequent dual subgroup `getTasks` refresh.
 2. Drag to empty subtask list produced dropped status `task-children-<taskID>` and `POST /api/service/todone/taskMove`.
 3. Mobile viewport computed style for `.drag-handle` is `touchAction=none`, `userSelect=none`.
+
+## Component evidence summary (verified via pure frontend fixture, 2026-07-13)
+
+1. The production task-note editor is mounted with local state in the `/debug` harness without login or Todone data.
+2. Browser interaction verified display -> simple -> Markdown -> display transitions and draft preservation across modes.
+3. Mocked AI response directly replaced the draft; mocked R2 upload accepted a selected `.txt` file and a pasted `.pdf` file, inserting ordinary Markdown links for both.
 
 ## Known non-blocking console messages
 

@@ -68,7 +68,10 @@ Last verified: 2026-02-28 (verified via interaction + code)
 6. Advanced fields:
    - input placeholder `等待`
    - date pickers placeholders: `无开始时间`, `无结束时间`
-   - editor toolbar with markdown actions + `file-add`
+   - task note defaults to rendered Markdown display mode
+   - bottom-right `简单编辑` action enters a plain textarea
+   - editing action group: `语音输入`, `AI润色`, `上传文件`, `MD编辑` / `简单编辑`, `退出编辑`
+   - `MD编辑` shows the Markdown formatting toolbar
 
 ## Directory drawer locators
 
