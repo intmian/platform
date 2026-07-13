@@ -135,9 +135,15 @@ function LibraryNoteModalDebugPanel() {
 
 function TaskDetailEditorDebugPanel() {
     const [value, setValue] = useState("# 示例任务\n\n这是一段用于纯前端测试的备注。");
+    const longValue = Array.from({length: 30}, (_, index) => `${index + 1}. 第 ${index + 1} 行长内容测试`).join("\n");
 
-    return <Card title="任务备注编辑器" style={{width: 400, height: 520, margin: 16}}>
+    return <Card title="任务备注编辑器" style={{width: "calc(100% - 32px)", maxWidth: 400, height: 520, margin: 16}}>
         <Flex vertical gap={12} style={{height: "100%"}}>
+            <Space size="small">
+                <Button size="small" onClick={() => setValue("")}>空内容</Button>
+                <Button size="small" onClick={() => setValue("# 短内容\n\n一行备注。")}>短内容</Button>
+                <Button size="small" onClick={() => setValue(longValue)}>长内容</Button>
+            </Space>
             <TaskDetailEditor value={value} onChange={setValue}/>
             <Typography.Text data-testid="task-note-value" type="secondary">
                 当前值：{value}

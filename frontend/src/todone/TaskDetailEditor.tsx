@@ -144,7 +144,7 @@ export function Editor(props: { value: string, onChange: (value: string) => void
             {actionButton("退出编辑", <CloseOutlined/>, () => setMode("display"))}
         </Flex>;
 
-    return <div className="task-detail-editor-shell">
+    return <div className={`task-detail-editor-shell task-detail-editor-shell--${mode}`}>
         {mode === "display" ? <div
             className="task-detail-markdown-display custom-html-style"
             dangerouslySetInnerHTML={{__html: mdParser.render(props.value)}}

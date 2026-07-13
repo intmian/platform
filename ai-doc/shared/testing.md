@@ -1,6 +1,6 @@
 # Testing Guidance
 
-Last verified: 2026-07-11
+Last verified: 2026-07-13
 
 ## Scope selection
 
@@ -18,10 +18,11 @@ Unit tests do not by themselves prove visual layout or full browser behavior.
 
 1. Read the user's requested scope and the current diff before selecting tests.
 2. Load only the matched backend or domain testing document from `../README.md`.
-3. Prefer an existing component harness or development-only debug page. Do not add a permanent production route solely for testing; clean up temporary fixtures after use.
-4. The test workflow may add or update test files and fixtures, but must not silently change production behavior to make a test pass. Report the defect or use `$platform-debug`/`$platform-dev` when a production fix is requested.
-5. Record persistent test data created or changed and clean it up when safe.
-6. For local HTTP checks, use the configured localhost development path. Do not call production or other external state-changing endpoints without explicit authorization.
+3. Use the Codex in-app Browser as the default surface for local frontend rendering, responsive inspection, and browser interaction. Keep it in the background unless the user asks to see the page. Use standalone Playwright only by explicit request, for a required formal Playwright artifact/spec, or when the in-app Browser remains unavailable after its recovery flow.
+4. Prefer an existing component harness or development-only debug page. Do not add a permanent production route solely for testing; clean up temporary fixtures after use.
+5. The test workflow may add or update test files and fixtures, but must not silently change production behavior to make a test pass. Report the defect or use `$platform-debug`/`$platform-dev` when a production fix is requested.
+6. Record persistent test data created or changed and clean it up when safe.
+7. For local HTTP checks, use the configured localhost development path. Do not call production or other external state-changing endpoints without explicit authorization.
 
 ## Environment-only requests
 
