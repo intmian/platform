@@ -24,10 +24,9 @@ import {
     DeleteOutlined,
     ExperimentOutlined,
     PlusOutlined,
-    ReloadOutlined,
     SaveOutlined,
 } from "@ant-design/icons";
-import {ReactNode, useCallback, useEffect, useState} from "react";
+import {ReactNode, useCallback, useEffect, useMemo, useState} from "react";
 import {
     AIModelConfig,
     AIModelQueue,
@@ -135,6 +134,7 @@ function resolvedCallProtocol(provider: AIProviderConfig | undefined, model: AIM
 
 export function AISetting() {
     const [value, setValue] = useState<AIPlatformConfig | null>(null);
+    const [savedSnapshot, setSavedSnapshot] = useState("");
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [testQueueIndex, setTestQueueIndex] = useState<number | null>(null);
@@ -147,7 +147,9 @@ export function AISetting() {
     const load = useCallback(async () => {
         setLoading(true);
         try {
-            setValue(await getAIPlatformConfig());
+            const loadedValue = await getAIPlatformConfig();
+            setValue(loadedValue);
+            setSavedSnapshot(JSON.stringify(loadedValue));
         } catch (error) {
             message.error(error instanceof Error ? error.message : "AI 配置加载失败");
         } finally {
@@ -172,6 +174,11 @@ export function AISetting() {
     const mutate = useCallback((change: (current: AIPlatformConfig) => AIPlatformConfig) => {
         setValue((current) => current ? change(current) : current);
     }, []);
+
+    const dirty = useMemo(
+        () => value !== null && JSON.stringify(value) !== savedSnapshot,
+        [savedSnapshot, value],
+    );
 
     if (loading || !value) {
         return <Card title="AI 设置"><Flex justify="center" style={{padding: 48}}><Spin/></Flex></Card>;
@@ -618,26 +625,24 @@ export function AISetting() {
     return <Card
         title="AI 设置"
         style={{marginBottom: 16}}
-        extra={<Space>
-            <Button icon={<ReloadOutlined/>} onClick={() => void load()} disabled={saving}>重新加载</Button>
-            <Button
-                type="primary"
-                icon={<SaveOutlined/>}
-                loading={saving}
-                onClick={async () => {
-                    setSaving(true);
-                    try {
-                        await saveAIPlatformConfig(value);
-                        message.success("AI 配置已保存");
-                        await load();
-                    } catch (error) {
-                        message.error(error instanceof Error ? error.message : "AI 配置保存失败");
-                    } finally {
-                        setSaving(false);
-                    }
-                }}
-            >保存全部配置</Button>
-        </Space>}
+        extra={<Button
+            type="primary"
+            icon={<SaveOutlined/>}
+            loading={saving}
+            disabled={!dirty}
+            onClick={async () => {
+                setSaving(true);
+                try {
+                    await saveAIPlatformConfig(value);
+                    message.success("AI 配置已保存");
+                    await load();
+                } catch (error) {
+                    message.error(error instanceof Error ? error.message : "AI 配置保存失败");
+                } finally {
+                    setSaving(false);
+                }
+            }}
+        >保存全部配置</Button>}
     >
         <Paragraph type="secondary">
             供应商注册模型，模型和队列声明类型，业务按场景与类型选择队列预设。
