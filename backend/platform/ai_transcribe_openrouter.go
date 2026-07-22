@@ -35,7 +35,16 @@ func openRouterTranscriptionEndpoint(baseURL string) (string, error) {
 	if parsed.RawQuery != "" || parsed.Fragment != "" {
 		return "", errors.New("invalid OpenRouter base URL")
 	}
-	return strings.TrimSuffix(parsed.String(), "/") + "/audio/transcriptions", nil
+	path := strings.TrimSuffix(parsed.Path, "/")
+	switch {
+	case strings.HasSuffix(path, "/audio/transcriptions"):
+	case path == "":
+		path = "/api/v1/audio/transcriptions"
+	default:
+		path += "/audio/transcriptions"
+	}
+	parsed.Path = path
+	return parsed.String(), nil
 }
 
 func openRouterAudioFormat(fileName string) (string, error) {

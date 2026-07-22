@@ -11,12 +11,20 @@ import (
 )
 
 func TestOpenRouterTranscriptionEndpointUsesConfiguredBaseURL(t *testing.T) {
-	got, err := openRouterTranscriptionEndpoint("https://openrouter.ai/api/v1/")
-	if err != nil {
-		t.Fatalf("openRouterTranscriptionEndpoint: %v", err)
+	tests := map[string]string{
+		"https://openrouter.ai":                             "https://openrouter.ai/api/v1/audio/transcriptions",
+		"https://openrouter.ai/":                            "https://openrouter.ai/api/v1/audio/transcriptions",
+		"https://openrouter.ai/api/v1/":                     "https://openrouter.ai/api/v1/audio/transcriptions",
+		"https://openrouter.ai/api/v1/audio/transcriptions": "https://openrouter.ai/api/v1/audio/transcriptions",
 	}
-	if got != "https://openrouter.ai/api/v1/audio/transcriptions" {
-		t.Fatalf("endpoint = %q", got)
+	for baseURL, want := range tests {
+		got, err := openRouterTranscriptionEndpoint(baseURL)
+		if err != nil {
+			t.Fatalf("openRouterTranscriptionEndpoint(%q): %v", baseURL, err)
+		}
+		if got != want {
+			t.Errorf("openRouterTranscriptionEndpoint(%q) = %q, want %q", baseURL, got, want)
+		}
 	}
 }
 

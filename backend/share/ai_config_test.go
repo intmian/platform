@@ -134,6 +134,7 @@ func TestAIPlatformConfigNormalizesVersionOneBindings(t *testing.T) {
 			ID:               "default",
 			Name:             "Default",
 			LegacySourceType: aiv2.ProviderSourceTypeDeepSeek,
+			BaseURL:          "https://api.deepseek.com",
 			Models: []aiv2.ModelConfig{
 				{ID: "text-model", Name: "text-upstream", Type: aiv2.ModelType("chat")},
 				{ID: "stt-model", Name: "stt-upstream", Type: aiv2.ModelTypeSTT},
@@ -151,7 +152,7 @@ func TestAIPlatformConfigNormalizesVersionOneBindings(t *testing.T) {
 	if err := config.Validate(); err != nil {
 		t.Fatalf("normalized config validation failed: %v", err)
 	}
-	if config.Version != 2 || config.Providers[0].Protocol != AIProviderProtocolOpenAI {
+	if config.Version != 2 || config.Providers[0].Protocol != AIProviderProtocolDeepSeek {
 		t.Fatalf("version/protocol not normalized: %#v", config)
 	}
 	if config.Providers[0].Models[0].Type != aiv2.ModelTypeText || config.Queues[0].Type != aiv2.ModelTypeText {
@@ -192,6 +193,14 @@ func TestResolveAIModelCallProtocolInheritsProviderByModelType(t *testing.T) {
 		{modelType: aiv2.ModelTypeText, want: aiv2.ModelCallProtocolOpenAIText},
 		{modelType: aiv2.ModelTypeSTT, want: aiv2.ModelCallProtocolOpenAISTT},
 	}
+
+	deepSeek, err := ResolveAIModelCallProtocol(AIProviderProtocolDeepSeek, aiv2.ModelConfig{Type: aiv2.ModelTypeText})
+	if err != nil || deepSeek != aiv2.ModelCallProtocolDeepSeekText {
+		t.Fatalf("DeepSeek text protocol = %q, %v", deepSeek, err)
+	}
+	if _, err := ResolveAIModelCallProtocol(AIProviderProtocolDeepSeek, aiv2.ModelConfig{Type: aiv2.ModelTypeSTT}); err == nil {
+		t.Fatal("DeepSeek STT inheritance should require an explicit protocol")
+	}
 	for _, tt := range tests {
 		got, err := ResolveAIModelCallProtocol(AIProviderProtocolOpenAI, aiv2.ModelConfig{Type: tt.modelType})
 		if err != nil || got != tt.want {
@@ -203,6 +212,43 @@ func TestResolveAIModelCallProtocolInheritsProviderByModelType(t *testing.T) {
 	got, err := ResolveAIModelCallProtocol(AIProviderProtocolOpenAI, override)
 	if err != nil || got != aiv2.ModelCallProtocolDashScopeFunASR {
 		t.Fatalf("override protocol = %q, %v", got, err)
+	}
+}
+
+func TestAIPlatformConfigAcceptsDeepSeekThinking(t *testing.T) {
+	config := AIPlatformConfig{
+		Version: 2,
+		Providers: []AIProviderConfig{{
+			ID:       "deepseek",
+			Protocol: AIProviderProtocolDeepSeek,
+			BaseURL:  "https://api.deepseek.com",
+			Token:    "test-token",
+			Models: []aiv2.ModelConfig{{
+				ID:        "reasoner",
+				Name:      "deepseek-reasoner",
+				Type:      aiv2.ModelTypeText,
+				Reasoning: []aiv2.ReasoningEffort{aiv2.ReasoningEffortHigh},
+			}},
+		}},
+		Queues: []AIModelQueue{{
+			ID:   "reasoning",
+			Type: aiv2.ModelTypeText,
+			Items: []AIModelQueueItem{{
+				ProviderID:      "deepseek",
+				ModelID:         "reasoner",
+				ReasoningEffort: aiv2.ReasoningEffortHigh,
+				Thinking:        aiv2.ThinkingTypeEnabled,
+			}},
+		}},
+		Businesses: []AIBusinessConfig{{Scene: AISceneRewrite, Type: aiv2.ModelTypeText, QueueID: "reasoning"}},
+	}
+	if err := config.Validate(); err != nil {
+		t.Fatalf("DeepSeek config validation failed: %v", err)
+	}
+
+	config.Providers[0].Protocol = AIProviderProtocolOpenAI
+	if err := config.Validate(); err == nil {
+		t.Fatal("OpenAI protocol should reject DeepSeek thinking")
 	}
 }
 

@@ -39,6 +39,7 @@ import {
     ModelType,
     ProviderProtocol,
     ReasoningEffort,
+    ThinkingType,
     getAIPlatformConfig,
     saveAIPlatformConfig,
     testAIQueue,
@@ -52,6 +53,7 @@ const {Paragraph, Text} = Typography;
 
 const SOURCE_OPTIONS = [
     {value: "OpenAI", label: "OpenAI"},
+    {value: "DeepSeek", label: "DeepSeek"},
 ];
 
 const MODEL_TYPE_OPTIONS = [
@@ -62,15 +64,21 @@ const MODEL_TYPE_OPTIONS = [
 const MODEL_CALL_PROTOCOL_OPTIONS: Record<ModelType, {value: ModelCallProtocol, label: string}[]> = {
     text: [
         {value: "OpenAIText", label: "OpenAI 文字"},
+        {value: "DeepSeekText", label: "DeepSeek 文字"},
     ],
     stt: [
         {value: "OpenAISTT", label: "OpenAI STT"},
-        {value: "DashScopeQwen3ASR", label: "DashScope 千问3-ASR"},
+        {value: "DashScopeQwen3ASR", label: "DashScope 千问3-ASR-Flash（同步）"},
         {value: "DashScopeFunASR", label: "DashScope Fun-ASR-Flash"},
     ],
 };
 
 const REASONING_OPTIONS = ["none", "minimal", "low", "medium", "high", "xhigh"].map((value) => ({
+    value: value as ReasoningEffort,
+    label: value,
+}));
+
+const DEEPSEEK_REASONING_OPTIONS = ["high", "max"].map((value) => ({
     value: value as ReasoningEffort,
     label: value,
 }));
@@ -111,7 +119,18 @@ function inheritedCallProtocolLabel(providerProtocol: ProviderProtocol, modelTyp
     if (providerProtocol === "OpenAI") {
         return modelType === "text" ? "OpenAI 文字" : "OpenAI STT";
     }
-    return providerProtocol;
+    if (providerProtocol === "DeepSeek") {
+        return modelType === "text" ? "DeepSeek 文字" : "无默认协议，需手动选择";
+    }
+    return "无默认协议";
+}
+
+function resolvedCallProtocol(provider: AIProviderConfig | undefined, model: AIModelConfig | undefined): ModelCallProtocol | undefined {
+    if (!provider || !model) return undefined;
+    if (model.callProtocol) return model.callProtocol;
+    if (provider.protocol === "OpenAI") return model.type === "text" ? "OpenAIText" : "OpenAISTT";
+    if (provider.protocol === "DeepSeek" && model.type === "text") return "DeepSeekText";
+    return undefined;
 }
 
 export function AISetting() {
@@ -217,7 +236,7 @@ export function AISetting() {
         <Alert
             type="info"
             showIcon
-            message="模型默认按供应商类型和模型类型继承调用协议；STT 模型可显式选择 OpenAI STT、DashScope 千问3-ASR 或 DashScope Fun-ASR-Flash。"
+            message="模型默认按供应商类型和模型类型继承调用协议；OpenAI 与 DeepSeek 文本协议可按模型覆盖。DashScope 千问3-ASR-Flash 是同步协议，不适用于 qwen3-asr-flash-filetrans。"
         />
         {value.providers.length === 0 && <Empty description="还没有供应商"/>}
         {value.providers.map((provider, providerIndex) => <Card
@@ -247,10 +266,29 @@ export function AISetting() {
                     <Select
                         value={provider.protocol}
                         options={SOURCE_OPTIONS}
-                        onChange={(protocol: ProviderProtocol) => updateProvider(providerIndex, {protocol})}
+                        onChange={(protocol: ProviderProtocol) => updateProvider(providerIndex, {
+                            protocol,
+                            models: provider.models.map((model) => {
+                                const callProtocol = model.callProtocol
+                                    || (protocol === "OpenAI"
+                                        ? (model.type === "text" ? "OpenAIText" : "OpenAISTT")
+                                        : (model.type === "text" ? "DeepSeekText" : undefined));
+                                return {
+                                    ...model,
+                                    reasoning: (model.reasoning ?? []).filter((effort) => (
+                                        callProtocol === "DeepSeekText"
+                                            ? effort === "high" || effort === "max"
+                                            : callProtocol === "OpenAIText" && effort !== "max"
+                                    )),
+                                    tools: callProtocol === "OpenAIText" ? model.tools : [],
+                                };
+                            }),
+                        })}
                     />
                 </Field></Col>
-                <Col xs={24} md={12}><Field label="Base URL（OpenAI 官方可留空）">
+                <Col xs={24} md={12}><Field label={provider.protocol === "OpenAI"
+                    ? "Base URL（OpenAI 官方可留空）"
+                    : "Base URL（DeepSeek 必填）"}>
                     <Input value={provider.baseURL} onChange={(event) => updateProvider(providerIndex, {baseURL: event.target.value})}/>
                 </Field></Col>
                 <Col xs={24} md={12}><Field label="Token">
@@ -299,9 +337,18 @@ export function AISetting() {
                                     },
                                     ...MODEL_CALL_PROTOCOL_OPTIONS[model.type],
                                 ]}
-                                onChange={(callProtocol: ModelCallProtocol | "") => updateModel(providerIndex, modelIndex, {
-                                    callProtocol: callProtocol || undefined,
-                                })}
+                                onChange={(callProtocol: ModelCallProtocol | "") => {
+                                    const nextCallProtocol = callProtocol || undefined;
+                                    const nextIsDeepSeek = nextCallProtocol === "DeepSeekText"
+                                        || (!nextCallProtocol && provider.protocol === "DeepSeek" && model.type === "text");
+                                    updateModel(providerIndex, modelIndex, {
+                                        callProtocol: nextCallProtocol,
+                                        reasoning: nextIsDeepSeek
+                                            ? (model.reasoning ?? []).filter((effort) => effort === "high" || effort === "max")
+                                            : (model.reasoning ?? []).filter((effort) => effort !== "max"),
+                                        tools: nextIsDeepSeek ? [] : model.tools,
+                                    });
+                                }}
                             />
                         </Field></Col>
                         <Col xs={4} md={2}>
@@ -326,7 +373,9 @@ export function AISetting() {
                                 mode="multiple"
                                 maxTagCount="responsive"
                                 value={model.reasoning ?? []}
-                                options={REASONING_OPTIONS}
+                                options={resolvedCallProtocol(provider, model) === "DeepSeekText"
+                                    ? DEEPSEEK_REASONING_OPTIONS
+                                    : REASONING_OPTIONS}
                                 disabled={model.type !== "text"}
                                 onChange={(reasoning: ReasoningEffort[]) => updateModel(providerIndex, modelIndex, {reasoning})}
                             />
@@ -336,8 +385,8 @@ export function AISetting() {
                                 mode="multiple"
                                 maxTagCount="responsive"
                                 value={model.tools ?? []}
-                                options={TOOL_OPTIONS}
-                                disabled={model.type !== "text"}
+                                options={resolvedCallProtocol(provider, model) === "DeepSeekText" ? [] : TOOL_OPTIONS}
+                                disabled={model.type !== "text" || resolvedCallProtocol(provider, model) === "DeepSeekText"}
                                 onChange={(tools: ChatTool[]) => updateModel(providerIndex, modelIndex, {tools})}
                             />
                         </Field></Col>
@@ -407,7 +456,7 @@ export function AISetting() {
                         const model = findModel(value, item.providerID, item.modelID);
                         return <Card key={`${item.providerID}-${item.modelID}-${itemIndex}`} size="small">
                             <Row gutter={[8, 8]} align="bottom">
-                                <Col xs={24} md={5}><Field label={`${itemIndex + 1}. 供应商`}>
+                                <Col xs={24} md={8}><Field label={`${itemIndex + 1}. 供应商`}>
                                     <Select
                                         showSearch
                                         value={item.providerID || undefined}
@@ -416,11 +465,12 @@ export function AISetting() {
                                             providerID,
                                             modelID: "",
                                             reasoningEffort: undefined,
+                                            thinking: undefined,
                                             tools: [],
                                         })}
                                     />
                                 </Field></Col>
-                                <Col xs={24} md={6}><Field label="模型">
+                                <Col xs={24} md={10}><Field label="模型">
                                     <Select
                                         showSearch
                                         value={item.modelID || undefined}
@@ -431,11 +481,41 @@ export function AISetting() {
                                         onChange={(modelID: string) => updateQueueItem(queueIndex, itemIndex, {
                                             modelID,
                                             reasoningEffort: undefined,
+                                            thinking: undefined,
                                             tools: [],
                                         })}
                                     />
                                 </Field></Col>
-                                <Col xs={24} md={5}><Field label="思考强度">
+                                <Col xs={24} md={6}>
+                                    <Flex justify="flex-end">
+                                        <Space.Compact>
+                                            <Button
+                                                icon={<ArrowUpOutlined/>}
+                                                disabled={itemIndex === 0}
+                                                onClick={() => {
+                                                    const items = [...queue.items];
+                                                    [items[itemIndex - 1], items[itemIndex]] = [items[itemIndex], items[itemIndex - 1]];
+                                                    updateQueue(queueIndex, {items});
+                                                }}
+                                            />
+                                            <Button
+                                                icon={<ArrowDownOutlined/>}
+                                                disabled={itemIndex === queue.items.length - 1}
+                                                onClick={() => {
+                                                    const items = [...queue.items];
+                                                    [items[itemIndex], items[itemIndex + 1]] = [items[itemIndex + 1], items[itemIndex]];
+                                                    updateQueue(queueIndex, {items});
+                                                }}
+                                            />
+                                            <Button danger icon={<DeleteOutlined/>} onClick={() => updateQueue(queueIndex, {
+                                                items: queue.items.filter((_, i) => i !== itemIndex),
+                                            })}/>
+                                        </Space.Compact>
+                                    </Flex>
+                                </Col>
+                            </Row>
+                            <Row gutter={[8, 8]} style={{marginTop: 8}}>
+                                <Col xs={24} md={8}><Field label="思考强度">
                                     <Select
                                         allowClear
                                         value={item.reasoningEffort || undefined}
@@ -444,7 +524,20 @@ export function AISetting() {
                                         onChange={(reasoningEffort?: ReasoningEffort) => updateQueueItem(queueIndex, itemIndex, {reasoningEffort})}
                                     />
                                 </Field></Col>
-                                <Col xs={20} md={5}><Field label="启用工具">
+                                <Col xs={24} md={8}><Field label="思考模式">
+                                    <Select
+                                        allowClear
+                                        placeholder="跟随默认"
+                                        value={item.thinking || undefined}
+                                        options={[
+                                            {value: "enabled", label: "开启"},
+                                            {value: "disabled", label: "关闭"},
+                                        ]}
+                                        disabled={queue.type !== "text" || resolvedCallProtocol(provider, model) !== "DeepSeekText"}
+                                        onChange={(thinking?: ThinkingType) => updateQueueItem(queueIndex, itemIndex, {thinking})}
+                                    />
+                                </Field></Col>
+                                <Col xs={24} md={8}><Field label="启用工具">
                                     <Select
                                         mode="multiple"
                                         value={item.tools ?? []}
@@ -453,31 +546,6 @@ export function AISetting() {
                                         onChange={(tools: ChatTool[]) => updateQueueItem(queueIndex, itemIndex, {tools})}
                                     />
                                 </Field></Col>
-                                <Col xs={4} md={3}>
-                                    <Space.Compact>
-                                        <Button
-                                            icon={<ArrowUpOutlined/>}
-                                            disabled={itemIndex === 0}
-                                            onClick={() => {
-                                                const items = [...queue.items];
-                                                [items[itemIndex - 1], items[itemIndex]] = [items[itemIndex], items[itemIndex - 1]];
-                                                updateQueue(queueIndex, {items});
-                                            }}
-                                        />
-                                        <Button
-                                            icon={<ArrowDownOutlined/>}
-                                            disabled={itemIndex === queue.items.length - 1}
-                                            onClick={() => {
-                                                const items = [...queue.items];
-                                                [items[itemIndex], items[itemIndex + 1]] = [items[itemIndex + 1], items[itemIndex]];
-                                                updateQueue(queueIndex, {items});
-                                            }}
-                                        />
-                                        <Button danger icon={<DeleteOutlined/>} onClick={() => updateQueue(queueIndex, {
-                                            items: queue.items.filter((_, i) => i !== itemIndex),
-                                        })}/>
-                                    </Space.Compact>
-                                </Col>
                             </Row>
                         </Card>;
                     })}

@@ -18,7 +18,10 @@ const AIPlatformConfigStorageKey = "PLAT.ai.config"
 
 type AIProviderProtocol string
 
-const AIProviderProtocolOpenAI AIProviderProtocol = "OpenAI"
+const (
+	AIProviderProtocolOpenAI   AIProviderProtocol = "OpenAI"
+	AIProviderProtocolDeepSeek AIProviderProtocol = "DeepSeek"
+)
 
 type AIProviderConfig struct {
 	ID               string                `json:"id"`
@@ -34,6 +37,7 @@ type AIModelQueueItem struct {
 	ProviderID      string             `json:"providerID"`
 	ModelID         ai.ModelID         `json:"modelID"`
 	ReasoningEffort ai.ReasoningEffort `json:"reasoningEffort,omitempty"`
+	Thinking        ai.ThinkingType    `json:"thinking,omitempty"`
 	Tools           []ai.ChatTool      `json:"tools,omitempty"`
 }
 
@@ -157,7 +161,11 @@ func (c *AIPlatformConfig) normalize() {
 		provider.ID = strings.TrimSpace(provider.ID)
 		provider.Name = strings.TrimSpace(provider.Name)
 		if provider.Protocol == "" {
-			provider.Protocol = AIProviderProtocolOpenAI
+			if provider.LegacySourceType == ai.ProviderSourceTypeDeepSeek {
+				provider.Protocol = AIProviderProtocolDeepSeek
+			} else {
+				provider.Protocol = AIProviderProtocolOpenAI
+			}
 		}
 		provider.LegacySourceType = ""
 		provider.BaseURL = strings.TrimSpace(provider.BaseURL)
@@ -226,22 +234,30 @@ func (c AIPlatformConfig) Validate() error {
 		if _, ok := providers[provider.ID]; ok {
 			return fmt.Errorf("provider %q is duplicated", provider.ID)
 		}
-		if provider.Protocol != AIProviderProtocolOpenAI {
+		if !isValidAIProviderProtocol(provider.Protocol) {
 			return fmt.Errorf("provider %q has unsupported protocol %q", provider.ID, provider.Protocol)
 		}
-		adapter, err := ai.NewOpenAIProvider(provider.BaseURL, provider.Token, ai.ProviderSourceTypeOpenAI)
-		if err != nil {
-			return fmt.Errorf("provider %q: %w", provider.ID, err)
+		if provider.Protocol == AIProviderProtocolDeepSeek && strings.TrimSpace(provider.BaseURL) == "" {
+			return fmt.Errorf("provider %q base URL is required for DeepSeek", provider.ID)
 		}
 		providerModels := make(map[ai.ModelID]ai.ModelConfig, len(provider.Models))
 		for j, model := range provider.Models {
 			if _, ok := providerModels[model.ID]; ok {
 				return fmt.Errorf("provider %q model %q is duplicated", provider.ID, model.ID)
 			}
-			if err := adapter.RegisterModel(model); err != nil {
+			callProtocol, err := ResolveAIModelCallProtocol(provider.Protocol, model)
+			if err != nil {
 				return fmt.Errorf("providers[%d].models[%d]: %w", i, j, err)
 			}
-			if _, err := ResolveAIModelCallProtocol(provider.Protocol, model); err != nil {
+			sourceType, err := sourceTypeForAIModelCallProtocol(callProtocol)
+			if err != nil {
+				return fmt.Errorf("providers[%d].models[%d]: %w", i, j, err)
+			}
+			adapter, err := ai.NewOpenAIProvider(provider.BaseURL, provider.Token, sourceType)
+			if err != nil {
+				return fmt.Errorf("provider %q: %w", provider.ID, err)
+			}
+			if err := adapter.RegisterModel(model); err != nil {
 				return fmt.Errorf("providers[%d].models[%d]: %w", i, j, err)
 			}
 			providerModels[model.ID] = model
@@ -278,6 +294,16 @@ func (c AIPlatformConfig) Validate() error {
 			}
 			if item.ReasoningEffort != "" && !slices.Contains(model.Reasoning, item.ReasoningEffort) {
 				return fmt.Errorf("queue %q item %d reasoning %q is unavailable", queue.ID, j, item.ReasoningEffort)
+			}
+			if !isValidAIThinkingType(item.Thinking) {
+				return fmt.Errorf("queue %q item %d thinking %q is invalid", queue.ID, j, item.Thinking)
+			}
+			callProtocol, err := ResolveAIModelCallProtocol(providers[item.ProviderID].Protocol, model)
+			if err != nil {
+				return fmt.Errorf("queue %q item %d: %w", queue.ID, j, err)
+			}
+			if item.Thinking != ai.ThinkingTypeUnset && callProtocol != ai.ModelCallProtocolDeepSeekText {
+				return fmt.Errorf("queue %q item %d thinking is only available for DeepSeek text", queue.ID, j)
 			}
 			for _, tool := range item.Tools {
 				if !slices.Contains(model.Tools, tool) {
@@ -321,20 +347,57 @@ func isValidAIModelType(modelType ai.ModelType) bool {
 	}
 }
 
+func isValidAIProviderProtocol(protocol AIProviderProtocol) bool {
+	switch protocol {
+	case AIProviderProtocolOpenAI, AIProviderProtocolDeepSeek:
+		return true
+	default:
+		return false
+	}
+}
+
+func isValidAIThinkingType(thinking ai.ThinkingType) bool {
+	switch thinking {
+	case ai.ThinkingTypeUnset, ai.ThinkingTypeEnabled, ai.ThinkingTypeDisabled:
+		return true
+	default:
+		return false
+	}
+}
+
 func ResolveAIModelCallProtocol(providerProtocol AIProviderProtocol, model ai.ModelConfig) (ai.ModelCallProtocol, error) {
 	if model.CallProtocol != "" {
 		return model.CallProtocol, nil
 	}
-	if providerProtocol != AIProviderProtocolOpenAI {
+	switch providerProtocol {
+	case AIProviderProtocolOpenAI:
+		switch model.Type {
+		case ai.ModelTypeText:
+			return ai.ModelCallProtocolOpenAIText, nil
+		case ai.ModelTypeSTT:
+			return ai.ModelCallProtocolOpenAISTT, nil
+		}
+	case AIProviderProtocolDeepSeek:
+		if model.Type == ai.ModelTypeText {
+			return ai.ModelCallProtocolDeepSeekText, nil
+		}
+	default:
 		return "", fmt.Errorf("provider protocol %q cannot infer a model call protocol", providerProtocol)
 	}
-	switch model.Type {
-	case ai.ModelTypeText:
-		return ai.ModelCallProtocolOpenAIText, nil
-	case ai.ModelTypeSTT:
-		return ai.ModelCallProtocolOpenAISTT, nil
+	return "", fmt.Errorf("provider protocol %q cannot infer a call protocol for model type %q", providerProtocol, model.Type)
+}
+
+func sourceTypeForAIModelCallProtocol(protocol ai.ModelCallProtocol) (ai.ProviderSourceType, error) {
+	switch protocol {
+	case ai.ModelCallProtocolDeepSeekText:
+		return ai.ProviderSourceTypeDeepSeek, nil
+	case ai.ModelCallProtocolOpenAIText,
+		ai.ModelCallProtocolOpenAISTT,
+		ai.ModelCallProtocolDashScopeQwen3ASR,
+		ai.ModelCallProtocolDashScopeFunASR:
+		return ai.ProviderSourceTypeOpenAI, nil
 	default:
-		return "", fmt.Errorf("model type %q cannot infer a call protocol", model.Type)
+		return "", fmt.Errorf("unsupported model call protocol %q", protocol)
 	}
 }
 
@@ -458,7 +521,7 @@ func (c AIPlatformConfig) RunTextQueueContext(ctx context.Context, queueID strin
 			continue
 		}
 		callProtocol, err := ResolveAIModelCallProtocol(item.Provider.Protocol, item.Model)
-		if err != nil || callProtocol != ai.ModelCallProtocolOpenAIText {
+		if err != nil || (callProtocol != ai.ModelCallProtocolOpenAIText && callProtocol != ai.ModelCallProtocolDeepSeekText) {
 			if err == nil {
 				err = fmt.Errorf("unsupported text call protocol %q", callProtocol)
 			}
@@ -468,7 +531,15 @@ func (c AIPlatformConfig) RunTextQueueContext(ctx context.Context, queueID strin
 			errs = append(errs, fmt.Errorf("%s/%s: %w", item.Provider.ID, item.Model.ID, err))
 			continue
 		}
-		provider, err := ai.NewOpenAIProvider(item.Provider.BaseURL, item.Provider.Token, ai.ProviderSourceTypeOpenAI)
+		sourceType, sourceErr := sourceTypeForAIModelCallProtocol(callProtocol)
+		if sourceErr != nil {
+			attempt.Error = sourceErr.Error()
+			attempt.DurationMS = time.Since(startedAt).Milliseconds()
+			result.Attempts = append(result.Attempts, attempt)
+			errs = append(errs, fmt.Errorf("%s/%s: %w", item.Provider.ID, item.Model.ID, sourceErr))
+			continue
+		}
+		provider, err := ai.NewOpenAIProvider(item.Provider.BaseURL, item.Provider.Token, sourceType)
 		if err != nil {
 			attempt.Error = err.Error()
 			attempt.DurationMS = time.Since(startedAt).Milliseconds()
@@ -487,6 +558,7 @@ func (c AIPlatformConfig) RunTextQueueContext(ctx context.Context, queueID strin
 			Model:           string(item.Model.ID),
 			Messages:        []ai.ChatMessage{{Role: ai.ChatRoleUser, Content: input}},
 			ReasoningEffort: item.Setting.ReasoningEffort,
+			Thinking:        item.Setting.Thinking,
 			Tools:           append([]ai.ChatTool(nil), item.Setting.Tools...),
 		})
 		if err != nil {
