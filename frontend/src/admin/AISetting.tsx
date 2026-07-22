@@ -101,6 +101,12 @@ function findModel(value: AIPlatformConfig, providerID: string, modelID: string)
         ?.models.find((model) => model.id === modelID);
 }
 
+function modelDisplayName(value: AIPlatformConfig, providerID: string, modelID: string): string {
+    const provider = value.providers.find((candidate) => candidate.id === providerID);
+    const model = provider?.models.find((candidate) => candidate.id === modelID);
+    return `${provider?.name || providerID}/${model?.name || modelID}`;
+}
+
 function inheritedCallProtocolLabel(providerProtocol: ProviderProtocol, modelType: ModelType): string {
     if (providerProtocol === "OpenAI") {
         return modelType === "text" ? "OpenAI 文字" : "OpenAI STT";
@@ -234,13 +240,10 @@ export function AISetting() {
             </Popconfirm>}
         >
             <Row gutter={[12, 12]}>
-                <Col xs={24} md={8}><Field label="供应商 ID">
-                    <Input value={provider.id} onChange={(event) => updateProvider(providerIndex, {id: event.target.value})}/>
-                </Field></Col>
-                <Col xs={24} md={8}><Field label="显示名称">
+                <Col xs={24} md={12}><Field label="供应商名称">
                     <Input value={provider.name} onChange={(event) => updateProvider(providerIndex, {name: event.target.value})}/>
                 </Field></Col>
-                <Col xs={24} md={8}><Field label="供应商类型">
+                <Col xs={24} md={12}><Field label="供应商类型">
                     <Select
                         value={provider.protocol}
                         options={SOURCE_OPTIONS}
@@ -271,10 +274,7 @@ export function AISetting() {
             <Flex vertical gap={10}>
                 {provider.models.map((model, modelIndex) => <Card key={`${model.id}-${modelIndex}`} size="small">
                     <Row gutter={[10, 10]} align="bottom">
-                        <Col xs={24} md={4}><Field label="模型 ID">
-                            <Input value={model.id} onChange={(event) => updateModel(providerIndex, modelIndex, {id: event.target.value})}/>
-                        </Field></Col>
-                        <Col xs={24} md={5}><Field label="上游模型名称">
+                        <Col xs={24} md={9}><Field label="模型名称">
                             <Input value={model.name} onChange={(event) => updateModel(providerIndex, modelIndex, {name: event.target.value})}/>
                         </Field></Col>
                         <Col xs={24} md={3}><Field label="类型">
@@ -362,7 +362,7 @@ export function AISetting() {
                 .filter((provider) => provider.models.some((model) => model.type === queue.type))
                 .map((provider) => ({
                     value: provider.id,
-                    label: provider.name ? `${provider.name} (${provider.id})` : provider.id,
+                    label: provider.name || "未命名供应商",
                 }));
             return <Card
                 key={`${queue.id}-${queueIndex}`}
@@ -422,7 +422,7 @@ export function AISetting() {
                                         value={item.modelID || undefined}
                                         options={(provider?.models ?? []).filter((candidate) => candidate.type === queue.type).map((candidate) => ({
                                             value: candidate.id,
-                                            label: `${candidate.id} · ${candidate.name}`,
+                                            label: candidate.name,
                                         }))}
                                         onChange={(modelID: string) => updateQueueItem(queueIndex, itemIndex, {
                                             modelID,
@@ -620,7 +620,7 @@ export function AISetting() {
                         message={queueTestResult.error ? "Queue 执行失败" : "Queue 执行成功"}
                         description={queueTestResult.error || (
                             queueTestResult.providerID && queueTestResult.modelID
-                                ? `命中 ${queueTestResult.providerID}/${queueTestResult.modelID}`
+                                ? `命中 ${modelDisplayName(value, queueTestResult.providerID, queueTestResult.modelID)}`
                                 : undefined
                         )}
                     />
@@ -631,7 +631,7 @@ export function AISetting() {
                         <Flex vertical gap={6}>
                             {queueTestResult.attempts.map((attempt, index) => <Flex key={`${attempt.providerID}-${attempt.modelID}-${index}`} gap={8} align="center" wrap>
                                 <Tag color={attempt.success ? "success" : "error"}>{attempt.success ? "成功" : "失败"}</Tag>
-                                <Text>{index + 1}. {attempt.providerID}/{attempt.modelID}</Text>
+                                <Text>{index + 1}. {modelDisplayName(value, attempt.providerID, attempt.modelID)}</Text>
                                 <Text type="secondary">{attempt.durationMS} ms</Text>
                                 {attempt.error && <Text type="danger">{attempt.error}</Text>}
                             </Flex>)}

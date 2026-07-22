@@ -206,6 +206,56 @@ func TestResolveAIModelCallProtocolInheritsProviderByModelType(t *testing.T) {
 	}
 }
 
+func TestAIPlatformConfigRoundTripPreservesExistingModelIDAndInheritedProtocol(t *testing.T) {
+	cfg := newTestAIConfig(t)
+	config := AIPlatformConfig{
+		Version: 2,
+		Providers: []AIProviderConfig{{
+			ID:       "existing-provider",
+			Name:     "Existing Provider",
+			Protocol: AIProviderProtocolOpenAI,
+			BaseURL:  "https://example.com/v1",
+			Token:    "test-token",
+			Models: []aiv2.ModelConfig{{
+				ID:   "user-defined-model-id",
+				Name: "upstream-model-name",
+				Type: aiv2.ModelTypeSTT,
+			}},
+		}},
+		Queues: []AIModelQueue{{
+			ID:    "existing-stt",
+			Name:  "Existing STT",
+			Type:  aiv2.ModelTypeSTT,
+			Items: []AIModelQueueItem{{ProviderID: "existing-provider", ModelID: "user-defined-model-id"}},
+		}},
+		Businesses: []AIBusinessConfig{{Scene: AISceneTranscribe, Type: aiv2.ModelTypeSTT, QueueID: "existing-stt"}},
+	}
+
+	if err := SaveAIPlatformConfig(cfg, config); err != nil {
+		t.Fatalf("SaveAIPlatformConfig: %v", err)
+	}
+	loaded, err := GetAIPlatformConfig(cfg)
+	if err != nil {
+		t.Fatalf("GetAIPlatformConfig: %v", err)
+	}
+	if got := loaded.Providers[0].ID; got != "existing-provider" {
+		t.Fatalf("provider ID = %q, want preserved existing ID", got)
+	}
+	if got := loaded.Providers[0].Models[0].ID; got != "user-defined-model-id" {
+		t.Fatalf("model ID = %q, want preserved existing ID", got)
+	}
+	if got := loaded.Queues[0].Items[0].ModelID; got != "user-defined-model-id" {
+		t.Fatalf("queue model ID = %q, want preserved reference", got)
+	}
+	if got := loaded.Queues[0].Items[0].ProviderID; got != "existing-provider" {
+		t.Fatalf("queue provider ID = %q, want preserved reference", got)
+	}
+	protocol, err := ResolveAIModelCallProtocol(loaded.Providers[0].Protocol, loaded.Providers[0].Models[0])
+	if err != nil || protocol != aiv2.ModelCallProtocolOpenAISTT {
+		t.Fatalf("inherited protocol = %q, %v; want %q", protocol, err, aiv2.ModelCallProtocolOpenAISTT)
+	}
+}
+
 func TestRunTextQueueReportsFailedAttempt(t *testing.T) {
 	config := AIPlatformConfig{
 		Version: 2,
