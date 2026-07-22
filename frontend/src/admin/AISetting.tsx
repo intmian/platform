@@ -274,10 +274,10 @@ export function AISetting() {
             <Flex vertical gap={10}>
                 {provider.models.map((model, modelIndex) => <Card key={`${model.id}-${modelIndex}`} size="small">
                     <Row gutter={[10, 10]} align="bottom">
-                        <Col xs={24} md={9}><Field label="模型名称">
+                        <Col xs={24} md={7}><Field label="模型名称">
                             <Input value={model.name} onChange={(event) => updateModel(providerIndex, modelIndex, {name: event.target.value})}/>
                         </Field></Col>
-                        <Col xs={24} md={3}><Field label="类型">
+                        <Col xs={24} md={4}><Field label="类型">
                             <Select
                                 value={model.type}
                                 options={MODEL_TYPE_OPTIONS}
@@ -289,7 +289,7 @@ export function AISetting() {
                                 })}
                             />
                         </Field></Col>
-                        <Col xs={24} md={4}><Field label="调用协议">
+                        <Col xs={20} md={11}><Field label="调用协议">
                             <Select
                                 value={model.callProtocol ?? ""}
                                 options={[
@@ -304,25 +304,7 @@ export function AISetting() {
                                 })}
                             />
                         </Field></Col>
-                        <Col xs={24} md={3}><Field label="可用思考强度">
-                            <Select
-                                mode="multiple"
-                                value={model.reasoning ?? []}
-                                options={REASONING_OPTIONS}
-                                disabled={model.type !== "text"}
-                                onChange={(reasoning: ReasoningEffort[]) => updateModel(providerIndex, modelIndex, {reasoning})}
-                            />
-                        </Field></Col>
-                        <Col xs={20} md={4}><Field label="可用工具">
-                            <Select
-                                mode="multiple"
-                                value={model.tools ?? []}
-                                options={TOOL_OPTIONS}
-                                disabled={model.type !== "text"}
-                                onChange={(tools: ChatTool[]) => updateModel(providerIndex, modelIndex, {tools})}
-                            />
-                        </Field></Col>
-                        <Col xs={4} md={1}>
+                        <Col xs={4} md={2}>
                             <Button danger type="text" icon={<DeleteOutlined/>} onClick={() => mutate((current) => ({
                                 ...current,
                                 providers: current.providers.map((item, i) => i === providerIndex ? {
@@ -337,6 +319,28 @@ export function AISetting() {
                                 })),
                             }))}/>
                         </Col>
+                    </Row>
+                    <Row gutter={[10, 10]} style={{marginTop: 10}}>
+                        <Col xs={24} md={14}><Field label="可用思考强度">
+                            <Select
+                                mode="multiple"
+                                maxTagCount="responsive"
+                                value={model.reasoning ?? []}
+                                options={REASONING_OPTIONS}
+                                disabled={model.type !== "text"}
+                                onChange={(reasoning: ReasoningEffort[]) => updateModel(providerIndex, modelIndex, {reasoning})}
+                            />
+                        </Field></Col>
+                        <Col xs={24} md={10}><Field label="可用工具">
+                            <Select
+                                mode="multiple"
+                                maxTagCount="responsive"
+                                value={model.tools ?? []}
+                                options={TOOL_OPTIONS}
+                                disabled={model.type !== "text"}
+                                onChange={(tools: ChatTool[]) => updateModel(providerIndex, modelIndex, {tools})}
+                            />
+                        </Field></Col>
                     </Row>
                 </Card>)}
             </Flex>
