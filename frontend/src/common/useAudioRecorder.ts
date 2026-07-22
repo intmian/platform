@@ -1,4 +1,5 @@
 import {useCallback, useEffect, useRef, useState} from "react";
+import {trimSilentPcm} from "./audioSilenceTrimmer";
 
 export type AudioRecorderState = "idle" | "recording" | "stopping" | "error";
 
@@ -8,6 +9,14 @@ interface WebAudioRecorder {
     processor: ScriptProcessorNode;
     chunks: Float32Array[];
     sampleRate: number;
+}
+
+export interface AudioRecordingResult {
+    blob: Blob | null;
+    hasVoice: boolean;
+    originalDurationMs: number;
+    outputDurationMs: number;
+    trimmingApplied: boolean;
 }
 
 const WAVEFORM_BAR_COUNT = 16;
@@ -76,8 +85,7 @@ function writeAscii(view: DataView, offset: number, value: string) {
     }
 }
 
-function encodeWav(chunks: Float32Array[], sampleRate: number): Blob {
-    const samples = mergeFloat32Chunks(chunks);
+function encodeWav(samples: Float32Array, sampleRate: number): Blob {
     const bytesPerSample = 2;
     const blockAlign = bytesPerSample;
     const buffer = new ArrayBuffer(44 + samples.length * bytesPerSample);
@@ -118,7 +126,7 @@ export function useAudioRecorder() {
     const chunksRef = useRef<Blob[]>([]);
     const startedAtRef = useRef(0);
     const timerRef = useRef<number | null>(null);
-    const stopResolveRef = useRef<((blob: Blob) => void) | null>(null);
+    const stopResolveRef = useRef<((result: AudioRecordingResult) => void) | null>(null);
     const stopRejectRef = useRef<((error: Error) => void) | null>(null);
 
     const clearTimer = useCallback(() => {
@@ -210,7 +218,14 @@ export function useAudioRecorder() {
                 };
                 recorder.onstop = () => {
                     const blob = new Blob(chunksRef.current, {type: recorder.mimeType || "audio/webm"});
-                    stopResolveRef.current?.(blob);
+                    const recordedDurationMs = Math.max(0, Date.now() - startedAtRef.current);
+                    stopResolveRef.current?.({
+                        blob,
+                        hasVoice: blob.size > 0,
+                        originalDurationMs: recordedDurationMs,
+                        outputDurationMs: recordedDurationMs,
+                        trimmingApplied: false,
+                    });
                     setState("idle");
                     resetRecorder();
                 };
@@ -233,16 +248,24 @@ export function useAudioRecorder() {
         }
     }, [resetRecorder]);
 
-    const stop = useCallback((): Promise<Blob> => {
+    const stop = useCallback((): Promise<AudioRecordingResult> => {
         const webAudioRecorder = webAudioRecorderRef.current;
         if (webAudioRecorder) {
             setState("stopping");
             clearTimer();
             setDurationMs(Date.now() - startedAtRef.current);
-            const blob = encodeWav(webAudioRecorder.chunks, webAudioRecorder.sampleRate);
+            const samples = mergeFloat32Chunks(webAudioRecorder.chunks);
+            const trimmed = trimSilentPcm(samples, webAudioRecorder.sampleRate);
+            const result: AudioRecordingResult = {
+                blob: trimmed.hasVoice ? encodeWav(trimmed.samples, webAudioRecorder.sampleRate) : null,
+                hasVoice: trimmed.hasVoice,
+                originalDurationMs: trimmed.originalDurationMs,
+                outputDurationMs: trimmed.outputDurationMs,
+                trimmingApplied: true,
+            };
             setState("idle");
             resetRecorder();
-            return Promise.resolve(blob);
+            return Promise.resolve(result);
         }
 
         const recorder = recorderRef.current;

@@ -248,7 +248,12 @@ export function WhisperButton({
         }
         finishInFlightRef.current = true;
         try {
-            const blob = await recorder.stop();
+            const recording = await recorder.stop();
+            if (!recording.hasVoice || !recording.blob) {
+                message.info("未检测到有效语音").then();
+                return;
+            }
+            const blob = recording.blob;
             if (blob.size === 0) {
                 emitError("录音内容为空");
                 return;
