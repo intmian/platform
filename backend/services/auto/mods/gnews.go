@@ -3,7 +3,6 @@ package mods
 import (
 	"fmt"
 
-	"github.com/intmian/mian_go_lib/tool/ai"
 	"github.com/intmian/mian_go_lib/tool/spider"
 	"github.com/intmian/mian_go_lib/xstorage"
 	"github.com/intmian/platform/backend/services/auto/setting"
@@ -23,17 +22,9 @@ func (G GNews) Init() {
 }
 
 func (G GNews) Do() {
-	aiCfg, err := backendshare.GetAIConfig(setting.GCfg)
+	chat, err := backendshare.NewSceneAI(setting.GCfg, backendshare.AISceneSummary)
 	if err != nil {
-		tool.GLog.WarningErr("GNews", errors.WithMessage(err, "func Do() GetAIConfig error"))
-		return
-	}
-	if aiCfg.Base == "" || aiCfg.Base == "need input" {
-		tool.GLog.Warning("GNews", "openai.base is empty")
-		return
-	}
-	if aiCfg.Token == "" || aiCfg.Token == "need input" {
-		tool.GLog.Warning("GNews", "openai.token is empty")
+		tool.GLog.WarningErr("GNews", errors.WithMessage(err, "func Do() NewSceneAI error"))
 		return
 	}
 	newsTokenV, err := setting.GSetting.Get("auto.GNews.newsToken")
@@ -50,7 +41,7 @@ func (G GNews) Do() {
 		tool.GLog.Warning("GNews", "auto.GNews.newsToken is empty")
 		return
 	}
-	md, err := getNews(newsToken, aiCfg)
+	md, err := getNews(newsToken, chat)
 	if err != nil {
 		tool.GLog.WarningErr("GNews", errors.WithMessage(err, "func Do() getNews error"))
 		return
@@ -61,7 +52,7 @@ func (G GNews) Do() {
 	}
 }
 
-func getNews(newsToken string, aiCfg backendshare.AIConfig) (string, error) {
+func getNews(newsToken string, chat digestChat) (string, error) {
 	// 获取昨天0点到今天0点的新闻，今天发生新闻可能还没有稳定下来，如果到当前时间可能会导致新的新闻永远上不了榜或者重复报。近期的新闻也可能浮动变动过大，等待热度固定。
 	from := time.Now().AddDate(0, 0, -1)
 	from = time.Date(from.Year(), from.Month(), from.Day(), 0, 0, 0, 0, from.Location())
@@ -89,7 +80,6 @@ func getNews(newsToken string, aiCfg backendshare.AIConfig) (string, error) {
 	retry := 0
 	done := false
 	var re string
-	mode := aiCfg.ModeForScene(backendshare.AISceneSummary, ai.ModelModeCheap)
 	for retry < 2 {
 		/*
 			如果不行改成单体输出 Below are the headline and summary of a news segment. Based on these, please generate a concise, friendly, and readable summary in Simplified Chinese (no more than 40 words). And score the news according to its importance to an average Chinese person, using a scale of 1-5. And analyze the type of news (e.g. politics, sports, technology).
@@ -100,8 +90,7 @@ func getNews(newsToken string, aiCfg backendshare.AIConfig) (string, error) {
 			“content”:“......”
 			}
 		*/
-		o := ai.NewOpenAIWithMode(aiCfg.Base, aiCfg.Token, mode, aiCfg.ModelPools)
-		re, err = o.Chat(`You are a journalist who is proficient in writing in both English and Chinese. The following is the data of the hot news of the past day crawled by using crawler (including title and summary), please do the following processing according to these contents.
+		re, err = chat.Chat(`You are a journalist who is proficient in writing in both English and Chinese. The following is the data of the hot news of the past day crawled by using crawler (including title and summary), please do the following processing according to these contents.
 1. if the content of the news is not in Simplified Chinese, then translate it into Simplified Chinese (there is no need to translate proper nouns and people's names into Chinese).
 2. Generate a concise, friendly and readable summary (no more than 30 words) for each news item based on the news title and abstract.
 3. categorize the processed news according to the type of news (e.g. politics, sports, technology) and output it in the following form

@@ -10,7 +10,6 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
-	"github.com/intmian/mian_go_lib/tool/ai"
 	"github.com/intmian/mian_go_lib/xstorage"
 	"github.com/intmian/platform/backend/share"
 	"strings"
@@ -269,7 +268,7 @@ func (m *webMgr) gptRewrite(c *gin.Context) {
 	}
 
 	ask := "以下是我的语音输入内容，其中可能包含口误、口语化表达或识别错误。请对其进行优化和重写，使其语法正确、逻辑清晰，去除重复和冗长的表述。确保不遗漏任何内容，对于不确定的部分，请使用括号标注。无需添加任何官话或套话:\n" + req.Content
-	newContent, err := m.chatAI(share.AISceneRewrite, ai.ModelModeFast, ask)
+	newContent, err := m.chatAI(share.AISceneRewrite, ask)
 	if err != nil {
 		c.JSON(200, makeErrReturn(err.Error()))
 		return

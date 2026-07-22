@@ -15,6 +15,7 @@ const (
 	AISceneSummary             AIScene = "summary"
 	AISceneTranslate           AIScene = "translate"
 	AISceneLibraryReviewDigest AIScene = "library_review_digest"
+	AISceneTranscribe          AIScene = "transcribe"
 )
 
 const DefaultAIAudioModel = "gpt-4o-mini-transcribe"
@@ -30,6 +31,13 @@ func defaultAIModelPools() map[ai.ModelMode][]string {
 func DefaultAIConfigParams() []*xstorage.CfgParam {
 	modelPools := defaultAIModelPools()
 	return []*xstorage.CfgParam{
+		{
+			Key:       AIPlatformConfigStorageKey,
+			ValueType: xstorage.ValueTypeString,
+			CanUser:   false,
+			RealKey:   "ai.config",
+			Default:   *xstorage.ToUnit[string]("", xstorage.ValueTypeString),
+		},
 		{
 			Key:       "PLAT.openai.base",
 			ValueType: xstorage.ValueTypeString,

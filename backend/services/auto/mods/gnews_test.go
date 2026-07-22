@@ -23,7 +23,8 @@ func Test_getNews(t *testing.T) {
 			backendshare.AISceneSummary: ai.ModelModeCheap,
 		},
 	}
-	s, err := getNews("ee54b7595ba81fc612c56689416abf6a", cfg)
+	chat := ai.NewOpenAIWithMode(cfg.Base, cfg.Token, cfg.ModeForScene(backendshare.AISceneSummary, ai.ModelModeCheap), cfg.ModelPools)
+	s, err := getNews("ee54b7595ba81fc612c56689416abf6a", chat)
 	if err != nil {
 		t.Fatal(err)
 	}

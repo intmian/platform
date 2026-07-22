@@ -1,6 +1,6 @@
 # Frontend Architecture
 
-Last verified: 2026-07-11
+Last verified: 2026-07-22
 
 ## Scope
 
@@ -92,7 +92,7 @@ Last verified: 2026-07-11
 5. `UniConfig` supports `hideLabels` for grouped card layouts where the card title already names the config item.
 6. Slice config rows use a dedicated drag handle for reordering and keep the delete `X` on the far right of each row, matching the action alignment used by the save button column.
 7. Slice config inline editors keep focus during typing; row identity stays stable while values change, so editing a single character does not remount the input.
-8. Admin `AI 设置` page keeps `连接配置` on top, then `语音转写`, then uses a responsive two-column section layout on desktop: `模型池` on the left as a vertical stack and `场景档位` on the right; narrow screens collapse back to a single column. `语音转写` exposes its optional Base URL, secret Token, and model; leaving both connection fields empty inherits the main AI connection.
+8. Admin `AI 设置` uses typed `/misc/ai/config/get` and `/misc/ai/config/set` routes instead of `UniConfig`. Its tabs manage provider connections and provider-owned model registration, ordered model queue presets, and a unified business configuration list. The UI calls the provider-level enum `供应商类型`; its current only value is `OpenAI`, so an OpenRouter connection is also configured as this type. Every model exposes a separate `调用协议` selector: its default entry visibly inherits `OpenAI 文字` or `OpenAI STT` from the provider and model type. STT models can explicitly select `OpenAI STT`, `DashScope 千问3-ASR`, or `DashScope Fun-ASR-Flash`; the two DashScope choices stay separate even though they share an endpoint because their request and response structures differ. Models and queues both declare either `text` or `stt`; queue selectors only expose models with the same type. Queue IDs are generated and read-only in the UI while display names remain editable. Each Queue card can test the current unsaved draft: text queues start with an editable `Hello` prompt, while STT queues provide a bundled `Hi.` WAV sample plus optional local audio replacement. Results show output, the winning provider/model, and every fallback attempt. Each business row stores `scene + type + queueID`, including the `transcribe + stt` binding used by audio transcription; there is no dedicated `STTQueueID` field.
 9. Admin settings expose `Todone Worker 配置` with Worker endpoint and a password-style Worker token. The endpoint placeholder is non-production, and changes require service restart.
 
 ## Shared AI UI helpers

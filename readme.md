@@ -57,6 +57,7 @@
 - `auto.news.keys`：日报新闻关键词
 - `todone.db.*`：TODONE 数据库接入参数
 - `PLAT.r2.*`：R2 上传相关参数（图片上传等功能）
+- AI 供应商及模型的 `text/stt` 能力、可继承或按模型覆盖的调用协议（含 OpenAI 文字、OpenAI STT、DashScope 千问3-ASR、DashScope Fun-ASR-Flash）、同类型顺序回退队列，以及统一的业务场景/类型/队列绑定
 
 ## 项目结构
 

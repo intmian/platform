@@ -10,7 +10,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/intmian/mian_go_lib/tool/ai"
 	"github.com/intmian/mian_go_lib/tool/misc"
 	"github.com/intmian/mian_go_lib/tool/spider"
 	"github.com/intmian/mian_go_lib/xstorage"
@@ -297,21 +296,7 @@ func (d *Day) GenerateDayReport() (*DayReport, error) {
 	return report, nil
 }
 
-func getOpenAIConfig(scene backendshare.AIScene, fallbackMode ai.ModelMode) (base, token string, modelPools map[ai.ModelMode][]string, mode ai.ModelMode, err error) {
-	conf, err := backendshare.GetAIConfig(setting.GCfg)
-	if err != nil {
-		return "", "", nil, fallbackMode, err
-	}
-	if conf.Base == "" || conf.Base == "need input" {
-		return "", "", nil, fallbackMode, errors.New("openai.base is empty")
-	}
-	if conf.Token == "" || conf.Token == "need input" {
-		return "", "", nil, fallbackMode, errors.New("openai.token is empty")
-	}
-	return conf.Base, conf.Token, conf.ModelPools, conf.ModeForScene(scene, fallbackMode), nil
-}
-
-func translateContent(chat *ai.OpenAI, content string) (string, error) {
+func translateContent(chat digestChat, content string) (string, error) {
 	const transPromt = "仅返回以下文字的简体中文翻译，无需翻译则原样返回：\n"
 	translated, err := chat.Chat(transPromt + content)
 	if err != nil {
@@ -326,7 +311,7 @@ func translateContent(chat *ai.OpenAI, content string) (string, error) {
 	return translated, nil
 }
 
-func translateNews(newsBBC []spider.BBCRssItem, newsNYT []spider.NYTimesRssItem, chat *ai.OpenAI) error {
+func translateNews(newsBBC []spider.BBCRssItem, newsNYT []spider.NYTimesRssItem, chat digestChat) error {
 	var wg sync.WaitGroup
 	errChan := make(chan error, len(newsBBC)+len(newsNYT)*2) // 用于接收翻译错误
 
@@ -397,14 +382,9 @@ func translateNews(newsBBC []spider.BBCRssItem, newsNYT []spider.NYTimesRssItem,
 func summary(report *DayReport) error {
 	setDayDigestFailure(report)
 
-	base, token, modelPools, mode, err := getOpenAIConfig(backendshare.AISceneSummary, ai.ModelModeCheap)
+	chat, err := backendshare.NewSceneAI(setting.GCfg, backendshare.AISceneSummary)
 	if err != nil {
 		return err
-	}
-
-	chat := ai.NewOpenAIWithMode(base, token, mode, modelPools)
-	if chat == nil {
-		return errors.New("NewOpenAI error")
 	}
 
 	digest, err := generateDayDigest(report, chat)
@@ -427,15 +407,9 @@ func setDayDigestFailure(report *DayReport) {
 
 func translate(report *DayReport) error {
 	// 获取配置
-	base, token, modelPools, mode, err := getOpenAIConfig(backendshare.AISceneTranslate, ai.ModelModeCheap)
+	chat, err := backendshare.NewSceneAI(setting.GCfg, backendshare.AISceneTranslate)
 	if err != nil {
 		return err
-	}
-
-	// 创建 OpenAI 实例
-	chat := ai.NewOpenAIWithMode(base, token, mode, modelPools)
-	if chat == nil {
-		return errors.New("NewOpenAI error")
 	}
 
 	// 翻译 DayReport 的新闻
@@ -448,15 +422,9 @@ func translate(report *DayReport) error {
 
 func translateW(report *WholeReport) error {
 	// 获取配置
-	base, token, modelPools, mode, err := getOpenAIConfig(backendshare.AISceneTranslate, ai.ModelModeCheap)
+	chat, err := backendshare.NewSceneAI(setting.GCfg, backendshare.AISceneTranslate)
 	if err != nil {
 		return err
-	}
-
-	// 创建 OpenAI 实例
-	chat := ai.NewOpenAIWithMode(base, token, mode, modelPools)
-	if chat == nil {
-		return errors.New("NewOpenAI error")
 	}
 
 	// 翻译 WholeReport 的新闻

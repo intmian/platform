@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
-	"github.com/intmian/mian_go_lib/tool/ai"
 	"github.com/intmian/platform/backend/share"
 )
 
@@ -91,7 +90,7 @@ func (m *webMgr) handleLibraryReviewNotesDigest(payload json.RawMessage) (librar
 		string(promptBytes),
 	}, "\n")
 
-	content, err := m.chatAI(share.AISceneLibraryReviewDigest, ai.ModelModeCheap, prompt)
+	content, err := m.chatAI(share.AISceneLibraryReviewDigest, prompt)
 	if err != nil {
 		return libraryReviewDigestResp{}, err
 	}
@@ -103,27 +102,14 @@ func (m *webMgr) handleLibraryReviewNotesDigest(payload json.RawMessage) (librar
 	return normalizeLibraryReviewDigestResp(ret), nil
 }
 
-func (m *webMgr) chatAI(scene share.AIScene, fallback ai.ModelMode, prompt string) (string, error) {
-	aiCfg, err := share.GetAIConfig(m.plat.cfg)
+func (m *webMgr) chatAI(scene share.AIScene, prompt string) (string, error) {
+	chat, err := share.NewSceneAI(m.plat.cfg, scene)
 	if err != nil {
-		return "", errors.New("openai config error")
+		return "", err
 	}
-	if aiCfg.Base == "" || aiCfg.Base == "need input" {
-		return "", errors.New("openai.base is empty")
-	}
-	if aiCfg.Token == "" || aiCfg.Token == "need input" {
-		return "", errors.New("openai.token is empty")
-	}
-
-	mode := aiCfg.ModeForScene(scene, fallback)
-	bot := ai.NewOpenAIWithMode(aiCfg.Base, aiCfg.Token, mode, aiCfg.ModelPools)
-	if bot == nil {
-		return "", errors.New("openai init error")
-	}
-
-	content, err := bot.Chat(prompt)
+	content, err := chat.Chat(prompt)
 	if err != nil {
-		return "", errors.New("svr error")
+		return "", err
 	}
 	return content, nil
 }

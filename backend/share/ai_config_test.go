@@ -1,9 +1,11 @@
 package share
 
 import (
+	"context"
 	"encoding/json"
 	"testing"
 
+	aiv2 "github.com/intmian/mian_go_lib/tool/ai/v2"
 	"github.com/intmian/mian_go_lib/tool/misc"
 	"github.com/intmian/mian_go_lib/xstorage"
 )
@@ -122,5 +124,111 @@ func setTestAIConfigString(t *testing.T, cfg *xstorage.CfgExt, key string, value
 	}
 	if err := cfg.Set(key, string(raw)); err != nil {
 		t.Fatalf("set %s failed: %v", key, err)
+	}
+}
+
+func TestAIPlatformConfigNormalizesVersionOneBindings(t *testing.T) {
+	config := AIPlatformConfig{
+		Version: 1,
+		Providers: []AIProviderConfig{{
+			ID:               "default",
+			Name:             "Default",
+			LegacySourceType: aiv2.ProviderSourceTypeDeepSeek,
+			Models: []aiv2.ModelConfig{
+				{ID: "text-model", Name: "text-upstream", Type: aiv2.ModelType("chat")},
+				{ID: "stt-model", Name: "stt-upstream", Type: aiv2.ModelTypeSTT},
+			},
+		}},
+		Queues: []AIModelQueue{
+			{ID: "text", Items: []AIModelQueueItem{{ProviderID: "default", ModelID: "text-model"}}},
+			{ID: "stt", Items: []AIModelQueueItem{{ProviderID: "default", ModelID: "stt-model"}}},
+		},
+		LegacyScenes:     []AIBusinessConfig{{Scene: AISceneRewrite, QueueID: "text"}},
+		LegacySTTQueueID: "stt",
+	}
+
+	config.normalize()
+	if err := config.Validate(); err != nil {
+		t.Fatalf("normalized config validation failed: %v", err)
+	}
+	if config.Version != 2 || config.Providers[0].Protocol != AIProviderProtocolOpenAI {
+		t.Fatalf("version/protocol not normalized: %#v", config)
+	}
+	if config.Providers[0].Models[0].Type != aiv2.ModelTypeText || config.Queues[0].Type != aiv2.ModelTypeText {
+		t.Fatalf("text model/queue type not normalized: %#v", config)
+	}
+	if len(config.Businesses) != 2 {
+		t.Fatalf("business bindings = %d, want 2", len(config.Businesses))
+	}
+	if queueID, err := config.QueueIDForScene(AISceneTranscribe, aiv2.ModelTypeSTT); err != nil || queueID != "stt" {
+		t.Fatalf("transcribe binding = %q, %v", queueID, err)
+	}
+}
+
+func TestAIPlatformConfigRejectsQueueModelTypeMismatch(t *testing.T) {
+	config := AIPlatformConfig{
+		Version: 2,
+		Providers: []AIProviderConfig{{
+			ID:       "default",
+			Protocol: AIProviderProtocolOpenAI,
+			Models:   []aiv2.ModelConfig{{ID: "text-model", Name: "text-upstream", Type: aiv2.ModelTypeText}},
+		}},
+		Queues: []AIModelQueue{{
+			ID:    "bad",
+			Type:  aiv2.ModelTypeSTT,
+			Items: []AIModelQueueItem{{ProviderID: "default", ModelID: "text-model"}},
+		}},
+	}
+	if err := config.Validate(); err == nil {
+		t.Fatal("expected queue/model type mismatch")
+	}
+}
+
+func TestResolveAIModelCallProtocolInheritsProviderByModelType(t *testing.T) {
+	tests := []struct {
+		modelType aiv2.ModelType
+		want      aiv2.ModelCallProtocol
+	}{
+		{modelType: aiv2.ModelTypeText, want: aiv2.ModelCallProtocolOpenAIText},
+		{modelType: aiv2.ModelTypeSTT, want: aiv2.ModelCallProtocolOpenAISTT},
+	}
+	for _, tt := range tests {
+		got, err := ResolveAIModelCallProtocol(AIProviderProtocolOpenAI, aiv2.ModelConfig{Type: tt.modelType})
+		if err != nil || got != tt.want {
+			t.Fatalf("type %q protocol = %q, %v; want %q", tt.modelType, got, err, tt.want)
+		}
+	}
+
+	override := aiv2.ModelConfig{Type: aiv2.ModelTypeSTT, CallProtocol: aiv2.ModelCallProtocolDashScopeFunASR}
+	got, err := ResolveAIModelCallProtocol(AIProviderProtocolOpenAI, override)
+	if err != nil || got != aiv2.ModelCallProtocolDashScopeFunASR {
+		t.Fatalf("override protocol = %q, %v", got, err)
+	}
+}
+
+func TestRunTextQueueReportsFailedAttempt(t *testing.T) {
+	config := AIPlatformConfig{
+		Version: 2,
+		Providers: []AIProviderConfig{{
+			ID:       "default",
+			Protocol: AIProviderProtocolOpenAI,
+			Models:   []aiv2.ModelConfig{{ID: "text-model", Name: "text-upstream", Type: aiv2.ModelTypeText}},
+		}},
+		Queues: []AIModelQueue{{
+			ID:    "text",
+			Type:  aiv2.ModelTypeText,
+			Items: []AIModelQueueItem{{ProviderID: "default", ModelID: "text-model"}},
+		}},
+	}
+
+	result, err := config.RunTextQueueContext(context.Background(), "text", "hello")
+	if err == nil {
+		t.Fatal("expected missing-token error")
+	}
+	if len(result.Attempts) != 1 || result.Attempts[0].Success || result.Attempts[0].Error != "provider token is empty" {
+		t.Fatalf("unexpected attempts: %#v", result.Attempts)
+	}
+	if result.Error == "" {
+		t.Fatal("expected result error")
 	}
 }

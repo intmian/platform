@@ -1,6 +1,6 @@
 # Backend Config And AI
 
-Last verified: 2026-07-11
+Last verified: 2026-07-22
 
 ## Scope
 
@@ -53,7 +53,8 @@ Last verified: 2026-07-11
    - `PLAT.r2.secretKey`
    - `PLAT.r2.bucket`
    - `PLAT.r2.web`
-2. AI keys are appended by `share.DefaultAIConfigParams()`:
+2. The active structured AI document is stored as the string-valued `PLAT.ai.config` key and is exposed through typed AI config routes rather than the generic config form.
+3. Legacy AI keys are still registered as migration inputs by `share.DefaultAIConfigParams()`:
    - `PLAT.openai.base`
    - `PLAT.openai.token`
    - `PLAT.openai.model.cheap`
@@ -69,30 +70,36 @@ Last verified: 2026-07-11
 
 ## AI config defaults
 
-1. Default model pools are:
+1. `PLAT.ai.config` is a version-2 JSON document with three top-level collections:
+   - `providers`: provider connections; each provider owns its registered models and credentials, and selects a protocol enum whose current only value is `OpenAI`
+   - `queues`: ordered model-call presets; each queue declares `text` or `stt`, and the first successful item wins
+   - `businesses`: unified `scene + type + queueID` bindings; transcription uses `transcribe + stt` rather than a dedicated STT field
+2. Each registered model has a stable provider-local ID, upstream model name, `text` or `stt` type, optional `callProtocol`, and optional reasoning/tool capabilities. An omitted `callProtocol` inherits from the provider protocol plus model type: the current `OpenAI` provider maps `text -> OpenAIText` and `stt -> OpenAISTT`. Per-model overrides support intermediaries whose models use different request formats. Text currently uses `OpenAIText`; STT supports exactly `OpenAISTT`, `DashScopeQwen3ASR`, and `DashScopeFunASR`. Protocol selection is explicit and execution never infers it from an upstream model name. Reasoning and tools only apply to `text`. A queue item selects one provider/model pair plus a supported reasoning effort and tool subset, and its model type must match the queue type.
+3. Structured config reads and writes use:
+   - `POST /misc/ai/config/get`
+   - `POST /misc/ai/config/set`
+   Both require `admin` or `plat.cfg`; writes validate the single supported provider protocol, model call protocol/type compatibility, provider/model/queue references, model capability selections, explicit queue/model type equality, and business/queue type equality before persistence.
+   Queue draft testing uses `POST /misc/ai/config/queue/test` with `multipart/form-data` fields `config`, `queueID`, and either `input` for text or `file` for STT. It has the same permission requirement, does not persist the supplied draft, and returns output plus the winning provider/model and every ordered attempt. Text testing reuses `AIPlatformConfig.RunTextQueueContext`; STT testing and the production transcription endpoint both reuse `webMgr.transcribeQueue`.
+4. When no structured document has been saved, `GetAIPlatformConfig` builds an in-memory migration view from the legacy keys. The legacy model pools become `text` queues named `cheap`, `fast`, and `normal`; legacy scene modes become `text` business bindings; legacy audio connection/model values become an `stt` queue plus the `transcribe + stt` business binding. Previously saved version-1 structured documents are also normalized in memory: `chat` becomes `text`, queue types are inferred once from their registered models, and `scenes`/`sttQueueID` become the unified `businesses` list. The migrated view is persisted only when the typed config is saved.
+5. Legacy default model pools are:
    - `cheap`: `gpt-5.4-mini`, `gpt-5.4-nano`
    - `fast`: `gpt-5-chat-latest`
    - `normal`: `gpt-5.4`, `gpt-5-chat-latest`
-2. Default scene-to-mode mapping is:
+6. Legacy default scene-to-mode mapping is:
    - `rewrite -> fast`
    - `summary -> cheap`
    - `translate -> cheap`
    - `library_review_digest -> cheap`
-3. Default placeholder values for `PLAT.openai.base` and `PLAT.openai.token` are `need input`.
-4. Default `PLAT.openai.audio.model` is `gpt-4o-mini-transcribe`; frontend users cannot choose this per request.
-5. `PLAT.openai.audio.base` and `PLAT.openai.audio.token` select an optional transcription-only OpenAI-compatible upstream. When both are empty, transcription inherits `PLAT.openai.base` and `PLAT.openai.token`; when only one is configured, transcription fails with `openai.audio provider config incomplete` so credentials are not mixed across upstreams.
-6. The reusable AI wrapper in `backend/mian_go_lib/tool/ai/openai.go` now uses the official Go SDK `github.com/openai/openai-go/v3`.
-7. The wrapper still sends text requests through the Chat Completions API for compatibility with existing callers and OpenAI-compatible base URLs.
-8. The wrapper also exposes audio transcription; callers must pass the model explicitly from the owning config layer.
-9. The wrapper is provider-neutral and no longer exposes provider enums or DeepSeek-specific defaults/response cleanup; compatible providers must be configured through `PLAT.openai.base`, `PLAT.openai.model.*`, and the optional `PLAT.openai.audio.*` override.
-10. The platform transcription route has a narrow OpenRouter request-format branch pending the broader v2 provider refactor: audio is streamed as Base64 JSON using OpenRouter's `input_audio` contract. The configured Base URL and model are otherwise used verbatim, so OpenRouter requires `https://openrouter.ai/api/v1` and a full model ID such as `openai/gpt-4o-mini-transcribe`. Other providers continue through the official OpenAI SDK multipart transcription path.
-11. New provider capability code lives under `backend/mian_go_lib/tool/ai/v2` with Go package name `ai`; it does not replace the existing `tool/ai` wrapper.
-12. `OpenAIProvider` in `tool/ai/v2` is for OpenAI-compatible providers only, currently `OpenAI` and `DeepSeek`; model availability is read through the SDK Models API with pagination, while reasoning capability lists are source-type based.
-13. `OpenAIProvider.Chat` and `ChatStream` expose plain message chat plus reasoning controls and DeepSeek `thinking`; external tools/functions are intentionally left out of the first v2 chat slice, so `AvailableTools()` returns no callable tools.
-14. `tool/ai/v2` provides base agent components and configuration helpers, not an agent-by-ID factory layer: `AgentID` and `ProviderID` are `uint32`, and the package-level singleton stores `ProviderID -> IProvider` and `AgentID -> IAgentSetting`, while callers still create and initialize agents explicitly.
-15. `IAgent[S]` is the typed lifecycle surface for v2 agents: `GetID`, `Init`, and `InitWithSetting`; chat/streaming/factory/middleware behavior and provider/setting getters are intentionally outside this interface.
-16. `BaseAgent` and `BaseAgentSetting` live in `tool/ai/v2/base_agent.go`; `BaseAgent` is a thin built-in reference implementation composed from public provider binding, generic setting state, and message history components that external agents can also reuse directly. `BaseAgent.Chat(ctx, content)` is stateful per agent instance: it prepends `SysPrompt`, reuses successful user/assistant history, tries `Models` in order as a fallback list, writes history only after a successful response, and returns errors instead of local fallback content. Chat calls on the same `BaseAgent` are serialized, including provider network I/O, to preserve strict history ordering.
-17. v2 agent settings use `IAgentSetting` plus reflection helpers for JSON import/export and JSON doc generation; the supported setting surface is exported scalar fields and scalar slices/arrays only, with zero values treated as not configured. Importing zero values is a no-op for existing values, so JSON import cannot clear a previously configured scalar or slice by passing `""`, `0`, `false`, or `[]`.
+7. The legacy placeholder values for `PLAT.openai.base` and `PLAT.openai.token` are `need input`; the legacy default STT model is `gpt-4o-mini-transcribe`.
+8. Text scene calls use `share.SceneAI`: resolve the `scene + text` business binding, iterate the selected queue in order, construct the configured v2 provider, register the selected model, validate its capabilities, and return the first non-empty successful response. Platform rewrite/library digest and Auto summary/translation/news callers use this path.
+9. `OpenAIProvider` in `tool/ai/v2` supports provider-local `ModelConfig` registration. `AvailableReasoning` and `AvailableTools` are adapter upper bounds; registered chat calls use the model's declared reasoning/tool subset and resolve its stable ID to the upstream model name.
+10. `OpenAIProvider.Chat` and `ChatStream` expose messages, reasoning controls, DeepSeek `thinking`, and the hosted OpenAI `web_search` Responses tool. Requests may limit tool calls with `MaxToolCalls`, and responses expose final URL annotations through `ChatResponse.Citations`.
+11. The legacy `tool/ai` wrapper remains for multipart audio transcription. The platform STT queue supplies provider/model selection. `OpenAISTT` uses the official SDK multipart transcription path, except OpenRouter hosts use their Base64 JSON `input_audio` contract. Both native DashScope protocols use the synchronous `multimodal-generation` endpoint but keep separate wire contracts: `DashScopeQwen3ASR` sends `input.messages[].content[].audio`, passes `language` through `parameters.asr_options`, and parses `output.choices[].message.content[].text`; `DashScopeFunASR` sends a typed `input_audio.data` plus audio `format`, sets `X-DashScope-SSE: disable`, and parses `output.text` with `output.output.sentence.text` as a compatibility fallback. Upstream model names remain independently configurable and never select the protocol.
+12. `tool/ai/v2` provides base agent components and configuration helpers, not an agent-by-ID factory layer: `AgentID` and `ProviderID` are `uint32`, and the package-level singleton stores `ProviderID -> IProvider` and `AgentID -> IAgentSetting`, while callers still create and initialize agents explicitly.
+13. `IAgent[S]` is the typed lifecycle surface for v2 agents: `GetID`, `Init`, and `InitWithSetting`; chat/streaming/factory/middleware behavior and provider/setting getters are intentionally outside this interface.
+14. `BaseAgent` and `BaseAgentSetting` live in `tool/ai/v2/base_agent.go`; `BaseAgent` is a thin built-in reference implementation composed from public provider binding, generic setting state, and message history components that external agents can also reuse directly. `BaseAgent.Chat(ctx, content)` is stateful per agent instance: it prepends `SysPrompt`, reuses successful user/assistant history, tries `Models` in order as a fallback list, writes history only after a successful response, and returns errors instead of local fallback content. Chat calls on the same `BaseAgent` are serialized, including provider network I/O, to preserve strict history ordering.
+15. v2 agent settings use `IAgentSetting` plus reflection helpers for JSON import/export and JSON doc generation; the supported setting surface is exported scalar fields and scalar slices/arrays only, with zero values treated as not configured. Importing zero values is a no-op for existing values, so JSON import cannot clear a previously configured scalar or slice by passing `""`, `0`, `false`, or `[]`.
+16. The opt-in v2 live web-search check is `TestLiveOpenAIWebSearch` under build tag `live_ai`. It reads `OPENAI_API_KEY`, optional `OPENAI_BASE_URL`, optional `OPENAI_MODEL` (default `gpt-5.4`), and optional `OPENAI_REASONING_EFFORT` (default `low`), performs one real billable request, and requires at least one URL citation. Its compatibility-oriented request keeps reasoning while omitting output-token and tool-call-limit controls. Normal test runs exclude it.
 
 ## AI rewrite endpoint
 
@@ -103,18 +110,15 @@ Last verified: 2026-07-11
 3. Input payload:
    - `content`
 4. Runtime steps:
-   - load AI config from `CfgExt`
-   - validate base/token presence
-   - choose mode for `rewrite` scene
-   - initialize OpenAI client with configured model pools
+   - load the structured AI config from `CfgExt`, or its legacy migration view
+   - resolve the queue bound to the `rewrite` scene
+   - try configured provider/model items in order with model capability validation
    - send rewrite prompt and return rewritten content
 5. Common failure signatures:
    - `no permission`
-   - `openai config error`
-   - `openai.base is empty`
-   - `openai.token is empty`
-   - `openai init error`
-   - `svr error`
+   - `ai scene "rewrite" is not configured`
+   - `<provider>/<model>: provider token is empty`
+   - joined per-model upstream errors after the queue is exhausted
 
 ## AI Gateway endpoint
 
@@ -140,11 +144,8 @@ Last verified: 2026-07-11
    - `unknown ai action`
    - `invalid payload`
    - `empty notes`
-   - `openai config error`
-   - `openai.base is empty`
-   - `openai.token is empty`
-   - `openai init error`
-   - `svr error`
+   - missing scene binding or queue
+   - joined per-model queue errors
    - `ai response parse error`
 
 ## AI transcription endpoint
@@ -156,46 +157,46 @@ Last verified: 2026-07-11
 3. Request body uses `multipart/form-data`:
    - `file`: required audio file/blob
    - `language`: optional; forwarded as the transcription language hint
-   - `prompt`: optional; forwarded as transcription context for the standard OpenAI-compatible SDK path; OpenRouter's generic STT JSON contract does not expose this field, so the narrow OpenRouter branch ignores it
-4. Model selection is server-owned:
-   - read from `PLAT.openai.audio.model`
-   - default: `gpt-4o-mini-transcribe`
+   - `prompt`: optional; forwarded as transcription context only for the standard OpenAI-compatible SDK path. OpenRouter JSON STT and both native DashScope branches ignore it in the current integration.
+4. Provider/model selection is server-owned:
+   - resolve the `transcribe + stt` entry from `AIPlatformConfig.businesses`
+   - require the selected queue and every referenced model to use `stt`
+   - try queue items in order and rewind the uploaded file between attempts
    - request-supplied model fields are ignored
-5. Provider selection is server-owned:
-   - use `PLAT.openai.audio.base` and `PLAT.openai.audio.token` when both are configured
-   - otherwise inherit `PLAT.openai.base` and `PLAT.openai.token`
-   - reject a partial audio provider override rather than mixing credentials and base URLs
-   - OpenRouter Base URLs use the route's Base64 JSON compatibility path; other OpenAI-compatible providers use multipart transcription through the official SDK
-6. Backend upload/request guards:
+   - resolve the model's explicit call protocol or inherit it from provider protocol and model type
+   - `OpenAISTT` uses OpenRouter's Base64 JSON compatibility path for OpenRouter hosts and multipart transcription through the official SDK elsewhere
+   - `DashScopeQwen3ASR` uses the native DashScope synchronous Qwen3-ASR message and response structure
+   - `DashScopeFunASR` uses the distinct native DashScope synchronous Fun-ASR-Flash structure
+   - the asynchronous `/services/audio/asr/transcription` task protocol and Qwen OpenAI-chat-compatible protocol are intentionally not implemented
+5. Backend upload/request guards:
    - max audio upload size is 250 MB
    - prompt is capped at 4000 runes
    - language is capped at 32 bytes
    - upstream transcription call timeout is 10 minutes
-7. Response payload:
+6. Response payload:
    - `text`
    - optional `language`
    - optional `duration`
-8. Common failure signatures:
+7. Common failure signatures:
    - `no permission`
    - `audio file is required`
    - `audio file is empty`
    - `audio file is too large`
    - `language is too long`
    - `prompt is too long`
-   - `openai config error`
-   - `openai.audio provider config incomplete`
-   - `openai.base is empty`
-   - `openai.token is empty`
-   - `openai.audio.model is empty`
-   - `openai init error`
-   - `svr error`
-9. An opt-in live provider check is available on macOS. Run `go test -tags live_ai -run '^TestLiveAudioProvider$' -count=1 -v ./platform` from `backend/`; it prompts for the provider URL and reads the API key with terminal echo disabled, generates a temporary WAV fixture, and does not persist credentials.
+   - `ai config error`
+   - `stt queue is not configured`
+   - `stt queue <id> must contain stt models`
+   - `<provider>/<model>: provider token is empty`
+   - joined per-model upstream errors after the STT queue is exhausted
+8. An opt-in live provider check is available on macOS. Run `go test -tags live_ai -run '^TestLiveAudioProvider$' -count=1 -v ./platform` from `backend/`; it prompts for the provider URL and reads the API key with terminal echo disabled, generates a temporary WAV fixture, and does not persist credentials.
 
 ## Config read behavior in admin flows
 
 1. Config reads use `GetWithFilter`.
 2. Platform/service config responses can surface registered defaults before the first explicit save.
 3. This is why admin UI can read AI config defaults even when nothing has been saved yet.
+4. The AI settings page does not use `UniConfig` for the structured document. It loads/saves the typed AI config routes and separates editing into provider/model registration, typed ordered model queues, and the unified business configuration list.
 
 ## R2 config and upload contract
 
