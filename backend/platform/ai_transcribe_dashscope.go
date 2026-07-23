@@ -123,6 +123,13 @@ func transcribeDashScopeFunASR(
 		return ai.TranscriptionResult{}, err
 	}
 	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
+		var upstreamErr struct {
+			Message string `json:"message"`
+		}
+		if json.Unmarshal(body, &upstreamErr) == nil &&
+			strings.TrimSpace(upstreamErr.Message) == "ASR_RESPONSE_HAVE_NO_WORDS" {
+			return ai.TranscriptionResult{}, errAITranscriptionEmpty
+		}
 		return ai.TranscriptionResult{}, fmt.Errorf("DashScope Fun-ASR failed (%d): %s", resp.StatusCode, strings.TrimSpace(string(body)))
 	}
 	var result struct {
@@ -143,7 +150,7 @@ func transcribeDashScopeFunASR(
 		text = strings.TrimSpace(result.Output.Output.Sentence.Text)
 	}
 	if text == "" {
-		return ai.TranscriptionResult{}, errors.New("empty Fun-ASR transcription")
+		return ai.TranscriptionResult{}, errAITranscriptionEmpty
 	}
 	return ai.TranscriptionResult{Text: text}, nil
 }

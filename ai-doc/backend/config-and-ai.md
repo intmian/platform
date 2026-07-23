@@ -177,6 +177,7 @@ Last verified: 2026-07-22
    - `text`
    - optional `language`
    - optional `duration`
+   - audio with no recognizable speech is a successful transcription with an empty `text`; the STT queue stops at that provider/model without logging an upstream warning or trying later fallback items
 7. Common failure signatures:
    - `no permission`
    - `audio file is required`

@@ -22,6 +22,15 @@ const (
 	maxAITranscribeLanguageLen = 32
 )
 
+var errAITranscriptionEmpty = errors.New("empty transcription")
+
+func isAITranscriptionEmptyError(err error) bool {
+	if err == nil {
+		return false
+	}
+	return errors.Is(err, errAITranscriptionEmpty) || strings.TrimSpace(err.Error()) == "openai-empty"
+}
+
 func (m *webMgr) aiTranscribe(c *gin.Context) {
 	valid := m.getValid(c)
 	if !valid.HasOnePermission(share.PermissionAdmin, share.PermissionAI) {
@@ -163,16 +172,14 @@ func (m *webMgr) transcribeQueue(ctx context.Context, aiCfg share.AIPlatformConf
 		default:
 			err = fmt.Errorf("unsupported stt call protocol %q", callProtocol)
 		}
-		if err == nil && strings.TrimSpace(ret.Text) != "" {
+		if err == nil || isAITranscriptionEmptyError(err) {
+			ret.Text = strings.TrimSpace(ret.Text)
 			attempt.Success = true
 			attempt.DurationMS = time.Since(startedAt).Milliseconds()
 			meta.Attempts = append(meta.Attempts, attempt)
 			meta.ProviderID = item.Provider.ID
 			meta.ModelID = item.Model.ID
 			return ret, meta, nil
-		}
-		if err == nil {
-			err = errors.New("empty transcription")
 		}
 		if m.plat != nil && m.plat.log != nil {
 			m.plat.log.Warning("PLAT", "ai transcribe upstream error [%s]: %s", label, err.Error())

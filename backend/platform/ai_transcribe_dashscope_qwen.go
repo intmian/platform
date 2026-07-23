@@ -92,7 +92,7 @@ func transcribeDashScopeQwen3ASR(
 	}
 	text := strings.Join(texts, "")
 	if text == "" {
-		return ai.TranscriptionResult{}, errors.New("empty Qwen3-ASR transcription")
+		return ai.TranscriptionResult{}, errAITranscriptionEmpty
 	}
 	detectedLanguage := strings.TrimSpace(language)
 	if annotations := result.Output.Choices[0].Message.Annotations; len(annotations) > 0 && strings.TrimSpace(annotations[0].Language) != "" {

@@ -120,7 +120,7 @@ func transcribeOpenRouter(
 		return ai.TranscriptionResult{}, err
 	}
 	if strings.TrimSpace(result.Text) == "" {
-		return ai.TranscriptionResult{}, errors.New("openai-empty")
+		return ai.TranscriptionResult{}, errAITranscriptionEmpty
 	}
 	return ai.TranscriptionResult{
 		Text:     strings.TrimSpace(result.Text),
