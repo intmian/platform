@@ -58,6 +58,10 @@ const MODEL_TYPE_OPTIONS = [
     {value: "stt", label: "STT（语音转写）"},
 ];
 
+function modelTypeLabel(type: ModelType): string {
+    return type === "stt" ? "语音转写" : "文本生成";
+}
+
 const MODEL_CALL_PROTOCOL_OPTIONS: Record<ModelType, {value: ModelCallProtocol, label: string}[]> = {
     text: [
         {value: "OpenAIText", label: "OpenAI 文字"},
@@ -109,7 +113,7 @@ function findModel(value: AIPlatformConfig, providerID: string, modelID: string)
 function modelDisplayName(value: AIPlatformConfig, providerID: string, modelID: string): string {
     const provider = value.providers.find((candidate) => candidate.id === providerID);
     const model = provider?.models.find((candidate) => candidate.id === modelID);
-    return `${provider?.name || providerID}/${model?.name || modelID}`;
+    return `${provider?.name || "未知供应商"}/${model?.name || "未知模型"}`;
 }
 
 function inheritedCallProtocolLabel(providerProtocol: ProviderProtocol, modelType: ModelType): string {
@@ -247,10 +251,10 @@ export function AISetting() {
         {value.providers.map((provider, providerIndex) => <Card
             key={`${provider.id}-${providerIndex}`}
             size="small"
-            title={provider.name || provider.id || "未命名供应商"}
+            title={provider.name || "未命名供应商"}
             extra={<Popconfirm
                 title="删除这个供应商？"
-                description="该供应商的模型及队列引用会一并移除。"
+                description="该供应商的模型及策略引用会一并移除。"
                 onConfirm={() => mutate((current) => ({
                     ...current,
                     providers: current.providers.filter((_, i) => i !== providerIndex),
@@ -317,7 +321,7 @@ export function AISetting() {
             <Flex vertical gap={10}>
                 {provider.models.map((model, modelIndex) => <Card key={`${model.id}-${modelIndex}`} size="small">
                     <Row gutter={[10, 10]} align="bottom">
-                        <Col xs={24} md={7}><Field label="模型名称">
+                        <Col xs={24} md={7}><Field label="上游模型 ID">
                             <Input value={model.name} onChange={(event) => updateModel(providerIndex, modelIndex, {name: event.target.value})}/>
                         </Field></Col>
                         <Col xs={24} md={4}><Field label="类型">
@@ -385,7 +389,7 @@ export function AISetting() {
                                 onChange={(reasoning: ReasoningEffort[]) => updateModel(providerIndex, modelIndex, {reasoning})}
                             />
                         </Field></Col>
-                        <Col xs={24} md={10}><Field label="可用工具">
+                        <Col xs={24} md={10}><Field label="模型可用工具">
                             <Select
                                 mode="multiple"
                                 maxTagCount="responsive"
@@ -413,8 +417,8 @@ export function AISetting() {
     </Flex>;
 
     const queuePanel = <Flex vertical gap={16}>
-        <Alert type="info" showIcon message="模型队列是有序调用预设：上一项失败后尝试下一项，第一个成功结果立即返回。"/>
-        {value.queues.length === 0 && <Empty description="还没有模型队列"/>}
+        <Alert type="info" showIcon message="调用策略按顺序尝试模型：上一项失败后尝试下一项，第一个成功结果立即返回。"/>
+        {value.queues.length === 0 && <Empty description="还没有调用策略"/>}
         {value.queues.map((queue, queueIndex) => {
             const queueProviderOptions = value.providers
                 .filter((provider) => provider.models.some((model) => model.type === queue.type))
@@ -425,7 +429,7 @@ export function AISetting() {
             return <Card
                 key={`${queue.id}-${queueIndex}`}
                 size="small"
-                title={<Space>{queue.name || "未命名队列"}<Tag>{queue.type.toUpperCase()}</Tag></Space>}
+                title={<Space>{queue.name || "未命名策略"}<Tag>{modelTypeLabel(queue.type)}</Tag></Space>}
                 extra={<Space>
                     <Button icon={<ExperimentOutlined/>} onClick={() => {
                         setTestQueueIndex(queueIndex);
@@ -433,7 +437,7 @@ export function AISetting() {
                         setQueueTestFile(null);
                         setQueueTestResult(null);
                     }}>测试</Button>
-                    <Popconfirm title="删除这个模型队列？" description="引用该队列的业务配置将清空选择。" onConfirm={() => mutate((current) => ({
+                    <Popconfirm title="删除这个调用策略？" description="使用该策略的业务配置将清空选择。" onConfirm={() => mutate((current) => ({
                         ...current,
                         queues: current.queues.filter((_, i) => i !== queueIndex),
                         businesses: current.businesses.map((business) => business.queueID === queue.id
@@ -443,13 +447,10 @@ export function AISetting() {
                 </Space>}
             >
                 <Row gutter={[12, 12]}>
-                    <Col xs={24} md={8}><Field label="队列 ID（系统生成）">
-                        <Text code copyable={{text: queue.id}}>{queue.id}</Text>
-                    </Field></Col>
-                    <Col xs={24} md={8}><Field label="显示名称">
+                    <Col xs={24} md={12}><Field label="策略名称">
                         <Input value={queue.name} onChange={(event) => updateQueue(queueIndex, {name: event.target.value})}/>
                     </Field></Col>
-                    <Col xs={24} md={8}><Field label="类型">
+                    <Col xs={24} md={12}><Field label="类型">
                         <Select
                             value={queue.type}
                             options={MODEL_TYPE_OPTIONS}
@@ -540,7 +541,7 @@ export function AISetting() {
                                         onChange={(reasoningEffort?: ReasoningEffort) => updateQueueItem(queueIndex, itemIndex, {reasoningEffort})}
                                     />
                                 </Field></Col>
-                                <Col xs={24} md={12}><Field label="启用工具">
+                                <Col xs={24} md={12}><Field label="本策略启用工具">
                                     <Select
                                         mode="multiple"
                                         value={item.tools ?? []}
@@ -554,18 +555,18 @@ export function AISetting() {
                     })}
                     <Button type="dashed" icon={<PlusOutlined/>} onClick={() => updateQueue(queueIndex, {
                         items: [...queue.items, {providerID: "", modelID: "", tools: []}],
-                    })}>添加队列项</Button>
+                    })}>添加备用模型</Button>
                 </Flex>
             </Card>;
         })}
         <Button block type="dashed" icon={<PlusOutlined/>} onClick={() => mutate((current) => ({
             ...current,
-            queues: [...current.queues, {id: nextID("queue"), name: "新队列", type: "text", items: []}],
-        }))}>添加模型队列</Button>
+            queues: [...current.queues, {id: nextID("queue"), name: "新策略", type: "text", items: []}],
+        }))}>添加调用策略</Button>
     </Flex>;
 
     const scenePanel = <Flex vertical gap={16}>
-        <Alert type="info" showIcon message="业务条目和类型由系统固定，只需为每项选择一个同类型队列。"/>
+        <Alert type="info" showIcon message="业务条目和类型由系统固定，只需为每项选择一个同类型调用策略。"/>
         <Card size="small" title="业务配置列表">
             <Flex vertical gap={10}>
                 {BUSINESS_DEFINITIONS.map((definition) => {
@@ -574,22 +575,19 @@ export function AISetting() {
                     )) ?? {...definition, queueID: ""};
                     const queueOptions = value.queues
                         .filter((queue) => queue.type === definition.type)
-                        .map((queue) => ({value: queue.id, label: queue.name ? `${queue.name} (${queue.id})` : queue.id}));
+                        .map((queue) => ({value: queue.id, label: queue.name || "未命名策略"}));
                     return <Row key={`${definition.scene}-${definition.type}`} gutter={[10, 10]} align="bottom">
                     <Col xs={24} md={10}><Field label="业务">
-                        <Space>
-                            <Text strong>{definition.label}</Text>
-                            <Text code>{definition.scene}</Text>
-                        </Space>
+                        <Text strong>{definition.label}</Text>
                     </Field></Col>
                     <Col xs={24} md={5}><Field label="类型">
-                        <div><Tag>{definition.type.toUpperCase()}</Tag></div>
+                        <div><Tag>{modelTypeLabel(definition.type)}</Tag></div>
                     </Field></Col>
-                    <Col xs={24} md={9}><Field label="使用队列">
+                    <Col xs={24} md={9}><Field label="调用策略">
                         <Select
                             showSearch
                             value={binding.queueID || undefined}
-                            placeholder="选择队列"
+                            placeholder="选择调用策略"
                             options={queueOptions}
                             onChange={(queueID: string) => mutate((current) => ({
                                 ...current,
@@ -636,16 +634,16 @@ export function AISetting() {
         >保存全部配置</Button>}
     >
         <Paragraph type="secondary">
-            供应商注册模型，模型和队列声明类型，业务按场景与类型选择队列预设。
+            内部标识由系统维护；配置时只使用供应商名称、上游模型 ID 和调用策略名称。
         </Paragraph>
         <Tabs items={[
             {key: "providers", label: `供应商与模型 (${value.providers.length})`, children: providerPanel},
-            {key: "queues", label: `模型队列 (${value.queues.length})`, children: queuePanel},
+            {key: "queues", label: `调用策略 (${value.queues.length})`, children: queuePanel},
             {key: "scenes", label: `业务配置 (${value.businesses.length})`, children: scenePanel},
         ]}/>
         <Modal
             open={Boolean(activeTestQueue)}
-            title={activeTestQueue ? `测试 Queue：${activeTestQueue.name || activeTestQueue.id}` : "测试 Queue"}
+            title={activeTestQueue ? `测试调用策略：${activeTestQueue.name || "未命名策略"}` : "测试调用策略"}
             onCancel={closeQueueTest}
             width={720}
             footer={<Space>
@@ -657,7 +655,7 @@ export function AISetting() {
                 <Alert
                     type="info"
                     showIcon
-                    message={`使用当前未保存的配置，按 ${activeTestQueue.type.toUpperCase()} Queue 顺序执行并自动回退。`}
+                    message={`使用当前未保存的配置，按${modelTypeLabel(activeTestQueue.type)}模型顺序执行并自动回退。`}
                 />
                 {activeTestQueue.type === "text" ? <Field label="测试文字">
                     <Input.TextArea
@@ -685,7 +683,7 @@ export function AISetting() {
                     <Alert
                         type={queueTestResult.error ? "error" : "success"}
                         showIcon
-                        message={queueTestResult.error ? "Queue 执行失败" : "Queue 执行成功"}
+                        message={queueTestResult.error ? "调用策略执行失败" : "调用策略执行成功"}
                         description={queueTestResult.error || (
                             queueTestResult.providerID && queueTestResult.modelID
                                 ? `命中 ${modelDisplayName(value, queueTestResult.providerID, queueTestResult.modelID)}`

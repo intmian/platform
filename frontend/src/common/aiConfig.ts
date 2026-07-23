@@ -116,11 +116,11 @@ export async function testAIQueue(value: AIPlatformConfig, queueID: string, inpu
         body: form,
     });
     if (!response.ok) {
-        throw new Error("Queue 测试请求失败");
+        throw new Error("调用策略测试请求失败");
     }
     const result = await response.json() as AIConfigEnvelope<AIQueueTestResult>;
     if (result.code !== 0) {
-        throw new Error(result.msg || "Queue 测试请求失败");
+        throw new Error(result.msg || "调用策略测试请求失败");
     }
     return result.data;
 }
