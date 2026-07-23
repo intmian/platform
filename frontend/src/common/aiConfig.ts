@@ -4,7 +4,6 @@ export type ProviderProtocol = "OpenAI" | "DeepSeek";
 export type ModelType = "text" | "stt";
 export type ModelCallProtocol = "OpenAIText" | "DeepSeekText" | "OpenAISTT" | "DashScopeQwen3ASR" | "DashScopeFunASR";
 export type ReasoningEffort = "none" | "minimal" | "low" | "medium" | "high" | "xhigh" | "max";
-export type ThinkingType = "enabled" | "disabled";
 export type ChatTool = "web_search";
 
 export interface AIModelConfig {
@@ -29,7 +28,6 @@ export interface AIModelQueueItem {
     providerID: string;
     modelID: string;
     reasoningEffort?: ReasoningEffort;
-    thinking?: ThinkingType;
     tools?: ChatTool[];
 }
 

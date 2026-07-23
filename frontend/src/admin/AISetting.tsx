@@ -1,6 +1,5 @@
 import {
     Alert,
-    AutoComplete,
     Button,
     Card,
     Col,
@@ -38,7 +37,6 @@ import {
     ModelType,
     ProviderProtocol,
     ReasoningEffort,
-    ThinkingType,
     getAIPlatformConfig,
     saveAIPlatformConfig,
     testAIQueue,
@@ -84,12 +82,12 @@ const DEEPSEEK_REASONING_OPTIONS = ["high", "max"].map((value) => ({
 
 const TOOL_OPTIONS: {value: ChatTool, label: string}[] = [{value: "web_search", label: "Web Search"}];
 
-const SCENE_SUGGESTIONS = [
-    {value: "rewrite", label: "重写 (rewrite)"},
-    {value: "summary", label: "新闻汇总 (summary)"},
-    {value: "translate", label: "翻译 (translate)"},
-    {value: "library_review_digest", label: "阅读笔记整理 (library_review_digest)"},
-    {value: "transcribe", label: "语音转写 (transcribe)"},
+const BUSINESS_DEFINITIONS: {scene: string, label: string, type: ModelType}[] = [
+    {scene: "rewrite", label: "重写", type: "text"},
+    {scene: "summary", label: "新闻汇总", type: "text"},
+    {scene: "translate", label: "翻译", type: "text"},
+    {scene: "library_review_digest", label: "阅读笔记整理", type: "text"},
+    {scene: "transcribe", label: "语音转写", type: "stt"},
 ];
 
 function Field({label, children}: {label: string, children: ReactNode}) {
@@ -435,10 +433,12 @@ export function AISetting() {
                         setQueueTestFile(null);
                         setQueueTestResult(null);
                     }}>测试</Button>
-                    <Popconfirm title="删除这个模型队列？" description="引用该队列的业务配置也会移除。" onConfirm={() => mutate((current) => ({
+                    <Popconfirm title="删除这个模型队列？" description="引用该队列的业务配置将清空选择。" onConfirm={() => mutate((current) => ({
                         ...current,
                         queues: current.queues.filter((_, i) => i !== queueIndex),
-                        businesses: current.businesses.filter((business) => business.queueID !== queue.id),
+                        businesses: current.businesses.map((business) => business.queueID === queue.id
+                            ? {...business, queueID: ""}
+                            : business),
                     }))}><Button danger type="text" icon={<DeleteOutlined/>}/></Popconfirm>
                 </Space>}
             >
@@ -472,7 +472,6 @@ export function AISetting() {
                                             providerID,
                                             modelID: "",
                                             reasoningEffort: undefined,
-                                            thinking: undefined,
                                             tools: [],
                                         })}
                                     />
@@ -485,12 +484,16 @@ export function AISetting() {
                                             value: candidate.id,
                                             label: candidate.name,
                                         }))}
-                                        onChange={(modelID: string) => updateQueueItem(queueIndex, itemIndex, {
-                                            modelID,
-                                            reasoningEffort: undefined,
-                                            thinking: undefined,
-                                            tools: [],
-                                        })}
+                                        onChange={(modelID: string) => {
+                                            const selectedModel = provider?.models.find((candidate) => candidate.id === modelID);
+                                            updateQueueItem(queueIndex, itemIndex, {
+                                                modelID,
+                                                reasoningEffort: resolvedCallProtocol(provider, selectedModel) === "DeepSeekText"
+                                                    ? "none"
+                                                    : undefined,
+                                                tools: [],
+                                            });
+                                        }}
                                     />
                                 </Field></Col>
                                 <Col xs={24} md={6}>
@@ -522,29 +525,22 @@ export function AISetting() {
                                 </Col>
                             </Row>
                             <Row gutter={[8, 8]} style={{marginTop: 8}}>
-                                <Col xs={24} md={8}><Field label="思考强度">
+                                <Col xs={24} md={12}><Field label="思考强度">
                                     <Select
-                                        allowClear
+                                        allowClear={resolvedCallProtocol(provider, model) !== "DeepSeekText"}
                                         value={item.reasoningEffort || undefined}
-                                        options={(model?.reasoning ?? []).map((effort) => ({value: effort, label: effort}))}
-                                        disabled={queue.type !== "text" || (model?.reasoning?.length ?? 0) === 0}
+                                        options={(resolvedCallProtocol(provider, model) === "DeepSeekText"
+                                            ? ["none", ...(model?.reasoning ?? []).filter((effort) => effort === "high" || effort === "max")]
+                                            : (model?.reasoning ?? [])
+                                        ).map((effort) => ({value: effort, label: effort}))}
+                                        disabled={queue.type !== "text" || (
+                                            resolvedCallProtocol(provider, model) !== "DeepSeekText" &&
+                                            (model?.reasoning?.length ?? 0) === 0
+                                        )}
                                         onChange={(reasoningEffort?: ReasoningEffort) => updateQueueItem(queueIndex, itemIndex, {reasoningEffort})}
                                     />
                                 </Field></Col>
-                                <Col xs={24} md={8}><Field label="思考模式">
-                                    <Select
-                                        allowClear
-                                        placeholder="跟随默认"
-                                        value={item.thinking || undefined}
-                                        options={[
-                                            {value: "enabled", label: "开启"},
-                                            {value: "disabled", label: "关闭"},
-                                        ]}
-                                        disabled={queue.type !== "text" || resolvedCallProtocol(provider, model) !== "DeepSeekText"}
-                                        onChange={(thinking?: ThinkingType) => updateQueueItem(queueIndex, itemIndex, {thinking})}
-                                    />
-                                </Field></Col>
-                                <Col xs={24} md={8}><Field label="启用工具">
+                                <Col xs={24} md={12}><Field label="启用工具">
                                     <Select
                                         mode="multiple"
                                         value={item.tools ?? []}
@@ -569,55 +565,50 @@ export function AISetting() {
     </Flex>;
 
     const scenePanel = <Flex vertical gap={16}>
-        <Alert type="info" showIcon message="每条业务配置只绑定一个同类型队列；STT 与文本场景使用同一套列表。"/>
+        <Alert type="info" showIcon message="业务条目和类型由系统固定，只需为每项选择一个同类型队列。"/>
         <Card size="small" title="业务配置列表">
             <Flex vertical gap={10}>
-                {value.businesses.map((binding, index) => {
+                {BUSINESS_DEFINITIONS.map((definition) => {
+                    const binding = value.businesses.find((item) => (
+                        item.scene === definition.scene && item.type === definition.type
+                    )) ?? {...definition, queueID: ""};
                     const queueOptions = value.queues
-                        .filter((queue) => queue.type === binding.type)
+                        .filter((queue) => queue.type === definition.type)
                         .map((queue) => ({value: queue.id, label: queue.name ? `${queue.name} (${queue.id})` : queue.id}));
-                    return <Row key={`${binding.scene}-${binding.type}-${index}`} gutter={[10, 10]} align="bottom">
-                    <Col xs={24} md={8}><Field label="场景">
-                        <AutoComplete
-                            value={binding.scene || undefined}
-                            options={SCENE_SUGGESTIONS}
-                            placeholder="选择或输入业务场景 ID"
-                            onChange={(scene: string) => mutate((current) => ({
-                                ...current,
-                                businesses: current.businesses.map((item, i) => i === index ? {...item, scene} : item),
-                            }))}
-                        />
+                    return <Row key={`${definition.scene}-${definition.type}`} gutter={[10, 10]} align="bottom">
+                    <Col xs={24} md={10}><Field label="业务">
+                        <Space>
+                            <Text strong>{definition.label}</Text>
+                            <Text code>{definition.scene}</Text>
+                        </Space>
                     </Field></Col>
                     <Col xs={24} md={5}><Field label="类型">
-                        <Select
-                            value={binding.type}
-                            options={MODEL_TYPE_OPTIONS}
-                            onChange={(type: ModelType) => mutate((current) => ({
-                                ...current,
-                                businesses: current.businesses.map((item, i) => i === index ? {...item, type, queueID: ""} : item),
-                            }))}
-                        />
+                        <div><Tag>{definition.type.toUpperCase()}</Tag></div>
                     </Field></Col>
-                    <Col xs={20} md={9}><Field label="队列预设">
+                    <Col xs={24} md={9}><Field label="使用队列">
                         <Select
                             showSearch
                             value={binding.queueID || undefined}
+                            placeholder="选择队列"
                             options={queueOptions}
                             onChange={(queueID: string) => mutate((current) => ({
                                 ...current,
-                                businesses: current.businesses.map((item, i) => i === index ? {...item, queueID} : item),
+                                businesses: BUSINESS_DEFINITIONS.map((item) => {
+                                    const currentBinding = current.businesses.find((candidate) => (
+                                        candidate.scene === item.scene && candidate.type === item.type
+                                    ));
+                                    return {
+                                        scene: item.scene,
+                                        type: item.type,
+                                        queueID: item.scene === definition.scene && item.type === definition.type
+                                            ? queueID
+                                            : (currentBinding?.queueID ?? ""),
+                                    };
+                                }),
                             }))}
                         />
                     </Field></Col>
-                    <Col xs={4} md={2}><Button danger type="text" icon={<DeleteOutlined/>} onClick={() => mutate((current) => ({
-                        ...current,
-                        businesses: current.businesses.filter((_, i) => i !== index),
-                    }))}/></Col>
                 </Row>})}
-                <Button type="dashed" icon={<PlusOutlined/>} onClick={() => mutate((current) => ({
-                    ...current,
-                    businesses: [...current.businesses, {scene: "", type: "text", queueID: ""}],
-                }))}>添加业务配置</Button>
             </Flex>
         </Card>
     </Flex>;

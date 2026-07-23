@@ -54,6 +54,14 @@ type AIBusinessConfig struct {
 	QueueID string       `json:"queueID"`
 }
 
+var fixedAIBusinesses = [...]AIBusinessConfig{
+	{Scene: AISceneRewrite, Type: ai.ModelTypeText},
+	{Scene: AISceneSummary, Type: ai.ModelTypeText},
+	{Scene: AISceneTranslate, Type: ai.ModelTypeText},
+	{Scene: AISceneLibraryReviewDigest, Type: ai.ModelTypeText},
+	{Scene: AISceneTranscribe, Type: ai.ModelTypeSTT},
+}
+
 type AIPlatformConfig struct {
 	Version    int                `json:"version"`
 	Providers  []AIProviderConfig `json:"providers"`
@@ -187,8 +195,29 @@ func (c *AIPlatformConfig) normalize() {
 			queue.Type = ai.ModelTypeText
 		}
 		for j := range queue.Items {
-			queue.Items[j].ProviderID = strings.TrimSpace(queue.Items[j].ProviderID)
-			queue.Items[j].ModelID = ai.ModelID(strings.TrimSpace(string(queue.Items[j].ModelID)))
+			item := &queue.Items[j]
+			item.ProviderID = strings.TrimSpace(item.ProviderID)
+			item.ModelID = ai.ModelID(strings.TrimSpace(string(item.ModelID)))
+			provider, model, ok := c.findModel(item.ProviderID, item.ModelID)
+			if ok {
+				callProtocol, err := ResolveAIModelCallProtocol(provider.Protocol, model)
+				if err == nil && callProtocol == ai.ModelCallProtocolDeepSeekText {
+					switch item.Thinking {
+					case ai.ThinkingTypeDisabled:
+						item.ReasoningEffort = ai.ReasoningEffortNone
+					case ai.ThinkingTypeEnabled:
+						if item.ReasoningEffort == "" || item.ReasoningEffort == ai.ReasoningEffortNone {
+							item.ReasoningEffort = ai.ReasoningEffortHigh
+						}
+						c.ensureModelReasoning(item.ProviderID, item.ModelID, item.ReasoningEffort)
+					default:
+						if item.ReasoningEffort == "" {
+							item.ReasoningEffort = ai.ReasoningEffortNone
+						}
+					}
+					item.Thinking = ai.ThinkingTypeUnset
+				}
+			}
 		}
 		if queue.Type == "" && len(queue.Items) > 0 {
 			_, model, ok := c.findModel(queue.Items[0].ProviderID, queue.Items[0].ModelID)
@@ -212,12 +241,42 @@ func (c *AIPlatformConfig) normalize() {
 	}
 	c.LegacyScenes = nil
 	c.LegacySTTQueueID = ""
+	configuredBusinesses := make(map[string]string, len(c.Businesses))
 	for i := range c.Businesses {
 		c.Businesses[i].Scene = AIScene(strings.TrimSpace(string(c.Businesses[i].Scene)))
 		if c.Businesses[i].Type == ai.ModelType("chat") {
 			c.Businesses[i].Type = ai.ModelTypeText
 		}
 		c.Businesses[i].QueueID = strings.TrimSpace(c.Businesses[i].QueueID)
+		key := string(c.Businesses[i].Scene) + "\x00" + string(c.Businesses[i].Type)
+		if _, exists := configuredBusinesses[key]; !exists {
+			configuredBusinesses[key] = c.Businesses[i].QueueID
+		}
+	}
+	c.Businesses = make([]AIBusinessConfig, 0, len(fixedAIBusinesses))
+	for _, definition := range fixedAIBusinesses {
+		key := string(definition.Scene) + "\x00" + string(definition.Type)
+		definition.QueueID = configuredBusinesses[key]
+		c.Businesses = append(c.Businesses, definition)
+	}
+}
+
+func (c *AIPlatformConfig) ensureModelReasoning(providerID string, modelID ai.ModelID, effort ai.ReasoningEffort) {
+	for i := range c.Providers {
+		if c.Providers[i].ID != providerID {
+			continue
+		}
+		for j := range c.Providers[i].Models {
+			model := &c.Providers[i].Models[j]
+			if model.ID != modelID {
+				continue
+			}
+			if !slices.Contains(model.Reasoning, effort) {
+				model.Reasoning = append(model.Reasoning, effort)
+			}
+			return
+		}
+		return
 	}
 }
 
@@ -292,9 +351,6 @@ func (c AIPlatformConfig) Validate() error {
 			if queue.Type != model.Type {
 				return fmt.Errorf("queue %q type %q does not match model %s/%s type %q", queue.ID, queue.Type, item.ProviderID, item.ModelID, model.Type)
 			}
-			if item.ReasoningEffort != "" && !slices.Contains(model.Reasoning, item.ReasoningEffort) {
-				return fmt.Errorf("queue %q item %d reasoning %q is unavailable", queue.ID, j, item.ReasoningEffort)
-			}
 			if !isValidAIThinkingType(item.Thinking) {
 				return fmt.Errorf("queue %q item %d thinking %q is invalid", queue.ID, j, item.Thinking)
 			}
@@ -304,6 +360,11 @@ func (c AIPlatformConfig) Validate() error {
 			}
 			if item.Thinking != ai.ThinkingTypeUnset && callProtocol != ai.ModelCallProtocolDeepSeekText {
 				return fmt.Errorf("queue %q item %d thinking is only available for DeepSeek text", queue.ID, j)
+			}
+			if item.ReasoningEffort != "" &&
+				!(callProtocol == ai.ModelCallProtocolDeepSeekText && item.ReasoningEffort == ai.ReasoningEffortNone) &&
+				!slices.Contains(model.Reasoning, item.ReasoningEffort) {
+				return fmt.Errorf("queue %q item %d reasoning %q is unavailable", queue.ID, j, item.ReasoningEffort)
 			}
 			for _, tool := range item.Tools {
 				if !slices.Contains(model.Tools, tool) {
@@ -326,6 +387,13 @@ func (c AIPlatformConfig) Validate() error {
 		if _, ok := seenBusinesses[key]; ok {
 			return fmt.Errorf("business scene %q type %q is duplicated", binding.Scene, binding.Type)
 		}
+		if !isFixedAIBusiness(binding.Scene, binding.Type) {
+			return fmt.Errorf("business scene %q type %q is not supported", binding.Scene, binding.Type)
+		}
+		if binding.QueueID == "" {
+			seenBusinesses[key] = struct{}{}
+			continue
+		}
 		queue, ok := queues[binding.QueueID]
 		if !ok {
 			return fmt.Errorf("business scene %q type %q references unknown queue %q", binding.Scene, binding.Type, binding.QueueID)
@@ -336,6 +404,15 @@ func (c AIPlatformConfig) Validate() error {
 		seenBusinesses[key] = struct{}{}
 	}
 	return nil
+}
+
+func isFixedAIBusiness(scene AIScene, modelType ai.ModelType) bool {
+	for _, definition := range fixedAIBusinesses {
+		if definition.Scene == scene && definition.Type == modelType {
+			return true
+		}
+	}
+	return false
 }
 
 func isValidAIModelType(modelType ai.ModelType) bool {
@@ -432,6 +509,9 @@ func (c AIPlatformConfig) ResolveQueue(queueID string, modelType ai.ModelType) (
 func (c AIPlatformConfig) QueueIDForScene(scene AIScene, modelType ai.ModelType) (string, error) {
 	for _, binding := range c.Businesses {
 		if binding.Scene == scene && binding.Type == modelType {
+			if strings.TrimSpace(binding.QueueID) == "" {
+				return "", fmt.Errorf("ai scene %q type %q is not configured", scene, modelType)
+			}
 			return binding.QueueID, nil
 		}
 	}
@@ -547,18 +627,35 @@ func (c AIPlatformConfig) RunTextQueueContext(ctx context.Context, queueID strin
 			errs = append(errs, fmt.Errorf("%s/%s: %w", item.Provider.ID, item.Model.ID, err))
 			continue
 		}
-		if err := provider.RegisterModel(item.Model); err != nil {
+		modelForRegistration := item.Model
+		if callProtocol == ai.ModelCallProtocolDeepSeekText {
+			modelForRegistration.Reasoning = slices.DeleteFunc(
+				append([]ai.ReasoningEffort(nil), modelForRegistration.Reasoning...),
+				func(effort ai.ReasoningEffort) bool { return effort == ai.ReasoningEffortNone },
+			)
+		}
+		if err := provider.RegisterModel(modelForRegistration); err != nil {
 			attempt.Error = err.Error()
 			attempt.DurationMS = time.Since(startedAt).Milliseconds()
 			result.Attempts = append(result.Attempts, attempt)
 			errs = append(errs, fmt.Errorf("%s/%s: %w", item.Provider.ID, item.Model.ID, err))
 			continue
 		}
+		reasoningEffort := item.Setting.ReasoningEffort
+		thinking := ai.ThinkingTypeUnset
+		if callProtocol == ai.ModelCallProtocolDeepSeekText {
+			if reasoningEffort == ai.ReasoningEffortNone {
+				reasoningEffort = ""
+				thinking = ai.ThinkingTypeDisabled
+			} else if reasoningEffort != "" {
+				thinking = ai.ThinkingTypeEnabled
+			}
+		}
 		resp, err := provider.Chat(ctx, ai.ChatRequest{
 			Model:           string(item.Model.ID),
 			Messages:        []ai.ChatMessage{{Role: ai.ChatRoleUser, Content: input}},
-			ReasoningEffort: item.Setting.ReasoningEffort,
-			Thinking:        item.Setting.Thinking,
+			ReasoningEffort: reasoningEffort,
+			Thinking:        thinking,
 			Tools:           append([]ai.ChatTool(nil), item.Setting.Tools...),
 		})
 		if err != nil {

@@ -158,8 +158,8 @@ func TestAIPlatformConfigNormalizesVersionOneBindings(t *testing.T) {
 	if config.Providers[0].Models[0].Type != aiv2.ModelTypeText || config.Queues[0].Type != aiv2.ModelTypeText {
 		t.Fatalf("text model/queue type not normalized: %#v", config)
 	}
-	if len(config.Businesses) != 2 {
-		t.Fatalf("business bindings = %d, want 2", len(config.Businesses))
+	if len(config.Businesses) != len(fixedAIBusinesses) {
+		t.Fatalf("business bindings = %d, want %d", len(config.Businesses), len(fixedAIBusinesses))
 	}
 	if queueID, err := config.QueueIDForScene(AISceneTranscribe, aiv2.ModelTypeSTT); err != nil || queueID != "stt" {
 		t.Fatalf("transcribe binding = %q, %v", queueID, err)
@@ -215,7 +215,7 @@ func TestResolveAIModelCallProtocolInheritsProviderByModelType(t *testing.T) {
 	}
 }
 
-func TestAIPlatformConfigAcceptsDeepSeekThinking(t *testing.T) {
+func TestAIPlatformConfigMigratesDeepSeekThinking(t *testing.T) {
 	config := AIPlatformConfig{
 		Version: 2,
 		Providers: []AIProviderConfig{{
@@ -242,13 +242,13 @@ func TestAIPlatformConfigAcceptsDeepSeekThinking(t *testing.T) {
 		}},
 		Businesses: []AIBusinessConfig{{Scene: AISceneRewrite, Type: aiv2.ModelTypeText, QueueID: "reasoning"}},
 	}
+	config.normalize()
+	item := config.Queues[0].Items[0]
+	if item.Thinking != aiv2.ThinkingTypeUnset || item.ReasoningEffort != aiv2.ReasoningEffortHigh {
+		t.Fatalf("DeepSeek thinking was not migrated: %#v", item)
+	}
 	if err := config.Validate(); err != nil {
 		t.Fatalf("DeepSeek config validation failed: %v", err)
-	}
-
-	config.Providers[0].Protocol = AIProviderProtocolOpenAI
-	if err := config.Validate(); err == nil {
-		t.Fatal("OpenAI protocol should reject DeepSeek thinking")
 	}
 }
 
