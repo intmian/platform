@@ -76,15 +76,17 @@ Last verified: 2026-07-24
 
 ## Bottom action behavior (verified from code)
 
-1. The bottom area has two fixed rows:
-   - first row: full-width tag selector
-   - second row: right-aligned file upload, AI rewrite, voice input, and send actions
-2. File upload, AI rewrite, and voice input are icon-only controls with tooltips and accessible labels.
-3. File upload uses `FileAddOutlined` and preserves clipboard-image detection on supported desktop browsers; it is disabled while settings are loading or an upload is already running.
-4. AI rewrite uses `RobotOutlined` and is disabled until the memo has content and settings are ready.
-5. Voice input remains the shared `WhisperButton`; while recording, its expanded pill replaces the send button space.
-6. The send button stays at the far right when voice recording is inactive.
-7. Hide/show remains in the top-right control area next to the logged-in user.
+1. The bottom area has one fixed action row:
+   - left: a long `标签` button that shows the selected-tag count
+   - right: file upload, AI rewrite, voice input, and send actions
+2. Clicking the tag button opens the tag selector in a popover above the row; the button uses its selected style while open and the selector receives focus after its options are ready.
+3. The tag popover overlays the page instead of consuming layout height, so opening or closing it does not resize the memo input.
+4. File upload, AI rewrite, and voice input are icon-only controls with tooltips and accessible labels.
+5. File upload uses `FileAddOutlined` and preserves clipboard-image detection on supported desktop browsers; it is disabled while settings are loading or an upload is already running.
+6. AI rewrite uses `RobotOutlined` and is disabled until the memo has content and settings are ready.
+7. Voice input remains the shared `WhisperButton`; while recording, its expanded pill replaces the send button space.
+8. The send button stays at the far right when voice recording is inactive.
+9. Hide/show remains in the top-right control area next to the logged-in user.
 
 ## Verification focus
 

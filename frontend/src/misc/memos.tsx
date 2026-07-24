@@ -8,7 +8,8 @@ import {
     FileAddOutlined,
     RobotOutlined,
     SettingFilled,
-    SyncOutlined
+    SyncOutlined,
+    TagOutlined
 } from "@ant-design/icons";
 import TagInput from "../common/TagInput";
 import {useLostFocus} from "../common/hook";
@@ -385,13 +386,14 @@ function MemosQueue({reqs, url, apiKey}: { reqs: MemosReq[], url: string, apiKey
     </div>;
 }
 
-function Tags({TagsChange, setting, style, tags, onCtrlEnter, maxTagTextLength}: {
+function Tags({TagsChange, setting, style, tags, onCtrlEnter, maxTagTextLength, autoFocus}: {
     TagsChange: (tags: string[]) => void,
     setting: MemosSetting,
     style: React.CSSProperties | undefined,
     tags: string[],
     onCtrlEnter: () => void,
     maxTagTextLength?: number,
+    autoFocus?: boolean,
 }) {
     // 从localStorage中获取之前缓存的tags
     const tagsOprDisk = JSON.parse(localStorage.getItem('memosTags') || '[]');
@@ -419,6 +421,7 @@ function Tags({TagsChange, setting, style, tags, onCtrlEnter, maxTagTextLength}:
         style={style} tagOps={tagsOpr.current}
         disabled={false} maxTagCount={"responsive"} maxTagTextLength={maxTagTextLength}
         maxTagPlaceholder={undefined}
+        autoFocus={autoFocus}
     />
 }
 
@@ -673,6 +676,7 @@ function Memos() {
     const [hidden, setHidden] = useState(false);
     const [hasInputText, setHasInputText] = useState(false);
     const [voiceRecording, setVoiceRecording] = useState(false);
+    const [tagPopoverOpen, setTagPopoverOpen] = useState(false);
     const isMobile = useIsMobile();
     // const [uploading, setUploading] = useState(false); // Removed for useImageUpload
     // const fileInputRef = useRef<HTMLInputElement>(null); // Removed for useImageUpload
@@ -821,6 +825,7 @@ function Memos() {
         setLastReqId(lastReqId + 1);
         setHidden(false);
         setTagsSelected([]);
+        setTagPopoverOpen(false);
         if (inputRef.current) {
             inputRef.current.focus();
         }
@@ -999,29 +1004,50 @@ function Memos() {
             <div
                 style={{
                     display: 'flex',
-                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
                     gap: '8px',
                 }}
             >
-                <Tags
-                    onCtrlEnter={() => {
-                        if (canSubmit && !loadingSetting) {
-                            submit();
-                        }
-                    }}
-                    TagsChange={tagsChange}
-                    tags={tagsSelected}
-                    setting={NowSetting}
-                    maxTagTextLength={isMobile ? 3 : undefined}
-                    style={{
-                        width: '100%',
-                        minWidth: 0,
-                    }}/>
+                <Popover
+                    trigger="click"
+                    placement="topLeft"
+                    open={tagPopoverOpen}
+                    onOpenChange={setTagPopoverOpen}
+                    content={
+                        <Tags
+                            onCtrlEnter={() => {
+                                if (canSubmit && !loadingSetting) {
+                                    submit();
+                                }
+                            }}
+                            TagsChange={tagsChange}
+                            tags={tagsSelected}
+                            setting={NowSetting}
+                            maxTagTextLength={isMobile ? 3 : undefined}
+                            autoFocus={tagPopoverOpen}
+                            style={{
+                                width: isMobile ? '240px' : '320px',
+                            }}
+                        />
+                    }
+                >
+                    <Button
+                        size="small"
+                        type={tagPopoverOpen ? "primary" : "default"}
+                        icon={<TagOutlined/>}
+                        aria-label="选择标签"
+                        aria-pressed={tagPopoverOpen}
+                        style={{minWidth: '96px'}}
+                    >
+                        {tagsSelected.length > 0 ? `标签 ${tagsSelected.length}` : '标签'}
+                    </Button>
+                </Popover>
                 <Space
                     style={{
                         display: 'flex',
                         justifyContent: 'flex-end',
-                        width: '100%',
+                        flexShrink: 0,
                     }}
                 >
                     <Tooltip title="文件上传">

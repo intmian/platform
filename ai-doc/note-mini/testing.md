@@ -30,9 +30,10 @@ Last verified: 2026-07-24
    - KEY = mock key
 5. Type a known plaintext in memo input.
 6. Verify the bottom layout:
-   - tag selector occupies the first row
-   - file upload, AI rewrite, voice input, and send actions are right-aligned on the second row
+   - the long tag button stays at the far left
+   - file upload, AI rewrite, voice input, and send actions stay right-aligned
    - file upload, AI rewrite, and voice input use icon-only buttons with accessible labels/tooltips
+   - opening the tag button selects it, focuses the tag selector, and does not resize the memo input
 7. Click `发送` (real send).
 8. Verify UI result:
    - request queue shows success icon
@@ -49,7 +50,7 @@ Last verified: 2026-07-24
 
 1. Real send request reaches mock endpoint successfully.
 2. Captured payload contains the expected plaintext and tags.
-3. The two-row bottom layout remains intact at desktop and mobile widths.
+3. The single-row bottom layout remains intact at desktop and mobile widths, and the memo input keeps the same size while the tag popover opens or closes.
 4. Upload, AI rewrite, and voice icon actions remain reachable and correctly labeled.
 5. No request is sent to the formal memo service.
 6. When the task includes UI changes, provide screenshots for both the changed area and a nearby non-target area, and confirm no unintended impact.
