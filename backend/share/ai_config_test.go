@@ -213,6 +213,12 @@ func TestResolveAIModelCallProtocolInheritsProviderByModelType(t *testing.T) {
 	if err != nil || got != aiv2.ModelCallProtocolDashScopeFunASR {
 		t.Fatalf("override protocol = %q, %v", got, err)
 	}
+
+	realtimeOverride := aiv2.ModelConfig{Type: aiv2.ModelTypeSTT, CallProtocol: aiv2.ModelCallProtocolDashScopeFunASRRealtime}
+	got, err = ResolveAIModelCallProtocol(AIProviderProtocolOpenAI, realtimeOverride)
+	if err != nil || got != aiv2.ModelCallProtocolDashScopeFunASRRealtime {
+		t.Fatalf("realtime override protocol = %q, %v", got, err)
+	}
 }
 
 func TestAIPlatformConfigMigratesDeepSeekThinking(t *testing.T) {

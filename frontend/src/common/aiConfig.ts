@@ -2,7 +2,7 @@ import config from "../config.json";
 
 export type ProviderProtocol = "OpenAI" | "DeepSeek";
 export type ModelType = "text" | "stt";
-export type ModelCallProtocol = "OpenAIText" | "DeepSeekText" | "OpenAISTT" | "DashScopeQwen3ASR" | "DashScopeFunASR";
+export type ModelCallProtocol = "OpenAIText" | "DeepSeekText" | "OpenAISTT" | "DashScopeQwen3ASR" | "DashScopeFunASR" | "DashScopeFunASRRealtime";
 export type ReasoningEffort = "none" | "minimal" | "low" | "medium" | "high" | "xhigh" | "max";
 export type ChatTool = "web_search";
 

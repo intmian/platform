@@ -17,12 +17,13 @@ config.addBaseConfig('realKey', '真实2', ConfigType.String, 'realKey')
 
 function WhisperDebugPanel() {
     const [text, setText] = useState("");
+    const [partialText, setPartialText] = useState("");
     const [lastResponse, setLastResponse] = useState(null);
     const [lastError, setLastError] = useState("");
 
     return (
         <Card
-            title="语音转文字"
+            title="全局语音按钮（实时 / 文件自动切换）"
             style={{
                 maxWidth: 720,
                 margin: 16,
@@ -34,15 +35,18 @@ function WhisperDebugPanel() {
                         tooltip="点击开始 / 停止录音"
                         onText={(nextText, response) => {
                             setText(nextText);
+                            setPartialText("");
                             setLastResponse(response);
                             setLastError("");
                         }}
+                        onPartialText={setPartialText}
                         onError={(error) => {
                             setLastError(error);
                         }}
                     />
                     <Button onClick={() => {
                         setText("");
+                        setPartialText("");
                         setLastResponse(null);
                         setLastError("");
                     }}>
@@ -50,11 +54,13 @@ function WhisperDebugPanel() {
                     </Button>
                 </Space>
                 {lastError ? <Alert type="error" showIcon message={lastError}/> : null}
+                {partialText ? <Alert type="info" showIcon message={`实时累计结果：${partialText}`}/> : null}
                 <Input.TextArea
-                    value={text}
+                    value={partialText || text}
                     onChange={(event) => setText(event.target.value)}
+                    readOnly={Boolean(partialText)}
                     autoSize={{minRows: 6, maxRows: 12}}
-                    placeholder="转写结果会显示在这里"
+                    placeholder="实时累计结果和最终转写会显示在这里"
                 />
                 {lastResponse ? (
                     <Typography.Text type="secondary">

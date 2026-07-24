@@ -51,3 +51,8 @@ type aiTranscribeResp struct {
 	Language string  `json:"language,omitempty"`
 	Duration float64 `json:"duration,omitempty"`
 }
+
+type aiTranscribeCapabilityResp struct {
+	Mode       string `json:"mode"`
+	SampleRate int    `json:"sampleRate,omitempty"`
+}

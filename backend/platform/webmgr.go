@@ -8,6 +8,7 @@ import (
 	"github.com/intmian/mian_go_lib/xstorage"
 	"io"
 	"os"
+	"strings"
 	"time"
 )
 
@@ -44,6 +45,10 @@ func (m *webMgr) Init(plat *PlatForm) error {
 		m.plat.log.Info("web", "接入前端")
 		m.webEngine.Use(func(c *gin.Context) {
 			contentType := c.Request.Header.Get("Content-Type")
+			if strings.EqualFold(c.Request.Header.Get("Upgrade"), "websocket") {
+				c.Next()
+				return
+			}
 			if c.Request.Method != "POST" && contentType != "application/json" {
 				// 如果是GET但是是SSE
 				if c.Request.Method == "GET" && c.Request.Header.Get("Accept") == "text/event-stream" {

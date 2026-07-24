@@ -71,6 +71,7 @@ const MODEL_CALL_PROTOCOL_OPTIONS: Record<ModelType, {value: ModelCallProtocol, 
         {value: "OpenAISTT", label: "OpenAI STT"},
         {value: "DashScopeQwen3ASR", label: "DashScope 千问3-ASR-Flash（同步）"},
         {value: "DashScopeFunASR", label: "DashScope Fun-ASR-Flash"},
+        {value: "DashScopeFunASRRealtime", label: "DashScope Fun-ASR 实时（8 kHz）"},
     ],
 };
 

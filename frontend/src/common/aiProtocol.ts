@@ -46,3 +46,8 @@ export interface AiTranscribeResp {
     language?: string;
     duration?: number;
 }
+
+export interface AiTranscribeCapability {
+    mode: "file" | "realtime";
+    sampleRate?: number;
+}

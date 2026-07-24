@@ -1,10 +1,11 @@
 import {AudioOutlined, LoadingOutlined} from "@ant-design/icons";
-import {Button, Input, InputNumber, message, Modal, Select, Space, Tooltip, Typography} from "antd";
+import {Button, Input, InputNumber, message, Modal, Popover, Select, Space, Tooltip, Typography} from "antd";
 import type {ButtonProps} from "antd";
 import {useCallback, useEffect, useMemo, useRef, useState} from "react";
-import {transcribeAudio} from "./aiGateway";
+import {getTranscriptionCapability, transcribeAudio} from "./aiGateway";
 import type {AiTranscribeResp} from "./aiProtocol";
 import {useAudioRecorder} from "./useAudioRecorder";
+import {useRealtimeTranscription} from "./useRealtimeTranscription";
 
 const STORAGE_KEY = "platform.ai.transcribe.settings.v1";
 const LONG_PRESS_MS = 900;
@@ -34,6 +35,7 @@ export interface WhisperButtonProps extends Omit<ButtonProps, "onClick" | "loadi
     fileName?: string;
     tooltip?: string;
     onRecordingChange?: (recording: boolean) => void;
+    onPartialText?: (text: string) => void;
 }
 
 function normalizeLanguage(language?: string): string {
@@ -152,6 +154,7 @@ export function WhisperButton({
     fileName,
     tooltip = "语音输入",
     onRecordingChange,
+    onPartialText,
     disabled,
     children,
     icon,
@@ -160,10 +163,12 @@ export function WhisperButton({
     ...buttonProps
 }: WhisperButtonProps) {
     const recorder = useAudioRecorder();
+    const realtime = useRealtimeTranscription();
     const [settings, setSettings] = useState<WhisperSettings>(() => readStoredSettings());
     const [draftSettings, setDraftSettings] = useState<WhisperSettings>(() => readStoredSettings());
     const [configOpen, setConfigOpen] = useState(false);
     const [transcribing, setTranscribing] = useState(false);
+    const [resolvingMode, setResolvingMode] = useState(false);
     const [holdProgress, setHoldProgress] = useState(0);
     const holdStartRef = useRef(0);
     const holdTimerRef = useRef<number | null>(null);
@@ -171,6 +176,8 @@ export function WhisperButton({
     const skipClickRef = useRef(false);
     const finishInFlightRef = useRef(false);
     const autoStopTriggeredRef = useRef(false);
+    const lastRealtimeCompletionRef = useRef("");
+    const lastRealtimeErrorRef = useRef("");
 
     const effectiveLanguage = useMemo(
         () => normalizeLanguage(language ?? settings.language),
@@ -185,12 +192,23 @@ export function WhisperButton({
         ].filter(Boolean).join("\n");
     }, [effectiveLanguage, effectivePrompt]);
     const maxDurationSeconds = normalizeMaxDuration(settings.maxDurationSeconds);
-    const busy = transcribing || recorder.state === "stopping";
+    const realtimeRecording = realtime.status === "recording";
+    const realtimeActive = ["connecting", "recording", "finishing"].includes(realtime.status);
+    const realtimePreview = [realtime.finalText, realtime.partialText]
+        .map((text) => text.trim())
+        .filter(Boolean)
+        .join("");
+    const recording = recorder.recording || realtimeActive;
+    const busy = transcribing
+        || resolvingMode
+        || recorder.state === "stopping"
+        || realtime.status === "connecting"
+        || realtime.status === "finishing";
     const isDisabled = Boolean(disabled || busy);
 
     useEffect(() => {
-        onRecordingChange?.(recorder.recording);
-    }, [onRecordingChange, recorder.recording]);
+        onRecordingChange?.(recording);
+    }, [onRecordingChange, recording]);
 
     useEffect(() => {
         return () => onRecordingChange?.(false);
@@ -200,6 +218,48 @@ export function WhisperButton({
         onError?.(nextError);
         message.error(nextError).then();
     }, [onError]);
+
+    useEffect(() => {
+        onPartialText?.(realtimePreview);
+    }, [onPartialText, realtimePreview]);
+
+    useEffect(() => {
+        if (realtime.status !== "error" || !realtime.error) {
+            return;
+        }
+        if (lastRealtimeErrorRef.current === realtime.error) {
+            return;
+        }
+        lastRealtimeErrorRef.current = realtime.error;
+        emitError(realtime.error);
+    }, [emitError, realtime.error, realtime.status]);
+
+    useEffect(() => {
+        if (realtime.status !== "completed") {
+            return;
+        }
+        const text = realtime.finalText.trim();
+        const completionKey = `${realtime.ready?.taskID || "unknown"}:${text}`;
+        if (lastRealtimeCompletionRef.current === completionKey) {
+            return;
+        }
+        lastRealtimeCompletionRef.current = completionKey;
+        if (!text) {
+            message.info("未检测到有效语音").then();
+            return;
+        }
+        onText(text, {
+            text,
+            language: "zh",
+            duration: realtime.durationMs / 1000,
+        });
+    }, [
+        onText,
+        realtime.durationMs,
+        realtime.finalText,
+        realtime.ready?.taskID,
+        realtime.status,
+    ]);
 
     const clearLongPress = useCallback(() => {
         if (holdTimerRef.current !== null) {
@@ -230,7 +290,7 @@ export function WhisperButton({
     }, []);
 
     const startLongPress = useCallback(() => {
-        if (isDisabled || recorder.recording) {
+        if (isDisabled || recording) {
             return;
         }
         clearLongPress();
@@ -240,7 +300,7 @@ export function WhisperButton({
             clearLongPress();
             openConfig();
         }, LONG_PRESS_MS);
-    }, [animateLongPress, clearLongPress, isDisabled, openConfig, recorder.recording]);
+    }, [animateLongPress, clearLongPress, isDisabled, openConfig, recording]);
 
     const finishRecording = useCallback(async () => {
         if (!recorder.recording || finishInFlightRef.current) {
@@ -278,40 +338,72 @@ export function WhisperButton({
     }, [emitError, fileName, onText, recorder, requestPrompt]);
 
     useEffect(() => {
-        if (!recorder.recording) {
+        if (!recorder.recording && !realtimeRecording) {
             autoStopTriggeredRef.current = false;
             return;
         }
+        const durationMs = realtimeRecording ? realtime.durationMs : recorder.durationMs;
         if (
-            recorder.durationMs >= maxDurationSeconds * 1000
+            durationMs >= maxDurationSeconds * 1000
             && !autoStopTriggeredRef.current
         ) {
             autoStopTriggeredRef.current = true;
-            void finishRecording();
+            if (realtimeRecording) {
+                realtime.stop();
+            } else {
+                void finishRecording();
+            }
         }
-    }, [finishRecording, maxDurationSeconds, recorder.durationMs, recorder.recording]);
+    }, [
+        finishRecording,
+        maxDurationSeconds,
+        realtime,
+        realtimeRecording,
+        recorder.durationMs,
+        recorder.recording,
+    ]);
 
     const handleClick = useCallback(async () => {
         if (skipClickRef.current) {
             skipClickRef.current = false;
             return;
         }
-        if (isDisabled) {
+        if (realtimeRecording) {
+            realtime.stop();
             return;
         }
         if (recorder.recording) {
             await finishRecording();
             return;
         }
+        if (isDisabled) {
+            return;
+        }
 
-        const started = await recorder.start();
-        if (!started) {
-            emitError(recorder.error || "无法开始录音");
+        setResolvingMode(true);
+        lastRealtimeErrorRef.current = "";
+        lastRealtimeCompletionRef.current = "";
+        try {
+            const capability = await getTranscriptionCapability();
+            if (capability.mode === "realtime") {
+                await realtime.start();
+                return;
+            }
+            const started = await recorder.start();
+            if (!started) {
+                emitError(recorder.error || "无法开始录音");
+            }
+        } catch (error) {
+            emitError(error instanceof Error ? error.message : "无法开始录音");
+        } finally {
+            setResolvingMode(false);
         }
     }, [
         emitError,
         finishRecording,
         isDisabled,
+        realtime,
+        realtimeRecording,
         recorder,
     ]);
 
@@ -327,10 +419,17 @@ export function WhisperButton({
     }, [draftSettings.language, draftSettings.maxDurationSeconds, draftSettings.prompt]);
 
     const progressDegrees = Math.round(holdProgress * 360);
-    const defaultIcon = transcribing ? <LoadingOutlined spin/> : <AudioOutlined/>;
+    const loading = transcribing || resolvingMode || realtime.status === "connecting" || realtime.status === "finishing";
+    const defaultIcon = loading ? <LoadingOutlined spin/> : <AudioOutlined/>;
     const iconOnly = children == null;
     const iconOnlySize = buttonProps.size === "large" ? 40 : buttonProps.size === "small" ? 24 : 32;
     const recordingWidth = buttonProps.size === "small" ? 144 : buttonProps.size === "large" ? 184 : 164;
+    const recordingDurationMs = realtimeRecording ? realtime.durationMs : recorder.durationMs;
+    const recordingWaveform = realtimeRecording
+        ? Array.from({length: 16}, (_, index) => (
+            Math.min(1, realtime.level * (0.5 + ((index * 7) % 6) / 10))
+        ))
+        : recorder.waveform;
     const recordingContent = <span
         style={{
             width: "100%",
@@ -343,21 +442,38 @@ export function WhisperButton({
     >
         <span style={{display: "inline-flex", alignItems: "center", gap: 7}}>
             <span aria-hidden={true} style={{fontSize: 9}}>●</span>
-            <span>{formatDuration(recorder.durationMs)}</span>
+            <span>{formatDuration(recordingDurationMs)}</span>
         </span>
-        <RecordingWave waveform={recorder.waveform}/>
+        <RecordingWave waveform={recordingWaveform}/>
     </span>;
 
     return <>
-        <Tooltip title={recorder.recording ? "点击停止录音" : tooltip}>
-            <span
+        <Popover
+            open={realtimeActive}
+            placement="top"
+            title="实时转写"
+            content={<Typography.Text
                 style={{
-                    position: "relative",
-                    display: "inline-flex",
-                    alignItems: "center",
-                    justifyContent: "center",
+                    display: "block",
+                    width: 320,
+                    maxWidth: "70vw",
+                    maxHeight: 180,
+                    overflowY: "auto",
+                    whiteSpace: "pre-wrap",
                 }}
             >
+                {realtimePreview || "正在聆听…"}
+            </Typography.Text>}
+        >
+            <Tooltip title={realtimeRecording ? "点击停止实时识别" : recorder.recording ? "点击停止录音" : tooltip}>
+                <span
+                    style={{
+                        position: "relative",
+                        display: "inline-flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                    }}
+                >
                 <span
                     aria-hidden={true}
                     style={{
@@ -369,42 +485,43 @@ export function WhisperButton({
                         transition: holdProgress === 0 ? "opacity 160ms ease" : undefined,
                     }}
                 />
-                <Button
-                    {...buttonProps}
-                    type={type || (recorder.recording ? "primary" : "default")}
-                    danger={danger || recorder.recording}
-                    disabled={isDisabled}
-                    loading={false}
-                    icon={recorder.recording ? undefined : (icon || defaultIcon)}
-                    shape={recorder.recording ? "round" : (buttonProps.shape || (iconOnly ? "circle" : undefined))}
-                    aria-label={recorder.recording
-                        ? `停止录音，已录音 ${formatDuration(recorder.durationMs)}`
-                        : (buttonProps["aria-label"] || (iconOnly ? tooltip : undefined))}
-                    onPointerDown={startLongPress}
-                    onPointerUp={clearLongPress}
-                    onPointerLeave={clearLongPress}
-                    onPointerCancel={clearLongPress}
-                    onClick={handleClick}
-                    style={{
-                        position: "relative",
-                        zIndex: 1,
-                        ...(recorder.recording ? {
-                            width: recordingWidth,
-                            minWidth: recordingWidth,
-                            paddingInline: 14,
-                            transition: "width 180ms ease, min-width 180ms ease",
-                        } : iconOnly ? {
-                            width: iconOnlySize,
-                            height: iconOnlySize,
-                            minWidth: iconOnlySize,
-                        } : {}),
-                        ...buttonProps.style,
-                    }}
-                >
-                    {recorder.recording ? recordingContent : children}
-                </Button>
-            </span>
-        </Tooltip>
+                    <Button
+                        {...buttonProps}
+                        type={type || (recording ? "primary" : "default")}
+                        danger={danger || recording}
+                        disabled={isDisabled}
+                        loading={false}
+                        icon={recording ? undefined : (icon || defaultIcon)}
+                        shape={recording ? "round" : (buttonProps.shape || (iconOnly ? "circle" : undefined))}
+                        aria-label={recording
+                            ? `停止录音，已录音 ${formatDuration(recordingDurationMs)}`
+                            : (buttonProps["aria-label"] || (iconOnly ? tooltip : undefined))}
+                        onPointerDown={startLongPress}
+                        onPointerUp={clearLongPress}
+                        onPointerLeave={clearLongPress}
+                        onPointerCancel={clearLongPress}
+                        onClick={handleClick}
+                        style={{
+                            position: "relative",
+                            zIndex: 1,
+                            ...(recording ? {
+                                width: recordingWidth,
+                                minWidth: recordingWidth,
+                                paddingInline: 14,
+                                transition: "width 180ms ease, min-width 180ms ease",
+                            } : iconOnly ? {
+                                width: iconOnlySize,
+                                height: iconOnlySize,
+                                minWidth: iconOnlySize,
+                            } : {}),
+                            ...buttonProps.style,
+                        }}
+                    >
+                        {recording ? recordingContent : children}
+                    </Button>
+                </span>
+            </Tooltip>
+        </Popover>
         <Modal
             title="语音转写设置"
             open={configOpen}

@@ -1,10 +1,18 @@
 import config from "../config.json";
 import {UniPost, UniResult} from "./newSendHttp";
-import {AiAction, AiRequestMap, AiResponseMap, AiTranscribeReq, AiTranscribeResp} from "./aiProtocol";
+import {
+    AiAction,
+    AiRequestMap,
+    AiResponseMap,
+    AiTranscribeCapability,
+    AiTranscribeReq,
+    AiTranscribeResp,
+} from "./aiProtocol";
 
 export type {
     AiRequestMap,
     AiResponseMap,
+    AiTranscribeCapability,
     AiTranscribeReq,
     AiTranscribeResp,
     LibraryReviewDigestNote,
@@ -61,4 +69,19 @@ export async function transcribeAudio(req: AiTranscribeReq): Promise<AiTranscrib
         console.debug("transcribeAudio failed:", error);
         throw error instanceof Error ? error : new Error("语音转写失败");
     }
+}
+
+export async function getTranscriptionCapability(): Promise<AiTranscribeCapability> {
+    const res: UniResult = await UniPost(
+        config.api_base_url + "/misc/ai/transcribe/capability",
+        {},
+    );
+    if (!res.ok) {
+        throw new Error("无法读取语音转写模式");
+    }
+    const capability = res.data as Partial<AiTranscribeCapability>;
+    if (capability.mode !== "file" && capability.mode !== "realtime") {
+        throw new Error("语音转写模式无效");
+    }
+    return capability as AiTranscribeCapability;
 }
