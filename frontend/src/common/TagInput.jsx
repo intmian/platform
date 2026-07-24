@@ -18,6 +18,7 @@ export function TagInput({
                              autoFocus = false,
                              focusSignal = 0,
                              open,
+                             getPopupContainer,
                          }) {
     const [loadding, setLoadding] = useState(true);
     const pinyinLib = useRef(null);
@@ -91,6 +92,7 @@ export function TagInput({
             disabled={disabled || loadding}
             autoFocus={autoFocus && !loadding}
             open={open === undefined ? undefined : open && !loadding}
+            getPopupContainer={getPopupContainer}
             style={style}
             defaultValue={tags}
             value={tags}

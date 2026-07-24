@@ -425,6 +425,7 @@ function Tags({TagsChange, setting, style, tags, onCtrlEnter, maxTagTextLength, 
         autoFocus={autoFocus}
         focusSignal={focusSignal}
         open={open}
+        getPopupContainer={(triggerNode: HTMLElement) => triggerNode.parentElement ?? document.body}
     />
 }
 
@@ -1018,6 +1019,7 @@ function Memos() {
                     placement="topLeft"
                     open={tagPopoverOpen}
                     onOpenChange={setTagPopoverOpen}
+                    destroyTooltipOnHide
                     afterOpenChange={(open) => {
                         if (open) {
                             setTagFocusSignal((signal) => signal + 1);
