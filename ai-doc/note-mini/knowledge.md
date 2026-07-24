@@ -1,11 +1,11 @@
 # Note Mini Knowledge
 
-Last verified: 2026-07-11
+Last verified: 2026-07-24
 
 ## Module role
 
 1. `note_mini` is a lightweight private memo sender, not a first-party backend domain service.
-2. It combines frontend drafting/upload/encryption UX with platform config/misc APIs and an external memos API.
+2. It combines frontend drafting/upload/AI rewrite UX with platform config/misc APIs and an external memos API.
 
 ## Test reference
 
@@ -50,7 +50,7 @@ Last verified: 2026-07-11
 1. The page is a lightweight private memo sender:
    - input area supports markdown text
    - keyboard submit supports Ctrl+Enter on Windows/Linux and Command+Enter on macOS, including from the tag area
-   - upload supports local files and clipboard images from the `更多` menu, then inserts markdown link/image
+   - upload supports local files and clipboard images from the bottom file-upload icon, then inserts markdown link/image
    - bottom action bar includes `WhisperButton` voice input; transcribed text is appended to the draft input
    - while voice recording is active, the send button is removed and the shared expanded recording pill occupies that action-bar space; the send button returns after recording stops
    - submit queue shows recent send status icons (success/failure/loading)
@@ -74,21 +74,17 @@ Last verified: 2026-07-11
 5. The top status bar is horizontally scrollable when history exists; overflow history remains hidden until the user scrolls.
 6. Queue status items open a click popover for text review/copy. Failure retry is an explicit popover action, not the icon's default click behavior.
 
-## Advanced menu behavior (verified from code)
+## Bottom action behavior (verified from code)
 
-1. Bottom action bar uses an advanced dropdown trigger button at the original AI button position (current label: `更多`).
-2. Advanced dropdown contains:
-   - `AI重写`: same behavior as previous AI button
-   - `加密上传`: opens modal for AES key + tip, then sends encrypted content
-   - `文件上传`: uses the previous upload flow, including clipboard-image detection on supported desktop browsers
-3. The original standalone upload button position now hosts the shared voice input button.
-4. Hide/show is no longer inside the advanced dropdown; it is controlled by the top-right eye button next to the login user display.
-5. AES key input uses `Input.Password` with `autoComplete="new-password"` and is not persisted to local storage.
-6. Encrypted submit content format is:
-   - `<tip>\n<aes-gcm encrypted blob>`
-   - encrypted blob format: `aes-gcm:<base64(iv)>:<base64(ciphertext)>`
-7. Encrypted submit still goes through the same normal submit queue path (`AddHis` -> `SendMemosReq`).
-8. Advanced dropdown trigger is disabled only during setting loading; when input text is empty and settings are ready, trigger remains enabled while text-dependent items stay disabled while upload remains available.
+1. The bottom area has two fixed rows:
+   - first row: full-width tag selector
+   - second row: right-aligned file upload, AI rewrite, voice input, and send actions
+2. File upload, AI rewrite, and voice input are icon-only controls with tooltips and accessible labels.
+3. File upload uses `FileAddOutlined` and preserves clipboard-image detection on supported desktop browsers; it is disabled while settings are loading or an upload is already running.
+4. AI rewrite uses `RobotOutlined` and is disabled until the memo has content and settings are ready.
+5. Voice input remains the shared `WhisperButton`; while recording, its expanded pill replaces the send button space.
+6. The send button stays at the far right when voice recording is inactive.
+7. Hide/show remains in the top-right control area next to the logged-in user.
 
 ## Verification focus
 

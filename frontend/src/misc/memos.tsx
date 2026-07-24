@@ -1,12 +1,12 @@
 import React, {useCallback, useContext, useEffect, useImperativeHandle, useRef, useState} from "react";
-import type {MenuProps} from "antd";
-import {Button, Dropdown, Flex, Input, message, Modal, notification, Popover, Space, Spin, Tooltip} from "antd";
+import {Button, Flex, Input, message, Modal, notification, Popover, Space, Spin, Tooltip} from "antd";
 import {
     CheckCircleTwoTone,
     CloseCircleTwoTone,
-    DownOutlined,
     EyeInvisibleOutlined,
     EyeOutlined,
+    FileAddOutlined,
+    RobotOutlined,
     SettingFilled,
     SyncOutlined
 } from "@ant-design/icons";
@@ -24,38 +24,6 @@ import {WhisperButton} from "../common/WhisperButton";
 // TODO: 使用ios打开网页时，当浏览器切换到后台，立刻重新切回前台，网页并未被回收，但是浏览器会自动刷新一次，此时如果停止刷新，使用是完全正常的，似乎是底层问题后面看看
 
 const {TextArea} = Input;
-const textEncoder = new TextEncoder();
-
-function toBase64(data: Uint8Array): string {
-    let binary = '';
-    const chunkSize = 0x8000;
-    for (let i = 0; i < data.length; i += chunkSize) {
-        const chunk = data.subarray(i, i + chunkSize);
-        binary += String.fromCharCode(...chunk);
-    }
-    return btoa(binary);
-}
-
-async function encryptContentWithAesGcm(content: string, keyText: string): Promise<string> {
-    if (!window.crypto?.subtle) {
-        throw new Error('当前环境不支持 AES 加密');
-    }
-    const rawKey = await window.crypto.subtle.digest('SHA-256', textEncoder.encode(keyText));
-    const key = await window.crypto.subtle.importKey(
-        'raw',
-        rawKey,
-        {name: 'AES-GCM'},
-        false,
-        ['encrypt'],
-    );
-    const iv = window.crypto.getRandomValues(new Uint8Array(12));
-    const cipherBuffer = await window.crypto.subtle.encrypt(
-        {name: 'AES-GCM', iv},
-        key,
-        textEncoder.encode(content),
-    );
-    return `aes-gcm:${toBase64(iv)}:${toBase64(new Uint8Array(cipherBuffer))}`;
-}
 
 interface MemosSetting {
     url: string
@@ -862,60 +830,6 @@ function Memos() {
         submitByContent(inputRef.current.get());
     }, [submitByContent]);
 
-    const showEncryptUploadModal = useCallback(() => {
-        let aesKey = '';
-        let tip = '';
-        Modal.confirm({
-            title: '加密上传',
-            okText: '加密并发送',
-            cancelText: '取消',
-            content: (
-                <Space direction="vertical" style={{width: '100%'}}>
-                    <Input.Password
-                        placeholder="AES密钥"
-                        autoComplete="new-password"
-                        onChange={(e) => {
-                            aesKey = e.target.value;
-                        }}
-                    />
-                    <Input
-                        placeholder="tip（将明文展示）"
-                        autoComplete="off"
-                        onChange={(e) => {
-                            tip = e.target.value;
-                        }}
-                    />
-                </Space>
-            ),
-            onOk: async () => {
-                const plainText = inputRef.current.get();
-                if (!plainText) {
-                    message.error('内容为空，无法加密上传');
-                    throw new Error('empty-content');
-                }
-                if (!aesKey) {
-                    message.error('AES密钥不能为空');
-                    throw new Error('empty-key');
-                }
-                const tipTrimmed = tip.trim();
-                if (!tipTrimmed) {
-                    message.error('tip不能为空');
-                    throw new Error('empty-tip');
-                }
-                try {
-                    const encryptedContent = await encryptContentWithAesGcm(plainText, aesKey);
-                    submitByContent(`${tipTrimmed}\n${encryptedContent}`);
-                    aesKey = '';
-                    tip = '';
-                } catch (err) {
-                    console.error('encrypt memo content failed', err);
-                    message.error('加密失败，请检查密钥后重试');
-                    throw err;
-                }
-            },
-        });
-    }, [submitByContent]);
-
     // Ctrl+Enter / Command+Enter 发送
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
@@ -990,44 +904,6 @@ function Memos() {
             triggerUpload();
         }
     }
-
-    const advancedMenuDisabled = !canSubmit || loadingSetting;
-    const advancedTriggerDisabled = loadingSetting;
-
-    const advancedMenuItems: MenuProps['items'] = [
-        {
-            key: 'ai-rewrite',
-            label: 'AI重写',
-            disabled: advancedMenuDisabled,
-        },
-        {
-            key: 'encrypted-upload',
-            label: '加密上传',
-            disabled: advancedMenuDisabled,
-        },
-        {
-            key: 'upload-file',
-            label: uploading ? '上传中' : '文件上传',
-            disabled: uploading || loadingSetting,
-        },
-    ];
-
-    const onAdvancedMenuClick: MenuProps['onClick'] = ({key}) => {
-        if (key === 'ai-rewrite') {
-            const content = inputRef.current.get();
-            if (content !== '') {
-                inputRef.current.gptReWrite();
-            }
-            return;
-        }
-        if (key === 'encrypted-upload') {
-            showEncryptUploadModal();
-            return;
-        }
-        if (key === 'upload-file') {
-            UpdateFileWith();
-        }
-    };
 
     return <div
         style={{
@@ -1123,7 +999,7 @@ function Memos() {
             <div
                 style={{
                     display: 'flex',
-                    flexWrap: isMobile ? 'wrap' : 'nowrap',
+                    flexDirection: 'column',
                     gap: '8px',
                 }}
             >
@@ -1138,35 +1014,39 @@ function Memos() {
                     setting={NowSetting}
                     maxTagTextLength={isMobile ? 3 : undefined}
                     style={{
-                        flex: 1,
+                        width: '100%',
                         minWidth: 0,
-                        marginRight: isMobile ? 0 : '10px',
                     }}/>
                 <Space
                     style={{
-                        // 子组件靠右
                         display: 'flex',
                         justifyContent: 'flex-end',
-                        flexShrink: 0,
+                        width: '100%',
                     }}
                 >
-                    <Dropdown
-                        trigger={['click']}
-                        disabled={advancedTriggerDisabled}
-                        menu={{
-                            items: advancedMenuItems,
-                            onClick: onAdvancedMenuClick,
-                        }}
-                    >
+                    <Tooltip title="文件上传">
                         <Button
-                            type="default"
-                            disabled={advancedTriggerDisabled}
-                            size={"small"}
-                        >
-                            更多
-                            <DownOutlined/>
-                        </Button>
-                    </Dropdown>
+                            size="small"
+                            shape="circle"
+                            aria-label="文件上传"
+                            icon={<FileAddOutlined/>}
+                            loading={uploading}
+                            disabled={uploading || loadingSetting}
+                            onClick={UpdateFileWith}
+                        />
+                    </Tooltip>
+                    <Tooltip title="AI重写">
+                        <Button
+                            size="small"
+                            shape="circle"
+                            aria-label="AI重写"
+                            icon={<RobotOutlined/>}
+                            disabled={!canSubmit || loadingSetting}
+                            onClick={() => {
+                                inputRef.current.gptReWrite();
+                            }}
+                        />
+                    </Tooltip>
                     <WhisperButton
                         size="small"
                         tooltip="语音输入"

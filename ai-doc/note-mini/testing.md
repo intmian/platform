@@ -1,11 +1,11 @@
 # Note Mini Testing Workflow
 
-Last verified: 2026-02-27
+Last verified: 2026-07-24
 
 ## Goal
 
 1. Verify `note_mini` features end-to-end without polluting formal memo data.
-2. Use local mock URL/KEY to run real send, encryption, and decryption checks safely.
+2. Use local mock URL/KEY to run send, upload, and AI rewrite checks safely.
 
 ## Safety baseline
 
@@ -29,28 +29,30 @@ Last verified: 2026-02-27
    - URL = mock URL
    - KEY = mock key
 5. Type a known plaintext in memo input.
-6. Open `高级` menu, click `加密上传`, fill:
-   - AES key (test key)
-   - tip (test tip)
-7. Click `加密并发送` (real send).
+6. Verify the bottom layout:
+   - tag selector occupies the first row
+   - file upload, AI rewrite, voice input, and send actions are right-aligned on the second row
+   - file upload, AI rewrite, and voice input use icon-only buttons with accessible labels/tooltips
+7. Click `发送` (real send).
 8. Verify UI result:
    - request queue shows success icon
    - input is cleared after successful enqueue/send
 9. Verify captured payload in mock logs:
-   - content format is `<tip>\n<aes-gcm:...>`
-   - second line follows `aes-gcm:<base64(iv)>:<base64(ciphertext)>`
-10. Decrypt captured cipher using the same AES key and verify plaintext equals step 5 input.
-11. Run adjacent regression:
-    - open `高级` -> `AI重写` (no crash path), or
-    - submit without AES key and verify validation error appears.
+   - content starts with the plaintext from step 5
+   - selected tags are appended as `#tag1 #tag2 ...`
+10. Run adjacent regression:
+    - click the AI rewrite icon and verify the rewrite flow opens without crashing
+    - click the file upload icon and verify the clipboard/local-file selection flow opens
+    - start and stop voice input and verify the expanded recording pill does not break the action row
 
 ## Pass criteria
 
 1. Real send request reaches mock endpoint successfully.
-2. Captured payload contains tip + AES-GCM ciphertext in expected format.
-3. Decryption output exactly matches original plaintext.
-4. No request sent to formal memo service.
-5. When the task includes UI changes, provide screenshots for both the changed area and a nearby non-target area, and confirm no unintended impact.
+2. Captured payload contains the expected plaintext and tags.
+3. The two-row bottom layout remains intact at desktop and mobile widths.
+4. Upload, AI rewrite, and voice icon actions remain reachable and correctly labeled.
+5. No request is sent to the formal memo service.
+6. When the task includes UI changes, provide screenshots for both the changed area and a nearby non-target area, and confirm no unintended impact.
 
 ## Cleanup checklist
 
