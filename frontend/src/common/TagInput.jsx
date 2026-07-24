@@ -16,6 +16,8 @@ export function TagInput({
                              maxTagPlaceholder,
                              onCtrlEnter,
                              autoFocus = false,
+                             focusSignal = 0,
+                             open,
                          }) {
     const [loadding, setLoadding] = useState(true);
     const pinyinLib = useRef(null);
@@ -27,10 +29,14 @@ export function TagInput({
         });
     }, []);
     useEffect(() => {
-        if (autoFocus && !loadding) {
-            selectRef.current?.focus();
+        if (!autoFocus || loadding) {
+            return;
         }
-    }, [autoFocus, loadding]);
+        const timer = window.setTimeout(() => {
+            selectRef.current?.focus();
+        }, 0);
+        return () => window.clearTimeout(timer);
+    }, [autoFocus, focusSignal, loadding]);
 
     const [inputValue, setInputValue] = useState('');
 
@@ -84,6 +90,7 @@ export function TagInput({
             mode="multiple"
             disabled={disabled || loadding}
             autoFocus={autoFocus && !loadding}
+            open={open === undefined ? undefined : open && !loadding}
             style={style}
             defaultValue={tags}
             value={tags}

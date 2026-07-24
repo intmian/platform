@@ -30,10 +30,10 @@ Last verified: 2026-07-24
    - KEY = mock key
 5. Type a known plaintext in memo input.
 6. Verify the bottom layout:
-   - the long tag button stays at the far left
+   - the tag button stays at the far left and matches the send button's shape and dimensions
    - file upload, AI rewrite, voice input, and send actions stay right-aligned
    - file upload, AI rewrite, and voice input use icon-only buttons with accessible labels/tooltips
-   - opening the tag button selects it, focuses the tag selector, and does not resize the memo input
+   - opening the tag button selects it, focuses the tag selector, expands the option dropdown immediately, and does not resize the memo input
 7. Click `发送` (real send).
 8. Verify UI result:
    - request queue shows success icon

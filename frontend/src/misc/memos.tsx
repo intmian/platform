@@ -8,8 +8,7 @@ import {
     FileAddOutlined,
     RobotOutlined,
     SettingFilled,
-    SyncOutlined,
-    TagOutlined
+    SyncOutlined
 } from "@ant-design/icons";
 import TagInput from "../common/TagInput";
 import {useLostFocus} from "../common/hook";
@@ -386,7 +385,7 @@ function MemosQueue({reqs, url, apiKey}: { reqs: MemosReq[], url: string, apiKey
     </div>;
 }
 
-function Tags({TagsChange, setting, style, tags, onCtrlEnter, maxTagTextLength, autoFocus}: {
+function Tags({TagsChange, setting, style, tags, onCtrlEnter, maxTagTextLength, autoFocus, focusSignal, open}: {
     TagsChange: (tags: string[]) => void,
     setting: MemosSetting,
     style: React.CSSProperties | undefined,
@@ -394,6 +393,8 @@ function Tags({TagsChange, setting, style, tags, onCtrlEnter, maxTagTextLength, 
     onCtrlEnter: () => void,
     maxTagTextLength?: number,
     autoFocus?: boolean,
+    focusSignal?: number,
+    open?: boolean,
 }) {
     // 从localStorage中获取之前缓存的tags
     const tagsOprDisk = JSON.parse(localStorage.getItem('memosTags') || '[]');
@@ -422,6 +423,8 @@ function Tags({TagsChange, setting, style, tags, onCtrlEnter, maxTagTextLength, 
         disabled={false} maxTagCount={"responsive"} maxTagTextLength={maxTagTextLength}
         maxTagPlaceholder={undefined}
         autoFocus={autoFocus}
+        focusSignal={focusSignal}
+        open={open}
     />
 }
 
@@ -677,6 +680,7 @@ function Memos() {
     const [hasInputText, setHasInputText] = useState(false);
     const [voiceRecording, setVoiceRecording] = useState(false);
     const [tagPopoverOpen, setTagPopoverOpen] = useState(false);
+    const [tagFocusSignal, setTagFocusSignal] = useState(0);
     const isMobile = useIsMobile();
     // const [uploading, setUploading] = useState(false); // Removed for useImageUpload
     // const fileInputRef = useRef<HTMLInputElement>(null); // Removed for useImageUpload
@@ -1014,6 +1018,11 @@ function Memos() {
                     placement="topLeft"
                     open={tagPopoverOpen}
                     onOpenChange={setTagPopoverOpen}
+                    afterOpenChange={(open) => {
+                        if (open) {
+                            setTagFocusSignal((signal) => signal + 1);
+                        }
+                    }}
                     content={
                         <Tags
                             onCtrlEnter={() => {
@@ -1026,6 +1035,8 @@ function Memos() {
                             setting={NowSetting}
                             maxTagTextLength={isMobile ? 3 : undefined}
                             autoFocus={tagPopoverOpen}
+                            focusSignal={tagFocusSignal}
+                            open={tagPopoverOpen}
                             style={{
                                 width: isMobile ? '240px' : '320px',
                             }}
@@ -1033,14 +1044,11 @@ function Memos() {
                     }
                 >
                     <Button
-                        size="small"
                         type={tagPopoverOpen ? "primary" : "default"}
-                        icon={<TagOutlined/>}
                         aria-label="选择标签"
                         aria-pressed={tagPopoverOpen}
-                        style={{minWidth: '96px'}}
                     >
-                        {tagsSelected.length > 0 ? `标签 ${tagsSelected.length}` : '标签'}
+                        标签
                     </Button>
                 </Popover>
                 <Space

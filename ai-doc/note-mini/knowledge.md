@@ -77,9 +77,9 @@ Last verified: 2026-07-24
 ## Bottom action behavior (verified from code)
 
 1. The bottom area has one fixed action row:
-   - left: a long `标签` button that shows the selected-tag count
+   - left: a `标签` button with the same shape and dimensions as `发送`
    - right: file upload, AI rewrite, voice input, and send actions
-2. Clicking the tag button opens the tag selector in a popover above the row; the button uses its selected style while open and the selector receives focus after its options are ready.
+2. Clicking the tag button opens the tag selector in a popover above the row; the button uses its selected style while open, and the selector is focused with its option dropdown expanded automatically.
 3. The tag popover overlays the page instead of consuming layout height, so opening or closing it does not resize the memo input.
 4. File upload, AI rewrite, and voice input are icon-only controls with tooltips and accessible labels.
 5. File upload uses `FileAddOutlined` and preserves clipboard-image detection on supported desktop browsers; it is disabled while settings are loading or an upload is already running.
