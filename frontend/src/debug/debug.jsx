@@ -20,6 +20,7 @@ function WhisperDebugPanel() {
     const [partialText, setPartialText] = useState("");
     const [lastResponse, setLastResponse] = useState(null);
     const [lastError, setLastError] = useState("");
+    const [recording, setRecording] = useState(false);
 
     return (
         <Card
@@ -33,6 +34,8 @@ function WhisperDebugPanel() {
                 <Space wrap>
                     <WhisperButton
                         tooltip="点击开始 / 停止录音"
+                        showRealtimePreview={false}
+                        onRecordingChange={setRecording}
                         onText={(nextText, response) => {
                             setText(nextText);
                             setPartialText("");
@@ -54,11 +57,10 @@ function WhisperDebugPanel() {
                     </Button>
                 </Space>
                 {lastError ? <Alert type="error" showIcon message={lastError}/> : null}
-                {partialText ? <Alert type="info" showIcon message={`实时累计结果：${partialText}`}/> : null}
                 <Input.TextArea
                     value={partialText || text}
                     onChange={(event) => setText(event.target.value)}
-                    readOnly={Boolean(partialText)}
+                    readOnly={recording}
                     autoSize={{minRows: 6, maxRows: 12}}
                     placeholder="实时累计结果和最终转写会显示在这里"
                 />
@@ -83,17 +85,20 @@ function LibraryNoteModalDebugPanel() {
     const [mode, setMode] = useState(null);
     const [draft, setDraft] = useState("");
     const [recording, setRecording] = useState(false);
+    const [voicePreview, setVoicePreview] = useState("");
     const [confirmedText, setConfirmedText] = useState("");
 
     const openModal = (nextMode) => {
         setMode(nextMode);
         setDraft(nextMode === "edit" ? "这是一条待编辑的备注。" : "");
         setRecording(false);
+        setVoicePreview("");
     };
 
     const closeModal = () => {
         setMode(null);
         setRecording(false);
+        setVoicePreview("");
     };
 
     const confirm = () => {
@@ -118,8 +123,19 @@ function LibraryNoteModalDebugPanel() {
                 <Flex justify="flex-end" align="center" gap={8}>
                     <WhisperButton
                         tooltip="语音输入备注"
-                        onRecordingChange={setRecording}
-                        onText={(text) => setDraft((current) => appendTranscriptionText(current, text))}
+                        showRealtimePreview={false}
+                        onRecordingChange={(nextRecording) => {
+                            setRecording(nextRecording);
+                            if (!nextRecording) {
+                                setVoicePreview("");
+                            }
+                        }}
+                        onPartialText={setVoicePreview}
+                        onText={(text) => {
+                            setVoicePreview("");
+                            setDraft((current) => appendTranscriptionText(current, text));
+                        }}
+                        onError={() => setVoicePreview("")}
                     />
                     {!recording ? (
                         <Button type="primary" disabled={!draft.trim()} onClick={confirm}>
@@ -131,7 +147,8 @@ function LibraryNoteModalDebugPanel() {
         >
             <Input.TextArea
                 rows={4}
-                value={draft}
+                value={voicePreview.trim() ? appendTranscriptionText(draft, voicePreview) : draft}
+                readOnly={recording}
                 placeholder="请输入备注内容..."
                 onChange={(event) => setDraft(event.target.value)}
             />

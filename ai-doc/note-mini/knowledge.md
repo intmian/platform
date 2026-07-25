@@ -1,6 +1,6 @@
 # Note Mini Knowledge
 
-Last verified: 2026-07-24
+Last verified: 2026-07-25
 
 ## Module role
 
@@ -51,7 +51,8 @@ Last verified: 2026-07-24
    - input area supports markdown text
    - keyboard submit supports Ctrl+Enter on Windows/Linux and Command+Enter on macOS, including from the tag area
    - upload supports local files and clipboard images from the bottom file-upload icon, then inserts markdown link/image
-   - bottom action bar includes `WhisperButton` voice input; transcribed text is appended to the draft input
+   - bottom action bar includes `WhisperButton` voice input; realtime text is previewed at the end of the draft and the authoritative completed text is then appended
+   - while realtime voice recognition is active, the draft editor is read-only; its preview remains transient and does not update the committed draft or `note.lastInput`
    - while voice recording is active, the send button is removed and the shared expanded recording pill occupies that action-bar space; the send button returns after recording stops
    - submit queue shows recent send status icons (success/failure/loading)
 3. Upload trigger path uses a reused hidden `input[type=file]` (not recreated per click), and resets `value` before click to avoid occasional "click upload but nothing happens" behavior.
@@ -73,6 +74,7 @@ Last verified: 2026-07-24
 4. The top status bar is hidden when there is no send history.
 5. The top status bar is horizontally scrollable when history exists; overflow history remains hidden until the user scrolls.
 6. Queue status items open a click popover for text review/copy. Failure retry is an explicit popover action, not the icon's default click behavior.
+7. Mobile suppresses the queue status hover tooltips while retaining each item's click popover.
 
 ## Bottom action behavior (verified from code)
 
@@ -81,12 +83,14 @@ Last verified: 2026-07-24
    - right: file upload, AI rewrite, voice input, and send actions
 2. Clicking the tag button opens the tag selector in a popover above the row; the button uses its selected style while open, and the selector is focused with its option dropdown expanded automatically.
 3. The tag popover overlays the page instead of consuming layout height, so opening or closing it does not resize the memo input.
-4. File upload, AI rewrite, and voice input are icon-only controls with tooltips and accessible labels.
+4. File upload, AI rewrite, and voice input are icon-only controls with tooltips and accessible labels. Mobile suppresses the voice button tooltip, including its recording stop hint, while retaining click-to-stop behavior.
 5. File upload uses `FileAddOutlined` and preserves clipboard-image detection on supported desktop browsers; it is disabled while settings are loading or an upload is already running.
 6. AI rewrite uses `RobotOutlined` and is disabled until the memo has content and settings are ready.
 7. Voice input remains the shared `WhisperButton`; while recording, its expanded pill replaces the send button space.
 8. The send button stays at the far right when voice recording is inactive.
 9. Hide/show remains in the top-right control area next to the logged-in user.
+10. Note Mini suppresses the floating `实时转写` popover on all screen sizes. Confirmed sentences plus the current mutable partial sentence appear directly at the end of the draft editor instead.
+11. Realtime preview and final insertion share the existing separator rule: add a newline only when the existing draft is non-empty and ends with neither a newline nor a space. Completion commits the authoritative final result once; failure or cancellation removes the transient preview and preserves the original draft.
 
 ## Verification focus
 

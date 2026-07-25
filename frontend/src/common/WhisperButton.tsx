@@ -34,6 +34,8 @@ export interface WhisperButtonProps extends Omit<ButtonProps, "onClick" | "loadi
     prompt?: string;
     fileName?: string;
     tooltip?: string;
+    showTooltip?: boolean;
+    showRealtimePreview?: boolean;
     onRecordingChange?: (recording: boolean) => void;
     onPartialText?: (text: string) => void;
 }
@@ -153,6 +155,8 @@ export function WhisperButton({
     prompt,
     fileName,
     tooltip = "语音输入",
+    showTooltip = true,
+    showRealtimePreview = true,
     onRecordingChange,
     onPartialText,
     disabled,
@@ -220,8 +224,8 @@ export function WhisperButton({
     }, [onError]);
 
     useEffect(() => {
-        onPartialText?.(realtimePreview);
-    }, [onPartialText, realtimePreview]);
+        onPartialText?.(realtimeActive ? realtimePreview : "");
+    }, [onPartialText, realtimeActive, realtimePreview]);
 
     useEffect(() => {
         if (realtime.status !== "error" || !realtime.error) {
@@ -449,7 +453,7 @@ export function WhisperButton({
 
     return <>
         <Popover
-            open={realtimeActive}
+            open={showRealtimePreview && realtimeActive}
             placement="top"
             title="实时转写"
             content={<Typography.Text
@@ -465,7 +469,10 @@ export function WhisperButton({
                 {realtimePreview || "正在聆听…"}
             </Typography.Text>}
         >
-            <Tooltip title={realtimeRecording ? "点击停止实时识别" : recorder.recording ? "点击停止录音" : tooltip}>
+            <Tooltip
+                open={showTooltip ? undefined : false}
+                title={realtimeRecording ? "点击停止实时识别" : recorder.recording ? "点击停止录音" : tooltip}
+            >
                 <span
                     style={{
                         position: "relative",

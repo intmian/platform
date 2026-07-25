@@ -236,7 +236,12 @@ function GetMemosTags(url: string, key: string, sucCallback: (data: {
 //         });
 // }
 
-function MemosQueue({reqs, url, apiKey}: { reqs: MemosReq[], url: string, apiKey: string }) {
+function MemosQueue({reqs, url, apiKey, showStatusTooltips = true}: {
+    reqs: MemosReq[],
+    url: string,
+    apiKey: string,
+    showStatusTooltips?: boolean,
+}) {
     const [reqHisMap, setReqHisMap] = useState(new Map<number, MemosReqStatus>());
     const sendingIdsRef = useRef(new Set<number>());
     const saveReqHisMap = useCallback((id: number, status: MemosReqStatus) => {
@@ -339,7 +344,7 @@ function MemosQueue({reqs, url, apiKey}: { reqs: MemosReq[], url: string, apiKey
                     </Space>
                 }
             >
-                <Tooltip title={realText}>
+                <Tooltip open={showStatusTooltips ? undefined : false} title={realText}>
                     <Button
                         size="small"
                         type="text"
@@ -446,6 +451,15 @@ function applyHideEdit(real: string, newDisplay: string): string {
     return realArr.join('');
 }
 
+function appendInputText(current: string, text: string): string {
+    const nextText = text.trim();
+    if (!nextText) {
+        return current;
+    }
+    const needEnter = current.length > 0 && !current.endsWith('\n') && !current.endsWith(' ');
+    return current + (needEnter ? '\n' : '') + nextText;
+}
+
 // HideInput 用于输入并展示当前内容。隐藏模式下 textarea 显示星号，但原文始终保存在 realText 里，
 // hide/show 只切开关，永远不搬运文本；隐藏态下继续输入会通过 diff 把改动映射回原文，再重新派生为星号。
 function HideInput({
@@ -453,6 +467,8 @@ function HideInput({
                        onChange,
                        onHideModeChange,
                        onPasteFile,
+                       voicePreview,
+                       readOnly,
                    }: {
     functionsRef: React.MutableRefObject<{
         clear: () => void,
@@ -467,6 +483,8 @@ function HideInput({
     onChange: (text: string) => void,
     onHideModeChange: (hideMode: boolean) => void,
     onPasteFile: (file: File) => void,
+    voicePreview: string,
+    readOnly: boolean,
 }) {
     const [realText, setRealText] = useState('');
     const realTextRef = useRef('');
@@ -571,13 +589,11 @@ function HideInput({
     }, [writeReal]);
 
     const addText = useCallback((text: string) => {
-        const nextText = text.trim();
-        if (!nextText) {
+        const next = appendInputText(realTextRef.current, text);
+        if (next === realTextRef.current) {
             return;
         }
-        const prev = realTextRef.current;
-        const needEnter = prev.length > 0 && !prev.endsWith('\n') && !prev.endsWith(' ');
-        writeReal(prev + (needEnter ? '\n' : '') + nextText);
+        writeReal(next);
         inputRef.current?.focus();
     }, [writeReal]);
 
@@ -585,7 +601,9 @@ function HideInput({
         clear, get, hide, show, focus, gptReWrite, addFile, addText,
     }), [clear, get, hide, show, focus, gptReWrite, addFile, addText]);
 
-    const display = hideMode ? '*'.repeat(Array.from(realText).length) : realText;
+    const previewText = appendInputText(realText, voicePreview);
+    const displayedText = voicePreview.trim() ? previewText : realText;
+    const display = hideMode ? '*'.repeat(Array.from(displayedText).length) : displayedText;
     const textareaValue = composingValue !== null ? composingValue : display;
 
     const commitFromTextarea = useCallback((v: string) => {
@@ -641,6 +659,7 @@ function HideInput({
                 :
                 <TextArea
                     disabled={!inAiRewrite}
+                    readOnly={readOnly}
                     ref={inputRef}
                     autoFocus
                     style={style2}
@@ -656,6 +675,7 @@ function HideInput({
         ><TextArea
             ref={inputRef}
             autoFocus
+            readOnly={readOnly}
             style={style}
             value={textareaValue}
             onChange={(e) => handleChange(e.target.value)}
@@ -680,6 +700,7 @@ function Memos() {
     const [hidden, setHidden] = useState(false);
     const [hasInputText, setHasInputText] = useState(false);
     const [voiceRecording, setVoiceRecording] = useState(false);
+    const [voicePreview, setVoicePreview] = useState("");
     const [tagPopoverOpen, setTagPopoverOpen] = useState(false);
     const [tagFocusSignal, setTagFocusSignal] = useState(0);
     const isMobile = useIsMobile();
@@ -787,6 +808,8 @@ function Memos() {
                                  setCanSubmit(NowSetting.url !== '' && NowSetting.key !== '' && text !== '');
                              }}
                              onHideModeChange={setHidden}
+                             voicePreview={voicePreview}
+                             readOnly={voiceRecording}
                              onPasteFile={(file) => {
                                  if (file) {
                                      uploadSingle(file);
@@ -976,6 +999,7 @@ function Memos() {
                         reqs={reqHis}
                         url={NowSetting.url}
                         apiKey={NowSetting.key}
+                        showStatusTooltips={!isMobile}
                     />
                 </div>
                 <Space
@@ -1086,10 +1110,20 @@ function Memos() {
                     <WhisperButton
                         size="small"
                         tooltip="语音输入"
-                        onRecordingChange={setVoiceRecording}
+                        showTooltip={!isMobile}
+                        showRealtimePreview={false}
+                        onRecordingChange={(recording) => {
+                            setVoiceRecording(recording);
+                            if (!recording) {
+                                setVoicePreview("");
+                            }
+                        }}
+                        onPartialText={setVoicePreview}
                         onText={(text) => {
+                            setVoicePreview("");
                             inputRef.current.addText(text);
                         }}
+                        onError={() => setVoicePreview("")}
                     />
                     {!voiceRecording ? (
                         <Button

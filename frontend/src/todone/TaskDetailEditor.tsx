@@ -21,13 +21,63 @@ const mdParser = new MarkdownIt();
 
 type EditorMode = "display" | "simple" | "markdown";
 
+interface TextSelection {
+    start: number;
+    end: number;
+}
+
+function insertAtSelection(value: string, text: string, selection: TextSelection): string {
+    return value.slice(0, selection.start) + text + value.slice(selection.end);
+}
+
 export function Editor(props: { value: string, onChange: (value: string) => void }) {
     const [mode, setMode] = useState<EditorMode>("display");
     const [polishing, setPolishing] = useState(false);
+    const [voiceRecording, setVoiceRecording] = useState(false);
+    const [voicePreview, setVoicePreview] = useState("");
     const editorRef = useRef<any>(null);
     const textAreaRef = useRef<TextAreaRef | null>(null);
+    const voiceBaseValueRef = useRef(props.value);
+    const voiceSelectionRef = useRef<TextSelection>({start: props.value.length, end: props.value.length});
     const isMobile = useIsMobile();
     const uploadOptions = useMemo(() => ({accept: ""}), []);
+
+    const getEditorInput = useCallback((): HTMLTextAreaElement | null => {
+        if (mode === "markdown") {
+            return editorRef.current?.getMdElement?.() ?? null;
+        }
+        return textAreaRef.current?.resizableTextArea?.textArea ?? null;
+    }, [mode]);
+
+    const handleVoiceRecordingChange = useCallback((recording: boolean) => {
+        setVoiceRecording(recording);
+        if (!recording) {
+            setVoicePreview("");
+            return;
+        }
+        const input = getEditorInput();
+        voiceBaseValueRef.current = props.value;
+        voiceSelectionRef.current = {
+            start: input?.selectionStart ?? props.value.length,
+            end: input?.selectionEnd ?? props.value.length,
+        };
+    }, [getEditorInput, props.value]);
+
+    const handleVoiceText = useCallback((text: string) => {
+        if (!text) {
+            return;
+        }
+        const selection = voiceSelectionRef.current;
+        const next = insertAtSelection(voiceBaseValueRef.current, text, selection);
+        props.onChange(next);
+        setVoicePreview("");
+        window.requestAnimationFrame(() => {
+            const input = getEditorInput();
+            const cursor = selection.start + text.length;
+            input?.focus();
+            input?.setSelectionRange(cursor, cursor);
+        });
+    }, [getEditorInput, props]);
 
     const insertText = useCallback((text: string) => {
         if (!text) {
@@ -63,6 +113,10 @@ export function Editor(props: { value: string, onChange: (value: string) => void
     }, undefined, uploadOptions);
 
     const handleFilePaste = useCallback((event: ClipboardEvent | React.ClipboardEvent) => {
+        if (voiceRecording) {
+            event.preventDefault();
+            return;
+        }
         const files = Array.from(event.clipboardData?.files ?? []);
         if (files.length === 0) {
             return;
@@ -71,13 +125,13 @@ export function Editor(props: { value: string, onChange: (value: string) => void
         files.forEach((file) => {
             void uploadSingle(file);
         });
-    }, [uploadSingle]);
+    }, [uploadSingle, voiceRecording]);
 
     useEffect(() => {
         if (mode !== "markdown" || !editorRef.current) {
             return;
         }
-        editorRef.current.setView({menu: true, md: true, html: false});
+        editorRef.current.setView({menu: !voiceRecording, md: true, html: false});
         const input = editorRef.current.getMdElement() as HTMLTextAreaElement | undefined;
         if (!input) {
             return;
@@ -85,7 +139,7 @@ export function Editor(props: { value: string, onChange: (value: string) => void
         const onPaste = (event: ClipboardEvent) => handleFilePaste(event);
         input.addEventListener("paste", onPaste);
         return () => input.removeEventListener("paste", onPaste);
-    }, [handleFilePaste, mode]);
+    }, [handleFilePaste, mode, voiceRecording]);
 
     const polish = useCallback(async () => {
         if (!props.value.trim() || polishing) {
@@ -129,20 +183,30 @@ export function Editor(props: { value: string, onChange: (value: string) => void
             <WhisperButton
                 size="small"
                 tooltip="语音输入"
-                onText={(text) => insertText(text)}
+                disabled={polishing || uploading}
+                showRealtimePreview={false}
+                onRecordingChange={handleVoiceRecordingChange}
+                onPartialText={setVoicePreview}
+                onText={handleVoiceText}
+                onError={() => setVoicePreview("")}
             />
             {actionButton("AI润色", <FontColorsOutlined/>, () => void polish(), {
                 loading: polishing,
-                disabled: !props.value.trim(),
+                disabled: voiceRecording || !props.value.trim(),
             })}
             {actionButton("上传文件", <FileAddOutlined/>, () => selectLocalFile(true), {
                 loading: uploading,
+                disabled: voiceRecording,
             })}
             {mode === "markdown"
-                ? actionButton("简单编辑", <EditOutlined/>, () => setMode("simple"))
-                : actionButton("MD编辑", <CodeOutlined/>, () => setMode("markdown"))}
-            {actionButton("退出编辑", <CloseOutlined/>, () => setMode("display"))}
+                ? actionButton("简单编辑", <EditOutlined/>, () => setMode("simple"), {disabled: voiceRecording})
+                : actionButton("MD编辑", <CodeOutlined/>, () => setMode("markdown"), {disabled: voiceRecording})}
+            {actionButton("退出编辑", <CloseOutlined/>, () => setMode("display"), {disabled: voiceRecording})}
         </Flex>;
+
+    const editorValue = voicePreview
+        ? insertAtSelection(voiceBaseValueRef.current, voicePreview, voiceSelectionRef.current)
+        : props.value;
 
     return <div className={`task-detail-editor-shell task-detail-editor-shell--${mode}`}>
         {mode === "display" ? <div
@@ -153,7 +217,8 @@ export function Editor(props: { value: string, onChange: (value: string) => void
         {mode === "simple" ? <Input.TextArea
             ref={textAreaRef}
             className="task-detail-simple-editor"
-            value={props.value}
+            value={editorValue}
+            readOnly={voiceRecording}
             onChange={(event) => props.onChange(event.target.value)}
             onPaste={handleFilePaste}
             placeholder="任务备注"
@@ -163,7 +228,8 @@ export function Editor(props: { value: string, onChange: (value: string) => void
         {mode === "markdown" ? <MdEditor
             ref={editorRef}
             className="task-detail-md-editor"
-            value={props.value}
+            value={editorValue}
+            readOnly={voiceRecording}
             style={{
                 height: "100%",
                 fontSize: isMobile ? "16px" : undefined,

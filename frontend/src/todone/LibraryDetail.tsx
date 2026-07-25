@@ -290,6 +290,7 @@ export default function LibraryDetail({visible, item, noteContext, categories = 
     const [showAddNote, setShowAddNote] = useState(false);
     const [noteContent, setNoteContent] = useState('');
     const [addNoteVoiceRecording, setAddNoteVoiceRecording] = useState(false);
+    const [addNoteVoicePreview, setAddNoteVoicePreview] = useState('');
     const [showStatusReason, setShowStatusReason] = useState(false);
     const [statusReasonInput, setStatusReasonInput] = useState('');
     const [pendingStatus, setPendingStatus] = useState<LibraryItemStatus | null>(null);
@@ -309,6 +310,7 @@ export default function LibraryDetail({visible, item, noteContext, categories = 
     const [editingNote, setEditingNote] = useState<LibraryNote | null>(null);
     const [editingContentText, setEditingContentText] = useState('');
     const [editingNoteVoiceRecording, setEditingNoteVoiceRecording] = useState(false);
+    const [editingNoteVoicePreview, setEditingNoteVoicePreview] = useState('');
     const [editingScoreText, setEditingScoreText] = useState('合');
     const [editingObjScoreText, setEditingObjScoreText] = useState('普通');
     const [editingSubScoreText, setEditingSubScoreText] = useState('消磨');
@@ -970,6 +972,7 @@ export default function LibraryDetail({visible, item, noteContext, categories = 
         }
         setShowAddNote(false);
         setNoteContent('');
+        setAddNoteVoicePreview('');
         message.success('备注已添加');
     };
 
@@ -1040,6 +1043,7 @@ export default function LibraryDetail({visible, item, noteContext, categories = 
     const resetEditingContentState = () => {
         setShowEditLogContent(false);
         setEditingNoteVoiceRecording(false);
+        setEditingNoteVoicePreview('');
         setEditingContentPos(null);
         setEditingContentType(null);
         setEditingNote(null);
@@ -1116,6 +1120,7 @@ export default function LibraryDetail({visible, item, noteContext, categories = 
         setEditingContentType(LibraryLogType.note);
         setEditingNote(note);
         setEditingContentText(note.Content);
+        setEditingNoteVoicePreview('');
         setShowEditLogContent(true);
     };
 
@@ -2189,14 +2194,26 @@ export default function LibraryDetail({visible, item, noteContext, categories = 
                     setShowAddNote(false);
                     setNoteContent('');
                     setAddNoteVoiceRecording(false);
+                    setAddNoteVoicePreview('');
                 }}
                 footer={(
                     <Flex justify="flex-end" align="center" gap={8}>
                         <WhisperButton
                             disabled={noteSaving}
                             tooltip="语音输入备注"
-                            onRecordingChange={setAddNoteVoiceRecording}
-                            onText={(text) => setNoteContent((current) => appendTranscriptionText(current, text))}
+                            showRealtimePreview={false}
+                            onRecordingChange={(recording) => {
+                                setAddNoteVoiceRecording(recording);
+                                if (!recording) {
+                                    setAddNoteVoicePreview('');
+                                }
+                            }}
+                            onPartialText={setAddNoteVoicePreview}
+                            onText={(text) => {
+                                setAddNoteVoicePreview('');
+                                setNoteContent((current) => appendTranscriptionText(current, text));
+                            }}
+                            onError={() => setAddNoteVoicePreview('')}
                         />
                         {!addNoteVoiceRecording ? (
                             <Button
@@ -2213,7 +2230,10 @@ export default function LibraryDetail({visible, item, noteContext, categories = 
                 <TextArea
                     rows={4}
                     placeholder="请输入备注内容..."
-                    value={noteContent}
+                    value={addNoteVoicePreview.trim()
+                        ? appendTranscriptionText(noteContent, addNoteVoicePreview)
+                        : noteContent}
+                    readOnly={addNoteVoiceRecording}
                     onChange={(e) => setNoteContent(e.target.value)}
                 />
             </Modal>
@@ -2281,8 +2301,19 @@ export default function LibraryDetail({visible, item, noteContext, categories = 
                         <WhisperButton
                             disabled={noteSaving}
                             tooltip="语音输入备注"
-                            onRecordingChange={setEditingNoteVoiceRecording}
-                            onText={(text) => setEditingContentText((current) => appendTranscriptionText(current, text))}
+                            showRealtimePreview={false}
+                            onRecordingChange={(recording) => {
+                                setEditingNoteVoiceRecording(recording);
+                                if (!recording) {
+                                    setEditingNoteVoicePreview('');
+                                }
+                            }}
+                            onPartialText={setEditingNoteVoicePreview}
+                            onText={(text) => {
+                                setEditingNoteVoicePreview('');
+                                setEditingContentText((current) => appendTranscriptionText(current, text));
+                            }}
+                            onError={() => setEditingNoteVoicePreview('')}
                         />
                         {!editingNoteVoiceRecording ? (
                             <Button
@@ -2430,7 +2461,10 @@ export default function LibraryDetail({visible, item, noteContext, categories = 
                 ) : (
                     <TextArea
                         rows={4}
-                        value={editingContentText}
+                        value={editingNoteVoicePreview.trim()
+                            ? appendTranscriptionText(editingContentText, editingNoteVoicePreview)
+                            : editingContentText}
+                        readOnly={editingNoteVoiceRecording}
                         onChange={(e) => setEditingContentText(e.target.value)}
                         placeholder="请输入备注内容"
                     />
