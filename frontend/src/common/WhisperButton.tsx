@@ -182,6 +182,7 @@ export function WhisperButton({
     const autoStopTriggeredRef = useRef(false);
     const lastRealtimeCompletionRef = useRef("");
     const lastRealtimeErrorRef = useRef("");
+    const onRecordingChangeRef = useRef(onRecordingChange);
 
     const effectiveLanguage = useMemo(
         () => normalizeLanguage(language ?? settings.language),
@@ -211,12 +212,16 @@ export function WhisperButton({
     const isDisabled = Boolean(disabled || busy);
 
     useEffect(() => {
-        onRecordingChange?.(recording);
-    }, [onRecordingChange, recording]);
+        onRecordingChangeRef.current = onRecordingChange;
+    }, [onRecordingChange]);
 
     useEffect(() => {
-        return () => onRecordingChange?.(false);
-    }, [onRecordingChange]);
+        onRecordingChangeRef.current?.(recording);
+    }, [recording]);
+
+    useEffect(() => {
+        return () => onRecordingChangeRef.current?.(false);
+    }, []);
 
     const emitError = useCallback((nextError: string) => {
         onError?.(nextError);

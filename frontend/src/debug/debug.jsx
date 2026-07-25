@@ -1,12 +1,10 @@
 import {useState} from "react";
-import {Alert, Button, Card, Col, Flex, Input, InputNumber, Modal, Row, Slider, Space, Typography} from "antd";
+import {Button, Card, Col, InputNumber, Row, Slider, Space, Typography} from "antd";
 import {CustomDeviceSimulator, DeviceSimulator} from "./DeviceSim.jsx";
 import {MenuPlus} from "../common/MenuPlus.jsx";
 import {EditableProps} from "./EditableProps.jsx";
 import {ConfigsType, ConfigType} from "../common/UniConfigDef.js";
 import {ConfigsCtr} from "../common/UniConfig.jsx";
-import {WhisperButton} from "../common/WhisperButton.tsx";
-import {Editor as TaskDetailEditor} from "../todone/TaskDetailEditor.tsx";
 
 const {Text} = Typography;
 
@@ -15,171 +13,7 @@ const config = new ConfigsCtr(ConfigsType.Plat)
 config.addBaseConfig('test', '测试', ConfigType.SliceString, 'test')
 config.addBaseConfig('realKey', '真实2', ConfigType.String, 'realKey')
 
-function WhisperDebugPanel() {
-    const [text, setText] = useState("");
-    const [partialText, setPartialText] = useState("");
-    const [lastResponse, setLastResponse] = useState(null);
-    const [lastError, setLastError] = useState("");
-    const [recording, setRecording] = useState(false);
-
-    return (
-        <Card
-            title="全局语音按钮（实时 / 文件自动切换）"
-            style={{
-                maxWidth: 720,
-                margin: 16,
-            }}
-        >
-            <Space direction="vertical" size="middle" style={{width: "100%"}}>
-                <Space wrap>
-                    <WhisperButton
-                        tooltip="点击开始 / 停止录音"
-                        showRealtimePreview={false}
-                        onRecordingChange={setRecording}
-                        onText={(nextText, response) => {
-                            setText(nextText);
-                            setPartialText("");
-                            setLastResponse(response);
-                            setLastError("");
-                        }}
-                        onPartialText={setPartialText}
-                        onError={(error) => {
-                            setLastError(error);
-                        }}
-                    />
-                    <Button onClick={() => {
-                        setText("");
-                        setPartialText("");
-                        setLastResponse(null);
-                        setLastError("");
-                    }}>
-                        清空
-                    </Button>
-                </Space>
-                {lastError ? <Alert type="error" showIcon message={lastError}/> : null}
-                <Input.TextArea
-                    value={partialText || text}
-                    onChange={(event) => setText(event.target.value)}
-                    readOnly={recording}
-                    autoSize={{minRows: 6, maxRows: 12}}
-                    placeholder="实时累计结果和最终转写会显示在这里"
-                />
-                {lastResponse ? (
-                    <Typography.Text type="secondary">
-                        language: {lastResponse.language || "-"} / duration: {lastResponse.duration ?? "-"}
-                    </Typography.Text>
-                ) : null}
-            </Space>
-        </Card>
-    );
-}
-
-function appendTranscriptionText(current, transcription) {
-    const next = transcription.trim();
-    if (!next) return current;
-    if (!current || /\s$/.test(current)) return current + next;
-    return `${current}\n${next}`;
-}
-
-function LibraryNoteModalDebugPanel() {
-    const [mode, setMode] = useState(null);
-    const [draft, setDraft] = useState("");
-    const [recording, setRecording] = useState(false);
-    const [voicePreview, setVoicePreview] = useState("");
-    const [confirmedText, setConfirmedText] = useState("");
-
-    const openModal = (nextMode) => {
-        setMode(nextMode);
-        setDraft(nextMode === "edit" ? "这是一条待编辑的备注。" : "");
-        setRecording(false);
-        setVoicePreview("");
-    };
-
-    const closeModal = () => {
-        setMode(null);
-        setRecording(false);
-        setVoicePreview("");
-    };
-
-    const confirm = () => {
-        setConfirmedText(draft.trim());
-        closeModal();
-    };
-
-    return <Card title="Library 备注弹窗样例" style={{maxWidth: 720, margin: 16}}>
-        <Space direction="vertical" size="middle" style={{width: "100%"}}>
-            <Space wrap>
-                <Button type="primary" onClick={() => openModal("add")}>打开新增备注</Button>
-                <Button onClick={() => openModal("edit")}>打开编辑备注</Button>
-            </Space>
-            {confirmedText ? <Alert type="success" showIcon message={`最近确认：${confirmedText}`}/> : null}
-        </Space>
-        <Modal
-            title={mode === "edit" ? "编辑备注内容" : "添加备注"}
-            open={mode !== null}
-            destroyOnClose={true}
-            onCancel={closeModal}
-            footer={(
-                <Flex justify="flex-end" align="center" gap={8}>
-                    <WhisperButton
-                        tooltip="语音输入备注"
-                        showRealtimePreview={false}
-                        onRecordingChange={(nextRecording) => {
-                            setRecording(nextRecording);
-                            if (!nextRecording) {
-                                setVoicePreview("");
-                            }
-                        }}
-                        onPartialText={setVoicePreview}
-                        onText={(text) => {
-                            setVoicePreview("");
-                            setDraft((current) => appendTranscriptionText(current, text));
-                        }}
-                        onError={() => setVoicePreview("")}
-                    />
-                    {!recording ? (
-                        <Button type="primary" disabled={!draft.trim()} onClick={confirm}>
-                            确认
-                        </Button>
-                    ) : null}
-                </Flex>
-            )}
-        >
-            <Input.TextArea
-                rows={4}
-                value={voicePreview.trim() ? appendTranscriptionText(draft, voicePreview) : draft}
-                readOnly={recording}
-                placeholder="请输入备注内容..."
-                onChange={(event) => setDraft(event.target.value)}
-            />
-        </Modal>
-    </Card>;
-}
-
-function TaskDetailEditorDebugPanel() {
-    const [value, setValue] = useState("# 示例任务\n\n这是一段用于纯前端测试的备注。");
-    const longValue = Array.from({length: 30}, (_, index) => `${index + 1}. 第 ${index + 1} 行长内容测试`).join("\n");
-
-    return <Card title="任务备注编辑器" style={{width: "calc(100% - 32px)", maxWidth: 400, height: 520, margin: 16}}>
-        <Flex vertical gap={12} style={{height: "100%"}}>
-            <Space size="small">
-                <Button size="small" onClick={() => setValue("")}>空内容</Button>
-                <Button size="small" onClick={() => setValue("# 短内容\n\n一行备注。")}>短内容</Button>
-                <Button size="small" onClick={() => setValue(longValue)}>长内容</Button>
-            </Space>
-            <TaskDetailEditor value={value} onChange={setValue}/>
-            <Typography.Text data-testid="task-note-value" type="secondary">
-                当前值：{value}
-            </Typography.Text>
-        </Flex>
-    </Card>;
-}
-
-const debug = <Space direction="vertical" style={{width: "100%"}}>
-    <TaskDetailEditorDebugPanel/>
-    <LibraryNoteModalDebugPanel/>
-    <WhisperDebugPanel/>
-</Space>
+const debug = <Space/>
 
 // const settings = {
 //     init: false,
