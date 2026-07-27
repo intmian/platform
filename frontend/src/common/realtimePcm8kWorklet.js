@@ -1,5 +1,6 @@
 const TARGET_SAMPLE_RATE = 8000;
 const FRAME_SAMPLE_COUNT = 800;
+const WAVEFORM_BAR_COUNT = 16;
 
 class RealtimePcm8kProcessor extends AudioWorkletProcessor {
     constructor() {
@@ -59,14 +60,21 @@ class RealtimePcm8kProcessor extends AudioWorkletProcessor {
     emitSamples(samples) {
         const buffer = new ArrayBuffer(samples.length * 2);
         const view = new DataView(buffer);
+        const waveform = new Array(WAVEFORM_BAR_COUNT).fill(0);
         let peak = 0;
         samples.forEach((value, index) => {
             const sample = Math.max(-1, Math.min(1, value));
-            peak = Math.max(peak, Math.abs(sample));
+            const level = Math.abs(sample);
+            const waveformIndex = Math.min(
+                WAVEFORM_BAR_COUNT - 1,
+                Math.floor(index * WAVEFORM_BAR_COUNT / samples.length),
+            );
+            waveform[waveformIndex] = Math.max(waveform[waveformIndex], level);
+            peak = Math.max(peak, level);
             const pcm = sample < 0 ? Math.round(sample * 0x8000) : Math.round(sample * 0x7fff);
             view.setInt16(index * 2, pcm, true);
         });
-        this.port.postMessage({type: "audio", buffer, peak}, [buffer]);
+        this.port.postMessage({type: "audio", buffer, peak, waveform}, [buffer]);
     }
 }
 

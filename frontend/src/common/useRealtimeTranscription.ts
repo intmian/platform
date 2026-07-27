@@ -22,6 +22,9 @@ interface RealtimeTranscriptionEvent {
     taskID?: string;
 }
 
+const REALTIME_WAVEFORM_BAR_COUNT = 16;
+const EMPTY_REALTIME_WAVEFORM = Array.from({length: REALTIME_WAVEFORM_BAR_COUNT}, () => 0);
+
 export interface RealtimeTranscriptionReady {
     sampleRate: number;
     providerID: string;
@@ -45,12 +48,23 @@ function aggregateSentences(sentences: Map<number, string>): string {
         .join("");
 }
 
+function normalizeRealtimeWaveform(value: unknown): number[] {
+    if (!Array.isArray(value)) {
+        return EMPTY_REALTIME_WAVEFORM;
+    }
+    return Array.from({length: REALTIME_WAVEFORM_BAR_COUNT}, (_, index) => {
+        const level = Number(value[index]) || 0;
+        return Math.min(1, Math.sqrt(Math.max(0, level)));
+    });
+}
+
 export function useRealtimeTranscription() {
     const [status, setStatus] = useState<RealtimeTranscriptionStatus>("idle");
     const [partialText, setPartialText] = useState("");
     const [finalText, setFinalText] = useState("");
     const [error, setError] = useState("");
     const [level, setLevel] = useState(0);
+    const [waveform, setWaveform] = useState<number[]>(EMPTY_REALTIME_WAVEFORM);
     const [durationMs, setDurationMs] = useState(0);
     const [ready, setReady] = useState<RealtimeTranscriptionReady | null>(null);
 
@@ -104,6 +118,7 @@ export function useRealtimeTranscription() {
             void context.close();
         }
         setLevel(0);
+        setWaveform(EMPTY_REALTIME_WAVEFORM);
         stopDurationTimer();
     }, [stopDurationTimer]);
 
@@ -225,6 +240,7 @@ export function useRealtimeTranscription() {
             worklet.port.onmessage = (event: MessageEvent) => {
                 if (event.data?.type === "audio") {
                     setLevel(Math.min(1, Math.sqrt(Number(event.data.peak) || 0)));
+                    setWaveform(normalizeRealtimeWaveform(event.data.waveform));
                     if (streamingRef.current && socket.readyState === WebSocket.OPEN) {
                         socket.send(event.data.buffer as ArrayBuffer);
                     }
@@ -331,6 +347,7 @@ export function useRealtimeTranscription() {
         finalText,
         error,
         level,
+        waveform,
         durationMs,
         ready,
         start,

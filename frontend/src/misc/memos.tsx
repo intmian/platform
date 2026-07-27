@@ -883,6 +883,7 @@ function Memos() {
     const tagsChange = useCallback((tags: string[]) => {
         setTagsSelected(tags);
     }, []);
+    const tagButtonText = tagsSelected.length > 0 ? tagsSelected.join('、') : '标签';
 
     if (loadingUser) {
         return <Spin size="large"
@@ -1073,8 +1074,25 @@ function Memos() {
                         type={tagPopoverOpen ? "primary" : "default"}
                         aria-label="选择标签"
                         aria-pressed={tagPopoverOpen}
+                        title={tagsSelected.length > 0 ? tagButtonText : undefined}
+                        style={{
+                            minWidth: 0,
+                            maxWidth: '180px',
+                            flexShrink: 1,
+                            overflow: 'hidden',
+                        }}
                     >
-                        标签
+                        <span
+                            style={{
+                                display: 'block',
+                                minWidth: 0,
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                whiteSpace: 'nowrap',
+                            }}
+                        >
+                            {tagButtonText}
+                        </span>
                     </Button>
                 </Popover>
                 <Space

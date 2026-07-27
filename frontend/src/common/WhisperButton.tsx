@@ -434,11 +434,7 @@ export function WhisperButton({
     const iconOnlySize = buttonProps.size === "large" ? 40 : buttonProps.size === "small" ? 24 : 32;
     const recordingWidth = buttonProps.size === "small" ? 144 : buttonProps.size === "large" ? 184 : 164;
     const recordingDurationMs = realtimeRecording ? realtime.durationMs : recorder.durationMs;
-    const recordingWaveform = realtimeRecording
-        ? Array.from({length: 16}, (_, index) => (
-            Math.min(1, realtime.level * (0.5 + ((index * 7) % 6) / 10))
-        ))
-        : recorder.waveform;
+    const recordingWaveform = realtimeRecording ? realtime.waveform : recorder.waveform;
     const recordingContent = <span
         style={{
             width: "100%",

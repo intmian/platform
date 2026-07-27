@@ -79,14 +79,14 @@ Last verified: 2026-07-25
 ## Bottom action behavior (verified from code)
 
 1. The bottom area has one fixed action row:
-   - left: a `标签` button with the same shape and dimensions as `发送`
+   - left: a tag button that shows `标签` when empty, otherwise shows selected tag names joined with `、`; long content stays on one line and is ellipsized without pushing the right-side actions out of place
    - right: file upload, AI rewrite, voice input, and send actions
 2. Clicking the tag button opens the tag selector in a popover above the row; the button uses its selected style while open, and the selector is focused with its option dropdown expanded automatically.
 3. The tag popover overlays the page instead of consuming layout height, so opening or closing it does not resize the memo input.
 4. File upload, AI rewrite, and voice input are icon-only controls with tooltips and accessible labels. Mobile suppresses the voice button tooltip, including its recording stop hint, while retaining click-to-stop behavior.
 5. File upload uses `FileAddOutlined` and preserves clipboard-image detection on supported desktop browsers; it is disabled while settings are loading or an upload is already running.
 6. AI rewrite uses `RobotOutlined` and is disabled until the memo has content and settings are ready.
-7. Voice input remains the shared `WhisperButton`; while recording, its expanded pill replaces the send button space.
+7. Voice input remains the shared `WhisperButton`; while recording, its expanded pill replaces the send button space and shows the latest real 16-bucket PCM waveform rather than a repeated synthetic pattern.
 8. The send button stays at the far right when voice recording is inactive.
 9. Hide/show remains in the top-right control area next to the logged-in user.
 10. Note Mini suppresses the floating `实时转写` popover on all screen sizes. Confirmed sentences plus the current mutable partial sentence appear directly at the end of the draft editor instead.

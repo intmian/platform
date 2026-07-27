@@ -30,7 +30,7 @@ Last verified: 2026-07-24
    - KEY = mock key
 5. Type a known plaintext in memo input.
 6. Verify the bottom layout:
-   - the tag button stays at the far left and matches the send button's shape and dimensions
+   - the tag button stays at the far left, shows `标签` when empty, joins selected tag names with `、`, and ellipsizes long content without displacing the right-side actions
    - file upload, AI rewrite, voice input, and send actions stay right-aligned
    - file upload, AI rewrite, and voice input use icon-only buttons with accessible labels/tooltips
    - opening the tag button selects it, focuses the tag selector, expands the option dropdown immediately, and does not resize the memo input
@@ -44,7 +44,7 @@ Last verified: 2026-07-24
 10. Run adjacent regression:
     - click the AI rewrite icon and verify the rewrite flow opens without crashing
     - click the file upload icon and verify the clipboard/local-file selection flow opens
-    - start and stop voice input and verify the expanded recording pill does not break the action row
+    - start and stop voice input and verify the expanded recording pill shows a non-repeating live waveform without breaking the action row
 
 ## Pass criteria
 
