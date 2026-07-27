@@ -1,6 +1,6 @@
 # Library Module Testing
 
-Last verified: 2026-07-11 (real frontend/backend + test D1 interaction, offline migration drill, backend tests, frontend production build)
+Last verified: 2026-07-27 (score-detail migration and lazy-loading/edit flow passed against local Wrangler D1 Worker + Go backend + Vite frontend)
 
 ## Preconditions
 
@@ -56,7 +56,7 @@ Last verified: 2026-07-11 (real frontend/backend + test D1 interaction, offline 
    - detail `体验记录` header should keep `体验记录` on one line; count and controls may wrap to the next line instead of squeezing the title vertically.
    - hover/touch visual regression: real-cover card shine should stay continuous without visible hard edge / cutoff band.
 9. Export content regression:
-   - in detail `分享预览`, exported card bottom section should include main evaluation text (main score log comment).
+   - opening detail `分享预览` should load only `mainScoreID` detail, disable export until loaded, and include its main evaluation text in the exported card.
    - when item current status is `DONE`, share export should show date range as `YYYY-MM-DD - YYYY-MM-DD` without prefix text.
 
 ## Filters and sort checks
@@ -123,9 +123,13 @@ Last verified: 2026-07-11 (real frontend/backend + test D1 interaction, offline 
     - simple-score and complex-score rows should both be clickable
     - clicking either should open the score detail popover
     - `设为主评分` star button should still work without being swallowed by the popover trigger
-12. Score comment preview:
-    - timeline/detail score comment preview should stay on a single line
-    - long preview should render as `前缀...(N字)`
+12. Score detail lazy-load boundary:
+    - initial list, card rendering, score sort, all-library timeline, timeline export, score gradient, detail summary, and detail experience-record list must issue no score-detail request
+    - global and detail score rows must not render evaluation preview text
+    - clicking one card badge or detail score row loads exactly that score ID and supports retry without loading sibling scores
+    - opening edit loads only the selected score; detail-only edits leave `Task.Note` unchanged and increase detail revision
+    - opening add may load only the current main score to choose the initial mode
+    - hidden Add/Share/Popover component trees must not trigger requests merely by rendering
 13. Detail note visibility selector:
     - verify header selector options `隐藏 / 缩略 / 显示`
     - default should be `缩略`
@@ -162,6 +166,12 @@ Last verified: 2026-07-11 (real frontend/backend + test D1 interaction, offline 
     - `--apply` requires `--confirm-stopped`, a new mode-0600 JSONL backup path, and migrates notes before rewriting `Task.Note`
     - `--verify` checks migrated data from the backup; `--rollback` restores original `Task.Note` and removes deterministic migrated note IDs
     - verify legacy `note + 添加到库` becomes `addToLibrary`, main score indexes stay correct, unknown JSON fields remain, and business `updatedAt` is unchanged
+18. Score-detail offline migration:
+    - default mode is read-only planning; apply/rollback require `--confirm-stopped` and an exclusive mode-0600 backup
+    - require stable round UUIDs and no embedded notes before transforming scores
+    - assign deterministic score UUIDs, convert index selection to `mainScoreID`, preserve core score/time/sign and unknown fields, and move only comment/mode/complex dimensions
+    - verify legacy top-level main-score snapshots are synthesized when necessary and `updatedAt` remains unchanged
+    - rollback must refuse if Task core or any migrated detail changed after cutover
 
 ## Failure isolation
 

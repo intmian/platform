@@ -1,6 +1,6 @@
 # Production Operations And Data Migrations
 
-Last verified: 2026-07-12 (operation lessons, current Platform safety caveats, and `migrate_library_notes` behavior)
+Last verified: 2026-07-13 (operation lessons, current Platform safety caveats, and Library stopped-service migration helpers)
 
 ## Purpose And Routing
 
@@ -187,6 +187,8 @@ Rollback rules:
 7. `--rollback` restores original `Task.Note` and removes deterministic migrated note rows.
 
 Reuse its safety properties, not its schema or one-off production command line, for future migrations.
+
+`backend/cmd/migrate_library_score_details` applies the same stopped-service gates to score-detail extraction. It additionally requires the Note migration/stable round IDs first, keeps slim score logs in `Task.Note`, converts main-score indexes to `mainScoreID`, and refuses rollback after either Task core or migrated detail rows have changed.
 
 ## AI Handoff Checklist
 

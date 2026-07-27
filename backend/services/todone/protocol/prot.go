@@ -59,3 +59,23 @@ type PLibraryNote struct {
 	CreatedAt time.Time
 	UpdatedAt time.Time
 }
+
+type PLibraryScoreDimension struct {
+	Value      uint8
+	Adjustment int8
+	Comment    string
+}
+
+type PLibraryScoreDetail struct {
+	ID            string
+	TaskID        uint32
+	RoundID       string
+	Mode          string
+	Comment       string
+	ObjScore      *PLibraryScoreDimension
+	SubScore      *PLibraryScoreDimension
+	InnovateScore *PLibraryScoreDimension
+	Revision      uint32
+	CreatedAt     time.Time
+	UpdatedAt     time.Time
+}

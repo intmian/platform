@@ -671,30 +671,21 @@ export default function LibraryTimeline({visible, items, onClose, onItemClick}: 
             : mergedActionText
                 ? mergedActionText
             : entry.logType === LibraryLogType.score
-                ? `评分 ${getScoreText(entry.score || 0)}`
+                ? `评分 ${getScoreText(entry.score || 0, entry.scorePlus, entry.scoreSub)}`
                 : getLogTypeText(entry.logType, entry.status);
-        const trimmedComment = (entry.comment || '').trim();
+        const trimmedComment = entry.logType === LibraryLogType.score ? '' : (entry.comment || '').trim();
         const shouldHideComment = (
             entry.logType === LibraryLogType.changeStatus
             && entry.status === LibraryItemStatus.DOING
             && isLibraryAutoRoundStartComment(trimmedComment, entry.roundName)
         ) || trimmedComment === actionText;
-        const commentStyle: React.CSSProperties = entry.logType === LibraryLogType.score
-            ? {
-                fontSize: 12,
-                display: 'block',
-                maxWidth: '100%',
-                whiteSpace: 'nowrap',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-            }
-            : {
-                fontSize: 12,
-                display: '-webkit-box',
-                WebkitLineClamp: 2,
-                WebkitBoxOrient: 'vertical',
-                overflow: 'hidden',
-            };
+        const commentStyle: React.CSSProperties = {
+            fontSize: 12,
+            display: '-webkit-box',
+            WebkitLineClamp: 2,
+            WebkitBoxOrient: 'vertical',
+            overflow: 'hidden',
+        };
 
         const exportEntryKey = buildTimelineEntryKey(entry);
         const exportChecked = !options?.excludedEntryKeys?.has(exportEntryKey);

@@ -17,6 +17,10 @@ export function createLibraryRoundID(): string {
     return crypto.randomUUID();
 }
 
+export function createLibraryScoreID(): string {
+    return crypto.randomUUID();
+}
+
 /**
  * 创建默认的 LibraryExtra 数据
  */
@@ -135,19 +139,40 @@ export function serializeLibraryExtra(extra: LibraryExtra): string {
     normalizedExtra.pictureAddressDetail = (normalizedExtra.pictureAddressDetail || '').trim();
     normalizedExtra.picturePreview = (normalizedExtra.picturePreview || normalizedExtra.pictureAddressPreview || '').trim();
     normalizedExtra.pictureAddressPreview = normalizedExtra.picturePreview;
-    migrateLegacyComplexScoreFields(normalizedExtra);
+    const hasUnmigratedScore = normalizedExtra.rounds.some((round) => (
+        round.logs.some((log) => log.type === LibraryLogType.score && !log.id)
+    ));
+    normalizedExtra.rounds = normalizedExtra.rounds.map((round) => ({
+        ...round,
+        logs: round.logs.map((log) => {
+            if (log.type !== LibraryLogType.score || hasUnmigratedScore) {
+                return log;
+            }
+            const coreLog = {...log};
+            delete coreLog.comment;
+            delete coreLog.scoreMode;
+            delete coreLog.objScore;
+            delete coreLog.subScore;
+            delete coreLog.innovateScore;
+            return coreLog;
+        }),
+    }));
     // 兼容历史数据：以下字段已废弃，运行时可兜底读取，但保存时统一清空。
     delete normalizedExtra.status;
     delete normalizedExtra.todoReason;
     delete normalizedExtra.waitSince;
     delete normalizedExtra.todoSince;
     delete normalizedExtra.timelineCutoffTime;
-    delete normalizedExtra.scoreMode;
-    delete normalizedExtra.objScore;
-    delete normalizedExtra.subScore;
-    delete normalizedExtra.innovateScore;
-    delete normalizedExtra.mainScore;
-    delete normalizedExtra.comment;
+    if (!hasUnmigratedScore) {
+        delete normalizedExtra.scoreMode;
+        delete normalizedExtra.objScore;
+        delete normalizedExtra.subScore;
+        delete normalizedExtra.innovateScore;
+        delete normalizedExtra.mainScore;
+        delete normalizedExtra.comment;
+        delete normalizedExtra.mainScoreRoundIndex;
+        delete normalizedExtra.mainScoreLogIndex;
+    }
     delete normalizedExtra.waitReason;
     return JSON.stringify(normalizedExtra);
 }
@@ -465,16 +490,13 @@ export function deriveLibraryMeta(extra: LibraryExtra, nowMs: number = Date.now(
         return (nowMs - start) >= monthMs;
     })();
 
-    const selectedMainScore = (() => {
-        if (extra.mainScoreRoundIndex === undefined || extra.mainScoreLogIndex === undefined) {
-            return null;
-        }
-        const selectedLog = extra.rounds[extra.mainScoreRoundIndex]?.logs[extra.mainScoreLogIndex];
-        if (selectedLog?.type === LibraryLogType.score) {
-            return selectedLog;
-        }
-        return null;
-    })();
+    const selectedMainScore = extra.mainScoreID
+        ? extra.rounds.flatMap((round) => round.logs).find((log) => log.type === LibraryLogType.score && log.id === extra.mainScoreID) || null
+        : (() => {
+            if (extra.mainScoreRoundIndex === undefined || extra.mainScoreLogIndex === undefined) return null;
+            const selectedLog = extra.rounds[extra.mainScoreRoundIndex]?.logs[extra.mainScoreLogIndex];
+            return selectedLog?.type === LibraryLogType.score ? selectedLog : null;
+        })();
 
     const mainScore = selectedMainScore || latestScoreLog || legacyMainScoreToLog(extra);
     const displayStatus: LibraryDisplayStatusInfo = (() => {
@@ -767,32 +789,21 @@ export function addTimelineCutoffLog(extra: LibraryExtra, comment?: string): Lib
  */
 export function addScoreLog(
     extra: LibraryExtra,
+    scoreID: string,
     score: number,
     plus: boolean = false,
     sub: boolean = false,
-    comment?: string,
-    options?: {
-        mode?: 'simple' | 'complex';
-        objScore?: LibraryExtra['objScore'];
-        subScore?: LibraryExtra['subScore'];
-        innovateScore?: LibraryExtra['innovateScore'];
-    }
 ): LibraryExtra {
     const now = new Date().toISOString();
     const currentRound = extra.rounds[extra.currentRound];
     if (currentRound) {
-        const resolvedMode = options?.mode === 'complex' ? 'complex' : 'simple';
         currentRound.logs.push({
+            id: scoreID,
             type: LibraryLogType.score,
             time: now,
             score: score,
             scorePlus: plus,
             scoreSub: sub,
-            comment: comment,
-            scoreMode: resolvedMode,
-            objScore: resolvedMode === 'complex' ? options?.objScore : undefined,
-            subScore: resolvedMode === 'complex' ? options?.subScore : undefined,
-            innovateScore: resolvedMode === 'complex' ? options?.innovateScore : undefined,
         });
     }
     return syncLibraryUpdatedAtFromLatestLog(extra);
@@ -833,13 +844,20 @@ export function startNewRound(extra: LibraryExtra, roundName: string): LibraryEx
 /**
  * 设置主评分
  */
-export function setMainScore(extra: LibraryExtra, roundIndex: number, logIndex: number): LibraryExtra {
-    extra.mainScoreRoundIndex = roundIndex;
-    extra.mainScoreLogIndex = logIndex;
+export function setMainScore(extra: LibraryExtra, scoreID: string): LibraryExtra {
+    extra.mainScoreID = scoreID;
+    delete extra.mainScoreRoundIndex;
+    delete extra.mainScoreLogIndex;
     return extra;
 }
 
 export function normalizeMainScoreSelection(extra: LibraryExtra): LibraryExtra {
+    if (extra.mainScoreID) {
+        const selected = extra.rounds.flatMap((round) => round.logs).find((log) => (
+            log.type === LibraryLogType.score && log.id === extra.mainScoreID
+        ));
+        if (selected) return extra;
+    }
     const currentRoundIndex = extra.mainScoreRoundIndex;
     const currentLogIndex = extra.mainScoreLogIndex;
 
@@ -847,6 +865,9 @@ export function normalizeMainScoreSelection(extra: LibraryExtra): LibraryExtra {
         const currentRound = extra.rounds[currentRoundIndex];
         const currentLog = currentRound?.logs[currentLogIndex];
         if (currentLog?.type === LibraryLogType.score) {
+            if (currentLog.id) extra.mainScoreID = currentLog.id;
+            delete extra.mainScoreRoundIndex;
+            delete extra.mainScoreLogIndex;
             return extra;
         }
     }
@@ -880,13 +901,21 @@ export function normalizeMainScoreSelection(extra: LibraryExtra): LibraryExtra {
     });
 
     if (latestRoundIndex === undefined || latestLogIndex === undefined) {
+        delete extra.mainScoreID;
         delete extra.mainScoreRoundIndex;
         delete extra.mainScoreLogIndex;
         return extra;
     }
 
-    extra.mainScoreRoundIndex = latestRoundIndex;
-    extra.mainScoreLogIndex = latestLogIndex;
+    const latestLog = extra.rounds[latestRoundIndex].logs[latestLogIndex];
+    if (latestLog.id) {
+        extra.mainScoreID = latestLog.id;
+        delete extra.mainScoreRoundIndex;
+        delete extra.mainScoreLogIndex;
+    } else {
+        extra.mainScoreRoundIndex = latestRoundIndex;
+        extra.mainScoreLogIndex = latestLogIndex;
+    }
     return extra;
 }
 
@@ -894,25 +923,38 @@ export function normalizeMainScoreSelection(extra: LibraryExtra): LibraryExtra {
  * 获取主评分
  */
 export function getMainScore(extra: LibraryExtra): LibraryLogEntry | null {
-    if (extra.mainScoreRoundIndex === undefined || extra.mainScoreLogIndex === undefined) {
-        // 如果没有设置主评分，尝试找最后一个评分
-        for (let i = extra.rounds.length - 1; i >= 0; i--) {
-            const round = extra.rounds[i];
-            for (let j = round.logs.length - 1; j >= 0; j--) {
-                if (round.logs[j].type === LibraryLogType.score) {
-                    return round.logs[j];
-                }
-            }
+    if (extra.mainScoreID) {
+        for (const round of extra.rounds) {
+            const selected = round.logs.find((log) => log.type === LibraryLogType.score && log.id === extra.mainScoreID);
+            if (selected) return selected;
         }
-        return legacyMainScoreToLog(extra);
     }
-    const round = extra.rounds[extra.mainScoreRoundIndex];
-    if (!round) return legacyMainScoreToLog(extra);
-    const scoreLog = round.logs[extra.mainScoreLogIndex];
-    if (scoreLog?.type === LibraryLogType.score) {
-        return scoreLog;
+    if (extra.mainScoreRoundIndex !== undefined && extra.mainScoreLogIndex !== undefined) {
+        const round = extra.rounds[extra.mainScoreRoundIndex];
+        const scoreLog = round?.logs[extra.mainScoreLogIndex];
+        if (scoreLog?.type === LibraryLogType.score) return scoreLog;
     }
-    return legacyMainScoreToLog(extra);
+    let latest: LibraryLogEntry | null = null;
+    let latestMs = Number.MIN_SAFE_INTEGER;
+    let latestRoundIndex = -1;
+    let latestLogIndex = -1;
+    extra.rounds.forEach((round, roundIndex) => {
+        round.logs.forEach((log, logIndex) => {
+            if (log.type !== LibraryLogType.score) return;
+            const parsed = new Date(log.time).getTime();
+            const safeMs = Number.isNaN(parsed) ? Number.MIN_SAFE_INTEGER : parsed;
+            if (
+                !latest || safeMs > latestMs ||
+                (safeMs === latestMs && (roundIndex > latestRoundIndex || (roundIndex === latestRoundIndex && logIndex > latestLogIndex)))
+            ) {
+                latest = log;
+                latestMs = safeMs;
+                latestRoundIndex = roundIndex;
+                latestLogIndex = logIndex;
+            }
+        });
+    });
+    return latest || legacyMainScoreToLog(extra);
 }
 
 export interface LibraryComplexScoreSnapshot {
@@ -1025,7 +1067,7 @@ export function extractTimeline(items: LibraryItemFull[]): TimelineEntry[] {
                     score: log.score,
                     scorePlus: log.scorePlus,
                     scoreSub: log.scoreSub,
-                    comment: log.comment,
+                    comment: log.type === LibraryLogType.score ? undefined : log.comment,
                 });
             }
         }

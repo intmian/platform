@@ -22,6 +22,7 @@ import {
     Radio,
     Row,
     Select,
+    Spin,
     Space,
     Switch,
     Tag,
@@ -59,6 +60,8 @@ import {
     LibraryLogType,
     LibraryRound,
     LibraryScoreData,
+    LibraryScoreDetail,
+    LibraryScoreDetailDimension,
     LibraryStatusColors,
     LibraryStatusNames,
 } from './net/protocal';
@@ -72,7 +75,7 @@ import {
     deleteLibraryRound,
     getCurrentStatus,
     getCurrentTodoReason,
-    getComplexScoreSnapshot,
+    createLibraryScoreID,
     formatDateTime,
     getDisplayStatusInfo,
     getLatestWaitReason,
@@ -111,6 +114,12 @@ import {
 } from '../common/aiGateway';
 import {LibraryNoteContext, useLibraryNotes} from './useLibraryNotes';
 import {WhisperButton} from '../common/WhisperButton';
+import {
+    changeLibraryScoreDetail,
+    createLibraryScoreDetail,
+    getLibraryScoreDetail,
+} from './libraryScoreDetailClient';
+import {LibraryScoreDetailInput} from './net/send_back';
 
 const {Text, Paragraph} = Typography;
 const {TextArea} = Input;
@@ -169,15 +178,32 @@ function scoreDataToText(seq: string[], score?: LibraryScoreData): string {
     return base;
 }
 
-function getScoreCommentPreview(comment: string, maxChars: number): string {
-    const trimmed = comment.trim();
-    if (!trimmed) {
-        return '';
-    }
-    if (trimmed.length <= maxChars) {
-        return trimmed;
-    }
-    return `${trimmed.slice(0, maxChars)}...(${trimmed.length}字)`;
+function scoreDetailDimensionToText(seq: string[], score?: LibraryScoreDetailDimension): string {
+    if (!score) return seq[2];
+    const idx = Math.max(1, Math.min(5, score.Value || 3)) - 1;
+    const base = seq[idx] || seq[2];
+    if (score.Adjustment > 0) return `${base}+`;
+    if (score.Adjustment < 0) return `${base}-`;
+    return base;
+}
+
+function scoreDataToDetailDimension(score?: LibraryScoreData): LibraryScoreDetailDimension | undefined {
+    if (!score) return undefined;
+    return {
+        Value: score.value,
+        Adjustment: score.plus ? 1 : score.sub ? -1 : 0,
+        Comment: score.comment || '',
+    };
+}
+
+function buildScoreDetailInput(payload: AddScorePayload): LibraryScoreDetailInput {
+    return {
+        Mode: payload.mode,
+        Comment: payload.comment?.trim() || '',
+        ObjScore: payload.mode === 'complex' ? scoreDataToDetailDimension(payload.objScore) : undefined,
+        SubScore: payload.mode === 'complex' ? scoreDataToDetailDimension(payload.subScore) : undefined,
+        InnovateScore: payload.mode === 'complex' ? scoreDataToDetailDimension(payload.innovateScore) : undefined,
+    };
 }
 
 function appendTranscriptionText(current: string, transcription: string): string {
@@ -285,6 +311,14 @@ export default function LibraryDetail({visible, item, noteContext, categories = 
     const [showNewRound, setShowNewRound] = useState(false);
     const [newRoundName, setNewRoundName] = useState('');
     const [showAddScore, setShowAddScore] = useState(false);
+    const [scoreSaving, setScoreSaving] = useState(false);
+    const [pendingAddScoreID, setPendingAddScoreID] = useState<string | null>(null);
+    const [addScoreInitialMode, setAddScoreInitialMode] = useState<'simple' | 'complex'>('simple');
+    const [scoreDetails, setScoreDetails] = useState<Record<string, LibraryScoreDetail>>({});
+    const scoreDetailsRef = useRef<Record<string, LibraryScoreDetail>>({});
+    const scoreDetailTaskIDRef = useRef<number | null>(null);
+    const [scoreDetailLoadingID, setScoreDetailLoadingID] = useState<string | null>(null);
+    const [activeScorePopoverID, setActiveScorePopoverID] = useState<string | null>(null);
     const [scoreAiDigest, setScoreAiDigest] = useState<LibraryReviewNotesDigestResp | null>(null);
     const [scoreAiLoading, setScoreAiLoading] = useState(false);
     const [showAddNote, setShowAddNote] = useState(false);
@@ -353,6 +387,8 @@ export default function LibraryDetail({visible, item, noteContext, categories = 
     
     // 分享弹窗
     const [showShare, setShowShare] = useState(false);
+    const [shareLoading, setShareLoading] = useState(false);
+    const [shareScoreDetail, setShareScoreDetail] = useState<LibraryScoreDetail | null>(null);
     const [shareExporting, setShareExporting] = useState(false);
     const shareCardRef = useRef<HTMLDivElement | null>(null);
     const [showRawCoverModal, setShowRawCoverModal] = useState(false);
@@ -361,6 +397,25 @@ export default function LibraryDetail({visible, item, noteContext, categories = 
     
     // 基本信息编辑表单
     const [form] = Form.useForm();
+
+    const rememberScoreDetail = useCallback((detail: LibraryScoreDetail) => {
+        scoreDetailsRef.current = {...scoreDetailsRef.current, [detail.ID]: detail};
+        setScoreDetails(scoreDetailsRef.current);
+        return detail;
+    }, []);
+
+    const loadScoreDetail = useCallback(async (scoreID: string, force = false): Promise<LibraryScoreDetail | null> => {
+        if (!force && scoreDetailsRef.current[scoreID]) {
+            return scoreDetailsRef.current[scoreID];
+        }
+        if (!noteContext || !localItem) return null;
+        const taskID = localItem.taskId;
+        setScoreDetailLoadingID(scoreID);
+        const detail = await getLibraryScoreDetail(noteContext, taskID, scoreID);
+        if (scoreDetailTaskIDRef.current !== taskID) return null;
+        setScoreDetailLoadingID((current) => current === scoreID ? null : current);
+        return detail ? rememberScoreDetail(detail) : null;
+    }, [localItem, noteContext, rememberScoreDetail]);
 
     const clearCoverFields = useCallback((extra: LibraryExtra): LibraryExtra => ({
         ...extra,
@@ -605,6 +660,16 @@ export default function LibraryDetail({visible, item, noteContext, categories = 
             setLogNotePreviewText('');
             setScoreAiDigest(null);
             setScoreAiLoading(false);
+            scoreDetailsRef.current = {};
+            scoreDetailTaskIDRef.current = item.taskId;
+            setScoreDetails({});
+            setScoreDetailLoadingID(null);
+            setActiveScorePopoverID(null);
+            setPendingAddScoreID(null);
+            setShareScoreDetail(null);
+            setShowShare(false);
+        } else {
+            scoreDetailTaskIDRef.current = null;
         }
     }, [item, form]);
 
@@ -861,37 +926,80 @@ export default function LibraryDetail({visible, item, noteContext, categories = 
         }
     }, [currentRoundNoteLogs, localItem]);
 
-    // 添加评分
-    const handleAddScore = (payload: AddScorePayload) => {
+    const handleOpenAddScore = async () => {
         if (!localItem) return;
+        const mainScore = getMainScore(localItem.extra);
+        if (!mainScore?.id) {
+            setAddScoreInitialMode('simple');
+            setShowAddScore(true);
+            return;
+        }
+        const detail = await loadScoreDetail(mainScore.id);
+        if (!detail) {
+            message.warning('主评分详情加载失败，新增评分将使用简单模式作为默认值');
+        }
+        setAddScoreInitialMode(detail?.Mode === 'complex' ? 'complex' : 'simple');
+        setShowAddScore(true);
+    };
 
-        const scoreLogComment = payload.comment?.trim() || '';
+    const handleOpenShare = async () => {
+        if (!localItem) return;
+        const mainScore = getMainScore(localItem.extra);
+        if (!mainScore?.id) {
+            setShareScoreDetail(null);
+            setShowShare(true);
+            return;
+        }
+        setShareLoading(true);
+        const detail = await loadScoreDetail(mainScore.id);
+        setShareLoading(false);
+        if (!detail) {
+            message.error('主评分详情加载失败，无法生成完整分享预览');
+            return;
+        }
+        setShareScoreDetail(detail);
+        setShowShare(true);
+    };
+
+    // 添加评分
+    const handleAddScore = async (payload: AddScorePayload): Promise<boolean> => {
+        if (!localItem || !noteContext) return false;
+        const round = localItem.extra.rounds[localItem.extra.currentRound];
+        if (!round?.id) {
+            message.error('当前周目缺少有效 ID');
+            return false;
+        }
+        const scoreID = pendingAddScoreID || createLibraryScoreID();
+        setPendingAddScoreID(scoreID);
+        setScoreSaving(true);
+        const input = buildScoreDetailInput(payload);
+        const detail = await createLibraryScoreDetail(noteContext, localItem.taskId, scoreID, round.id, input);
+        if (!detail) {
+            setScoreSaving(false);
+            message.error('评分详情保存失败，内容已保留');
+            return false;
+        }
+        rememberScoreDetail(detail);
 
         const newExtra = addScoreLog(
-            {...localItem.extra},
+            JSON.parse(JSON.stringify(localItem.extra)) as LibraryExtra,
+            scoreID,
             payload.mainScore.value,
             payload.mainScore.plus,
             payload.mainScore.sub,
-            scoreLogComment,
-            {
-                mode: payload.mode,
-                objScore: payload.objScore,
-                subScore: payload.subScore,
-                innovateScore: payload.innovateScore,
-            }
         );
-        // 已废弃字段：仅保底读取，不再持久化维护（复杂评分改为写入评分日志）。
-        delete newExtra.scoreMode;
-        delete newExtra.objScore;
-        delete newExtra.subScore;
-        delete newExtra.innovateScore;
-        delete newExtra.mainScore;
-        delete newExtra.comment;
-
         const newItem = {...localItem, extra: newExtra};
+        const saved = await onSave(newItem);
+        setScoreSaving(false);
+        if (!saved) {
+            setPendingAddScoreID(null);
+            message.error('评分主体保存失败，详情已保留，可直接重试');
+            return false;
+        }
         setLocalItem(newItem);
-        onSave(newItem);
+        setPendingAddScoreID(null);
         setShowAddScore(false);
+        return true;
     };
 
     const handleExportShareImage = async () => {
@@ -977,10 +1085,9 @@ export default function LibraryDetail({visible, item, noteContext, categories = 
     };
 
     // 设置主评分
-    const handleSetMainScore = (roundIndex: number, logIndex: number) => {
+    const handleSetMainScore = (scoreID: string) => {
         if (!localItem) return;
-        
-        const newExtra = setMainScore({...localItem.extra}, roundIndex, logIndex);
+        const newExtra = setMainScore({...localItem.extra}, scoreID);
         const newItem = {...localItem, extra: newExtra};
         setLocalItem(newItem);
         onSave(newItem);
@@ -1075,37 +1182,40 @@ export default function LibraryDetail({visible, item, noteContext, categories = 
         setShowEditLogTime(true);
     };
 
-    const openLogContentEditor = (roundIndex: number, logIndex: number, log: LibraryLogEntry) => {
+    const openLogContentEditor = async (roundIndex: number, logIndex: number, log: LibraryLogEntry) => {
         setEditingNote(null);
         setEditingContentPos({roundIndex, logIndex});
         setEditingContentType(log.type);
         if (log.type === LibraryLogType.score) {
+            if (!log.id) {
+                message.error('评分缺少有效 ID，请先完成数据迁移');
+                return;
+            }
+            const detail = await loadScoreDetail(log.id);
+            if (!detail) {
+                message.error('评分详情加载失败');
+                return;
+            }
             setEditingScoreText(getScoreText(log.score || 0, log.scorePlus, log.scoreSub));
-            setEditingContentText(log.comment || '');
-            const scoreSnapshot = localItem ? getComplexScoreSnapshot(localItem.extra, log) : {mode: 'simple' as const};
-            const isComplexScore = scoreSnapshot.mode === 'complex';
-            setEditingScoreMode(scoreSnapshot.mode);
-            if (isComplexScore && localItem) {
-                const objScore = scoreSnapshot.objScore;
-                const subScore = scoreSnapshot.subScore;
-                const innovateScore = scoreSnapshot.innovateScore;
+            setEditingContentText(detail.Comment || '');
+            const isComplexScore = detail.Mode === 'complex';
+            setEditingScoreMode(detail.Mode);
+            if (isComplexScore) {
+                const objScore = detail.ObjScore;
+                const subScore = detail.SubScore;
+                const innovateScore = detail.InnovateScore;
 
                 setEditingEnableObjScore(!!objScore);
                 setEditingEnableSubScore(!!subScore);
                 setEditingEnableInnovateScore(!!innovateScore);
 
-                setEditingObjScoreText(scoreDataToText(SCORE_OBJ_SEQ, objScore));
-                setEditingSubScoreText(scoreDataToText(SCORE_SUB_SEQ, subScore));
-                setEditingInnovateScoreText(scoreDataToText(SCORE_INNOVATE_SEQ, innovateScore));
+                setEditingObjScoreText(scoreDetailDimensionToText(SCORE_OBJ_SEQ, objScore));
+                setEditingSubScoreText(scoreDetailDimensionToText(SCORE_SUB_SEQ, subScore));
+                setEditingInnovateScoreText(scoreDetailDimensionToText(SCORE_INNOVATE_SEQ, innovateScore));
 
-                setEditingObjComment(objScore?.comment || '');
-                setEditingSubComment(subScore?.comment || '');
-                setEditingInnovateComment(innovateScore?.comment || '');
-
-                // 兼容历史数据：旧版本可能仅存了 extra.comment。
-                if (!log.comment && localItem.extra.comment) {
-                    setEditingContentText(localItem.extra.comment);
-                }
+                setEditingObjComment(objScore?.Comment || '');
+                setEditingSubComment(subScore?.Comment || '');
+                setEditingInnovateComment(innovateScore?.Comment || '');
             } else {
                 setEditingEnableObjScore(false);
                 setEditingEnableSubScore(false);
@@ -1195,75 +1305,87 @@ export default function LibraryDetail({visible, item, noteContext, categories = 
             return;
         }
 
-        if (editingContentType === LibraryLogType.score) {
-            const parsedScore = parseScoreTextToData(editingScoreText);
-            if (!parsedScore) {
-                message.warning('评分格式无效');
+        const parsedScore = parseScoreTextToData(editingScoreText);
+        if (!parsedScore || !targetLog.id || !noteContext) {
+            message.warning(parsedScore ? '评分缺少有效 ID' : '评分格式无效');
+            return;
+        }
+        const originalLog = localItem.extra.rounds[editingContentPos.roundIndex]?.logs[editingContentPos.logIndex];
+        const coreChanged = originalLog?.score !== parsedScore.score ||
+            !!originalLog?.scorePlus !== parsedScore.plus ||
+            !!originalLog?.scoreSub !== parsedScore.sub;
+        targetLog.score = parsedScore.score;
+        targetLog.scorePlus = parsedScore.plus;
+        targetLog.scoreSub = parsedScore.sub;
+        delete targetLog.comment;
+        delete targetLog.scoreMode;
+        delete targetLog.objScore;
+        delete targetLog.subScore;
+        delete targetLog.innovateScore;
+
+        let objData: LibraryScoreData | null = null;
+        let subData: LibraryScoreData | null = null;
+        let innovateData: LibraryScoreData | null = null;
+        if (editingScoreMode === 'complex') {
+            if (editingEnableObjScore) {
+                objData = parseRateTextToData(SCORE_OBJ_SEQ, editingObjScoreText, editingObjComment);
+                if (!objData) {
+                    message.warning('客观评分格式无效');
+                    return;
+                }
+            }
+            if (editingEnableSubScore) {
+                subData = parseRateTextToData(SCORE_SUB_SEQ, editingSubScoreText, editingSubComment);
+                if (!subData) {
+                    message.warning('主观评分格式无效');
+                    return;
+                }
+            }
+            if (editingEnableInnovateScore) {
+                innovateData = parseRateTextToData(SCORE_INNOVATE_SEQ, editingInnovateScoreText, editingInnovateComment);
+                if (!innovateData) {
+                    message.warning('创新评分格式无效');
+                    return;
+                }
+            }
+        }
+
+        setScoreSaving(true);
+        if (coreChanged) {
+            syncLibraryUpdatedAtFromLatestLog(newItem.extra);
+            const saved = await onSave(newItem);
+            if (!saved) {
+                setScoreSaving(false);
+                message.error('评分主体更新失败，详情未修改');
                 return;
             }
-            targetLog.score = parsedScore.score;
-            targetLog.scorePlus = parsedScore.plus;
-            targetLog.scoreSub = parsedScore.sub;
-            const trimmed = editingContentText.trim();
-            targetLog.comment = trimmed || undefined;
-
-            if (editingScoreMode === 'complex') {
-                targetLog.scoreMode = 'complex';
-                if (editingEnableObjScore) {
-                    const objData = parseRateTextToData(SCORE_OBJ_SEQ, editingObjScoreText, editingObjComment);
-                    if (!objData) {
-                        message.warning('客观评分格式无效');
-                        return;
-                    }
-                    targetLog.objScore = objData;
-                } else {
-                    delete targetLog.objScore;
-                }
-
-                if (editingEnableSubScore) {
-                    const subData = parseRateTextToData(SCORE_SUB_SEQ, editingSubScoreText, editingSubComment);
-                    if (!subData) {
-                        message.warning('主观评分格式无效');
-                        return;
-                    }
-                    targetLog.subScore = subData;
-                } else {
-                    delete targetLog.subScore;
-                }
-
-                if (editingEnableInnovateScore) {
-                    const innovateData = parseRateTextToData(SCORE_INNOVATE_SEQ, editingInnovateScoreText, editingInnovateComment);
-                    if (!innovateData) {
-                        message.warning('创新评分格式无效');
-                        return;
-                    }
-                    targetLog.innovateScore = innovateData;
-                } else {
-                    delete targetLog.innovateScore;
-                }
-            } else {
-                targetLog.scoreMode = 'simple';
-                delete targetLog.objScore;
-                delete targetLog.subScore;
-                delete targetLog.innovateScore;
-            }
-            // 已废弃字段：仅保底读取，不再持久化维护。
-            delete newItem.extra.scoreMode;
-            delete newItem.extra.objScore;
-            delete newItem.extra.subScore;
-            delete newItem.extra.innovateScore;
-            delete newItem.extra.mainScore;
-            delete newItem.extra.comment;
+            setLocalItem(newItem);
         }
 
-        if (isUpdatedAtDrivenLogType(targetLog.type)) {
-            syncLibraryUpdatedAtFromLatestLog(newItem.extra);
+        const existingDetail = scoreDetailsRef.current[targetLog.id];
+        if (!existingDetail) {
+            setScoreSaving(false);
+            message.error('评分详情缓存失效，请关闭后重试');
+            return;
         }
-        setLocalItem(newItem);
-        onSave(newItem);
-
+        const detailInput: LibraryScoreDetailInput = {
+            Mode: editingScoreMode,
+            Comment: editingContentText.trim(),
+            ObjScore: scoreDataToDetailDimension(objData || undefined),
+            SubScore: scoreDataToDetailDimension(subData || undefined),
+            InnovateScore: scoreDataToDetailDimension(innovateData || undefined),
+        };
+        const updatedDetail = await changeLibraryScoreDetail(
+            noteContext, localItem.taskId, targetLog.id, existingDetail.Revision, detailInput,
+        );
+        setScoreSaving(false);
+        if (!updatedDetail) {
+            message.error('评分详情更新失败，主体改动已保留');
+            return;
+        }
+        rememberScoreDetail(updatedDetail);
         resetEditingContentState();
-        message.success('内容已更新');
+        message.success('评分已更新');
     };
 
     const handleSaveLogTime = async () => {
@@ -1412,8 +1534,7 @@ export default function LibraryDetail({visible, item, noteContext, categories = 
 
     // 渲染日志项
     const renderLogItem = (log: LibraryLogEntry, roundIndex: number, logIndex: number) => {
-        const isMainScore = localItem?.extra.mainScoreRoundIndex === roundIndex &&
-            localItem?.extra.mainScoreLogIndex === logIndex;
+        const isMainScore = !!log.id && localItem?.extra.mainScoreID === log.id;
         
         let content: React.ReactNode = null;
         let color = 'gray';
@@ -1448,12 +1569,32 @@ export default function LibraryDetail({visible, item, noteContext, categories = 
             case LibraryLogType.score: {
                 color = '#faad14';
                 const scoreStarColor = getScoreStarColor(log.score || 0);
-                const scoreCommentPreview = getScoreCommentPreview(log.comment || '', isMobile ? 10 : 16);
+                const detail = log.id ? scoreDetails[log.id] : undefined;
+                const detailLoading = !!log.id && scoreDetailLoadingID === log.id;
                 const scoreContent = (
                     <Popover
                         placement="topLeft"
                         trigger="click"
-                        content={<LibraryScorePopover extra={localItem!.extra} mainScoreOverride={log} />}
+                        open={!!log.id && activeScorePopoverID === log.id}
+                        onOpenChange={(open) => {
+                            if (!log.id) {
+                                if (open) message.error('评分缺少有效 ID，请先完成数据迁移');
+                                return;
+                            }
+                            if (!open) {
+                                setActiveScorePopoverID(null);
+                                return;
+                            }
+                            setActiveScorePopoverID(log.id);
+                            void loadScoreDetail(log.id);
+                        }}
+                        content={detailLoading ? (
+                            <Spin size="small" />
+                        ) : detail ? (
+                            <LibraryScorePopover score={log} detail={detail} />
+                        ) : (
+                            <Button size="small" onClick={() => log.id && void loadScoreDetail(log.id, true)}>重试加载</Button>
+                        )}
                     >
                         <div style={{cursor: 'pointer', width: '100%'}}>
                             <Space>
@@ -1471,27 +1612,12 @@ export default function LibraryDetail({visible, item, noteContext, categories = 
                                             icon={<StarOutlined/>}
                                             onClick={(event) => {
                                                 event.stopPropagation();
-                                                handleSetMainScore(roundIndex, logIndex);
+                                                if (log.id) handleSetMainScore(log.id);
                                             }}
                                         />
                                     </Tooltip>
                                 )}
                             </Space>
-                            {scoreCommentPreview ? (
-                                <Text
-                                    type="secondary"
-                                    style={{
-                                        display: 'block',
-                                        marginTop: 2,
-                                        fontSize: 12,
-                                        whiteSpace: 'nowrap',
-                                        overflow: 'hidden',
-                                        textOverflow: 'ellipsis',
-                                    }}
-                                >
-                                    {scoreCommentPreview}
-                                </Text>
-                            ) : null}
                         </div>
                     </Popover>
                 );
@@ -1516,7 +1642,7 @@ export default function LibraryDetail({visible, item, noteContext, categories = 
                                 type="text"
                                 size="small"
                                 icon={<EditOutlined/>}
-                                onClick={() => openLogContentEditor(roundIndex, logIndex, log)}
+                                onClick={() => void openLogContentEditor(roundIndex, logIndex, log)}
                             />
                         ) : null}
                         <Popconfirm
@@ -1700,7 +1826,7 @@ export default function LibraryDetail({visible, item, noteContext, categories = 
                         <Button
                             size="small"
                             icon={<StarOutlined/>}
-                            onClick={() => setShowAddScore(true)}
+                            onClick={() => void handleOpenAddScore()}
                             style={isMobile ? {flex: '1 1 calc(50% - 4px)'} : undefined}
                         >
                             添加评分
@@ -1729,7 +1855,6 @@ export default function LibraryDetail({visible, item, noteContext, categories = 
 
     // 主评分显示
     const mainScoreEntry = localItem ? getMainScore(localItem.extra) : null;
-    const mainScoreSnapshot = localItem ? getComplexScoreSnapshot(localItem.extra, mainScoreEntry) : {mode: 'simple' as const};
 
     if (!localItem) return null;
     const displayTitle = editMode ? (editingTitle.trim() || localItem.title) : localItem.title;
@@ -1786,7 +1911,8 @@ export default function LibraryDetail({visible, item, noteContext, categories = 
             <Button
                 size={actionButtonSize}
                 icon={<ShareAltOutlined/>}
-                onClick={() => setShowShare(true)}
+                loading={shareLoading}
+                onClick={() => void handleOpenShare()}
             >
                 分享
             </Button>
@@ -2176,8 +2302,12 @@ export default function LibraryDetail({visible, item, noteContext, categories = 
             <AddScoreModal
                 visible={showAddScore}
                 onOk={handleAddScore}
-                onCancel={() => setShowAddScore(false)}
-                initialMode={mainScoreSnapshot.mode}
+                onCancel={() => {
+                    setShowAddScore(false);
+                    setPendingAddScoreID(null);
+                }}
+                initialMode={addScoreInitialMode}
+                saving={scoreSaving}
                 notesCount={currentRoundNoteLogs.length}
                 notes={currentRoundNoteLogs}
                 aiDigest={scoreAiDigest}
@@ -2294,7 +2424,7 @@ export default function LibraryDetail({visible, item, noteContext, categories = 
                 open={showEditLogContent}
                 destroyOnClose={true}
                 onOk={handleSaveLogContent}
-                confirmLoading={noteSaving}
+                confirmLoading={editingContentType === LibraryLogType.score ? scoreSaving : noteSaving}
                 onCancel={resetEditingContentState}
                 footer={editingContentType === LibraryLogType.note ? (
                     <Flex justify="flex-end" align="center" gap={8}>
@@ -2602,6 +2732,7 @@ export default function LibraryDetail({visible, item, noteContext, categories = 
                             icon={<DownloadOutlined/>}
                             type="primary"
                             loading={shareExporting}
+                            disabled={!!mainScoreEntry && !shareScoreDetail}
                             onClick={handleExportShareImage}
                         >
                             导出图片
@@ -2624,6 +2755,7 @@ export default function LibraryDetail({visible, item, noteContext, categories = 
                             title={localItem.title}
                             extra={localItem.extra}
                             editable={false}
+                            scoreDetail={shareScoreDetail}
                         />
                     </div>
                 </div>
@@ -2635,9 +2767,10 @@ export default function LibraryDetail({visible, item, noteContext, categories = 
 // 添加评分弹窗组件
 interface AddScoreModalProps {
     visible: boolean;
-    onOk: (payload: AddScorePayload) => void;
+    onOk: (payload: AddScorePayload) => Promise<boolean>;
     onCancel: () => void;
     initialMode?: 'simple' | 'complex';
+    saving: boolean;
     notesCount: number;
     notes: LibraryReviewDigestNote[];
     aiDigest: LibraryReviewNotesDigestResp | null;
@@ -2662,6 +2795,7 @@ function AddScoreModal({
     onOk,
     onCancel,
     initialMode = 'simple',
+    saving,
     notesCount,
     notes,
     aiDigest,
@@ -2718,7 +2852,7 @@ function AddScoreModal({
         setComment('');
     };
 
-    const handleOk = () => {
+    const handleOk = async () => {
         const payload: AddScorePayload = {
             mode,
             mainScore: parseRate(["零", "差", "合", "优", "满"], mainScoreText, ''),
@@ -2740,7 +2874,8 @@ function AddScoreModal({
             }
         }
 
-        onOk(payload);
+        const saved = await onOk(payload);
+        if (!saved) return;
         resetForm();
         setAiPanelOpen(false);
     };
@@ -2901,7 +3036,8 @@ function AddScoreModal({
                 </Flex>
             )}
             open={visible}
-            onOk={handleOk}
+            onOk={() => void handleOk()}
+            confirmLoading={saving}
             onCancel={handleCancel}
             width={isMobile ? '100%' : (aiPanelOpen ? 940 : 560)}
         >

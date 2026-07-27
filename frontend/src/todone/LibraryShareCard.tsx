@@ -1,10 +1,10 @@
 import React, {useMemo} from 'react';
 import {Card, Col, Divider, Row, Space, Tag, Typography} from 'antd';
-import {LibraryExtra, LibraryItemStatus, LibraryScoreData} from './net/protocal';
+import {LibraryExtra, LibraryItemStatus, LibraryScoreDetail, LibraryScoreDetailDimension} from './net/protocal';
 import TextRate from '../library/TextRate';
 import Paragraphs from '../common/Paragraphs';
 import {useIsMobile} from '../common/hooksv2';
-import {formatDate, getComplexScoreSnapshot, getCurrentStatus, getLibraryCoverDisplayUrl, getMainScore} from './libraryUtil';
+import {formatDate, getCurrentStatus, getLibraryCoverDisplayUrl, getMainScore} from './libraryUtil';
 import LibraryLoadingImage from './LibraryLoadingImage';
 
 const {Title, Text} = Typography;
@@ -14,10 +14,10 @@ const SEQ_OBJ = ["垃圾", "低劣", "普通", "优秀", "传奇"];
 const SEQ_SUBJ = ["折磨", "负面", "消磨", "享受", "极致"];
 const SEQ_INNO = ["抄袭", "模仿", "沿袭", "创新", "革命"];
 
-function scoreDataToText(seq: string[], s: LibraryScoreData | undefined): string {
-    if (!s || s.value <= 0) return "";
-    const index = Math.max(0, Math.min(seq.length - 1, s.value - 1));
-    const sign = s.plus ? "+" : s.sub ? "-" : "";
+function scoreDataToText(seq: string[], s: LibraryScoreDetailDimension | undefined): string {
+    if (!s || s.Value <= 0) return "";
+    const index = Math.max(0, Math.min(seq.length - 1, s.Value - 1));
+    const sign = s.Adjustment > 0 ? "+" : s.Adjustment < 0 ? "-" : "";
     return `${seq[index]}${sign}`;
 }
 
@@ -26,9 +26,10 @@ export interface LibraryShareCardProps {
     extra: LibraryExtra;
     editable?: boolean;
     onChange?: (extra: LibraryExtra) => void;
+    scoreDetail: LibraryScoreDetail | null;
 }
 
-const LibraryShareCard: React.FC<LibraryShareCardProps> = ({title, extra, editable = false, onChange}) => {
+const LibraryShareCard: React.FC<LibraryShareCardProps> = ({title, extra, editable = false, onChange, scoreDetail}) => {
     const isMobile = useIsMobile();
     const coverUrl = getLibraryCoverDisplayUrl(
         title,
@@ -39,8 +40,7 @@ const LibraryShareCard: React.FC<LibraryShareCardProps> = ({title, extra, editab
     const complexMainScore = useMemo(() => {
         return getMainScore(extra);
     }, [extra]);
-    const scoreSnapshot = useMemo(() => getComplexScoreSnapshot(extra, complexMainScore), [extra, complexMainScore]);
-    const isComplexMode = scoreSnapshot.mode === 'complex';
+    const isComplexMode = scoreDetail?.Mode === 'complex';
 
     // 从日志中获取简单模式的主评分
     const simpleMainScore = useMemo(() => {
@@ -64,15 +64,11 @@ const LibraryShareCard: React.FC<LibraryShareCardProps> = ({title, extra, editab
         return `${SEQ_MAIN[index]}${sign}`;
     }, [complexMainScore]);
     const mainCommentText = useMemo(() => {
-        const logComment = (complexMainScore?.comment || '').trim();
-        if (logComment) {
-            return logComment;
-        }
-        return (extra.comment || '').trim();
-    }, [complexMainScore, extra.comment]);
-    const objText = useMemo(() => scoreDataToText(SEQ_OBJ, scoreSnapshot.objScore), [scoreSnapshot.objScore]);
-    const subText = useMemo(() => scoreDataToText(SEQ_SUBJ, scoreSnapshot.subScore), [scoreSnapshot.subScore]);
-    const innoText = useMemo(() => scoreDataToText(SEQ_INNO, scoreSnapshot.innovateScore), [scoreSnapshot.innovateScore]);
+        return (scoreDetail?.Comment || '').trim();
+    }, [scoreDetail]);
+    const objText = useMemo(() => scoreDataToText(SEQ_OBJ, scoreDetail?.ObjScore), [scoreDetail]);
+    const subText = useMemo(() => scoreDataToText(SEQ_SUBJ, scoreDetail?.SubScore), [scoreDetail]);
+    const innoText = useMemo(() => scoreDataToText(SEQ_INNO, scoreDetail?.InnovateScore), [scoreDetail]);
     const currentStatus = useMemo(() => getCurrentStatus(extra), [extra]);
     const currentRound = useMemo(() => extra.rounds[extra.currentRound], [extra]);
     const completedRangeText = useMemo(() => {
@@ -276,21 +272,21 @@ const LibraryShareCard: React.FC<LibraryShareCardProps> = ({title, extra, editab
                                 '客观好坏',
                                 SEQ_OBJ,
                                 objText,
-                                scoreSnapshot.objScore?.comment || '',
+                                scoreDetail?.ObjScore?.Comment || '',
                                 'objScore'
                             )}
                             {renderScoreCard(
                                 '主观感受',
                                 SEQ_SUBJ,
                                 subText,
-                                scoreSnapshot.subScore?.comment || '',
+                                scoreDetail?.SubScore?.Comment || '',
                                 'subScore'
                             )}
                             {renderScoreCard(
                                 '艺术创新',
                                 SEQ_INNO,
                                 innoText,
-                                scoreSnapshot.innovateScore?.comment || '',
+                                scoreDetail?.InnovateScore?.Comment || '',
                                 'innovateScore'
                             )}
                         </>

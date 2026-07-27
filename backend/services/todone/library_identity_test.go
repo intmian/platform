@@ -22,3 +22,25 @@ func TestParseLibraryRoundIDs(t *testing.T) {
 		}
 	}
 }
+
+func TestFindLibraryScoreRoundID(t *testing.T) {
+	roundID := "11111111-1111-4111-8111-111111111111"
+	scoreID := "22222222-2222-4222-8222-222222222222"
+	note := `{"rounds":[{"id":"` + roundID + `","logs":[{"type":0},{"id":"` + scoreID + `","type":1}]}]}`
+	actualRoundID, found, err := findLibraryScoreRoundID(note, scoreID)
+	if err != nil || !found || actualRoundID != roundID {
+		t.Fatalf("round=%q found=%v err=%v", actualRoundID, found, err)
+	}
+	if _, found, err = findLibraryScoreRoundID(note, "33333333-3333-4333-8333-333333333333"); err != nil || found {
+		t.Fatalf("unexpected missing result: found=%v err=%v", found, err)
+	}
+	for _, input := range []string{
+		`{"rounds":[{"id":"` + roundID + `","logs":[{"type":1}]}]}`,
+		`{"rounds":[{"id":"` + roundID + `","logs":[{"id":"bad","type":1}]}]}`,
+		`{"rounds":[{"id":"` + roundID + `","logs":[{"id":"` + scoreID + `","type":1},{"id":"` + scoreID + `","type":1}]}]}`,
+	} {
+		if _, _, err := findLibraryScoreRoundID(input, scoreID); err == nil {
+			t.Fatalf("expected error for %s", input)
+		}
+	}
+}

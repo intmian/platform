@@ -38,6 +38,7 @@ import {Addr} from './addr';
 import {
     LibraryItemFull,
     LibraryItemStatus,
+    LibraryScoreDetail,
     LibraryStatusColors,
     LibraryStatusNames,
     PSubGroup,
@@ -86,6 +87,7 @@ import {useImageUpload} from '../common/useImageUpload';
 import {prepareLibraryCoverFiles, prepareLibraryCoverFilesFromCenterCrop} from '../common/imageCrop';
 import {FileShow, UploadFile} from '../common/newSendHttp';
 import './Library.css';
+import {getLibraryScoreDetail} from './libraryScoreDetailClient';
 
 const {Text, Paragraph, Title} = Typography;
 
@@ -601,6 +603,9 @@ export default function Library({addr, groupTitle}: LibraryProps) {
     const [showTimeline, setShowTimeline] = useState(false);
     const [showGuideModal, setShowGuideModal] = useState(false);
     const [scoreModalItem, setScoreModalItem] = useState<LibraryItemFull | null>(null);
+    const [scoreModalDetail, setScoreModalDetail] = useState<LibraryScoreDetail | null>(null);
+    const [scoreModalLoading, setScoreModalLoading] = useState(false);
+    const scoreModalRequestSeq = useRef(0);
     const [cardMenuVisible, setCardMenuVisible] = useState(false);
     const [cardMenuPosition, setCardMenuPosition] = useState<{x: number; y: number} | null>(null);
     const [cardMenuItem, setCardMenuItem] = useState<LibraryItemFull | null>(null);
@@ -1669,7 +1674,25 @@ export default function Library({addr, groupTitle}: LibraryProps) {
                                     className="library-card-score-badge"
                                     onClick={(e) => {
                                         e.stopPropagation();
+                                        const score = item.derived.mainScore;
+                                        if (!score?.id || !addr || !mainSubGroup) {
+                                            message.error('主评分缺少有效 ID，请先完成数据迁移');
+                                            return;
+                                        }
                                         setScoreModalItem(item);
+                                        setScoreModalDetail(null);
+                                        setScoreModalLoading(true);
+                                        const requestSeq = ++scoreModalRequestSeq.current;
+                                        void getLibraryScoreDetail({
+                                            UserID: addr.userID,
+                                            DirID: addr.getLastDirID(),
+                                            GroupID: addr.getLastGroupID(),
+                                            SubGroupID: mainSubGroup.ID,
+                                        }, item.taskId, score.id).then((detail) => {
+                                            if (requestSeq !== scoreModalRequestSeq.current) return;
+                                            setScoreModalDetail(detail);
+                                            setScoreModalLoading(false);
+                                        });
                                     }}
                                 >
                                     <StarFilled className="library-card-score-star" style={{color: scoreStarColor}} />
@@ -2454,21 +2477,29 @@ export default function Library({addr, groupTitle}: LibraryProps) {
             <Modal
                 title="评分详情"
                 open={!!scoreModalItem}
-                onCancel={() => setScoreModalItem(null)}
+                onCancel={() => {
+                    scoreModalRequestSeq.current += 1;
+                    setScoreModalItem(null);
+                    setScoreModalDetail(null);
+                }}
                 footer={[
-                    <Button key="close" onClick={() => setScoreModalItem(null)}>
+                    <Button key="close" onClick={() => {
+                        scoreModalRequestSeq.current += 1;
+                        setScoreModalItem(null);
+                        setScoreModalDetail(null);
+                    }}>
                         关闭
                     </Button>
                 ]}
                 width={isMobile ? '100%' : 420}
                 style={{top: 20}}
             >
-                {scoreModalItem ? (
+                {scoreModalLoading ? <Spin /> : scoreModalItem && scoreModalDetail ? (
                     <LibraryScorePopover
-                        extra={scoreModalItem.extra}
-                        mainScoreOverride={getItemDerivedMeta(scoreModalItem).mainScore || undefined}
+                        score={getItemDerivedMeta(scoreModalItem).mainScore!}
+                        detail={scoreModalDetail}
                     />
-                ) : null}
+                ) : <Empty description="评分详情加载失败" image={Empty.PRESENTED_IMAGE_SIMPLE} />}
             </Modal>
         </div>
     );

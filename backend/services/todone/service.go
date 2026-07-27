@@ -171,6 +171,12 @@ func (s *Service) HandleRpc(msg backendshare.Msg, valid backendshare.Valid) (int
 		return backendshare.HandleRpcTool("changeLibraryNote", msg, valid, s.OnChangeLibraryNote)
 	case CmdDelLibraryNote:
 		return backendshare.HandleRpcTool("delLibraryNote", msg, valid, s.OnDelLibraryNote)
+	case CmdGetLibraryScoreDetail:
+		return backendshare.HandleRpcTool("getLibraryScoreDetail", msg, valid, s.OnGetLibraryScoreDetail)
+	case CmdCreateLibraryScoreDetail:
+		return backendshare.HandleRpcTool("createLibraryScoreDetail", msg, valid, s.OnCreateLibraryScoreDetail)
+	case CmdChangeLibraryScoreDetail:
+		return backendshare.HandleRpcTool("changeLibraryScoreDetail", msg, valid, s.OnChangeLibraryScoreDetail)
 	}
 
 	return nil, errors.New("cmd not found")

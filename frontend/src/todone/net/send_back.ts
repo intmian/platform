@@ -1,5 +1,5 @@
 import {UniPost, UniResult} from "../../common/newSendHttp";
-import {LibraryNote, PDirTree, PSubGroup, PTask} from "./protocal";
+import {LibraryNote, LibraryScoreDetail, LibraryScoreDetailDimension, PDirTree, PSubGroup, PTask} from "./protocal";
 import config from "../../config.json";
 
 export interface GetDirTreeReq {
@@ -171,6 +171,37 @@ export interface DelLibraryNoteReq extends LibraryTaskScope {
     Revision: number
 }
 export type DelLibraryNoteRet = object
+
+export interface LibraryScoreDetailInput {
+    Mode: 'simple' | 'complex'
+    Comment: string
+    ObjScore?: LibraryScoreDetailDimension
+    SubScore?: LibraryScoreDetailDimension
+    InnovateScore?: LibraryScoreDetailDimension
+}
+
+export interface GetLibraryScoreDetailReq extends LibraryTaskScope {
+    UserID: string
+    ScoreID: string
+}
+export interface GetLibraryScoreDetailRet { Detail: LibraryScoreDetail }
+
+export interface CreateLibraryScoreDetailReq extends LibraryTaskScope {
+    UserID: string
+    ScoreID: string
+    RoundID: string
+    ClientRequestID: string
+    Detail: LibraryScoreDetailInput
+}
+export interface CreateLibraryScoreDetailRet { Detail: LibraryScoreDetail }
+
+export interface ChangeLibraryScoreDetailReq extends LibraryTaskScope {
+    UserID: string
+    ScoreID: string
+    Revision: number
+    Detail: LibraryScoreDetailInput
+}
+export interface ChangeLibraryScoreDetailRet { Detail: LibraryScoreDetail }
 
 
 export interface CreateTaskReq {
@@ -360,6 +391,27 @@ export function sendChangeLibraryNote(req: ChangeLibraryNoteReq, callback: (ret:
 export function sendDelLibraryNote(req: DelLibraryNoteReq, callback: (ret: {data: DelLibraryNoteRet, ok: boolean}) => void) {
     UniPost(api_base_url + 'delLibraryNote', req).then((res: UniResult) => callback({
         data: res.data as DelLibraryNoteRet,
+        ok: res.ok,
+    }));
+}
+
+export function sendGetLibraryScoreDetail(req: GetLibraryScoreDetailReq, callback: (ret: {data: GetLibraryScoreDetailRet, ok: boolean}) => void) {
+    UniPost(api_base_url + 'getLibraryScoreDetail', req).then((res: UniResult) => callback({
+        data: res.data as GetLibraryScoreDetailRet,
+        ok: res.ok,
+    }));
+}
+
+export function sendCreateLibraryScoreDetail(req: CreateLibraryScoreDetailReq, callback: (ret: {data: CreateLibraryScoreDetailRet, ok: boolean}) => void) {
+    UniPost(api_base_url + 'createLibraryScoreDetail', req).then((res: UniResult) => callback({
+        data: res.data as CreateLibraryScoreDetailRet,
+        ok: res.ok,
+    }));
+}
+
+export function sendChangeLibraryScoreDetail(req: ChangeLibraryScoreDetailReq, callback: (ret: {data: ChangeLibraryScoreDetailRet, ok: boolean}) => void) {
+    UniPost(api_base_url + 'changeLibraryScoreDetail', req).then((res: UniResult) => callback({
+        data: res.data as ChangeLibraryScoreDetailRet,
         ok: res.ok,
     }));
 }

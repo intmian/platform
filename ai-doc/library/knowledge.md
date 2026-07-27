@@ -1,13 +1,13 @@
 # Library Module Knowledge
 
-Last verified: 2026-07-25 (code inspected; interaction not run)
+Last verified: 2026-07-27 (score-detail storage boundary, migration lifecycle, lazy loading, and detail-only edit verified through local runtime interaction)
 
 ## Module role and loading boundary
 
 1. Library is rendered under `/todone/:group` and is activated only when `group type = 1` (`GroupType.Library`).
 2. Shared `todone` behavior (route parsing, login gate, dir/group/subgroup baseline, permission gate, common RPC contract) is defined in `ai-doc/todone/knowledge.md`.
 3. If current task涉及 todone 基础设定、共享路由鉴权、或入口问题，先加载 `ai-doc/todone/knowledge.md`；如果问题落在前端壳层，再补 `ai-doc/frontend/architecture.md`，再回到本文件处理 library 特有逻辑。
-4. Library has no dedicated backend service; core state remains in todone `Task.Note`, while private round notes use a todone-owned D1 side table.
+4. Library has no dedicated backend service; core state remains in todone `Task.Note`, while private round notes and score details use todone-owned D1 side tables.
 
 ## Frontend entry
 
@@ -28,11 +28,14 @@ Last verified: 2026-07-25 (code inspected; interaction not run)
    - `createLibraryNote`
    - `changeLibraryNote`
    - `delLibraryNote`
+   - `getLibraryScoreDetail`
+   - `createLibraryScoreDetail`
+   - `changeLibraryScoreDetail`
 
 ## Backend dependency
 
 1. Backend persistence is still todone `Task`.
-2. Library core structure is serialized into `Task.Note`; private round note bodies are stored in D1 table `library_notes`.
+2. Library core structure is serialized into `Task.Note`; private round note bodies use `library_notes`, while score evaluation details use `library_score_details` in the same Todone D1.
 3. Subgroup convention prefers `_library_items_`, with legacy fallback to first subgroup and auto-create when none exists.
 
 ## Data model
@@ -76,6 +79,12 @@ Last verified: 2026-07-25 (code inspected; interaction not run)
      - frontend background job tries to generate missing files from original URL with center crop.
      - successful backfill writes only backend data and logs console info; current page keeps old display until reopen (`verified via interaction`).
    - remote image fetch path used by legacy backfill and share/timeline export adds `__cf_bust` query + `cache: no-store` to reduce stale edge-cache CORS mismatch impact.
+13. Score storage boundary:
+   - each score remains a slim core log in `Task.Note` with stable `id`, `time`, `score`, and `scorePlus/scoreSub`
+   - `mainScoreID` selects a score by stable UUID; array-index main-score fields are migration-only
+   - score `comment`, `scoreMode`, and complex dimensions belong only to `library_score_details`
+   - score detail rows bind through `user_id + task_id + round_id + score id`, use create idempotency and revision-based optimistic edits, and remain retained but inaccessible after their score/round/task leaves the active core graph
+   - serialization strips embedded score-detail fields so ordinary Task saves cannot re-embed them
 
 ## Default UI state
 
@@ -162,6 +171,7 @@ Timeline rules:
 8. Timeline drawer has two views:
    - `时间线`: existing chronological log list with status/category/year filters and export preview.
    - `评分梯度`: score-log-only board grouped by main score levels from top to bottom as `满/优/合/差/零`; it reuses the timeline year and category filters, keeps score `+/-` markers, orders covers within each score row by sign (`+`, none, `-`) and then chronologically within the same sign, wraps many covers onto additional lines, and clicking a cover opens the item detail.
+9. All-library timeline, timeline export, score gradient, and detail experience-record rows read only slim core scores and never load or preview score evaluation details.
 
 Timeline export preview rules:
 
@@ -173,14 +183,16 @@ Timeline export preview rules:
 
 Share export rules:
 
-1. Library detail `分享预览` export card must include main evaluation text at the bottom section (from main score log `comment`, with legacy fallback).
+1. Library detail `分享预览` loads only the selected main score detail by `mainScoreID`; its export card includes the main evaluation text and complex dimensions, and export stays disabled until that detail is available.
 2. When current status is `DONE`, share export card must include current round date range in `YYYY-MM-DD - YYYY-MM-DD` format (without `开始/结束` prefix).
 
 Score log display rules:
 
-1. Both simple-score and complex-score timeline rows are clickable and open the same score detail popover.
-2. Score comment preview in timeline/detail log list is single-line only.
-3. When score comment preview is truncated, it renders as `前缀...(N字)` where `N` is the full trimmed character count.
+1. Cards, sorting, all-library timeline, score gradient, detail summary, and detail experience-record rows use only score core fields from `Task.Note`.
+2. Global and detail timelines do not render score evaluation previews.
+3. Clicking a card score badge or detail score row loads exactly that score detail by ID; editing a score and opening share/add flows likewise load at most the directly required score detail.
+4. Score detail requests must be triggered by the explicit open/edit/share action, never by rendering a list, hidden modal, or Popover content tree.
+5. Detail-only edits do not rewrite `Task.Note`; score value/sign/time/main selection remain core Task mutations.
 
 Score AI assistant rules:
 

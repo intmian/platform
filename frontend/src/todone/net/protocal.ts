@@ -143,8 +143,9 @@ export interface LibraryExtra {
     status?: LibraryItemStatus      // [deprecated] 当前状态（改为从最新状态日志推导）
     currentRound: number            // 当前周目索引
     rounds: LibraryRound[]          // 所有周目数据
-    mainScoreRoundIndex?: number    // 主评分所在周目索引
-    mainScoreLogIndex?: number      // 主评分所在日志索引
+    mainScoreID?: string            // 主评分稳定 UUID
+    mainScoreRoundIndex?: number    // [deprecated] 主评分所在周目索引
+    mainScoreLogIndex?: number      // [deprecated] 主评分所在日志索引
     createdAt: string               // 创建时间
     updatedAt: string               // 更新时间
     
@@ -180,6 +181,7 @@ export interface LibraryNote {
 
 // 日志条目（扩展 LibraryLog）
 export interface LibraryLogEntry {
+    id?: string                     // score 日志稳定 UUID；其他核心日志暂不要求
     type: LibraryLogType
     time: string
     status?: LibraryItemStatus      // 状态变更时的新状态
@@ -187,11 +189,31 @@ export interface LibraryLogEntry {
     score?: number                  // 评分（1-5）
     scorePlus?: boolean             // 评分加分
     scoreSub?: boolean              // 评分减分
-    comment?: string                // 备注/评论
-    scoreMode?: 'simple' | 'complex' // 评分模式（仅 score 日志）
-    objScore?: LibraryScoreData      // 客观评分（仅 complex score 日志）
-    subScore?: LibraryScoreData      // 主观评分（仅 complex score 日志）
-    innovateScore?: LibraryScoreData // 创新评分（仅 complex score 日志）
+    comment?: string                // 核心日志备注；score 中仅作迁移兼容
+    scoreMode?: 'simple' | 'complex' // [deprecated] score 详情已迁出
+    objScore?: LibraryScoreData      // [deprecated] score 详情已迁出
+    subScore?: LibraryScoreData      // [deprecated] score 详情已迁出
+    innovateScore?: LibraryScoreData // [deprecated] score 详情已迁出
+}
+
+export interface LibraryScoreDetailDimension {
+    Value: number
+    Adjustment: -1 | 0 | 1
+    Comment: string
+}
+
+export interface LibraryScoreDetail {
+    ID: string
+    TaskID: number
+    RoundID: string
+    Mode: 'simple' | 'complex'
+    Comment: string
+    ObjScore?: LibraryScoreDetailDimension
+    SubScore?: LibraryScoreDetailDimension
+    InnovateScore?: LibraryScoreDetailDimension
+    Revision: number
+    CreatedAt: string
+    UpdatedAt: string
 }
 
 // 从 Task 解析出的 Library 完整数据

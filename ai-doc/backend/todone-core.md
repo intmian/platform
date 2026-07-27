@@ -1,6 +1,6 @@
 # Todone Backend Core
 
-Last verified: 2026-07-11
+Last verified: 2026-07-13
 
 ## Scope
 
@@ -15,6 +15,7 @@ Last verified: 2026-07-11
 4. `TaskDB`: task entity (`parent_sub_group_id`, `parent_task_id`, `done`, `deleted`, time fields, task type/status fields).
 5. `TagsDB`: task-tag relation (`task_id`, `tag`, user).
 6. `LibraryNoteDB`: private Library round notes (`task_id`, stable `round_id`, content, event time, revision, idempotency id, soft delete).
+7. `LibraryScoreDetailDB`: per-score evaluation detail (`score id`, task/round scope, mode, main/dimension comments and values, revision, idempotency id, soft delete).
 
 ## Group type contract
 
@@ -32,6 +33,7 @@ Last verified: 2026-07-11
    - tags
    - subgroup
    - library note
+   - library score detail
    Every `ConnectType` maps to the same root GORM handle and underlying `database/sql` pool.
 3. Auto-migrate runs serially in the above order at startup; it no longer writes the connection map or migrates the same D1 concurrently.
 4. `library_notes.revision` is initialized explicitly by application/migration writes and intentionally has no GORM database-default tag. The D1 adapter cannot introspect column defaults, so adding one makes a second `AutoMigrate` incorrectly request a destructive alteration. UUID columns likewise use D1 `TEXT` without GORM size declarations.
@@ -69,6 +71,7 @@ Last verified: 2026-07-11
    - keeps finished tasks but places them after unfinished tasks in output index mapping
 3. Tag batch query uses chunked `IN` (`MaxInSize=50`) for D1/SQLite friendliness.
 4. Library notes are loaded only for an open Library task and only for round UUIDs currently present in `Task.Note`; removed-round notes remain stored but inaccessible.
+5. Library score details are never batch-loaded. Core score logs remain in `Task.Note`; an explicit view/edit/share action resolves one active score UUID and reads only its detail row.
 
 ## Library note contract
 
@@ -78,6 +81,15 @@ Last verified: 2026-07-11
 4. Delete is soft delete. Note operations never mutate `Task.Note` or Library business `updatedAt`.
 5. Note bodies are capped at 64 KiB and a single task read fails rather than silently truncating beyond 500 active notes.
 6. Historical embedded notes are moved only by the stopped-service command `backend/cmd/migrate_library_notes`; runtime code does not perform online migration or dual reads.
+
+## Library score detail contract
+
+1. Public commands are `getLibraryScoreDetail`, `createLibraryScoreDetail`, and `changeLibraryScoreDetail` under the Todone RPC namespace.
+2. The normal Todone permission/user gate applies. Reads and edits require the score UUID to exist in the current Task/round core graph; create may prewrite an idempotent detail for an active round before the slim score is saved into `Task.Note`.
+3. Score details have a combined 64 KiB comment limit. Dimension values are 1-5 and adjustment is `-1/0/1`.
+4. Score detail create is idempotent by client request UUID; edits use revision optimistic locking.
+5. Score deletion removes the slim core score. Its detail row is retained but becomes inaccessible, matching removed-round note behavior.
+6. `backend/cmd/migrate_library_score_details` performs the stopped-service conversion: stable score IDs and `mainScoreID` remain in Task, while comments/mode/complex dimensions move into the side table.
 
 ## Subgroup autosave behavior
 

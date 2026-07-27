@@ -1,6 +1,6 @@
 # Backend Services Catalog
 
-Last verified: 2026-03-06
+Last verified: 2026-07-13
 
 ## Scope
 
@@ -132,7 +132,7 @@ Last verified: 2026-03-06
 
 ## Responsibility
 
-1. Dir/group/subgroup/task/tag CRUD and move flows, plus private Library round-note CRUD.
+1. Dir/group/subgroup/task/tag CRUD and move flows, plus private Library round-note and score-detail CRUD.
 2. Backend authority for task tree/state/order.
 3. See `backend/todone-core.md` for runtime model, cache, and move semantics.
 
@@ -173,6 +173,9 @@ Last verified: 2026-03-06
 23. `createLibraryNote`
 24. `changeLibraryNote`
 25. `delLibraryNote`
+26. `getLibraryScoreDetail`
+27. `createLibraryScoreDetail`
+28. `changeLibraryScoreDetail`
 
 ## Service: web-storage
 
