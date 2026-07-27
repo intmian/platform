@@ -81,7 +81,7 @@ Last verified: 2026-07-27
 1. The bottom area has one fixed action row:
    - left: a tag button that shows `标签` when empty, otherwise shows selected tag names joined with `、`; long content stays on one line and is ellipsized without pushing the right-side actions out of place
    - right: file upload, AI rewrite, voice input, and send actions
-2. Clicking the tag button opens the tag selector in a popover above the row; the button uses its selected style while open, and the selector is focused with its option dropdown expanded automatically.
+2. Clicking the tag button opens the tag selector in a popover above the row; the button uses its selected style while open, and the selector is focused with its option dropdown expanded after the outer popover finishes positioning so the nested dropdown always measures its real width.
 3. The tag popover overlays the page instead of consuming layout height, so opening or closing it does not resize the memo input.
 4. File upload, AI rewrite, and voice input are icon-only controls with tooltips and accessible labels. Mobile suppresses the voice button tooltip, including its recording stop hint, while retaining click-to-stop behavior.
 5. File upload uses `FileAddOutlined` and preserves clipboard-image detection on supported desktop browsers; it is disabled while settings are loading or an upload is already running.

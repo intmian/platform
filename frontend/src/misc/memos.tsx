@@ -702,6 +702,7 @@ function Memos() {
     const [voiceRecording, setVoiceRecording] = useState(false);
     const [voicePreview, setVoicePreview] = useState("");
     const [tagPopoverOpen, setTagPopoverOpen] = useState(false);
+    const [tagSelectOpen, setTagSelectOpen] = useState(false);
     const [tagFocusSignal, setTagFocusSignal] = useState(0);
     const isMobile = useIsMobile();
     // const [uploading, setUploading] = useState(false); // Removed for useImageUpload
@@ -854,6 +855,7 @@ function Memos() {
         setHidden(false);
         setTagsSelected([]);
         setTagPopoverOpen(false);
+        setTagSelectOpen(false);
         if (inputRef.current) {
             inputRef.current.focus();
         }
@@ -1043,10 +1045,16 @@ function Memos() {
                     trigger="click"
                     placement="topLeft"
                     open={tagPopoverOpen}
-                    onOpenChange={setTagPopoverOpen}
+                    onOpenChange={(open) => {
+                        setTagPopoverOpen(open);
+                        if (!open) {
+                            setTagSelectOpen(false);
+                        }
+                    }}
                     destroyTooltipOnHide
                     afterOpenChange={(open) => {
                         if (open) {
+                            setTagSelectOpen(true);
                             setTagFocusSignal((signal) => signal + 1);
                         }
                     }}
@@ -1061,9 +1069,9 @@ function Memos() {
                             tags={tagsSelected}
                             setting={NowSetting}
                             maxTagTextLength={isMobile ? 3 : undefined}
-                            autoFocus={tagPopoverOpen}
+                            autoFocus={tagSelectOpen}
                             focusSignal={tagFocusSignal}
-                            open={tagPopoverOpen}
+                            open={tagSelectOpen}
                             style={{
                                 width: isMobile ? '240px' : '320px',
                             }}

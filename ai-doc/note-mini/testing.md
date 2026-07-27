@@ -33,7 +33,7 @@ Last verified: 2026-07-24
    - the tag button stays at the far left, shows `标签` when empty, joins selected tag names with `、`, and ellipsizes long content without displacing the right-side actions
    - file upload, AI rewrite, voice input, and send actions stay right-aligned
    - file upload, AI rewrite, and voice input use icon-only buttons with accessible labels/tooltips
-   - opening the tag button selects it, focuses the tag selector, expands the option dropdown immediately, and does not resize the memo input
+   - opening the tag button selects it, then focuses and expands the tag selector after the outer popover is positioned; the option list keeps its full width and does not resize the memo input
 7. Click `发送` (real send).
 8. Verify UI result:
    - request queue shows success icon
