@@ -2343,7 +2343,6 @@ export default function LibraryDetail({visible, item, noteContext, categories = 
                                 setAddNoteVoicePreview('');
                                 setNoteContent((current) => appendTranscriptionText(current, text));
                             }}
-                            onError={() => setAddNoteVoicePreview('')}
                         />
                         {!addNoteVoiceRecording ? (
                             <Button
@@ -2443,7 +2442,6 @@ export default function LibraryDetail({visible, item, noteContext, categories = 
                                 setEditingNoteVoicePreview('');
                                 setEditingContentText((current) => appendTranscriptionText(current, text));
                             }}
-                            onError={() => setEditingNoteVoicePreview('')}
                         />
                         {!editingNoteVoiceRecording ? (
                             <Button

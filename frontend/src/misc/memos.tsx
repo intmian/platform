@@ -1141,7 +1141,6 @@ function Memos() {
                             setVoicePreview("");
                             inputRef.current.addText(text);
                         }}
-                        onError={() => setVoicePreview("")}
                     />
                     {!voiceRecording ? (
                         <Button

@@ -1,6 +1,6 @@
 # Library Module Knowledge
 
-Last verified: 2026-07-27 (score-detail storage boundary, migration lifecycle, lazy loading, and detail-only edit verified through local runtime interaction)
+Last verified: 2026-07-27 (score-detail storage boundary, migration lifecycle, lazy loading, and detail-only edit verified through local runtime interaction; realtime voice failure recovery verified from code)
 
 ## Module role and loading boundary
 
@@ -103,7 +103,7 @@ Last verified: 2026-07-27 (score-detail storage boundary, migration lifecycle, l
    - `隐藏`: hide note logs entirely
    - `缩略`: default mode; consecutive note logs collapse into `x条备注` and only show the plain start/end time range in the left content area
    - `显示`: render note logs in full with edit/delete/time controls
-11. Detail drawer `体验记录` header adds `新增最新备注`, which writes a D1 note bound to the current round UUID. Add/edit note modals have no footer cancel button; their shared `WhisperButton` and confirm button share the footer row, and the confirm button is hidden while recording. Realtime transcription is previewed directly at the end of the read-only note editor using the same whitespace/newline separator as final insertion; completion commits the authoritative text once, while failure or cancellation preserves the original draft.
+11. Detail drawer `体验记录` header adds `新增最新备注`, which writes a D1 note bound to the current round UUID. Add/edit note modals have no footer cancel button; their shared `WhisperButton` and confirm button share the footer row, and the confirm button is hidden while recording. Realtime transcription is previewed directly at the end of the read-only note editor using the same whitespace/newline separator as final insertion. Completion commits the authoritative text once; a recognition failure commits the visible best-effort aggregate once, restores ordinary editing, and still reports the error; cancellation preserves the original draft.
 
 URL sync contract (list + detail):
 

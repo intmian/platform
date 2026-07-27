@@ -240,8 +240,26 @@ export function WhisperButton({
             return;
         }
         lastRealtimeErrorRef.current = realtime.error;
+        const text = realtimePreview.trim();
+        const recoveryKey = `${realtime.ready?.taskID || "unknown"}:${text}`;
+        if (text && lastRealtimeCompletionRef.current !== recoveryKey) {
+            lastRealtimeCompletionRef.current = recoveryKey;
+            onText(text, {
+                text,
+                language: "zh",
+                duration: realtime.durationMs / 1000,
+            });
+        }
         emitError(realtime.error);
-    }, [emitError, realtime.error, realtime.status]);
+    }, [
+        emitError,
+        onText,
+        realtime.durationMs,
+        realtime.error,
+        realtime.ready?.taskID,
+        realtime.status,
+        realtimePreview,
+    ]);
 
     useEffect(() => {
         if (realtime.status !== "completed") {

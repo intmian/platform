@@ -188,7 +188,6 @@ export function Editor(props: { value: string, onChange: (value: string) => void
                 onRecordingChange={handleVoiceRecordingChange}
                 onPartialText={setVoicePreview}
                 onText={handleVoiceText}
-                onError={() => setVoicePreview("")}
             />
             {actionButton("AI润色", <FontColorsOutlined/>, () => void polish(), {
                 loading: polishing,

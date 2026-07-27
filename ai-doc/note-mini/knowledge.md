@@ -1,6 +1,6 @@
 # Note Mini Knowledge
 
-Last verified: 2026-07-25
+Last verified: 2026-07-27
 
 ## Module role
 
@@ -90,7 +90,7 @@ Last verified: 2026-07-25
 8. The send button stays at the far right when voice recording is inactive.
 9. Hide/show remains in the top-right control area next to the logged-in user.
 10. Note Mini suppresses the floating `实时转写` popover on all screen sizes. Confirmed sentences plus the current mutable partial sentence appear directly at the end of the draft editor instead.
-11. Realtime preview and final insertion share the existing separator rule: add a newline only when the existing draft is non-empty and ends with neither a newline nor a space. Completion commits the authoritative final result once; failure or cancellation removes the transient preview and preserves the original draft.
+11. Realtime preview and final insertion share the existing separator rule: add a newline only when the existing draft is non-empty and ends with neither a newline nor a space. Completion commits the authoritative final result once. If recognition fails after producing text, the visible best-effort aggregate is appended once, ordinary editing resumes, and the error is still reported; cancellation removes the transient preview and preserves the original draft.
 
 ## Verification focus
 
