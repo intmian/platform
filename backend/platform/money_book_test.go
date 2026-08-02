@@ -43,7 +43,7 @@ func testMoneyItems(bookID string) []MoneyItem {
 			ID:                 "alipay",
 			BookID:             bookID,
 			Name:               "支付宝",
-			Type:               moneyItemTypeCashAccount,
+			Type:               "现金账户",
 			Enabled:            true,
 			Sort:               1,
 			IncludeInReconcile: true,
@@ -54,7 +54,7 @@ func testMoneyItems(bookID string) []MoneyItem {
 			ID:                 "wechat",
 			BookID:             bookID,
 			Name:               "微信",
-			Type:               moneyItemTypeCashAccount,
+			Type:               "现金账户",
 			Enabled:            true,
 			Sort:               2,
 			IncludeInReconcile: true,
@@ -65,7 +65,7 @@ func testMoneyItems(bookID string) []MoneyItem {
 			ID:                 "credit",
 			BookID:             bookID,
 			Name:               "信用卡",
-			Type:               moneyItemTypeDebtAccount,
+			Type:               "对账负债账户",
 			Enabled:            true,
 			Sort:               3,
 			IncludeInReconcile: true,
@@ -75,7 +75,7 @@ func testMoneyItems(bookID string) []MoneyItem {
 			ID:                        "fund",
 			BookID:                    bookID,
 			Name:                      "基金",
-			Type:                      moneyItemTypeInvestment,
+			Type:                      "投资",
 			Enabled:                   true,
 			Sort:                      4,
 			IncludeInInvestmentProfit: true,
@@ -85,7 +85,7 @@ func testMoneyItems(bookID string) []MoneyItem {
 			ID:                        "loan",
 			BookID:                    bookID,
 			Name:                      "房贷",
-			Type:                      moneyItemTypeLiability,
+			Type:                      "负债",
 			Enabled:                   true,
 			Sort:                      5,
 			IncludeInLiability:        true,
@@ -163,6 +163,17 @@ func TestComputeMoneyRecordLiabilityInputSign(t *testing.T) {
 		if len(result.Entries) != 2 || result.Entries[1].CurrentValueCents != -1200 || result.Entries[1].ActualValueCents != -1200 {
 			t.Fatalf("liability input should be normalized for actual=%d: %+v", actualValue, result.Entries)
 		}
+	}
+}
+
+func TestMoneyItemTypeDoesNotControlValueSign(t *testing.T) {
+	item := MoneyItem{Type: "对账负债账户"}
+	if value := signedMoneyValue(item, 1200); value != 1200 {
+		t.Fatalf("type should not control value sign: got %d", value)
+	}
+	item.IncludeInLiability = true
+	if value := signedMoneyValue(item, 1200); value != -1200 {
+		t.Fatalf("liability flag should normalize value sign: got %d", value)
 	}
 }
 

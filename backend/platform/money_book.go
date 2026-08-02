@@ -26,16 +26,6 @@ const (
 	moneyBookStatusDraft     = "draft"
 	moneyBookStatusConfirmed = "confirmed"
 
-	moneyItemTypeCashAccount     = "cash_account"
-	moneyItemTypeDebtAccount     = "debt_account"
-	moneyItemTypeInvestment      = "investment"
-	moneyItemTypeForeignCash     = "foreign_cash"
-	moneyItemTypeForeignExchange = "foreign_exchange"
-	moneyItemTypeCrypto          = "crypto"
-	moneyItemTypeFixedAsset      = "fixed_asset"
-	moneyItemTypeLiability       = "liability"
-	moneyItemTypeReceivable      = "receivable"
-
 	moneySourceManual      = "manual"
 	moneySourceExcelImport = "excel_import"
 
@@ -1066,7 +1056,7 @@ func ComputeMoneyRecord(items []MoneyItem, prev *ReconciliationRecord, record Re
 }
 
 func signedMoneyValue(item MoneyItem, value int64) int64 {
-	if item.Type == moneyItemTypeDebtAccount || item.IncludeInLiability {
+	if item.IncludeInLiability {
 		return -absInt64(value)
 	}
 	return value

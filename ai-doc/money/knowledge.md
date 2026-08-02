@@ -20,7 +20,7 @@ Last verified: 2026-04-27
 ## Core Data Contracts
 
 1. `MoneyBook` contains the book name, primary balance account, enabled flag, deleted flag, and ordered dashboard viewer user list.
-2. `MoneyItem.type` is free text. It is only used as a grouping label for summary/structure display; it is not a controlled enum.
+2. `MoneyItem.type` is free text and is only used as a grouping label for summary/structure display; it does not control calculation behavior. The config UI provides Chinese built-in options (`现金账户`, `对账负债账户`, `投资`, `外币现钞`, `外币现汇`, `虚拟币`, `固定资产`, `负债`, and `债权`) while still accepting custom values. Custom values used by any current item become options for the other item type selectors in the same book. Legacy English built-in values are displayed and lazily saved as their Chinese equivalents.
 3. Item inclusion flags drive calculations:
    - `includeInReconcile`: show book/actual values and force current value to actual value during compute.
    - `includeInCash`: contributes to cash.
@@ -52,7 +52,7 @@ Last verified: 2026-04-27
    - admins can create books, import JSON, export JSON, delete books, configure books, create records, view history, and import Excel.
    - viewers only see authorized dashboard access.
 2. Config page:
-   - item type is a free-text input.
+   - item type uses an editable selector with Chinese built-in options plus the current book's custom types.
    - dashboard viewer users are edited as an ordered list with add/delete/move controls.
    - returning to the list with unsaved changes shows a confirmation dialog.
 3. Reconcile page:

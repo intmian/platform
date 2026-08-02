@@ -112,19 +112,36 @@ export function confirmMoneyExcelImport(bookId: string, previewId: string) {
 }
 
 export const MONEY_ITEM_TYPES = [
-    {value: "cash_account", label: "现金账户"},
-    {value: "debt_account", label: "对账负债账户"},
-    {value: "investment", label: "投资"},
-    {value: "foreign_cash", label: "外币现钞"},
-    {value: "foreign_exchange", label: "外币现汇"},
-    {value: "crypto", label: "虚拟币"},
-    {value: "fixed_asset", label: "固定资产"},
-    {value: "liability", label: "负债"},
-    {value: "receivable", label: "债权"},
+    "现金账户",
+    "对账负债账户",
+    "投资",
+    "外币现钞",
+    "外币现汇",
+    "虚拟币",
+    "固定资产",
+    "负债",
+    "债权",
 ];
 
+// 向前兼容旧数据：早期版本将内置类型保存为英文代码，新版本需要继续识别并转换为中文值。
+const LEGACY_MONEY_ITEM_TYPE_LABELS: Record<string, string> = {
+    cash_account: "现金账户",
+    debt_account: "对账负债账户",
+    investment: "投资",
+    foreign_cash: "外币现钞",
+    foreign_exchange: "外币现汇",
+    crypto: "虚拟币",
+    fixed_asset: "固定资产",
+    liability: "负债",
+    receivable: "债权",
+};
+
+export function normalizeMoneyItemType(type: string) {
+    return LEGACY_MONEY_ITEM_TYPE_LABELS[type] || type;
+}
+
 export function itemTypeLabel(type: string) {
-    return MONEY_ITEM_TYPES.find((item) => item.value === type)?.label || type || "未分类";
+    return normalizeMoneyItemType(type) || "未分类";
 }
 
 export function centsToYuan(value?: number) {

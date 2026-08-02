@@ -3,6 +3,7 @@ import type {ReactNode} from "react";
 import {useNavigate, useParams} from "react-router-dom";
 import {
     Alert,
+    AutoComplete,
     Button,
     Checkbox,
     DatePicker,
@@ -58,6 +59,8 @@ import {
     listMoneyRecords,
     listMoneyBooks,
     listMoneyItems,
+    MONEY_ITEM_TYPES,
+    normalizeMoneyItemType,
     previewMoneyExcelImport,
     updateMoneyRecord,
     updateMoneyBook,
@@ -424,7 +427,7 @@ function makeStarterItems(bookId: string): MoneyItem[] {
             ...makeNewItem(bookId, 1),
             id: "cash-alipay",
             name: "支付宝",
-            type: "cash_account",
+            type: "现金账户",
             includeInReconcile: true,
             includeInCash: true,
             includeInNetAsset: true,
@@ -434,7 +437,7 @@ function makeStarterItems(bookId: string): MoneyItem[] {
             ...makeNewItem(bookId, 2),
             id: "cash-wechat",
             name: "微信",
-            type: "cash_account",
+            type: "现金账户",
             includeInReconcile: true,
             includeInCash: true,
             includeInNetAsset: true,
@@ -443,7 +446,7 @@ function makeStarterItems(bookId: string): MoneyItem[] {
             ...makeNewItem(bookId, 3),
             id: "investment-fund",
             name: "基金",
-            type: "investment",
+            type: "投资",
             includeInInvestmentProfit: true,
             includeInNetAsset: true,
         },
@@ -451,7 +454,7 @@ function makeStarterItems(bookId: string): MoneyItem[] {
             ...makeNewItem(bookId, 4),
             id: "liability-loan",
             name: "贷款",
-            type: "liability",
+            type: "负债",
             includeInNetAsset: false,
             includeInLiability: true,
         },
@@ -574,7 +577,10 @@ export function MoneyConfigPage() {
         try {
             const [bookRet, itemRet] = await Promise.all([listMoneyBooks(), listMoneyItems(bookId)]);
             const nextBook = bookRet.books.find((item) => item.id === bookId) || null;
-            const nextItems = itemRet.items || [];
+            const nextItems = (itemRet.items || []).map((item) => ({
+                ...item,
+                type: normalizeMoneyItemType(item.type),
+            }));
             const nextViewerUsers = nextBook?.viewerUsers || [];
             setBook(nextBook);
             setViewerUsers(nextViewerUsers);
@@ -596,6 +602,20 @@ export function MoneyConfigPage() {
     const patchItem = (index: number, patch: Partial<MoneyItem>) => {
         setItems((prev) => prev.map((item, idx) => idx === index ? {...item, ...patch} : item));
     };
+
+    const typeOptions = useMemo(() => orderedStrings([
+        ...MONEY_ITEM_TYPES,
+        ...items.map((item) => normalizeMoneyItemType(item.type)),
+    ]).map((value) => ({value})), [items]);
+
+    const typeInput = (record: MoneyItem, index: number) => <AutoComplete
+        style={{width: "100%"}}
+        value={record.type}
+        options={typeOptions}
+        placeholder="请选择或输入类型"
+        filterOption={(inputValue, option) => String(option?.value || "").includes(inputValue)}
+        onChange={(value) => patchItem(index, {type: value})}
+    />;
 
     const backToList = () => {
         if (!dirty) {
@@ -651,7 +671,7 @@ export function MoneyConfigPage() {
             title: "类型",
             dataIndex: "type",
             width: 160,
-            render: (_, record, index) => <Input value={record.type} placeholder="如：现金、基金、房贷" onChange={(e) => patchItem(index, {type: e.target.value})}/>,
+            render: (_, record, index) => typeInput(record, index),
         },
         {
             title: "启用",
@@ -768,7 +788,7 @@ export function MoneyConfigPage() {
                             </label>
                             <label>
                                 <div className="money-muted">类型</div>
-                                <Input value={item.type} placeholder="如：现金、基金、房贷" onChange={(e) => patchItem(index, {type: e.target.value})}/>
+                                {typeInput(item, index)}
                             </label>
                             <div className="money-config-flags">
                                 <Checkbox checked={item.enabled} onChange={(e) => patchItem(index, {enabled: e.target.checked})}>启用</Checkbox>
