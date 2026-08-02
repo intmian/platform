@@ -897,30 +897,43 @@ function evaluateAmountExpression(expression: string): number | null {
     return result;
 }
 
-function openAmountExpressionModal(value: number, onChange: (value: number) => void, liability = false) {
-    let expression = String(displayInputCents(centsToYuan(value), liability));
-    Modal.confirm({
+function openAmountExpressionModal(onChange: (value: number) => void, liability = false) {
+    let expression = "";
+    let closeModal = () => {};
+    const applyExpression = () => {
+        const result = evaluateAmountExpression(expression);
+        if (result === null) {
+            message.error("表达式格式不正确");
+            return false;
+        }
+        onChange(normalizeInputCents(yuanToCents(result), liability));
+        return true;
+    };
+    const modal = Modal.confirm({
         title: "表达式输入",
         content: <Input
             autoFocus
-            defaultValue={expression}
             placeholder="例如：200-90"
             onChange={(event) => {
                 expression = event.target.value;
             }}
+            onPressEnter={() => {
+                if (applyExpression()) {
+                    closeModal();
+                }
+            }}
         />,
         okText: "应用",
         cancelText: "取消",
+        autoFocusButton: null,
         onOk: () => {
-            const result = evaluateAmountExpression(expression);
-            if (result === null) {
-                message.error("表达式格式不正确");
+            if (!applyExpression()) {
                 return Promise.reject();
             }
-            onChange(normalizeInputCents(yuanToCents(result), liability));
             return undefined;
         },
     });
+    closeModal = () => modal.destroy();
 }
 
 function entryAmountInput(value: number, onChange: (value: number) => void, options: { liability?: boolean } = {}) {
@@ -930,13 +943,14 @@ function entryAmountInput(value: number, onChange: (value: number) => void, opti
             className="money-table-input"
             value={centsToYuan(displayInputCents(value, liability))}
             precision={2}
+            controls={false}
             onChange={(next) => onChange(normalizeInputCents(yuanToCents(next), liability))}
         />
         <Button
             className="money-expression-button"
             icon={<CalculatorOutlined/>}
             aria-label="表达式输入"
-            onClick={() => openAmountExpressionModal(value, onChange, liability)}
+            onClick={() => openAmountExpressionModal(onChange, liability)}
         />
     </div>;
 }

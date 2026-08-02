@@ -57,7 +57,7 @@ Last verified: 2026-04-27
    - returning to the list with unsaved changes shows a confirmation dialog.
 3. Reconcile page:
    - reconcile items show book value and actual value.
-   - amount inputs include an expression-entry action for arithmetic such as `200-90`.
+   - amount inputs include an expression-entry action for arithmetic such as `200-90`; the dialog opens with an empty focused input, and Enter applies a valid expression.
    - reconcile items force current value to actual value; the UI does not show a separate current-value column.
    - non-reconcile items hide book value and reuse the actual-value column for current value input.
    - editing record date, entries, or events triggers debounced automatic save and recalculation; the manual save action is only an immediate persistence shortcut.
