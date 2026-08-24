@@ -1,11 +1,11 @@
 # Note Mini Knowledge
 
-Last verified: 2026-07-27
+Last verified: 2026-08-24
 
 ## Module role
 
 1. `note_mini` is a lightweight private memo sender, not a first-party backend domain service.
-2. It combines frontend drafting/upload/AI rewrite UX with platform config/misc APIs and an external memos API.
+2. It combines frontend drafting/upload/local encryption/AI rewrite UX with platform config/misc APIs and an external memos API.
 
 ## Test reference
 
@@ -51,6 +51,7 @@ Last verified: 2026-07-27
    - input area supports markdown text
    - keyboard submit supports Ctrl+Enter on Windows/Linux and Command+Enter on macOS, including from the tag area
    - upload supports local files and clipboard images from the bottom file-upload icon, then inserts markdown link/image
+   - encrypted upload turns the current draft into a local AES-GCM binary file, uploads that file, then sends only the public tip, optional password hint, download link, and selected tags through the normal memo queue
    - bottom action bar includes `WhisperButton` voice input; realtime text is previewed at the end of the draft and the authoritative completed text is then appended
    - while realtime voice recognition is active, the draft editor is read-only; its preview remains transient and does not update the committed draft or `note.lastInput`
    - while voice recording is active, the send button is removed and the shared expanded recording pill occupies that action-bar space; the send button returns after recording stops
@@ -76,14 +77,36 @@ Last verified: 2026-07-27
 6. Queue status items open a click popover for text review/copy. Failure retry is an explicit popover action, not the icon's default click behavior.
 7. Mobile suppresses the queue status hover tooltips while retaining each item's click popover.
 
+## Encrypted upload contract
+
+1. The encrypted-upload modal contains:
+   - required `tip`
+   - required password
+   - optional password hint
+2. Encryption is entirely browser-side:
+   - encode draft and password as UTF-8
+   - derive the 256-bit AES key as `SHA-256(password)` with no salt
+   - generate a fresh random 12-byte IV
+   - encrypt with AES-GCM and a 128-bit authentication tag, without AAD
+3. The uploaded `application/octet-stream` file is named `note-mini-<ISO timestamp>.notemini.enc` and has this binary layout:
+   - bytes `0..11`: IV
+   - remaining bytes: Web Crypto AES-GCM output `ciphertext || 16-byte authentication tag`
+4. The password is not persisted or sent. There is no first-party decrypt UI.
+5. The queued memo content is:
+   - first line: `tip`
+   - optional second line: `密码提示：<password hint>`
+   - final line: `[下载加密文件](<public R2 URL>)`
+   - selected tags are appended by the existing queue contract
+6. Encryption or file-upload failure preserves the draft, tags, and open modal. The draft is cleared only after the encrypted file has uploaded and its memo content has entered the existing send queue.
+
 ## Bottom action behavior (verified from code)
 
 1. The bottom area has one fixed action row:
    - left: a tag button that shows `标签` when empty, otherwise shows selected tag names joined with `、`; long content stays on one line and is ellipsized without pushing the right-side actions out of place
-   - right: file upload, AI rewrite, voice input, and send actions
+   - right: encrypted upload, AI optimization, file upload, a divider, voice input, and send actions
 2. Clicking the tag button opens the tag selector in a popover above the row; the button uses its selected style while open, and the selector is focused with its option dropdown expanded after the outer popover finishes positioning so the nested dropdown always measures its real width.
 3. The tag popover overlays the page instead of consuming layout height, so opening or closing it does not resize the memo input.
-4. File upload, AI rewrite, and voice input are icon-only controls with tooltips and accessible labels. Mobile suppresses the voice button tooltip, including its recording stop hint, while retaining click-to-stop behavior.
+4. Encrypted upload, AI optimization, file upload, and voice input are icon-only controls with tooltips and accessible labels. Mobile suppresses the voice button tooltip, including its recording stop hint, while retaining click-to-stop behavior.
 5. File upload uses `FileAddOutlined` and preserves clipboard-image detection on supported desktop browsers; it is disabled while settings are loading or an upload is already running.
 6. AI rewrite uses `RobotOutlined` and is disabled until the memo has content and settings are ready.
 7. Voice input remains the shared `WhisperButton`; while recording, its expanded pill replaces the send button space and shows the latest real 16-bucket PCM waveform rather than a repeated synthetic pattern.
@@ -97,5 +120,6 @@ Last verified: 2026-07-27
 1. Load `note-mini/testing.md` for safe mock-based verification flow.
 2. Regression should include:
    - normal submit path
+   - encrypted upload path
    - AI rewrite path
    - upload path
