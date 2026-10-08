@@ -6,6 +6,7 @@ import {
     EyeInvisibleOutlined,
     EyeOutlined,
     FileAddOutlined,
+    LockOutlined,
     RobotOutlined,
     SettingFilled,
     SyncOutlined
@@ -17,13 +18,64 @@ import {TextAreaRef} from "antd/es/input/TextArea";
 import {useIsMobile} from "../common/hooksv2";
 import User from "../common/User";
 import {LoginCtx} from "../common/loginCtx";
-import {FileShow, sendGptRewrite} from "../common/newSendHttp";
+import {FileShow, sendGptRewrite, UploadFile} from "../common/newSendHttp";
 import {useImageUpload} from "../common/useImageUpload";
 import {WhisperButton} from "../common/WhisperButton";
 
 // TODO: 使用ios打开网页时，当浏览器切换到后台，立刻重新切回前台，网页并未被回收，但是浏览器会自动刷新一次，此时如果停止刷新，使用是完全正常的，似乎是底层问题后面看看
 
 const {TextArea} = Input;
+const ENCRYPTED_FILE_IV_LENGTH = 12;
+
+type EncryptStage = 'idle' | 'encrypting' | 'uploading' | 'submitting';
+
+const ENCRYPT_STAGE_TEXT: Record<Exclude<EncryptStage, 'idle'>, string> = {
+    encrypting: '正在本地加密',
+    uploading: '正在上传密文文件',
+    submitting: '正在加入发送队列',
+};
+
+async function encryptMemoToFile(content: string, password: string): Promise<File> {
+    if (!window.crypto?.subtle) {
+        throw new Error('当前环境不支持 AES 加密');
+    }
+
+    const encoder = new TextEncoder();
+    const rawKey = await window.crypto.subtle.digest('SHA-256', encoder.encode(password));
+    const key = await window.crypto.subtle.importKey(
+        'raw',
+        rawKey,
+        {name: 'AES-GCM'},
+        false,
+        ['encrypt'],
+    );
+    const iv = window.crypto.getRandomValues(new Uint8Array(ENCRYPTED_FILE_IV_LENGTH));
+    const cipherBuffer = await window.crypto.subtle.encrypt(
+        {name: 'AES-GCM', iv, tagLength: 128},
+        key,
+        encoder.encode(content),
+    );
+    const cipherBytes = new Uint8Array(cipherBuffer);
+    const fileBytes = new Uint8Array(iv.byteLength + cipherBytes.byteLength);
+    fileBytes.set(iv, 0);
+    fileBytes.set(cipherBytes, iv.byteLength);
+
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    return new File(
+        [fileBytes],
+        `note-mini-${timestamp}.notemini.enc`,
+        {type: 'application/octet-stream'},
+    );
+}
+
+function formatEncryptedMemoContent(tip: string, passwordTip: string, file: FileShow): string {
+    const lines = [tip];
+    if (passwordTip) {
+        lines.push(`密码提示：${passwordTip}`);
+    }
+    lines.push(`[下载加密文件](${file.publishUrl})`);
+    return lines.join('\n');
+}
 
 interface MemosSetting {
     url: string
@@ -704,7 +756,13 @@ function Memos() {
     const [tagPopoverOpen, setTagPopoverOpen] = useState(false);
     const [tagSelectOpen, setTagSelectOpen] = useState(false);
     const [tagFocusSignal, setTagFocusSignal] = useState(0);
+    const [encryptModalOpen, setEncryptModalOpen] = useState(false);
+    const [encryptTip, setEncryptTip] = useState('');
+    const [encryptPassword, setEncryptPassword] = useState('');
+    const [encryptPasswordTip, setEncryptPasswordTip] = useState('');
+    const [encryptStage, setEncryptStage] = useState<EncryptStage>('idle');
     const isMobile = useIsMobile();
+    const encrypting = encryptStage !== 'idle';
     // const [uploading, setUploading] = useState(false); // Removed for useImageUpload
     // const fileInputRef = useRef<HTMLInputElement>(null); // Removed for useImageUpload
 
@@ -865,6 +923,65 @@ function Memos() {
         submitByContent(inputRef.current.get());
     }, [submitByContent]);
 
+    const resetEncryptModal = useCallback(() => {
+        setEncryptModalOpen(false);
+        setEncryptTip('');
+        setEncryptPassword('');
+        setEncryptPasswordTip('');
+        setEncryptStage('idle');
+    }, []);
+
+    const openEncryptModal = useCallback(() => {
+        setEncryptTip('');
+        setEncryptPassword('');
+        setEncryptPasswordTip('');
+        setEncryptStage('idle');
+        setEncryptModalOpen(true);
+    }, []);
+
+    const submitEncrypted = useCallback(async () => {
+        const content = inputRef.current.get();
+        const tip = encryptTip.trim();
+        const passwordTip = encryptPasswordTip.trim();
+
+        if (!content) {
+            message.error('正文为空，无法加密上传');
+            return;
+        }
+        if (!tip) {
+            message.error('tip不能为空');
+            return;
+        }
+        if (!encryptPassword) {
+            message.error('密码不能为空');
+            return;
+        }
+
+        try {
+            setEncryptStage('encrypting');
+            const encryptedFile = await encryptMemoToFile(content, encryptPassword);
+
+            setEncryptStage('uploading');
+            const uploaded = await UploadFile(encryptedFile);
+            if (!uploaded) {
+                setEncryptStage('idle');
+                return;
+            }
+
+            setEncryptStage('submitting');
+            submitByContent(formatEncryptedMemoContent(tip, passwordTip, uploaded));
+            notification.success({
+                message: '加密上传成功',
+                description: '密文文件已上传并加入发送队列',
+            });
+            resetEncryptModal();
+        } catch (err) {
+            console.error('encrypt and upload memo content failed', err);
+            message.error('加密上传失败，请重试');
+            setEncryptStage('idle');
+        }
+    }, [encryptPassword, encryptPasswordTip, encryptTip, resetEncryptModal, submitByContent]);
+
     // Ctrl+Enter / Command+Enter 发送
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
@@ -968,6 +1085,66 @@ function Memos() {
                 setOpenSetting(false);
             }}/> : null
         }
+        <Modal
+            title="加密上传"
+            open={encryptModalOpen}
+            width={360}
+            okText="加密并发送"
+            cancelText="取消"
+            confirmLoading={encrypting}
+            closable={!encrypting}
+            keyboard={!encrypting}
+            maskClosable={!encrypting}
+            cancelButtonProps={{disabled: encrypting}}
+            onOk={() => void submitEncrypted()}
+            onCancel={() => {
+                if (!encrypting) {
+                    resetEncryptModal();
+                }
+            }}
+        >
+            <Space direction="vertical" size="middle" style={{width: '100%'}}>
+                <label htmlFor="note-mini-encrypt-tip">
+                    <div style={{marginBottom: '6px'}}>tip <span style={{color: '#ff4d4f'}}>*</span></div>
+                    <Input
+                        id="note-mini-encrypt-tip"
+                        value={encryptTip}
+                        disabled={encrypting}
+                        autoFocus
+                        autoComplete="off"
+                        placeholder="例如：私人记录"
+                        onChange={(event) => setEncryptTip(event.target.value)}
+                    />
+                </label>
+                <label htmlFor="note-mini-encrypt-password">
+                    <div style={{marginBottom: '6px'}}>密码 <span style={{color: '#ff4d4f'}}>*</span></div>
+                    <Input.Password
+                        id="note-mini-encrypt-password"
+                        value={encryptPassword}
+                        disabled={encrypting}
+                        autoComplete="new-password"
+                        placeholder="输入加密密码"
+                        onChange={(event) => setEncryptPassword(event.target.value)}
+                    />
+                </label>
+                <label htmlFor="note-mini-encrypt-password-tip">
+                    <div style={{marginBottom: '6px'}}>密码提示（可选）</div>
+                    <Input
+                        id="note-mini-encrypt-password-tip"
+                        value={encryptPasswordTip}
+                        disabled={encrypting}
+                        autoComplete="off"
+                        placeholder="例如：常用密码 + 年份"
+                        onChange={(event) => setEncryptPasswordTip(event.target.value)}
+                    />
+                </label>
+                {encryptStage !== 'idle' ? (
+                    <div aria-live="polite" style={{color: '#1677ff'}}>
+                        {ENCRYPT_STAGE_TEXT[encryptStage]}
+                    </div>
+                ) : null}
+            </Space>
+        </Modal>
         <div
             style={{
                 width: "400px",
@@ -1110,6 +1287,28 @@ function Memos() {
                         flexShrink: 0,
                     }}
                 >
+                    <Tooltip title="加密上传">
+                        <Button
+                            size="small"
+                            shape="circle"
+                            aria-label="加密上传"
+                            icon={<LockOutlined/>}
+                            disabled={!canSubmit || loadingSetting || uploading || encrypting}
+                            onClick={openEncryptModal}
+                        />
+                    </Tooltip>
+                    <Tooltip title="AI优化">
+                        <Button
+                            size="small"
+                            shape="circle"
+                            aria-label="AI优化"
+                            icon={<RobotOutlined/>}
+                            disabled={!canSubmit || loadingSetting || encrypting}
+                            onClick={() => {
+                                inputRef.current.gptReWrite();
+                            }}
+                        />
+                    </Tooltip>
                     <Tooltip title="文件上传">
                         <Button
                             size="small"
@@ -1117,22 +1316,21 @@ function Memos() {
                             aria-label="文件上传"
                             icon={<FileAddOutlined/>}
                             loading={uploading}
-                            disabled={uploading || loadingSetting}
+                            disabled={uploading || loadingSetting || encrypting}
                             onClick={UpdateFileWith}
                         />
                     </Tooltip>
-                    <Tooltip title="AI重写">
-                        <Button
-                            size="small"
-                            shape="circle"
-                            aria-label="AI重写"
-                            icon={<RobotOutlined/>}
-                            disabled={!canSubmit || loadingSetting}
-                            onClick={() => {
-                                inputRef.current.gptReWrite();
-                            }}
-                        />
-                    </Tooltip>
+                    <span
+                        aria-hidden="true"
+                        style={{
+                            display: 'block',
+                            width: '1px',
+                            height: '18px',
+                            backgroundColor: '#d9d9d9',
+                            margin: '0 2px',
+                            flexShrink: 0,
+                        }}
+                    />
                     <WhisperButton
                         size="small"
                         tooltip="语音输入"
