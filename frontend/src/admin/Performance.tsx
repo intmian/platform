@@ -419,13 +419,13 @@ const Performance = () => {
             </Card>
 
             <Card
-                style={{marginTop: 24}}
+                style={{marginTop: 16}}
             >
                 <Ping setting={setting}/>
             </Card>
 
             <Card
-                style={{marginTop: 24}}
+                style={{marginTop: 16}}
             >
                 <Tabs defaultActiveKey="1"
                       items={[
@@ -457,7 +457,7 @@ const Performance = () => {
             </Card>
 
 
-            <Card style={{marginTop: 24}}>
+            <Card style={{marginTop: 16}}>
                 <Tabs defaultActiveKey="1"
                       items={[
                           {

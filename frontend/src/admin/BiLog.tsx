@@ -150,7 +150,7 @@ const BiLog = () => {
     const currentColumns = TABLE_CONFIGS[selectedTable]?.columns || [];
 
     return (
-        <div style={{ padding: 24 }}>
+        <div>
             <Card title="通用日志查询 (BiLog)" bordered={false} style={{ width: '100%' }}>
                 <Form 
                     form={form} 

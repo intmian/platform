@@ -1,5 +1,5 @@
 import IndexHeader from "./IndexHeader.jsx";
-import {Button, Drawer, Flex, Layout, message, notification, Spin, theme} from "antd";
+import {Button, Drawer, Flex, Layout, message, notification, Spin} from "antd";
 import IndexSider from "./IndexSider.jsx";
 import IndexFooter from "./IndexFooter.jsx";
 import IndexContent from "./IndexContent.jsx";
@@ -24,10 +24,6 @@ function Index() {
     };
 
     const [contentType, setContentType] = useState('monitor');
-    const {
-        token: {colorBgContainer, borderRadiusLG},
-    } = theme.useToken();
-
     const isMobile = useIsMobile();
 
     const loginCtr = useContext(LoginCtx);
@@ -50,7 +46,7 @@ function Index() {
         }
     }
 
-    return <Layout>
+    return <Layout style={{minHeight: '100vh'}}>
         {contextHolder}
         <IndexHeader
             onLogOut={() => {
@@ -64,25 +60,18 @@ function Index() {
         />
         <Content
             style={{
-                padding: isMobile ? '0 8px' : '0 48px',
+                padding: isMobile ? '12px 8px 0' : '16px 24px 0',
             }}
         >
-            <div
-                style={
-                    {
-                        height: '16px',
-                    }
-                }
-            />
             <Layout
+                hasSider={!isMobile}
                 style={{
-                    padding: '24px 0',
-                    background: colorBgContainer,
-                    borderRadius: borderRadiusLG,
-                    minHeight: '80vh'
+                    background: 'transparent',
+                    alignItems: 'flex-start',
+                    gap: 16,
+                    minHeight: '80vh',
                 }}
             >
-
                 {!isMobile && (
                     <IndexSider
                         disable={!loginCtr.loginInfo.isValid() || !loginCtr.loginInfo.hasPermission('admin')}

@@ -11,6 +11,11 @@ function IndexSider({onChooseMenuItem, disable}) {
             width={isMobile ? 150 : 200}
             style={{
                 background: '#fff',
+                borderRadius: isMobile ? 0 : 8,
+                overflow: 'hidden',
+                padding: isMobile ? 0 : '8px 0',
+                position: isMobile ? 'static' : 'sticky',
+                top: 16,
             }}
         >
             <Menu
@@ -18,7 +23,7 @@ function IndexSider({onChooseMenuItem, disable}) {
                 mode="inline"
                 defaultSelectedKeys={['monitor']}
                 style={{
-                    height: '100%',
+                    borderInlineEnd: 'none',
                 }}
                 items={[
                     getItem('监控', 'monitor'),

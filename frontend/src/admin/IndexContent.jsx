@@ -1,4 +1,4 @@
-import {Empty, Layout} from "antd";
+import {Empty, Layout, theme} from "antd";
 import {Monitor} from "./Monitor.jsx";
 import {Log} from "./Log.jsx";
 import {Config} from "./Config.jsx";
@@ -15,13 +15,23 @@ const {Content} = Layout;
 function IndexContent({contentType}) {
     const LoginCtr = useContext(LoginCtx);
     const isMobile = useIsMobile();
+    const {
+        token: {colorBgContainer, borderRadiusLG},
+    } = theme.useToken();
+    // 表格类页面本身没有容器，需要放在白色面板里；其余页面自带卡片，直接放在灰底上
+    const panelStyle = {
+        background: colorBgContainer,
+        borderRadius: borderRadiusLG,
+        padding: isMobile ? 12 : 24,
+    };
     if (!LoginCtr.loginInfo.isValid() || !LoginCtr.loginInfo.hasPermission('admin')) {
         contentType = 'needLogin';
     }
     if (contentType === 'needLogin') {
         return <Content
             style={{
-                padding: isMobile ? "8px" : "0 48px",
+                ...panelStyle,
+                minHeight: '60vh',
                 display: "flex",
                 justifyContent: "center",
                 alignItems: "center",
@@ -34,15 +44,18 @@ function IndexContent({contentType}) {
         </Content>;
     }
     let content = null;
+    let needPanel = false;
     switch (contentType) {
         case 'monitor':
             content = <Monitor/>;
             break;
         case 'log':
             content = <Log/>;
+            needPanel = true;
             break;
         case 'db':
             content = <Config/>;
+            needPanel = true;
             break;
         case 'account':
             content = <AccountAdmin/>;
@@ -61,8 +74,9 @@ function IndexContent({contentType}) {
     }
     return <Content
         style={{
-            padding: isMobile ? "8px" : "0 48px",
-
+            minWidth: 0,
+            width: '100%',
+            ...(needPanel ? panelStyle : {}),
         }}
     >
         {content}

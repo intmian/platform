@@ -15,16 +15,19 @@ MiscConfigs.addBaseConfig('r2.bucket', 'R2 Bucket', ConfigType.String, 'example'
 MiscConfigs.addBaseConfig('r2.web', 'R2 外部展示网址', ConfigType.String, 'https://example.com')
 
 function Setting() {
-    return <div>
-        <AISetting/>
-        <Card title="Auto 设置" style={{marginBottom: 16}}>
-            <UniConfig configCtr={AutoConfigs}/>
-        </Card>
-        <TodoneSetting/>
-        <Card title="R2 配置" style={{marginBottom: 16}}>
-            <UniConfig configCtr={MiscConfigs}/>
-        </Card>
-    </div>
+    return <AISetting extraTabs={[{
+        key: 'service',
+        label: '服务配置',
+        children: <>
+            <Card title="Auto 设置" style={{marginBottom: 16}}>
+                <UniConfig configCtr={AutoConfigs}/>
+            </Card>
+            <TodoneSetting/>
+            <Card title="R2 配置" style={{marginBottom: 16}}>
+                <UniConfig configCtr={MiscConfigs}/>
+            </Card>
+        </>,
+    }]}/>
 }
 
 export default Setting;

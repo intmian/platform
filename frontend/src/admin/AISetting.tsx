@@ -12,6 +12,7 @@ import {
     Select,
     Space,
     Spin,
+    Table,
     Tabs,
     Tag,
     Typography,
@@ -46,7 +47,11 @@ import {
     createBuiltInSTTSampleFile,
 } from "../common/aiQueueTestSample";
 
-const {Paragraph, Text} = Typography;
+import "./AISetting.css";
+
+const {Text} = Typography;
+
+const AI_SECTIONS = ["providers", "queues", "scenes"];
 
 const SOURCE_OPTIONS = [
     {value: "OpenAI", label: "OpenAI"},
@@ -54,8 +59,8 @@ const SOURCE_OPTIONS = [
 ];
 
 const MODEL_TYPE_OPTIONS = [
-    {value: "text", label: "Text（文本生成）"},
-    {value: "stt", label: "STT（语音转写）"},
+    {value: "text", label: "文本生成"},
+    {value: "stt", label: "语音转写"},
 ];
 
 function modelTypeLabel(type: ModelType): string {
@@ -69,7 +74,7 @@ const MODEL_CALL_PROTOCOL_OPTIONS: Record<ModelType, {value: ModelCallProtocol, 
     ],
     stt: [
         {value: "OpenAISTT", label: "OpenAI STT"},
-        {value: "DashScopeQwen3ASR", label: "DashScope 千问3-ASR-Flash（同步）"},
+        {value: "DashScopeQwen3ASR", label: "DashScope 千问3-ASR-Flash（同步，不支持 filetrans）"},
         {value: "DashScopeFunASR", label: "DashScope Fun-ASR-Flash"},
         {value: "DashScopeFunASRRealtime", label: "DashScope Fun-ASR 实时（8 kHz）"},
     ],
@@ -100,6 +105,14 @@ function Field({label, children}: {label: string, children: ReactNode}) {
         <Text type="secondary" style={{fontSize: 12}}>{label}</Text>
         {children}
     </Flex>;
+}
+
+// 表格行里的单元格，窄屏时显示自身标签
+function Cell({label, children}: {label: string, children: ReactNode}) {
+    return <div style={{minWidth: 0}}>
+        <span className="ai-cell-label">{label}</span>
+        {children}
+    </div>;
 }
 
 function nextID(prefix: string): string {
@@ -135,7 +148,14 @@ function resolvedCallProtocol(provider: AIProviderConfig | undefined, model: AIM
     return undefined;
 }
 
-export function AISetting() {
+export interface AISettingExtraTab {
+    key: string;
+    label: ReactNode;
+    children: ReactNode;
+}
+
+// extraTabs 和 AI 配置的分区共用同一排吸顶标签栏，保存按钮只作用于 AI 分区
+export function AISetting({extraTabs = []}: {extraTabs?: AISettingExtraTab[]}) {
     const [value, setValue] = useState<AIPlatformConfig | null>(null);
     const [savedSnapshot, setSavedSnapshot] = useState("");
     const [loading, setLoading] = useState(true);
@@ -146,6 +166,7 @@ export function AISetting() {
     const [queueTestAudioURL, setQueueTestAudioURL] = useState("");
     const [queueTestResult, setQueueTestResult] = useState<AIQueueTestResult | null>(null);
     const [queueTesting, setQueueTesting] = useState(false);
+    const [section, setSection] = useState<string>("providers");
 
     const load = useCallback(async () => {
         setLoading(true);
@@ -183,8 +204,61 @@ export function AISetting() {
         [savedSnapshot, value],
     );
 
+    const isAISection = AI_SECTIONS.includes(section);
+
+    const save = async () => {
+        if (!value) {
+            return;
+        }
+        setSaving(true);
+        try {
+            await saveAIPlatformConfig(value);
+            message.success("AI 配置已保存");
+            await load();
+        } catch (error) {
+            message.error(error instanceof Error ? error.message : "AI 配置保存失败");
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const bar = <div className="ai-bar">
+        <Tabs
+            activeKey={section}
+            onChange={setSection}
+            items={[
+                {key: "providers", label: `供应商与模型${value ? ` · ${value.providers.length}` : ""}`},
+                {key: "queues", label: `调用策略${value ? ` · ${value.queues.length}` : ""}`},
+                {
+                    key: "scenes",
+                    label: `业务配置${value ? ` · ${value.businesses.filter((business) => business.queueID).length}/${BUSINESS_DEFINITIONS.length}` : ""}`,
+                },
+                ...extraTabs.map(({key, label}) => ({key, label})),
+            ]}
+            tabBarExtraContent={isAISection && value ? <Space size={12}>
+                {dirty && <span className="ai-dirty">有未保存的修改</span>}
+                <Button
+                    type="primary"
+                    icon={<SaveOutlined/>}
+                    loading={saving}
+                    disabled={!dirty}
+                    onClick={() => void save()}
+                >保存 AI 配置</Button>
+            </Space> : null}
+        />
+    </div>;
+
+    // 额外标签页常驻挂载，切换时不丢失其中未保存的输入
+    const extraContent = extraTabs.map((tab) => <div key={tab.key} style={{display: section === tab.key ? undefined : "none"}}>
+        {tab.children}
+    </div>);
+
     if (loading || !value) {
-        return <Card title="AI 设置"><Flex justify="center" style={{padding: 48}}><Spin/></Flex></Card>;
+        return <div>
+            {bar}
+            {isAISection && <Flex justify="center" style={{padding: 48}}><Spin/></Flex>}
+            {extraContent}
+        </div>;
     }
 
     const updateProvider = (index: number, patch: Partial<AIProviderConfig>) => mutate((current) => ({
@@ -243,16 +317,16 @@ export function AISetting() {
     const activeTestQueue = testQueueIndex === null ? undefined : value.queues[testQueueIndex];
 
     const providerPanel = <Flex vertical gap={16}>
-        <Alert
-            type="info"
-            showIcon
-            message="模型默认按供应商类型和模型类型继承调用协议；OpenAI 与 DeepSeek 文本协议可按模型覆盖。DashScope 千问3-ASR-Flash 是同步协议，不适用于 qwen3-asr-flash-filetrans。"
-        />
         {value.providers.length === 0 && <Empty description="还没有供应商"/>}
         {value.providers.map((provider, providerIndex) => <Card
             key={`${provider.id}-${providerIndex}`}
-            size="small"
-            title={provider.name || "未命名供应商"}
+            title={<Input
+                variant="borderless"
+                placeholder="未命名供应商"
+                value={provider.name}
+                onChange={(event) => updateProvider(providerIndex, {name: event.target.value})}
+                style={{fontSize: 16, fontWeight: 600, paddingInline: 0, maxWidth: 360}}
+            />}
             extra={<Popconfirm
                 title="删除这个供应商？"
                 description="该供应商的模型及策略引用会一并移除。"
@@ -268,11 +342,8 @@ export function AISetting() {
                 <Button danger type="text" icon={<DeleteOutlined/>}/>
             </Popconfirm>}
         >
-            <Row gutter={[12, 12]}>
-                <Col xs={24} md={12}><Field label="供应商名称">
-                    <Input value={provider.name} onChange={(event) => updateProvider(providerIndex, {name: event.target.value})}/>
-                </Field></Col>
-                <Col xs={24} md={12}><Field label="供应商类型">
+            <Row gutter={[16, 12]}>
+                <Col xs={24} lg={6}><Field label="供应商类型">
                     <Select
                         value={provider.protocol}
                         options={SOURCE_OPTIONS}
@@ -296,18 +367,18 @@ export function AISetting() {
                         })}
                     />
                 </Field></Col>
-                <Col xs={24} md={12}><Field label={provider.protocol === "OpenAI"
+                <Col xs={24} lg={10}><Field label={provider.protocol === "OpenAI"
                     ? "Base URL（OpenAI 官方可留空）"
                     : "Base URL（DeepSeek 必填）"}>
                     <Input value={provider.baseURL} onChange={(event) => updateProvider(providerIndex, {baseURL: event.target.value})}/>
                 </Field></Col>
-                <Col xs={24} md={12}><Field label="Token">
+                <Col xs={24} lg={8}><Field label="Token">
                     <Input.Password value={provider.token} onChange={(event) => updateProvider(providerIndex, {token: event.target.value})}/>
                 </Field></Col>
             </Row>
 
-            <Flex justify="space-between" align="center" style={{marginTop: 20, marginBottom: 10}}>
-                <Text strong>注册模型</Text>
+            <div className="ai-section-title">
+                <span>模型 <Text type="secondary">{provider.models.length}</Text></span>
                 <Button size="small" icon={<PlusOutlined/>} onClick={() => updateProvider(providerIndex, {
                     models: [...provider.models, {
                         id: nextID("model"),
@@ -317,52 +388,91 @@ export function AISetting() {
                         tools: [],
                     }],
                 })}>添加模型</Button>
-            </Flex>
-            {provider.models.length === 0 && <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="没有注册模型"/>}
-            <Flex vertical gap={10}>
-                {provider.models.map((model, modelIndex) => <Card key={`${model.id}-${modelIndex}`} size="small">
-                    <Row gutter={[10, 10]} align="bottom">
-                        <Col xs={24} md={7}><Field label="上游模型 ID">
-                            <Input value={model.name} onChange={(event) => updateModel(providerIndex, modelIndex, {name: event.target.value})}/>
-                        </Field></Col>
-                        <Col xs={24} md={4}><Field label="类型">
-                            <Select
-                                value={model.type}
-                                options={MODEL_TYPE_OPTIONS}
-                                onChange={(type: ModelType) => updateModel(providerIndex, modelIndex, {
-                                    type,
-                                    callProtocol: undefined,
-                                    reasoning: type === "text" ? model.reasoning : [],
-                                    tools: type === "text" ? model.tools : [],
-                                })}
-                            />
-                        </Field></Col>
-                        <Col xs={20} md={11}><Field label="调用协议">
-                            <Select
-                                value={model.callProtocol ?? ""}
-                                options={[
-                                    {
-                                        value: "",
-                                        label: `继承（${inheritedCallProtocolLabel(provider.protocol, model.type)}）`,
-                                    },
-                                    ...MODEL_CALL_PROTOCOL_OPTIONS[model.type],
-                                ]}
-                                onChange={(callProtocol: ModelCallProtocol | "") => {
-                                    const nextCallProtocol = callProtocol || undefined;
-                                    const nextIsDeepSeek = nextCallProtocol === "DeepSeekText"
-                                        || (!nextCallProtocol && provider.protocol === "DeepSeek" && model.type === "text");
-                                    updateModel(providerIndex, modelIndex, {
-                                        callProtocol: nextCallProtocol,
-                                        reasoning: nextIsDeepSeek
-                                            ? (model.reasoning ?? []).filter((effort) => effort === "high" || effort === "max")
-                                            : (model.reasoning ?? []).filter((effort) => effort !== "max"),
-                                        tools: nextIsDeepSeek ? [] : model.tools,
-                                    });
-                                }}
-                            />
-                        </Field></Col>
-                        <Col xs={4} md={2}>
-                            <Button danger type="text" icon={<DeleteOutlined/>} onClick={() => mutate((current) => ({
+            </div>
+            {provider.models.length === 0
+                ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="没有注册模型"/>
+                : <div className="ai-rows ai-models">
+                    <div className="ai-row ai-row-head">
+                        <span>上游模型 ID</span>
+                        <span>类型</span>
+                        <span>调用协议</span>
+                        <span>可用思考强度</span>
+                        <span>可用工具</span>
+                        <span/>
+                    </div>
+                    {provider.models.map((model, modelIndex) => {
+                        const callProtocol = resolvedCallProtocol(provider, model);
+                        return <div className="ai-row" key={`${model.id}-${modelIndex}`}>
+                            <Cell label="上游模型 ID">
+                                <Input value={model.name} onChange={(event) => updateModel(providerIndex, modelIndex, {name: event.target.value})}/>
+                            </Cell>
+                            <Cell label="类型">
+                                <Select
+                                    style={{width: "100%"}}
+                                    value={model.type}
+                                    options={MODEL_TYPE_OPTIONS}
+                                    onChange={(type: ModelType) => updateModel(providerIndex, modelIndex, {
+                                        type,
+                                        callProtocol: undefined,
+                                        reasoning: type === "text" ? model.reasoning : [],
+                                        tools: type === "text" ? model.tools : [],
+                                    })}
+                                />
+                            </Cell>
+                            <Cell label="调用协议">
+                                <Select
+                                    style={{width: "100%"}}
+                                    value={model.callProtocol ?? ""}
+                                    options={[
+                                        {
+                                            value: "",
+                                            label: `继承（${inheritedCallProtocolLabel(provider.protocol, model.type)}）`,
+                                        },
+                                        ...MODEL_CALL_PROTOCOL_OPTIONS[model.type],
+                                    ]}
+                                    onChange={(callProtocol: ModelCallProtocol | "") => {
+                                        const nextCallProtocol = callProtocol || undefined;
+                                        const nextIsDeepSeek = nextCallProtocol === "DeepSeekText"
+                                            || (!nextCallProtocol && provider.protocol === "DeepSeek" && model.type === "text");
+                                        updateModel(providerIndex, modelIndex, {
+                                            callProtocol: nextCallProtocol,
+                                            reasoning: nextIsDeepSeek
+                                                ? (model.reasoning ?? []).filter((effort) => effort === "high" || effort === "max")
+                                                : (model.reasoning ?? []).filter((effort) => effort !== "max"),
+                                            tools: nextIsDeepSeek ? [] : model.tools,
+                                        });
+                                    }}
+                                />
+                            </Cell>
+                            <Cell label="可用思考强度">
+                                {model.type === "text"
+                                    ? <Select
+                                        style={{width: "100%"}}
+                                        mode="multiple"
+                                        maxTagCount="responsive"
+                                        placeholder="不支持"
+                                        value={model.reasoning ?? []}
+                                        options={callProtocol === "DeepSeekText"
+                                            ? DEEPSEEK_REASONING_OPTIONS
+                                            : REASONING_OPTIONS}
+                                        onChange={(reasoning: ReasoningEffort[]) => updateModel(providerIndex, modelIndex, {reasoning})}
+                                    />
+                                    : <span className="ai-na">—</span>}
+                            </Cell>
+                            <Cell label="可用工具">
+                                {model.type === "text" && callProtocol !== "DeepSeekText"
+                                    ? <Select
+                                        style={{width: "100%"}}
+                                        mode="multiple"
+                                        maxTagCount="responsive"
+                                        placeholder="无"
+                                        value={model.tools ?? []}
+                                        options={TOOL_OPTIONS}
+                                        onChange={(tools: ChatTool[]) => updateModel(providerIndex, modelIndex, {tools})}
+                                    />
+                                    : <span className="ai-na">—</span>}
+                            </Cell>
+                            <Button danger type="text" icon={<DeleteOutlined/>} style={{justifySelf: "end"}} onClick={() => mutate((current) => ({
                                 ...current,
                                 providers: current.providers.map((item, i) => i === providerIndex ? {
                                     ...item,
@@ -375,34 +485,9 @@ export function AISetting() {
                                     )),
                                 })),
                             }))}/>
-                        </Col>
-                    </Row>
-                    <Row gutter={[10, 10]} style={{marginTop: 10}}>
-                        <Col xs={24} md={14}><Field label="可用思考强度">
-                            <Select
-                                mode="multiple"
-                                maxTagCount="responsive"
-                                value={model.reasoning ?? []}
-                                options={resolvedCallProtocol(provider, model) === "DeepSeekText"
-                                    ? DEEPSEEK_REASONING_OPTIONS
-                                    : REASONING_OPTIONS}
-                                disabled={model.type !== "text"}
-                                onChange={(reasoning: ReasoningEffort[]) => updateModel(providerIndex, modelIndex, {reasoning})}
-                            />
-                        </Field></Col>
-                        <Col xs={24} md={10}><Field label="模型可用工具">
-                            <Select
-                                mode="multiple"
-                                maxTagCount="responsive"
-                                value={model.tools ?? []}
-                                options={resolvedCallProtocol(provider, model) === "DeepSeekText" ? [] : TOOL_OPTIONS}
-                                disabled={model.type !== "text" || resolvedCallProtocol(provider, model) === "DeepSeekText"}
-                                onChange={(tools: ChatTool[]) => updateModel(providerIndex, modelIndex, {tools})}
-                            />
-                        </Field></Col>
-                    </Row>
-                </Card>)}
-            </Flex>
+                        </div>;
+                    })}
+                </div>}
         </Card>)}
         <Button block type="dashed" icon={<PlusOutlined/>} onClick={() => mutate((current) => ({
             ...current,
@@ -418,7 +503,6 @@ export function AISetting() {
     </Flex>;
 
     const queuePanel = <Flex vertical gap={16}>
-        <Alert type="info" showIcon message="调用策略按顺序尝试模型：上一项失败后尝试下一项，第一个成功结果立即返回。"/>
         {value.queues.length === 0 && <Empty description="还没有调用策略"/>}
         {value.queues.map((queue, queueIndex) => {
             const queueProviderOptions = value.providers
@@ -429,8 +513,23 @@ export function AISetting() {
                 }));
             return <Card
                 key={`${queue.id}-${queueIndex}`}
-                size="small"
-                title={<Space>{queue.name || "未命名策略"}<Tag>{modelTypeLabel(queue.type)}</Tag></Space>}
+                title={<Flex align="center" gap={8}>
+                    <Input
+                        variant="borderless"
+                        placeholder="未命名策略"
+                        value={queue.name}
+                        onChange={(event) => updateQueue(queueIndex, {name: event.target.value})}
+                        style={{fontSize: 16, fontWeight: 600, paddingInline: 0, maxWidth: 280}}
+                    />
+                    <Select
+                        size="small"
+                        variant="filled"
+                        value={queue.type}
+                        options={MODEL_TYPE_OPTIONS}
+                        popupMatchSelectWidth={false}
+                        onChange={(type: ModelType) => updateQueue(queueIndex, {type, items: []})}
+                    />
+                </Flex>}
                 extra={<Space>
                     <Button icon={<ExperimentOutlined/>} onClick={() => {
                         setTestQueueIndex(queueIndex);
@@ -447,27 +546,28 @@ export function AISetting() {
                     }))}><Button danger type="text" icon={<DeleteOutlined/>}/></Popconfirm>
                 </Space>}
             >
-                <Row gutter={[12, 12]}>
-                    <Col xs={24} md={12}><Field label="策略名称">
-                        <Input value={queue.name} onChange={(event) => updateQueue(queueIndex, {name: event.target.value})}/>
-                    </Field></Col>
-                    <Col xs={24} md={12}><Field label="类型">
-                        <Select
-                            value={queue.type}
-                            options={MODEL_TYPE_OPTIONS}
-                            onChange={(type: ModelType) => updateQueue(queueIndex, {type, items: []})}
-                        />
-                    </Field></Col>
-                </Row>
-                <Flex vertical gap={10} style={{marginTop: 16}}>
-                    {queue.items.map((item, itemIndex) => {
-                        const provider = value.providers.find((candidate) => candidate.id === item.providerID);
-                        const model = findModel(value, item.providerID, item.modelID);
-                        return <Card key={`${item.providerID}-${item.modelID}-${itemIndex}`} size="small">
-                            <Row gutter={[8, 8]} align="bottom">
-                                <Col xs={24} md={8}><Field label={`${itemIndex + 1}. 供应商`}>
+                {queue.items.length === 0
+                    ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="还没有模型，至少添加一个"/>
+                    : <div className="ai-rows ai-queue-items">
+                        <div className="ai-row ai-row-head">
+                            <span>#</span>
+                            <span>供应商</span>
+                            <span>模型</span>
+                            <span>思考强度</span>
+                            <span>启用工具</span>
+                            <span/>
+                        </div>
+                        {queue.items.map((item, itemIndex) => {
+                            const provider = value.providers.find((candidate) => candidate.id === item.providerID);
+                            const model = findModel(value, item.providerID, item.modelID);
+                            const isDeepSeek = resolvedCallProtocol(provider, model) === "DeepSeekText";
+                            return <div className="ai-row" key={`${item.providerID}-${item.modelID}-${itemIndex}`}>
+                                <span className="ai-order">{itemIndex + 1}</span>
+                                <Cell label="供应商">
                                     <Select
+                                        style={{width: "100%"}}
                                         showSearch
+                                        placeholder="选择供应商"
                                         value={item.providerID || undefined}
                                         options={queueProviderOptions}
                                         onChange={(providerID: string) => updateQueueItem(queueIndex, itemIndex, {
@@ -477,10 +577,12 @@ export function AISetting() {
                                             tools: [],
                                         })}
                                     />
-                                </Field></Col>
-                                <Col xs={24} md={10}><Field label="模型">
+                                </Cell>
+                                <Cell label="模型">
                                     <Select
+                                        style={{width: "100%"}}
                                         showSearch
+                                        placeholder="选择模型"
                                         value={item.modelID || undefined}
                                         options={(provider?.models ?? []).filter((candidate) => candidate.type === queue.type).map((candidate) => ({
                                             value: candidate.id,
@@ -497,67 +599,67 @@ export function AISetting() {
                                             });
                                         }}
                                     />
-                                </Field></Col>
-                                <Col xs={24} md={6}>
-                                    <Flex justify="flex-end">
-                                        <Space.Compact>
-                                            <Button
-                                                icon={<ArrowUpOutlined/>}
-                                                disabled={itemIndex === 0}
-                                                onClick={() => {
-                                                    const items = [...queue.items];
-                                                    [items[itemIndex - 1], items[itemIndex]] = [items[itemIndex], items[itemIndex - 1]];
-                                                    updateQueue(queueIndex, {items});
-                                                }}
-                                            />
-                                            <Button
-                                                icon={<ArrowDownOutlined/>}
-                                                disabled={itemIndex === queue.items.length - 1}
-                                                onClick={() => {
-                                                    const items = [...queue.items];
-                                                    [items[itemIndex], items[itemIndex + 1]] = [items[itemIndex + 1], items[itemIndex]];
-                                                    updateQueue(queueIndex, {items});
-                                                }}
-                                            />
-                                            <Button danger icon={<DeleteOutlined/>} onClick={() => updateQueue(queueIndex, {
-                                                items: queue.items.filter((_, i) => i !== itemIndex),
-                                            })}/>
-                                        </Space.Compact>
-                                    </Flex>
-                                </Col>
-                            </Row>
-                            <Row gutter={[8, 8]} style={{marginTop: 8}}>
-                                <Col xs={24} md={12}><Field label="思考强度">
-                                    <Select
-                                        allowClear={resolvedCallProtocol(provider, model) !== "DeepSeekText"}
-                                        value={item.reasoningEffort || undefined}
-                                        options={(resolvedCallProtocol(provider, model) === "DeepSeekText"
-                                            ? ["none", ...(model?.reasoning ?? []).filter((effort) => effort === "high" || effort === "max")]
-                                            : (model?.reasoning ?? [])
-                                        ).map((effort) => ({value: effort, label: effort}))}
-                                        disabled={queue.type !== "text" || (
-                                            resolvedCallProtocol(provider, model) !== "DeepSeekText" &&
-                                            (model?.reasoning?.length ?? 0) === 0
-                                        )}
-                                        onChange={(reasoningEffort?: ReasoningEffort) => updateQueueItem(queueIndex, itemIndex, {reasoningEffort})}
-                                    />
-                                </Field></Col>
-                                <Col xs={24} md={12}><Field label="本策略启用工具">
-                                    <Select
-                                        mode="multiple"
-                                        value={item.tools ?? []}
-                                        options={(model?.tools ?? []).map((tool) => ({value: tool, label: tool}))}
-                                        disabled={queue.type !== "text" || (model?.tools?.length ?? 0) === 0}
-                                        onChange={(tools: ChatTool[]) => updateQueueItem(queueIndex, itemIndex, {tools})}
-                                    />
-                                </Field></Col>
-                            </Row>
-                        </Card>;
-                    })}
-                    <Button type="dashed" icon={<PlusOutlined/>} onClick={() => updateQueue(queueIndex, {
-                        items: [...queue.items, {providerID: "", modelID: "", tools: []}],
-                    })}>添加备用模型</Button>
-                </Flex>
+                                </Cell>
+                                <Cell label="思考强度">
+                                    {queue.type === "text"
+                                        ? <Select
+                                            style={{width: "100%"}}
+                                            placeholder="默认"
+                                            allowClear={!isDeepSeek}
+                                            value={item.reasoningEffort || undefined}
+                                            options={(isDeepSeek
+                                                ? ["none", ...(model?.reasoning ?? []).filter((effort) => effort === "high" || effort === "max")]
+                                                : (model?.reasoning ?? [])
+                                            ).map((effort) => ({value: effort, label: effort}))}
+                                            disabled={!isDeepSeek && (model?.reasoning?.length ?? 0) === 0}
+                                            onChange={(reasoningEffort?: ReasoningEffort) => updateQueueItem(queueIndex, itemIndex, {reasoningEffort})}
+                                        />
+                                        : <span className="ai-na">—</span>}
+                                </Cell>
+                                <Cell label="启用工具">
+                                    {queue.type === "text"
+                                        ? <Select
+                                            style={{width: "100%"}}
+                                            mode="multiple"
+                                            placeholder="无"
+                                            value={item.tools ?? []}
+                                            options={(model?.tools ?? []).map((tool) => ({value: tool, label: tool}))}
+                                            disabled={(model?.tools?.length ?? 0) === 0}
+                                            onChange={(tools: ChatTool[]) => updateQueueItem(queueIndex, itemIndex, {tools})}
+                                        />
+                                        : <span className="ai-na">—</span>}
+                                </Cell>
+                                <Flex justify="flex-end">
+                                    <Space.Compact>
+                                        <Button
+                                            icon={<ArrowUpOutlined/>}
+                                            disabled={itemIndex === 0}
+                                            onClick={() => {
+                                                const items = [...queue.items];
+                                                [items[itemIndex - 1], items[itemIndex]] = [items[itemIndex], items[itemIndex - 1]];
+                                                updateQueue(queueIndex, {items});
+                                            }}
+                                        />
+                                        <Button
+                                            icon={<ArrowDownOutlined/>}
+                                            disabled={itemIndex === queue.items.length - 1}
+                                            onClick={() => {
+                                                const items = [...queue.items];
+                                                [items[itemIndex], items[itemIndex + 1]] = [items[itemIndex + 1], items[itemIndex]];
+                                                updateQueue(queueIndex, {items});
+                                            }}
+                                        />
+                                        <Button danger icon={<DeleteOutlined/>} onClick={() => updateQueue(queueIndex, {
+                                            items: queue.items.filter((_, i) => i !== itemIndex),
+                                        })}/>
+                                    </Space.Compact>
+                                </Flex>
+                            </div>;
+                        })}
+                    </div>}
+                <Button block type="dashed" icon={<PlusOutlined/>} style={{marginTop: 12}} onClick={() => updateQueue(queueIndex, {
+                    items: [...queue.items, {providerID: "", modelID: "", tools: []}],
+                })}>添加备用模型</Button>
             </Card>;
         })}
         <Button block type="dashed" icon={<PlusOutlined/>} onClick={() => mutate((current) => ({
@@ -566,26 +668,37 @@ export function AISetting() {
         }))}>添加调用策略</Button>
     </Flex>;
 
-    const scenePanel = <Flex vertical gap={16}>
-        <Alert type="info" showIcon message="业务条目和类型由系统固定，只需为每项选择一个同类型调用策略。"/>
-        <Card size="small" title="业务配置列表">
-            <Flex vertical gap={10}>
-                {BUSINESS_DEFINITIONS.map((definition) => {
-                    const binding = value.businesses.find((item) => (
-                        item.scene === definition.scene && item.type === definition.type
-                    )) ?? {...definition, queueID: ""};
-                    const queueOptions = value.queues
-                        .filter((queue) => queue.type === definition.type)
-                        .map((queue) => ({value: queue.id, label: queue.name || "未命名策略"}));
-                    return <Row key={`${definition.scene}-${definition.type}`} gutter={[10, 10]} align="bottom">
-                    <Col xs={24} md={10}><Field label="业务">
+    const scenePanel = <Card styles={{body: {padding: 0}}}>
+        <Table
+            size="middle"
+            pagination={false}
+            rowKey={(definition) => `${definition.scene}-${definition.type}`}
+            dataSource={BUSINESS_DEFINITIONS}
+            columns={[
+                {
+                    title: "业务",
+                    render: (_, definition) => <Flex vertical>
                         <Text strong>{definition.label}</Text>
-                    </Field></Col>
-                    <Col xs={24} md={5}><Field label="类型">
-                        <div><Tag>{modelTypeLabel(definition.type)}</Tag></div>
-                    </Field></Col>
-                    <Col xs={24} md={9}><Field label="调用策略">
-                        <Select
+                        <Text type="secondary" style={{fontSize: 12}}>{definition.scene}</Text>
+                    </Flex>,
+                },
+                {
+                    title: "类型",
+                    width: 140,
+                    render: (_, definition) => <Tag bordered={false}>{modelTypeLabel(definition.type)}</Tag>,
+                },
+                {
+                    title: "调用策略",
+                    width: 320,
+                    render: (_, definition) => {
+                        const binding = value.businesses.find((item) => (
+                            item.scene === definition.scene && item.type === definition.type
+                        )) ?? {...definition, queueID: ""};
+                        const queueOptions = value.queues
+                            .filter((queue) => queue.type === definition.type)
+                            .map((queue) => ({value: queue.id, label: queue.name || "未命名策略"}));
+                        return <Select
+                            style={{width: "100%"}}
                             showSearch
                             value={binding.queueID || undefined}
                             placeholder="选择调用策略"
@@ -605,43 +718,19 @@ export function AISetting() {
                                     };
                                 }),
                             }))}
-                        />
-                    </Field></Col>
-                </Row>})}
-            </Flex>
-        </Card>
-    </Flex>;
+                        />;
+                    },
+                },
+            ]}
+        />
+    </Card>;
 
-    return <Card
-        title="AI 设置"
-        style={{marginBottom: 16}}
-        extra={<Button
-            type="primary"
-            icon={<SaveOutlined/>}
-            loading={saving}
-            disabled={!dirty}
-            onClick={async () => {
-                setSaving(true);
-                try {
-                    await saveAIPlatformConfig(value);
-                    message.success("AI 配置已保存");
-                    await load();
-                } catch (error) {
-                    message.error(error instanceof Error ? error.message : "AI 配置保存失败");
-                } finally {
-                    setSaving(false);
-                }
-            }}
-        >保存全部配置</Button>}
-    >
-        <Paragraph type="secondary">
-            内部标识由系统维护；配置时只使用供应商名称、上游模型 ID 和调用策略名称。
-        </Paragraph>
-        <Tabs items={[
-            {key: "providers", label: `供应商与模型 (${value.providers.length})`, children: providerPanel},
-            {key: "queues", label: `调用策略 (${value.queues.length})`, children: queuePanel},
-            {key: "scenes", label: `业务配置 (${value.businesses.length})`, children: scenePanel},
-        ]}/>
+    const panels: Record<string, ReactNode> = {providers: providerPanel, queues: queuePanel, scenes: scenePanel};
+
+    return <div>
+        {bar}
+        {panels[section]}
+        {extraContent}
         <Modal
             open={Boolean(activeTestQueue)}
             title={activeTestQueue ? `测试调用策略：${activeTestQueue.name || "未命名策略"}` : "测试调用策略"}
@@ -707,5 +796,5 @@ export function AISetting() {
                 </Flex>}
             </Flex>}
         </Modal>
-    </Card>;
+    </div>;
 }
