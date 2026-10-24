@@ -123,6 +123,7 @@ Last verified: 2026-06-17
 9. Digest generation retries once per split pass with a repair prompt when an AI response is invalid.
 10. If summary setup or digest generation fails, the report keeps raw news data, clears `Digest`, and stores a deterministic failure `Summary`.
 11. Push markdown uses `pushBrief.weatherLine`, `pushBrief.overview`, important news, keyword briefs, and the report link; important news and keyword briefs render as Markdown lists for Feishu, and the push does not include the full fallback `Summary`.
+12. The shared Feishu adapter converts Markdown headings to bold paragraphs with blank lines around them, keeping section titles and the report link outside preceding lists and separating headings from body text.
 
 ## Common failure signatures
 
