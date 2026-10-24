@@ -37,6 +37,7 @@ export interface WhisperButtonProps extends Omit<ButtonProps, "onClick" | "loadi
     showTooltip?: boolean;
     showRealtimePreview?: boolean;
     onRecordingChange?: (recording: boolean) => void;
+    onBusyChange?: (busy: boolean) => void;
     onPartialText?: (text: string) => void;
 }
 
@@ -158,6 +159,7 @@ export function WhisperButton({
     showTooltip = true,
     showRealtimePreview = true,
     onRecordingChange,
+    onBusyChange,
     onPartialText,
     disabled,
     children,
@@ -183,6 +185,13 @@ export function WhisperButton({
     const lastRealtimeCompletionRef = useRef("");
     const lastRealtimeErrorRef = useRef("");
     const onRecordingChangeRef = useRef(onRecordingChange);
+    const onBusyChangeRef = useRef(onBusyChange);
+    onBusyChangeRef.current = onBusyChange;
+    const mountedRef = useRef(true);
+    useEffect(() => {
+        mountedRef.current = true;
+        return () => { mountedRef.current = false; };
+    }, []);
 
     const effectiveLanguage = useMemo(
         () => normalizeLanguage(language ?? settings.language),
@@ -210,6 +219,13 @@ export function WhisperButton({
         || realtime.status === "connecting"
         || realtime.status === "finishing";
     const isDisabled = Boolean(disabled || busy);
+    const sessionBusy = recording || busy;
+
+    useEffect(() => {
+        onBusyChangeRef.current?.(sessionBusy);
+    }, [sessionBusy]);
+
+    useEffect(() => () => onBusyChangeRef.current?.(false), []);
 
     useEffect(() => {
         onRecordingChangeRef.current = onRecordingChange;
@@ -336,6 +352,7 @@ export function WhisperButton({
         finishInFlightRef.current = true;
         try {
             const recording = await recorder.stop();
+            if (!mountedRef.current) return;
             if (!recording.hasVoice || !recording.blob) {
                 message.info("未检测到有效语音").then();
                 return;
@@ -351,6 +368,7 @@ export function WhisperButton({
                 fileName: fileName || audioFileName(blob),
                 prompt: requestPrompt,
             });
+            if (!mountedRef.current) return;
             if (!response?.text) {
                 emitError("语音转写失败");
                 return;
@@ -412,11 +430,17 @@ export function WhisperButton({
         lastRealtimeCompletionRef.current = "";
         try {
             const capability = await getTranscriptionCapability();
+            if (!mountedRef.current) return;
             if (capability.mode === "realtime") {
                 await realtime.start();
+                if (!mountedRef.current) realtime.cancel();
                 return;
             }
             const started = await recorder.start();
+            if (!mountedRef.current) {
+                recorder.cancel();
+                return;
+            }
             if (!started) {
                 emitError(recorder.error || "无法开始录音");
             }

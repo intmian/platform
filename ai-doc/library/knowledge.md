@@ -105,6 +105,9 @@ Last verified: 2026-07-27 (score-detail storage boundary, migration lifecycle, l
    - `显示`: render note logs in full with edit/delete/time controls
 11. Detail drawer `体验记录` header adds `新增最新备注`, which writes a D1 note bound to the current round UUID. Add/edit note modals have no footer cancel button; their shared `WhisperButton` and confirm button share the footer row, and the confirm button is hidden while recording. Realtime transcription is previewed directly at the end of the read-only note editor using the same whitespace/newline separator as final insertion. Completion commits the authoritative text once; a recognition failure commits the visible best-effort aggregate once, restores ordinary editing, and still reports the error; cancellation preserves the original draft.
 
+
+12. Score evaluation and work-level remarks use `LibraryVoiceInput` (code checked 2026-10-24): add/edit score each expose voice input for the overall evaluation and the three optional complex dimensions (objective, subjective, innovation); add-item and edit-basic-info each expose it for the work remark. Waiting/paused reasons remain ordinary text inputs. Each editor has its own microphone, previews realtime text inline without persisting partials, and appends the final text with the same whitespace/newline rule as note input. `LibraryVoiceProvider` coordinates these editors: while capability lookup, recording, or transcription is active, other microphones and owning-form save buttons are disabled; score mode/dimension switches are also disabled. Closing the owning form unmounts its voice session, ignores late results, and preserves the existing draft semantics. Recording/transcription remains owned by the shared `WhisperButton`.
+
 URL sync contract (list + detail):
 
 1. List page syncs current filters to URL query:

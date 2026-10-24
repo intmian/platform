@@ -113,6 +113,7 @@ import {
     sendAiAction,
 } from '../common/aiGateway';
 import {LibraryNoteContext, useLibraryNotes} from './useLibraryNotes';
+import LibraryVoiceInput, {useLibraryVoiceBusy} from './LibraryVoiceInput';
 import {WhisperButton} from '../common/WhisperButton';
 import {
     changeLibraryScoreDetail,
@@ -299,6 +300,7 @@ interface LibraryDetailProps {
 }
 
 export default function LibraryDetail({visible, item, noteContext, categories = [], todoReasonOptions = [], onClose, onSave, onToggleFavorite, onDelete}: LibraryDetailProps) {
+    const voiceBusy = useLibraryVoiceBusy();
     const isMobile = useIsMobile();
     const [editMode, setEditMode] = useState(false);
     const [localItem, setLocalItem] = useState<LibraryItemFull | null>(null);
@@ -1919,7 +1921,7 @@ export default function LibraryDetail({visible, item, noteContext, categories = 
             {editMode ? (
                 <>
                     <Button size={actionButtonSize} onClick={() => setEditMode(false)}>取消</Button>
-                    <Button size={actionButtonSize} type="primary" onClick={handleSaveBasicInfo}>保存</Button>
+                    <Button size={actionButtonSize} type="primary" disabled={voiceBusy} onClick={handleSaveBasicInfo}>保存</Button>
                 </>
             ) : (
                 <Button size={actionButtonSize} icon={<EditOutlined/>} onClick={() => setEditMode(true)}>编辑</Button>
@@ -2075,7 +2077,7 @@ export default function LibraryDetail({visible, item, noteContext, categories = 
                                 <InputNumber min={1900} max={3000} style={{width: '100%'}} placeholder="例如：2024"/>
                             </Form.Item>
                             <Form.Item name="remark" label="备注">
-                                <TextArea rows={2} placeholder="作品备注（如国家、版本、平台等）"/>
+                                <LibraryVoiceInput active={visible && editMode} label="作品备注" rows={2} placeholder="作品备注（如国家、版本、平台等）"/>
                             </Form.Item>
                             <Form.Item name="category" label="分类">
                                 <Select
@@ -2422,6 +2424,7 @@ export default function LibraryDetail({visible, item, noteContext, categories = 
                 title={editingContentType === LibraryLogType.score ? '编辑评分内容' : '编辑备注内容'}
                 open={showEditLogContent}
                 destroyOnClose={true}
+                okButtonProps={{disabled: voiceBusy}}
                 onOk={handleSaveLogContent}
                 confirmLoading={editingContentType === LibraryLogType.score ? scoreSaving : noteSaving}
                 onCancel={resetEditingContentState}
@@ -2476,7 +2479,7 @@ export default function LibraryDetail({visible, item, noteContext, categories = 
                                     <Flex justify="space-between" align="center">
                                         <Text>客观好坏：</Text>
                                         <Switch
-                                            size="small"
+                                            disabled={voiceBusy} size="small"
                                             checked={editingEnableObjScore}
                                             onChange={setEditingEnableObjScore}
                                             checkedChildren="启用"
@@ -2495,11 +2498,11 @@ export default function LibraryDetail({visible, item, noteContext, categories = 
                                                     fontSize2={14}
                                                 />
                                             </div>
-                                            <TextArea
+                                            <LibraryVoiceInput active={visible && showEditLogContent} disabled={scoreSaving} label="客观评价"
                                                 rows={2}
                                                 placeholder="客观维度评价（可选）"
                                                 value={editingObjComment}
-                                                onChange={(e) => setEditingObjComment(e.target.value)}
+                                                onChange={setEditingObjComment}
                                                 style={{marginTop: 8}}
                                             />
                                         </>
@@ -2510,7 +2513,7 @@ export default function LibraryDetail({visible, item, noteContext, categories = 
                                     <Flex justify="space-between" align="center">
                                         <Text>主观感受：</Text>
                                         <Switch
-                                            size="small"
+                                            disabled={voiceBusy} size="small"
                                             checked={editingEnableSubScore}
                                             onChange={setEditingEnableSubScore}
                                             checkedChildren="启用"
@@ -2529,11 +2532,11 @@ export default function LibraryDetail({visible, item, noteContext, categories = 
                                                     fontSize2={14}
                                                 />
                                             </div>
-                                            <TextArea
+                                            <LibraryVoiceInput active={visible && showEditLogContent} disabled={scoreSaving} label="主观评价"
                                                 rows={2}
                                                 placeholder="主观维度评价（可选）"
                                                 value={editingSubComment}
-                                                onChange={(e) => setEditingSubComment(e.target.value)}
+                                                onChange={setEditingSubComment}
                                                 style={{marginTop: 8}}
                                             />
                                         </>
@@ -2544,7 +2547,7 @@ export default function LibraryDetail({visible, item, noteContext, categories = 
                                     <Flex justify="space-between" align="center">
                                         <Text>艺术创新：</Text>
                                         <Switch
-                                            size="small"
+                                            disabled={voiceBusy} size="small"
                                             checked={editingEnableInnovateScore}
                                             onChange={setEditingEnableInnovateScore}
                                             checkedChildren="启用"
@@ -2563,11 +2566,11 @@ export default function LibraryDetail({visible, item, noteContext, categories = 
                                                     fontSize2={14}
                                                 />
                                             </div>
-                                            <TextArea
+                                            <LibraryVoiceInput active={visible && showEditLogContent} disabled={scoreSaving} label="创新评价"
                                                 rows={2}
                                                 placeholder="创新维度评价（可选）"
                                                 value={editingInnovateComment}
-                                                onChange={(e) => setEditingInnovateComment(e.target.value)}
+                                                onChange={setEditingInnovateComment}
                                                 style={{marginTop: 8}}
                                             />
                                         </>
@@ -2577,10 +2580,10 @@ export default function LibraryDetail({visible, item, noteContext, categories = 
                         ) : null}
                         <div>
                             <Text>{editingScoreMode === 'complex' ? '主评分评价（可选）' : '评价内容（可选）'}</Text>
-                            <TextArea
+                            <LibraryVoiceInput active={visible && showEditLogContent} disabled={scoreSaving} label="评分评价"
                                 rows={3}
                                 value={editingContentText}
-                                onChange={(e) => setEditingContentText(e.target.value)}
+                                onChange={setEditingContentText}
                                 placeholder="请输入评分说明"
                                 style={{marginTop: 8}}
                             />
@@ -2800,6 +2803,7 @@ function AddScoreModal({
     aiLoading,
     onRequestAiDigest,
 }: AddScoreModalProps) {
+    const voiceBusy = useLibraryVoiceBusy();
     const isMobile = useIsMobile();
     const [mode, setMode] = useState<'simple' | 'complex'>(initialMode);
     const [aiPanelOpen, setAiPanelOpen] = useState(false);
@@ -3034,6 +3038,7 @@ function AddScoreModal({
                 </Flex>
             )}
             open={visible}
+            okButtonProps={{disabled: voiceBusy}}
             onOk={() => void handleOk()}
             confirmLoading={saving}
             onCancel={handleCancel}
@@ -3042,7 +3047,7 @@ function AddScoreModal({
             <Flex gap={16} align="flex-start">
                 <div style={{flex: 1, minWidth: 0}}>
                     <Space direction="vertical" style={{width: '100%'}}>
-                        <Radio.Group value={mode} onChange={(e) => setMode(e.target.value)}>
+                        <Radio.Group disabled={voiceBusy} value={mode} onChange={(e) => setMode(e.target.value)}>
                             <Radio.Button value="simple">简单评分</Radio.Button>
                             <Radio.Button value="complex">复杂评分</Radio.Button>
                         </Radio.Group>
@@ -3066,7 +3071,7 @@ function AddScoreModal({
                                 <div>
                                     <Flex justify="space-between" align="center">
                                         <Text>客观好坏：</Text>
-                                        <Switch size="small" checked={enableObjScore} onChange={setEnableObjScore} checkedChildren="启用" unCheckedChildren="关闭"/>
+                                        <Switch disabled={voiceBusy} size="small" checked={enableObjScore} onChange={setEnableObjScore} checkedChildren="启用" unCheckedChildren="关闭"/>
                                     </Flex>
                                     {enableObjScore ? (
                                         <>
@@ -3080,11 +3085,11 @@ function AddScoreModal({
                                                     fontSize2={14}
                                                 />
                                             </div>
-                                            <TextArea
+                                            <LibraryVoiceInput active={visible} disabled={saving} label="客观评价"
                                                 rows={2}
                                                 placeholder="客观维度评价（可选）"
                                                 value={objComment}
-                                                onChange={(e) => setObjComment(e.target.value)}
+                                                onChange={setObjComment}
                                                 style={{marginTop: 8}}
                                             />
                                         </>
@@ -3093,7 +3098,7 @@ function AddScoreModal({
                                 <div>
                                     <Flex justify="space-between" align="center">
                                         <Text>主观感受：</Text>
-                                        <Switch size="small" checked={enableSubScore} onChange={setEnableSubScore} checkedChildren="启用" unCheckedChildren="关闭"/>
+                                        <Switch disabled={voiceBusy} size="small" checked={enableSubScore} onChange={setEnableSubScore} checkedChildren="启用" unCheckedChildren="关闭"/>
                                     </Flex>
                                     {enableSubScore ? (
                                         <>
@@ -3107,11 +3112,11 @@ function AddScoreModal({
                                                     fontSize2={14}
                                                 />
                                             </div>
-                                            <TextArea
+                                            <LibraryVoiceInput active={visible} disabled={saving} label="主观评价"
                                                 rows={2}
                                                 placeholder="主观维度评价（可选）"
                                                 value={subComment}
-                                                onChange={(e) => setSubComment(e.target.value)}
+                                                onChange={setSubComment}
                                                 style={{marginTop: 8}}
                                             />
                                         </>
@@ -3120,7 +3125,7 @@ function AddScoreModal({
                                 <div>
                                     <Flex justify="space-between" align="center">
                                         <Text>艺术创新：</Text>
-                                        <Switch size="small" checked={enableInnovateScore} onChange={setEnableInnovateScore} checkedChildren="启用" unCheckedChildren="关闭"/>
+                                        <Switch disabled={voiceBusy} size="small" checked={enableInnovateScore} onChange={setEnableInnovateScore} checkedChildren="启用" unCheckedChildren="关闭"/>
                                     </Flex>
                                     {enableInnovateScore ? (
                                         <>
@@ -3134,11 +3139,11 @@ function AddScoreModal({
                                                     fontSize2={14}
                                                 />
                                             </div>
-                                            <TextArea
+                                            <LibraryVoiceInput active={visible} disabled={saving} label="创新评价"
                                                 rows={2}
                                                 placeholder="创新维度评价（可选）"
                                                 value={innovateComment}
-                                                onChange={(e) => setInnovateComment(e.target.value)}
+                                                onChange={setInnovateComment}
                                                 style={{marginTop: 8}}
                                             />
                                         </>
@@ -3149,11 +3154,11 @@ function AddScoreModal({
 
                         <div>
                             <Text>{mode === 'complex' ? '主评分评价（可选）：' : '评价（可选）：'}</Text>
-                            <TextArea
+                            <LibraryVoiceInput active={visible} disabled={saving} label="评分评价"
                                 rows={3}
                                 placeholder="请输入评价内容..."
                                 value={comment}
-                                onChange={(e) => setComment(e.target.value)}
+                                onChange={setComment}
                                 style={{marginTop: 8}}
                             />
                         </div>

@@ -86,6 +86,7 @@ import LibraryScorePopover from './LibraryScorePopover';
 import {useImageUpload} from '../common/useImageUpload';
 import {prepareLibraryCoverFiles, prepareLibraryCoverFilesFromCenterCrop} from '../common/imageCrop';
 import {FileShow, UploadFile} from '../common/newSendHttp';
+import LibraryVoiceInput, {LibraryVoiceProvider, useLibraryVoiceBusy} from './LibraryVoiceInput';
 import './Library.css';
 import {getLibraryScoreDetail} from './libraryScoreDetailClient';
 
@@ -502,7 +503,12 @@ function AutoScrollTitle({text}: {text: string}) {
     );
 }
 
-export default function Library({addr, groupTitle}: LibraryProps) {
+export default function Library(props: LibraryProps) {
+    return <LibraryVoiceProvider><LibraryContent {...props}/></LibraryVoiceProvider>;
+}
+
+function LibraryContent({addr, groupTitle}: LibraryProps) {
+    const voiceBusy = useLibraryVoiceBusy();
     const isMobile = useIsMobile();
     const initialUrlStateRef = useRef<LibraryUrlState>(readLibraryUrlState());
     const pendingDetailTaskIdFromUrlRef = useRef<number | null>(initialUrlStateRef.current.detailTaskId);
@@ -2039,6 +2045,7 @@ export default function Library({addr, groupTitle}: LibraryProps) {
                 title="添加条目"
                 open={showAdd}
                 className="library-add-modal"
+                okButtonProps={{disabled: voiceBusy}}
                 onOk={handleAdd}
                 onCancel={() => {
                     setShowAdd(false);
@@ -2133,7 +2140,7 @@ export default function Library({addr, groupTitle}: LibraryProps) {
                         </Form.Item>
 
                         <Form.Item name="remark" label="备注">
-                            <Input.TextArea rows={2} placeholder="作品备注（如国家、平台、版本）"/>
+                            <LibraryVoiceInput active={showAdd} disabled={addLoading} label="作品备注" rows={2} placeholder="作品备注（如国家、平台、版本）"/>
                         </Form.Item>
 
                         {/* 添加等待原因，若填写则创建后状态为等待 */}
