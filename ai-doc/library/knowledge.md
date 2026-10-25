@@ -1,6 +1,6 @@
 # Library Module Knowledge
 
-Last verified: 2026-07-27 (score-detail storage boundary, migration lifecycle, lazy loading, and detail-only edit verified through local runtime interaction; realtime voice failure recovery verified from code)
+Last verified: 2026-10-25 (UI refresh for list cards, mobile toolbar, detail hero, and timeline filters verified against a local copy of real Library data; score-detail storage boundary verified 2026-07-27)
 
 ## Module role and loading boundary
 
@@ -98,12 +98,22 @@ Last verified: 2026-07-27 (score-detail storage boundary, migration lifecycle, l
    - `showCategory`
 7. `showAuthor / showStartTime / showUpdateTime` are removed because they are no longer bound to card rendering.
 8. Main-page title row includes a help button that opens `娱乐库状态与评分说明`, covering status semantics and scoring rules.
+   - Title row shows the filtered count as plain secondary text. Desktop toolbar uses text buttons `显示 / 时间线 / 分类管理` plus primary `添加`; mobile keeps only a timeline icon and a `...` menu (`显示 / 分类管理`), and `添加` becomes a bottom-right floating button.
+   - Mobile filter bar shows search plus a `筛选` toggle (red dot when any filter differs from default); category/status/sort are folded behind it.
+   - Theme: Library defaults to a dark theme (antd `darkAlgorithm` via a Library-scoped `ConfigProvider`, plus `--lib-*` CSS variables on `body.library-dark-page` so portaled drawers/modals follow). `显示` → `主题` switches 深色/浅色; the choice is stored per browser in `localStorage` key `library_theme_mode`. The body class is removed when Library unmounts. Exported images (timeline export, share card) keep their light backgrounds.
+   - Cards are posters with info below: cover (2:3) with only favorite star, non-first round name, and status badge on it; below it the title (one line) and a meta line with category (stable per-category color dot) and main score (click opens the score detail). `显示` options `showCategory` / `showScore` control the meta line.
+   - With `sortBy = default` and no search text, the list is grouped into status sections in default-sort status order (`进行中 / 搁置 / 无状态 / 等待 / 已完成 / 鸽了 / 放弃 / 归档`), each with a colored dot, label, and count; cards inside sections hide the status badge. When only one status remains, the list is shown flat and non-`DOING` cards show the status badge.
+   - Card quick actions: desktop right-click menu starts with `记备注`; mobile long-press (450ms) opens a bottom action sheet with full title, `记备注`, `查看详情`, status switch, `新周目`, and favorite. `记备注` opens the detail drawer with the add-note modal already open.
 9. Detail drawer loads D1 notes only while a Library item is open; note loading failure is isolated from core detail rendering.
+   - Non-edit mode shows a hero header: blurred/darkened cover background, cover, title, one meta line (category · author · year · current round when >1 rounds · join date; empty fields omitted), status dot with TODO/WAIT reason, remark (2-line clamp), and the main-score scale in level colors.
+   - Status buttons: the current status is tinted; the recommended next action is primary (`DOING -> 完成`, `DONE/ARCHIVED -> none`, otherwise `开始`).
+   - `删除此条目` lives in the header `更多` menu with a confirm dialog; there is no drawer footer. On mobile, header actions are icon-only except `编辑`.
+   - Rounds render newest first; the current round is expanded by default. Round/log/note dates use short format (`M月D日`, year shown only when not the current year) with full timestamp in a tooltip. Delete icons are gray until hover.
 10. Detail drawer `体验记录` area merges core logs and D1 notes in memory and exposes a note-visibility selector with 3 modes:
    - `隐藏`: hide note logs entirely
    - `缩略`: default mode; consecutive note logs collapse into `x条备注` and only show the plain start/end time range in the left content area
    - `显示`: render note logs in full with edit/delete/time controls
-11. Detail drawer `体验记录` header adds `新增最新备注`, which writes a D1 note bound to the current round UUID. Add/edit note modals have no footer cancel button; their shared `WhisperButton` and confirm button share the footer row, and the confirm button is hidden while recording. Realtime transcription is previewed directly at the end of the read-only note editor using the same whitespace/newline separator as final insertion. Completion commits the authoritative text once; a recognition failure commits the visible best-effort aggregate once, restores ordinary editing, and still reports the error; cancellation preserves the original draft.
+11. Detail drawer `体验记录` header adds `记备注`, which writes a D1 note bound to the current round UUID. Add/edit note modals have no footer cancel button; their shared `WhisperButton` and confirm button share the footer row, and the confirm button is hidden while recording. Realtime transcription is previewed directly at the end of the read-only note editor using the same whitespace/newline separator as final insertion. Completion commits the authoritative text once; a recognition failure commits the visible best-effort aggregate once, restores ordinary editing, and still reports the error; cancellation preserves the original draft.
 
 URL sync contract (list + detail):
 
@@ -151,7 +161,7 @@ Wait-expired (`鸽了`) rule:
 
 Timeline rules:
 
-1. Aggregate core logs across rounds by time descending; private notes never enter the all-library timeline, filters, or exports.
+1. Aggregate core logs across rounds; the displayed list (and export) is intentionally ascending by time within the selected year/range so it reads as a yearly recap. Private notes never enter the all-library timeline, filters, or exports.
 2. `timelineCutoff` log itself is hidden.
 3. Logs before cutoff are excluded.
 4. Legacy `note: 添加到库` is normalized to `addToLibrary`.
@@ -168,10 +178,11 @@ Timeline rules:
    - new rounds persist `autoRoundStart=true` on the first `DOING` status log
    - legacy data without the flag falls back to the first `DOING` log whose comment matches `开始<旧周目名>` or `开始了<旧周目名>`
    - once matched during rename/start-time edit, the log is normalized by writing back `autoRoundStart=true`
-8. Timeline drawer has two views:
+8. Timeline drawer category/status checkboxes are folded behind a `筛选` toggle that summarizes the selection (`分类 x/y · 状态 a/b`); the year selector stays visible.
+9. Timeline drawer has two views:
    - `时间线`: existing chronological log list with status/category/year filters and export preview.
-   - `评分梯度`: score-log-only board grouped by main score levels from top to bottom as `满/优/合/差/零`; it reuses the timeline year and category filters, keeps score `+/-` markers, orders covers within each score row by sign (`+`, none, `-`) and then chronologically within the same sign, wraps many covers onto additional lines, and clicking a cover opens the item detail.
-9. All-library timeline, timeline export, score gradient, and detail experience-record rows read only slim core scores and never load or preview score evaluation details.
+   - `评分梯度`: score-log-only board grouped by main score levels from top to bottom as `满/优/合/差/零` (level labels use the shared score level colors gold/purple/blue/green/gray, matching card score stars); it reuses the timeline year and category filters, keeps score `+/-` markers, orders covers within each score row by sign (`+`, none, `-`) and then chronologically within the same sign, wraps many covers onto additional lines, and clicking a cover opens the item detail.
+10. All-library timeline, timeline export, score gradient, and detail experience-record rows read only slim core scores and never load or preview score evaluation details.
 
 Timeline export preview rules:
 

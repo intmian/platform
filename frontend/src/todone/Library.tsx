@@ -18,12 +18,18 @@ import {
     AutoComplete,
     Divider,
     Typography,
+    Badge,
+    FloatButton,
+    Drawer,
+    ConfigProvider,
+    Segmented,
+    theme as antdTheme,
 } from 'antd';
 import {
-    AppstoreOutlined,
     ClockCircleOutlined,
     DeleteOutlined,
     EditOutlined,
+    EllipsisOutlined,
     EyeOutlined,
     FilterOutlined,
     PlusOutlined,
@@ -70,6 +76,7 @@ import {
     LIBRARY_CARD_HOVER_EFFECT_CONFIG,
     LIBRARY_WAIT_EXPIRED_FILTER,
     LIBRARY_WAIT_EXPIRED_RULE_TEXT,
+    getLibraryCategoryDotColor,
     getLibraryCoverPaletteByTitle,
     getScoreStarColor,
     getScoreText,
@@ -159,6 +166,31 @@ const DEFAULT_SORT_STATUS_ORDER: Record<string, number> = {
 };
 
 // 默认的 SubGroup 名称（用于存储所有 Library 条目）
+type LibraryThemeMode = 'dark' | 'light';
+const LIBRARY_THEME_STORAGE_KEY = 'library_theme_mode';
+const LIBRARY_DARK_BODY_CLASS = 'library-dark-page';
+// 深色主题：海报墙在深色底上更突出
+const LIBRARY_DARK_THEME = {
+    algorithm: antdTheme.darkAlgorithm,
+    token: {
+        colorBgBase: '#0f1013',
+        colorBgContainer: '#17181c',
+        colorBgElevated: '#1e1f24',
+        colorBgLayout: '#0f1013',
+        colorBorder: '#2c2e35',
+        colorBorderSecondary: '#24262c',
+    },
+};
+const LIBRARY_LIGHT_THEME = {algorithm: antdTheme.defaultAlgorithm};
+
+function readLibraryThemeMode(): LibraryThemeMode {
+    try {
+        return window.localStorage.getItem(LIBRARY_THEME_STORAGE_KEY) === 'light' ? 'light' : 'dark';
+    } catch {
+        return 'dark';
+    }
+}
+
 const DEFAULT_SUBGROUP_NAME = '_library_items_';
 const LIBRARY_PREVIEW_WIDTH = 480;
 
@@ -394,114 +426,6 @@ function readLibraryUrlState(): LibraryUrlState {
     };
 }
 
-function AutoScrollTitle({text}: {text: string}) {
-    const containerRef = useRef<HTMLDivElement>(null);
-    const contentRef = useRef<HTMLSpanElement>(null);
-    const textRef = useRef<HTMLSpanElement>(null);
-    const [overflowDistance, setOverflowDistance] = useState(0);
-    const [loopWidth, setLoopWidth] = useState(0);
-    const loopText = `${text}\u00A0\u00A0`;
-
-    useEffect(() => {
-        const measure = () => {
-            const container = containerRef.current;
-            const primaryText = textRef.current ?? contentRef.current;
-            if (!container || !primaryText) {
-                setOverflowDistance(0);
-                setLoopWidth(0);
-                return;
-            }
-
-            const width = Math.ceil(primaryText.scrollWidth);
-            const distance = Math.max(0, width - container.clientWidth);
-            setOverflowDistance(distance);
-            setLoopWidth(width);
-        };
-
-        measure();
-        const observer = new ResizeObserver(() => measure());
-        if (containerRef.current) {
-            observer.observe(containerRef.current);
-        }
-        if (contentRef.current) {
-            observer.observe(contentRef.current);
-        }
-        if (textRef.current) {
-            observer.observe(textRef.current);
-        }
-        return () => observer.disconnect();
-    }, [text]);
-
-    useEffect(() => {
-        const content = contentRef.current;
-        if (!content || overflowDistance <= 0 || loopWidth <= 0) {
-            if (content) {
-                content.style.transform = 'translateX(0px)';
-            }
-            return;
-        }
-
-        const pauseMs = 1000;
-        const speedPxPerSecond = 22;
-        let rafId = 0;
-        let phase: 'pause' | 'scroll' = 'pause';
-        let elapsedInPhase = 0;
-        let offset = 0;
-        let lastTs = 0;
-
-        const tick = (ts: number) => {
-            if (!contentRef.current) {
-                return;
-            }
-
-            if (!lastTs) {
-                lastTs = ts;
-            }
-            const dt = ts - lastTs;
-            lastTs = ts;
-
-            if (phase === 'pause') {
-                elapsedInPhase += dt;
-                if (elapsedInPhase >= pauseMs) {
-                    phase = 'scroll';
-                }
-            } else {
-                const delta = (dt / 1000) * speedPxPerSecond;
-                offset -= delta;
-                if (Math.abs(offset) >= loopWidth) {
-                    offset += loopWidth;
-                }
-                contentRef.current.style.transform = `translateX(${offset}px)`;
-            }
-
-            rafId = window.requestAnimationFrame(tick);
-        };
-
-        content.style.transform = 'translateX(0px)';
-        rafId = window.requestAnimationFrame(tick);
-
-        return () => {
-            window.cancelAnimationFrame(rafId);
-        };
-    }, [overflowDistance, loopWidth]);
-
-    return (
-        <div
-            ref={containerRef}
-            className={`library-card-title-window${overflowDistance > 0 ? ' is-scrolling' : ''}`}
-        >
-            {overflowDistance > 0 ? (
-                <span ref={contentRef} className="library-card-title-content is-scrolling">
-                    <span ref={textRef} className="library-card-title-text">{loopText}</span>
-                    <span className="library-card-title-text" aria-hidden="true">{loopText}</span>
-                </span>
-            ) : (
-                <span ref={contentRef} className="library-card-title-content">{text}</span>
-            )}
-        </div>
-    );
-}
-
 export default function Library({addr, groupTitle}: LibraryProps) {
     const isMobile = useIsMobile();
     const initialUrlStateRef = useRef<LibraryUrlState>(readLibraryUrlState());
@@ -518,6 +442,7 @@ export default function Library({addr, groupTitle}: LibraryProps) {
     // 筛选和排序
     const [selectedStatuses, setSelectedStatuses] = useState<StatusFilterOption[]>(initialUrlStateRef.current.statuses);
     const [statusFilterOpen, setStatusFilterOpen] = useState(false);
+    const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
     const [todoReasonFilter, setTodoReasonFilter] = useState<string>(initialUrlStateRef.current.todoReason);
     const [sortBy, setSortBy] = useState<SortOption>(initialUrlStateRef.current.sortBy);
     const [searchText, setSearchText] = useState(initialUrlStateRef.current.searchText);
@@ -613,6 +538,22 @@ export default function Library({addr, groupTitle}: LibraryProps) {
     // 显示选项
     const [showDisplayOptions, setShowDisplayOptions] = useState(false);
     const [displayOptions, setDisplayOptions] = useState(DEFAULT_DISPLAY_OPTIONS);
+    const [themeMode, setThemeMode] = useState<LibraryThemeMode>(readLibraryThemeMode);
+    const isDarkTheme = themeMode === 'dark';
+
+    useEffect(() => {
+        try {
+            window.localStorage.setItem(LIBRARY_THEME_STORAGE_KEY, themeMode);
+        } catch {
+            // 存储不可用时只影响记忆，不影响显示
+        }
+    }, [themeMode]);
+
+    // 弹层挂在 body 上，深色变量也挂在 body 上
+    useEffect(() => {
+        document.body.classList.toggle(LIBRARY_DARK_BODY_CLASS, isDarkTheme);
+        return () => document.body.classList.remove(LIBRARY_DARK_BODY_CLASS);
+    }, [isDarkTheme]);
     const [waitExpiredTick, setWaitExpiredTick] = useState(0);
     const listPerfRef = useRef({filterComputeMs: 0, filterComputeDoneAt: 0});
     const compatProcessedIdsRef = useRef<Set<number>>(new Set());
@@ -864,6 +805,12 @@ export default function Library({addr, groupTitle}: LibraryProps) {
         return `状态（${selectedStatuses.length}）`;
     }, [selectedStatuses]);
 
+    const filterIsCustomized = selectedCategory !== 'all'
+        || sortBy !== 'default'
+        || todoReasonFilter !== 'all'
+        || selectedStatuses.length !== DEFAULT_STATUS_FILTER_OPTIONS.length
+        || selectedStatuses.some((status) => !DEFAULT_STATUS_FILTER_OPTIONS.includes(status));
+
     const toggleStatusFilterOption = useCallback((status: StatusFilterOption) => {
         setSelectedStatuses((prev) => {
             if (prev.includes(status)) {
@@ -967,6 +914,39 @@ export default function Library({addr, groupTitle}: LibraryProps) {
         listPerfRef.current.filterComputeDoneAt = performance.now();
         return result;
     }, [allItems, selectedCategory, selectedStatuses, getItemStatusForFilter, todoReasonFilter, searchText, sortBy, compareByDefaultSort]);
+
+    // 默认排序且未搜索时按状态分区展示（默认排序本就以状态为第一顺序）
+    const statusSections = useMemo(() => {
+        if (sortBy !== 'default' || searchText.trim()) {
+            return null;
+        }
+        const sectionMap = new Map<string, LibraryItemWithDerived[]>();
+        filteredItems.forEach((item) => {
+            const key = String(getItemStatusForFilter(item));
+            const list = sectionMap.get(key);
+            if (list) {
+                list.push(item);
+            } else {
+                sectionMap.set(key, [item]);
+            }
+        });
+        if (sectionMap.size <= 1) {
+            // 只有一种状态时分区标题没有信息量，直接平铺
+            return null;
+        }
+        return Array.from(sectionMap.entries())
+            .sort(([a], [b]) => (DEFAULT_SORT_STATUS_ORDER[a] ?? 99) - (DEFAULT_SORT_STATUS_ORDER[b] ?? 99))
+            .map(([key, items]) => ({
+                key,
+                items,
+                label: STATUS_FILTER_LABELS[key] || key,
+                color: key === LIBRARY_WAIT_EXPIRED_FILTER
+                    ? LibraryStatusColors[LibraryItemStatus.GIVE_UP]
+                    : key === 'none'
+                        ? '#bfbfbf'
+                        : LibraryStatusColors[Number(key) as LibraryItemStatus] || '#bfbfbf',
+            }));
+    }, [filteredItems, getItemStatusForFilter, searchText, sortBy]);
 
     useEffect(() => {
         if (!import.meta.env.DEV) {
@@ -1247,6 +1227,35 @@ export default function Library({addr, groupTitle}: LibraryProps) {
         setNewRoundNameInput('');
     }, [handleQuickStartNewRound, newRoundNameInput, pendingNewRoundItem]);
 
+    // 移动端长按卡片：打开快捷操作面板
+    const longPressTimerRef = useRef<number | null>(null);
+    const longPressTriggeredRef = useRef(false);
+    const [actionSheetItem, setActionSheetItem] = useState<LibraryItemFull | null>(null);
+    const [detailOpenAddNote, setDetailOpenAddNote] = useState(false);
+
+    const cancelCardLongPress = useCallback(() => {
+        if (longPressTimerRef.current !== null) {
+            window.clearTimeout(longPressTimerRef.current);
+            longPressTimerRef.current = null;
+        }
+    }, []);
+
+    const startCardLongPress = useCallback((item: LibraryItemFull) => {
+        cancelCardLongPress();
+        longPressTriggeredRef.current = false;
+        longPressTimerRef.current = window.setTimeout(() => {
+            longPressTimerRef.current = null;
+            longPressTriggeredRef.current = true;
+            setActionSheetItem(item);
+        }, 450);
+    }, [cancelCardLongPress]);
+
+    const openDetailWithNewNote = useCallback((item: LibraryItemFull) => {
+        setDetailItem(item);
+        setDetailOpenAddNote(true);
+        setShowDetail(true);
+    }, []);
+
     const handleCardContextMenu = useCallback((e: React.MouseEvent, item: LibraryItemFull) => {
         e.preventDefault();
         e.stopPropagation();
@@ -1266,6 +1275,12 @@ export default function Library({addr, groupTitle}: LibraryProps) {
             } else {
                 handleQuickStatusChange(item, Number(value) as LibraryItemStatus);
             }
+            setCardMenuVisible(false);
+            return;
+        }
+
+        if (key === 'add-note') {
+            openDetailWithNewNote(item);
             setCardMenuVisible(false);
             return;
         }
@@ -1318,6 +1333,10 @@ export default function Library({addr, groupTitle}: LibraryProps) {
 
     const getCardContextMenuItems = (item: LibraryItemFull) => {
         return [
+            {
+                key: 'add-note',
+                label: '记备注',
+            },
             {
                 key: 'status',
                 label: '切换状态',
@@ -1561,7 +1580,7 @@ export default function Library({addr, groupTitle}: LibraryProps) {
     };
 
     // 卡片渲染
-    const renderCard = (item: LibraryItemWithDerived) => {
+    const renderCard = (item: LibraryItemWithDerived, grouped = false) => {
         const mainScore = item.derived.mainScore;
         const placeholderColor = getLibraryCoverPaletteByTitle(item.title);
         const originalCoverUrl = item.extra.pictureAddress?.trim() || '';
@@ -1575,7 +1594,8 @@ export default function Library({addr, groupTitle}: LibraryProps) {
         const showRoundTag = currentRoundName && currentRoundName !== '首周目';
         const showScoreBadge = displayOptions.showScore && !!mainScore;
         const scoreStarColor = getScoreStarColor(mainScore?.score || 0);
-        const statusTextColor = getStatusTextColor(displayStatus.color);
+        // 分组视图里分区标题已经说明状态；平铺时只标非「进行中」
+        const showStatusBadge = !grouped && (item.derived.statusSnapshot.status !== LibraryItemStatus.DOING || displayStatus.isExpiredWait);
         const currentStatus = item.derived.statusSnapshot.status;
         const todoReason = item.derived.statusSnapshot.todoReason;
         const displayStatusText = currentStatus === LibraryItemStatus.TODO && todoReason
@@ -1594,8 +1614,22 @@ export default function Library({addr, groupTitle}: LibraryProps) {
                 key={item.taskId}
                 className={cardClassName}
                 style={hoverEffectStyle}
-                onContextMenu={(e) => handleCardContextMenu(e, item)}
+                onContextMenu={(e) => {
+                    if (isMobile) {
+                        e.preventDefault();
+                        return;
+                    }
+                    handleCardContextMenu(e, item);
+                }}
+                onTouchStart={() => startCardLongPress(item)}
+                onTouchMove={cancelCardLongPress}
+                onTouchEnd={cancelCardLongPress}
+                onTouchCancel={cancelCardLongPress}
                 onClick={() => {
+                    if (longPressTriggeredRef.current) {
+                        longPressTriggeredRef.current = false;
+                        return;
+                    }
                     setDetailItem(item);
                     setShowDetail(true);
                 }}
@@ -1650,28 +1684,55 @@ export default function Library({addr, groupTitle}: LibraryProps) {
                         )}
                     />
                     
-                    {/* 顶部标签行（左：分类/周目，右：评分） */}
-                    {(showFavoriteOnCard || showCategoryOnCard || showRoundTag || showScoreBadge) ? (
+                    {/* 封面左上：收藏 / 周目 */}
+                    {(showFavoriteOnCard || showRoundTag) ? (
                         <div className="library-card-top-row">
-                            <div className="library-card-category-badge">
-                                <Space size={4} align="center" style={{height:"100%"}}>
-                                    {showFavoriteOnCard ? (
-                                        // <Tag color="gold" className='library-card-category-tag library-card-favorite-tag'>
-                                            <StarFilled
-                                                style={{color: '#faad14', fontSize: 16}}
-                                            />
-                                        // </Tag>
-                                    ) : null}
-                                    {showCategoryOnCard ? <Tag color="blue"
-                                        className='library-card-category-tag'
-                                    >{item.extra.category}</Tag> : null}
-                                    {showRoundTag ? <Tag color="geekblue" className='library-card-round-tag'>{currentRoundName}</Tag> : null}
-                                </Space>
+                            <div className="library-card-badges">
+                                {showFavoriteOnCard ? (
+                                    <span className="library-card-pill library-card-pill-icon">
+                                        <StarFilled style={{color: '#faad14'}}/>
+                                    </span>
+                                ) : null}
+                                {showRoundTag ? <span className="library-card-pill">{currentRoundName}</span> : null}
                             </div>
+                        </div>
+                    ) : null}
 
+                    {/* 进行中是默认状态，不再标注；只标出需要关注的状态 */}
+                    {showStatusBadge ? (
+                        <Dropdown
+                            menu={{items: getStatusMenuItems(item)}}
+                            trigger={['click']}
+                            placement="topRight"
+                        >
+                            <span
+                                className="library-card-pill library-card-status-overlay"
+                                onClick={(e) => e.stopPropagation()}
+                            >
+                                <span className="library-card-dot" style={{background: displayStatus.color}}/>
+                                {displayStatusText}
+                            </span>
+                        </Dropdown>
+                    ) : null}
+                </div>
+                
+                {/* 封面下方：标题 + 分类/评分 */}
+                <div className="library-card-info">
+                    <div className="library-card-name" title={item.title}>{item.title}</div>
+                    {(showCategoryOnCard || showScoreBadge) ? (
+                        <div className="library-card-meta">
+                            {showCategoryOnCard ? (
+                                <span className="library-card-meta-category">
+                                    <span
+                                        className="library-card-dot"
+                                        style={{background: getLibraryCategoryDotColor(item.extra.category || '')}}
+                                    />
+                                    <span className="library-card-meta-text">{item.extra.category}</span>
+                                </span>
+                            ) : <span/>}
                             {showScoreBadge ? (
-                                <div
-                                    className="library-card-score-badge"
+                                <span
+                                    className="library-card-meta-score"
                                     onClick={(e) => {
                                         e.stopPropagation();
                                         const score = item.derived.mainScore;
@@ -1695,33 +1756,12 @@ export default function Library({addr, groupTitle}: LibraryProps) {
                                         });
                                     }}
                                 >
-                                    <StarFilled className="library-card-score-star" style={{color: scoreStarColor}} />
-                                    <span>{getScoreText(mainScore!.score || 0, mainScore!.scorePlus, mainScore!.scoreSub)}</span>
-                                </div>
+                                    <StarFilled style={{color: scoreStarColor}}/>
+                                    {getScoreText(mainScore!.score || 0, mainScore!.scorePlus, mainScore!.scoreSub)}
+                                </span>
                             ) : null}
                         </div>
                     ) : null}
-
-                    <Dropdown
-                        menu={{items: getStatusMenuItems(item)}}
-                        trigger={['click']}
-                        placement="topRight"
-                    >
-                        <Tag
-                            className="library-card-status-overlay"
-                            style={{backgroundColor: displayStatus.color, color: statusTextColor}}
-                            onClick={(e) => e.stopPropagation()}
-                        >
-                            {displayStatusText}
-                        </Tag>
-                    </Dropdown>
-                </div>
-                
-                {/* 悬浮标题条（仅 hover 显示） */}
-                <div className="library-card-hover-title">
-                    <div className="library-card-title-row">
-                        <AutoScrollTitle text={item.title}/>
-                    </div>
                 </div>
             </div>
         );
@@ -1730,6 +1770,18 @@ export default function Library({addr, groupTitle}: LibraryProps) {
     // 显示选项面板
     const displayOptionsContent = (
         <div style={{width: 180}}>
+            <div style={{marginBottom: 8, fontWeight: 500}}>主题</div>
+            <Segmented
+                block
+                size="small"
+                value={themeMode}
+                onChange={(value) => setThemeMode(value as LibraryThemeMode)}
+                options={[
+                    {value: 'dark', label: '深色'},
+                    {value: 'light', label: '浅色'},
+                ]}
+                style={{marginBottom: 12}}
+            />
             <div style={{marginBottom: 8, fontWeight: 500}}>卡片显示选项</div>
             <Space direction="vertical" size={4}>
                 <Checkbox
@@ -1755,52 +1807,46 @@ export default function Library({addr, groupTitle}: LibraryProps) {
     }
 
     return (
-        <div className="library-container">
+        <ConfigProvider theme={isDarkTheme ? LIBRARY_DARK_THEME : LIBRARY_LIGHT_THEME}>
+        <div className={`library-container ${isDarkTheme ? 'is-dark' : 'is-light'}`}>
             {/* 标题和工具栏 */}
             <Flex
                 className="library-toolbar"
                 justify="space-between"
                 align="center"
-                wrap="wrap"
                 gap={8}
-                style={{marginBottom: 16}}
             >
-                <Space className="library-toolbar-title">
-                    <AppstoreOutlined style={{fontSize: 20}}/>
-                    <span style={{fontSize: 18, fontWeight: 500}}>{groupTitle}</span>
-                    <Tag>{filteredItems.length} 项</Tag>
+                <Flex className="library-toolbar-title" align="baseline" gap={8}>
+                    <span className="library-toolbar-title-text">{groupTitle}</span>
+                    <Text type="secondary" className="library-toolbar-count">{filteredItems.length}</Text>
                     <Button
                         type="text"
-                        shape="circle"
                         size="small"
                         aria-label="打开娱乐库说明"
+                        className="library-toolbar-help"
                         icon={<QuestionCircleOutlined/>}
                         onClick={() => setShowGuideModal(true)}
-                        style={{
-                            color: '#595959',
-                            border: '1px solid #d9d9d9',
-                            background: '#fff',
-                        }}
                     />
-                </Space>
-                
+                </Flex>
+
                 <div className="library-toolbar-actions">
                     {isMobile ? (
                         <>
+                            <Button
+                                type="text"
+                                aria-label="时间线"
+                                icon={<ClockCircleOutlined/>}
+                                onClick={() => setShowTimeline(true)}
+                            />
                             <Dropdown
                                 trigger={['click']}
-                                placement="bottomLeft"
+                                placement="bottomRight"
                                 menu={{
                                     items: [
                                         {key: 'display', icon: <EyeOutlined/>, label: '显示'},
-                                        {key: 'timeline', icon: <ClockCircleOutlined/>, label: '时间线'},
                                         {key: 'category', icon: <SettingOutlined/>, label: '分类管理'},
                                     ],
                                     onClick: ({key}) => {
-                                        if (key === 'timeline') {
-                                            setShowTimeline(true);
-                                            return;
-                                        }
                                         if (key === 'category') {
                                             setShowCategoryManager(true);
                                             return;
@@ -1814,7 +1860,7 @@ export default function Library({addr, groupTitle}: LibraryProps) {
                                     <>
                                         {menuNode}
                                         {showDisplayOptions ? (
-                                            <div style={{padding: 8, borderTop: '1px solid #f0f0f0'}}>
+                                            <div style={{padding: 8, borderTop: '1px solid var(--lib-border)'}}>
                                                 {displayOptionsContent}
                                             </div>
                                         ) : null}
@@ -1826,16 +1872,8 @@ export default function Library({addr, groupTitle}: LibraryProps) {
                                     }
                                 }}
                             >
-                                <Button className="library-toolbar-btn">更多</Button>
+                                <Button type="text" aria-label="更多" icon={<EllipsisOutlined/>}/>
                             </Dropdown>
-                            <Button
-                                className="library-toolbar-btn"
-                                type="primary"
-                                icon={<PlusOutlined/>}
-                                onClick={() => setShowAdd(true)}
-                            >
-                                添加
-                            </Button>
                         </>
                     ) : (
                         <>
@@ -1844,26 +1882,25 @@ export default function Library({addr, groupTitle}: LibraryProps) {
                                 trigger="click"
                                 placement="bottomRight"
                             >
-                                <Button className="library-toolbar-btn" icon={<EyeOutlined/>}>
+                                <Button type="text" icon={<EyeOutlined/>}>
                                     显示
                                 </Button>
                             </Popover>
                             <Button
-                                className="library-toolbar-btn"
+                                type="text"
                                 icon={<ClockCircleOutlined/>}
                                 onClick={() => setShowTimeline(true)}
                             >
                                 时间线
                             </Button>
                             <Button
-                                className="library-toolbar-btn"
+                                type="text"
                                 icon={<SettingOutlined/>}
                                 onClick={() => setShowCategoryManager(true)}
                             >
                                 分类管理
                             </Button>
                             <Button
-                                className="library-toolbar-btn"
                                 type="primary"
                                 icon={<PlusOutlined/>}
                                 onClick={() => setShowAdd(true)}
@@ -1875,118 +1912,141 @@ export default function Library({addr, groupTitle}: LibraryProps) {
                 </div>
             </Flex>
 
-            {/* 筛选栏 */}
-            <Flex className="library-filter-bar" wrap={isMobile ? 'wrap' : 'nowrap'} gap={8} style={{marginBottom: 16}}>
+            {/* 筛选栏：移动端默认折叠，只露出搜索 */}
+            <Flex className="library-filter-bar" wrap="wrap" gap={8}>
                 <Input
                     className="library-filter-search"
                     placeholder="搜索名称/作者..."
                     prefix={<SearchOutlined/>}
                     value={searchText}
                     onChange={(e) => setSearchText(e.target.value)}
-                    style={{width: isMobile ? '100%' : 200}}
                     allowClear
                 />
-                
-                <Select
-                    className="library-filter-category"
-                    value={selectedCategory}
-                    onChange={setSelectedCategory}
-                    style={{width: isMobile ? 'calc(50% - 4px)' : 140}}
-                    options={[
-                        {value: 'all', label: `全部分类 (${allItems.length})`},
-                        ...categories.map(cat => ({
-                            value: cat, 
-                            label: `${cat} (${categoryCount.get(cat) || 0})`
-                        })),
-                        ...(categoryCount.has('未分类') ? [{
-                            value: '_uncategorized_', 
-                            label: `未分类 (${categoryCount.get('未分类') || 0})`
-                        }] : []),
-                    ]}
-                />
-                
-                <Dropdown
-                    trigger={['click']}
-                    open={statusFilterOpen}
-                    onOpenChange={setStatusFilterOpen}
-                    dropdownRender={() => (
-                        <div className="library-status-filter-dropdown">
-                            {STATUS_FILTER_OPTIONS.map((status) => (
-                                <div key={String(status)} className="library-status-filter-row">
-                                    <div className="library-status-filter-check">
-                                        <Checkbox
-                                            checked={selectedStatuses.includes(status)}
-                                            onChange={() => toggleStatusFilterOption(status)}
-                                            onClick={(e) => e.stopPropagation()}
-                                        />
-                                    </div>
-                                    <div
-                                        className="library-status-filter-label"
-                                        onClick={() => selectOnlyStatusFilterOption(status)}
-                                    >
-                                        {STATUS_FILTER_LABELS[String(status)]}
+                {isMobile ? (
+                    <Badge dot={filterIsCustomized} offset={[-4, 4]}>
+                        <Button
+                            icon={<FilterOutlined/>}
+                            type={mobileFilterOpen ? 'primary' : 'default'}
+                            ghost={mobileFilterOpen}
+                            onClick={() => setMobileFilterOpen((open) => !open)}
+                        >
+                            筛选
+                        </Button>
+                    </Badge>
+                ) : null}
+
+                {!isMobile || mobileFilterOpen ? (
+                    <Flex className="library-filter-group" wrap="wrap" gap={8}>
+                        <Select
+                            className="library-filter-category"
+                            value={selectedCategory}
+                            onChange={setSelectedCategory}
+                            popupMatchSelectWidth={false}
+                            options={[
+                                {value: 'all', label: `全部分类 (${allItems.length})`},
+                                ...categories.map(cat => ({
+                                    value: cat,
+                                    label: `${cat} (${categoryCount.get(cat) || 0})`
+                                })),
+                                ...(categoryCount.has('未分类') ? [{
+                                    value: '_uncategorized_',
+                                    label: `未分类 (${categoryCount.get('未分类') || 0})`
+                                }] : []),
+                            ]}
+                        />
+
+                        <Dropdown
+                            trigger={['click']}
+                            open={statusFilterOpen}
+                            onOpenChange={setStatusFilterOpen}
+                            dropdownRender={() => (
+                                <div className="library-status-filter-dropdown">
+                                    {STATUS_FILTER_OPTIONS.map((status) => (
+                                        <div key={String(status)} className="library-status-filter-row">
+                                            <div className="library-status-filter-check">
+                                                <Checkbox
+                                                    checked={selectedStatuses.includes(status)}
+                                                    onChange={() => toggleStatusFilterOption(status)}
+                                                    onClick={(e) => e.stopPropagation()}
+                                                />
+                                            </div>
+                                            <div
+                                                className="library-status-filter-label"
+                                                onClick={() => selectOnlyStatusFilterOption(status)}
+                                            >
+                                                {STATUS_FILTER_LABELS[String(status)]}
+                                            </div>
+                                        </div>
+                                    ))}
+                                    <Divider style={{margin: '8px 0'}} />
+                                    <div className="library-status-filter-footer">
+                                        <Space size={8}>
+                                            <Button
+                                                size="small"
+                                                onClick={() => setSelectedStatuses(DEFAULT_STATUS_FILTER_OPTIONS)}
+                                            >
+                                                恢复默认
+                                            </Button>
+                                            <Button
+                                                size="small"
+                                                onClick={selectAllStatusFilterOptions}
+                                            >
+                                                选择全部
+                                            </Button>
+                                        </Space>
                                     </div>
                                 </div>
-                            ))}
-                            <Divider style={{margin: '8px 0'}} />
-                            <div className="library-status-filter-footer">
-                                <Space size={8}>
-                                    <Button
-                                        size="small"
-                                        onClick={() => setSelectedStatuses(DEFAULT_STATUS_FILTER_OPTIONS)}
-                                    >
-                                        恢复默认
-                                    </Button>
-                                    <Button
-                                        size="small"
-                                        onClick={selectAllStatusFilterOptions}
-                                    >
-                                        选择全部
-                                    </Button>
-                                </Space>
-                            </div>
-                        </div>
-                    )}
-                >
-                    <Button
-                        className="library-filter-status-trigger"
-                        icon={<FilterOutlined/>}
-                        style={{width: isMobile ? '100%' : 'auto'}}
-                    >
-                        {statusFilterSummary}
-                    </Button>
-                </Dropdown>
+                            )}
+                        >
+                            <Button
+                                className="library-filter-status-trigger"
+                                icon={<FilterOutlined/>}
+                            >
+                                {statusFilterSummary}
+                            </Button>
+                        </Dropdown>
 
-                {selectedStatuses.length === 1 && selectedStatuses.includes(LibraryItemStatus.TODO) ? (
-                    <Select
-                        className="library-filter-todo-reason"
-                        value={todoReasonFilter}
-                        onChange={setTodoReasonFilter}
-                        style={{width: isMobile ? '100%' : 'auto'}}
-                        options={[
-                            {value: 'all', label: '全部等待二级状态'},
-                            ...todoReasonOptions.map(reason => ({value: reason, label: reason})),
-                        ]}
-                    />
+                        {selectedStatuses.length === 1 && selectedStatuses.includes(LibraryItemStatus.TODO) ? (
+                            <Select
+                                className="library-filter-todo-reason"
+                                value={todoReasonFilter}
+                                onChange={setTodoReasonFilter}
+                                popupMatchSelectWidth={false}
+                                options={[
+                                    {value: 'all', label: '全部等待二级状态'},
+                                    ...todoReasonOptions.map(reason => ({value: reason, label: reason})),
+                                ]}
+                            />
+                        ) : null}
+
+                        <Select
+                            className="library-filter-sort"
+                            value={sortBy}
+                            onChange={setSortBy}
+                            suffixIcon={<SortAscendingOutlined/>}
+                            options={[
+                                {value: 'default', label: '默认排序'},
+                                {value: 'updatedAt', label: '最近更新'},
+                                {value: 'createdAt', label: '添加时间'},
+                                {value: 'title', label: '名称'},
+                                {value: 'score', label: '评分'},
+                                {value: 'index', label: '原始顺序'},
+                            ]}
+                        />
+                    </Flex>
                 ) : null}
-                
-                <Select
-                    className="library-filter-sort"
-                    value={sortBy}
-                    onChange={setSortBy}
-                    style={{width: isMobile ? 'calc(50% - 4px)' : 140}}
-                    suffixIcon={<SortAscendingOutlined/>}
-                    options={[
-                        {value: 'default', label: '默认排序'},
-                        {value: 'updatedAt', label: '最近更新'},
-                        {value: 'createdAt', label: '添加时间'},
-                        {value: 'title', label: '名称'},
-                        {value: 'score', label: '评分'},
-                        {value: 'index', label: '原始顺序'},
-                    ]}
-                />
             </Flex>
-            
+
+            {isMobile ? (
+                <FloatButton
+                    type="primary"
+                    icon={<PlusOutlined/>}
+                    aria-label="添加"
+                    className="library-add-fab"
+                    onClick={() => setShowAdd(true)}
+                />
+            ) : null}
+
             {/* Steam 风格照片墙 */}
             <Spin spinning={loading}>
                 {filteredItems.length === 0 ? (
@@ -2002,6 +2062,19 @@ export default function Library({addr, groupTitle}: LibraryProps) {
                             添加第一个条目
                         </Button> */}
                     </Empty>
+                ) : statusSections ? (
+                    statusSections.map((section) => (
+                        <section key={section.key} className="library-section">
+                            <div className="library-section-header">
+                                <span className="library-card-dot" style={{background: section.color}}/>
+                                <span className="library-section-title">{section.label}</span>
+                                <span className="library-section-count">{section.items.length}</span>
+                            </div>
+                            <div className="library-grid">
+                                {section.items.map(item => renderCard(item, true))}
+                            </div>
+                        </section>
+                    ))
                 ) : (
                     <div className="library-grid">
                         {filteredItems.map(item => renderCard(item))}
@@ -2210,7 +2283,7 @@ export default function Library({addr, groupTitle}: LibraryProps) {
                                     justifyContent: 'space-between',
                                     alignItems: isMobile ? 'stretch' : 'center',
                                     padding: '12px 16px',
-                                    background: '#fafafa',
+                                    background: 'var(--lib-surface-2)',
                                     borderRadius: 8,
                                     gap: isMobile ? 8 : 0,
                                 }}
@@ -2362,7 +2435,97 @@ export default function Library({addr, groupTitle}: LibraryProps) {
                     setShowDetail(false);
                     setDetailItem(null);
                 }}
+                openAddNoteOnShow={detailOpenAddNote}
+                onAddNoteOpened={() => setDetailOpenAddNote(false)}
             />
+
+            {/* 移动端长按快捷操作 */}
+            <Drawer
+                className="library-action-sheet"
+                placement="bottom"
+                height="auto"
+                open={!!actionSheetItem}
+                onClose={() => setActionSheetItem(null)}
+                title={actionSheetItem?.title}
+                closable={false}
+            >
+                {actionSheetItem ? (() => {
+                    const sheetItem = actionSheetItem;
+                    const sheetStatus = getItemDerivedMeta(sheetItem).statusSnapshot.status;
+                    const closeSheet = () => setActionSheetItem(null);
+                    return (
+                        <Flex vertical gap={12}>
+                            <Flex gap={8}>
+                                <Button
+                                    type="primary"
+                                    icon={<EditOutlined/>}
+                                    style={{flex: 1}}
+                                    onClick={() => {
+                                        closeSheet();
+                                        openDetailWithNewNote(sheetItem);
+                                    }}
+                                >
+                                    记备注
+                                </Button>
+                                <Button
+                                    style={{flex: 1}}
+                                    onClick={() => {
+                                        closeSheet();
+                                        setDetailItem(sheetItem);
+                                        setShowDetail(true);
+                                    }}
+                                >
+                                    查看详情
+                                </Button>
+                            </Flex>
+                            <div>
+                                <Text type="secondary" style={{fontSize: 12}}>切换状态</Text>
+                                <div className="library-action-sheet-status-grid">
+                                    {Object.entries(LibraryStatusNames).map(([status, name]) => {
+                                        const numStatus = Number(status) as LibraryItemStatus;
+                                        const isCurrent = sheetStatus === numStatus;
+                                        return (
+                                            <Button
+                                                key={status}
+                                                className={isCurrent ? 'is-current' : undefined}
+                                                onClick={() => {
+                                                    closeSheet();
+                                                    handleQuickStatusChange(sheetItem, numStatus);
+                                                }}
+                                            >
+                                                <span className="library-card-dot" style={{background: LibraryStatusColors[numStatus]}}/>
+                                                {name}
+                                            </Button>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                            <Flex gap={8}>
+                                <Button
+                                    style={{flex: 1}}
+                                    icon={<PlusOutlined/>}
+                                    onClick={() => {
+                                        closeSheet();
+                                        openQuickNewRoundModal(sheetItem);
+                                    }}
+                                >
+                                    新周目
+                                </Button>
+                                <Button
+                                    style={{flex: 1}}
+                                    icon={<StarFilled style={{color: sheetItem.extra.isFavorite ? '#faad14' : undefined}}/>}
+                                    onClick={() => {
+                                        closeSheet();
+                                        handleToggleFavorite(sheetItem);
+                                    }}
+                                >
+                                    {sheetItem.extra.isFavorite ? '取消收藏' : '收藏'}
+                                </Button>
+                            </Flex>
+                        </Flex>
+                    );
+                })() : null}
+            </Drawer>
 
             <Modal
                 title={LIBRARY_GUIDE_MODAL_TITLE}
@@ -2385,9 +2548,9 @@ export default function Library({addr, groupTitle}: LibraryProps) {
                                 key={item.key}
                                 style={{
                                     padding: '10px 12px',
-                                    border: '1px solid #f0f0f0',
+                                    border: '1px solid var(--lib-border)',
                                     borderRadius: 10,
-                                    background: item.key === 'wait_expired' ? '#fff7e6' : '#fafafa',
+                                    background: item.key === 'wait_expired' ? 'var(--lib-warn-bg)' : 'var(--lib-surface-2)',
                                 }}
                             >
                                 <Space size={8} wrap>
@@ -2429,8 +2592,8 @@ export default function Library({addr, groupTitle}: LibraryProps) {
                                 style={{
                                     padding: '12px 14px',
                                     borderRadius: 10,
-                                    border: '1px solid #f0f0f0',
-                                    background: '#fafafa',
+                                    border: '1px solid var(--lib-border)',
+                                    background: 'var(--lib-surface-2)',
                                 }}
                             >
                                 <Space size={8} wrap style={{marginBottom: 6}}>
@@ -2502,5 +2665,6 @@ export default function Library({addr, groupTitle}: LibraryProps) {
                 ) : <Empty description="评分详情加载失败" image={Empty.PRESENTED_IMAGE_SIMPLE} />}
             </Modal>
         </div>
+        </ConfigProvider>
     );
 }

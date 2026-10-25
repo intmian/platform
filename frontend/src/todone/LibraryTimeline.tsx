@@ -20,6 +20,7 @@ import {
     CheckCircleFilled,
     ClockCircleFilled,
     DownloadOutlined,
+    FilterOutlined,
     PauseCircleFilled,
     PlusCircleFilled,
     PlayCircleFilled,
@@ -45,6 +46,7 @@ import {
     groupTimelineByYear,
     isLibraryAutoRoundStartComment,
     isWaitExpired,
+    LIBRARY_SCORE_LEVEL_COLORS,
 } from './libraryUtil';
 import {useIsMobile} from '../common/hooksv2';
 import LibraryLoadingImage from './LibraryLoadingImage';
@@ -57,13 +59,6 @@ const WAIT_EXPIRED_TIMELINE_COLOR = LibraryStatusColors[LibraryItemStatus.GIVE_U
 const LIBRARY_PLACEHOLDER_TEXT_WIDTH_RATIO = 0.1;
 const LIBRARY_PLACEHOLDER_PADDING_WIDTH_RATIO = 0.086;
 const SCORE_GRADIENT_LEVELS = [5, 4, 3, 2, 1] as const;
-const SCORE_GRADIENT_COLORS: Record<number, string> = {
-    1: '#ff7875',
-    2: '#ffa940',
-    3: '#fadb14',
-    4: '#73d13d',
-    5: '#40a9ff',
-};
 
 interface DisplayTimelineEntry extends TimelineEntry {
     mergedStartStatus?: LibraryItemStatus.DONE | LibraryItemStatus.GIVE_UP;
@@ -238,6 +233,7 @@ export default function LibraryTimeline({visible, items, onClose, onItemClick}: 
     }, [allEntries, categoryMap]);
 
     const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+    const [filtersOpen, setFiltersOpen] = useState(false);
     
     // 按年份分组
     const entriesByYear = useMemo(() => groupTimelineByYear(allEntries), [allEntries]);
@@ -469,6 +465,9 @@ export default function LibraryTimeline({visible, items, onClose, onItemClick}: 
     );
     const allStatusChecked = selectedStatuses.length === allStatusValues.length;
     const statusIndeterminate = selectedStatuses.length > 0 && selectedStatuses.length < allStatusValues.length;
+    const filterSummaryText = viewMode === 'timeline'
+        ? `分类 ${selectedCategoriesFinal.length}/${categoryOptions.length} · 状态 ${selectedStatuses.length}/${allStatusValues.length}`
+        : `分类 ${selectedCategoriesFinal.length}/${categoryOptions.length}`;
     const exportPreviewEntries = useMemo(
         () => displayEntries.filter((entry) => (
             !excludedExportEntryKeys.has(buildTimelineEntryKey(entry))
@@ -913,7 +912,11 @@ export default function LibraryTimeline({visible, items, onClose, onItemClick}: 
                         <div className="library-score-gradient-row" key={level}>
                             <div
                                 className="library-score-gradient-label"
-                                style={{background: SCORE_GRADIENT_COLORS[level]}}
+                                style={{
+                                    color: LIBRARY_SCORE_LEVEL_COLORS[level],
+                                    background: `${LIBRARY_SCORE_LEVEL_COLORS[level]}14`,
+                                    boxShadow: `inset 3px 0 0 ${LIBRARY_SCORE_LEVEL_COLORS[level]}`,
+                                }}
                             >
                                 {label}
                             </div>
@@ -978,64 +981,86 @@ export default function LibraryTimeline({visible, items, onClose, onItemClick}: 
                                 ...years.map(year => ({value: year, label: `${year}年`})),
                             ]}
                         />
-
-                        <Checkbox
-                            checked={allCategoryChecked}
-                            indeterminate={categoryIndeterminate}
-                            onChange={(event) => {
-                                if (event.target.checked) {
-                                    setSelectedCategories([...categoryOptions]);
-                                } else {
-                                    setSelectedCategories([]);
-                                }
-                            }}
+                        <Button
+                            icon={<FilterOutlined/>}
+                            type={filtersOpen ? 'primary' : 'default'}
+                            ghost={filtersOpen}
+                            onClick={() => setFiltersOpen((open) => !open)}
                         >
-                            分类全选
-                        </Checkbox>
-
-                        <Checkbox
-                            checked={allStatusChecked}
-                            indeterminate={statusIndeterminate}
-                            onChange={(event) => {
-                                if (event.target.checked) {
-                                    setSelectedStatuses([...allStatusValues]);
-                                } else {
-                                    setSelectedStatuses([]);
-                                }
-                            }}
-                        >
-                            状态全选
-                        </Checkbox>
+                            筛选
+                            <Text type="secondary" style={{fontSize: 12, marginInlineStart: 4}}>
+                                {filterSummaryText}
+                            </Text>
+                        </Button>
                     </Flex>
 
-                    <Checkbox.Group
-                        value={selectedCategoriesFinal}
-                        onChange={(values) => setSelectedCategories(values as string[])}
-                    >
-                        <Flex gap={8} wrap="wrap">
-                            {categoryOptions.map((value) => (
-                                <Checkbox key={value} value={value}>
-                                    {getCategoryLabel(value)}
+                    {/* 分类/状态复选默认折叠 */}
+                    {filtersOpen ? (
+                        <div className="library-timeline-filter-panel">
+                            <Flex gap={12} wrap="wrap" align="center" style={{marginBottom: 8}}>
+                                <Checkbox
+                                    checked={allCategoryChecked}
+                                    indeterminate={categoryIndeterminate}
+                                    onChange={(event) => {
+                                        if (event.target.checked) {
+                                            setSelectedCategories([...categoryOptions]);
+                                        } else {
+                                            setSelectedCategories([]);
+                                        }
+                                    }}
+                                >
+                                    分类全选
                                 </Checkbox>
-                            ))}
-                        </Flex>
-                    </Checkbox.Group>
+                                {viewMode === 'timeline' ? (
+                                    <Checkbox
+                                        checked={allStatusChecked}
+                                        indeterminate={statusIndeterminate}
+                                        onChange={(event) => {
+                                            if (event.target.checked) {
+                                                setSelectedStatuses([...allStatusValues]);
+                                            } else {
+                                                setSelectedStatuses([]);
+                                            }
+                                        }}
+                                    >
+                                        状态全选
+                                    </Checkbox>
+                                ) : null}
+                            </Flex>
 
-                    {viewMode === 'timeline' ? (
-                        <>
                             <Checkbox.Group
-                                value={selectedStatuses}
-                                onChange={(values) => setSelectedStatuses(values as TimelineStatusOption[])}
+                                value={selectedCategoriesFinal}
+                                onChange={(values) => setSelectedCategories(values as string[])}
                             >
                                 <Flex gap={8} wrap="wrap">
-                                    {statusOptions.map((option) => (
-                                        <Checkbox key={String(option.value)} value={option.value}>
-                                            {option.label}
+                                    {categoryOptions.map((value) => (
+                                        <Checkbox key={value} value={value}>
+                                            {getCategoryLabel(value)}
                                         </Checkbox>
                                     ))}
                                 </Flex>
                             </Checkbox.Group>
 
+                            {viewMode === 'timeline' ? (
+                                <Checkbox.Group
+                                    value={selectedStatuses}
+                                    onChange={(values) => setSelectedStatuses(values as TimelineStatusOption[])}
+                                    style={{marginTop: 10}}
+                                >
+                                    <Flex gap={8} wrap="wrap">
+                                        {statusOptions.map((option) => (
+                                            <Checkbox key={String(option.value)} value={option.value}>
+                                                {option.label}
+                                            </Checkbox>
+                                        ))}
+                                    </Flex>
+                                </Checkbox.Group>
+                            ) : null}
+                        </div>
+                    ) : null}
+
+                    {viewMode === 'timeline' ? (
+                        <>
                             <Space size={8}>
                                 {[
                                     LibraryItemStatus.DOING,

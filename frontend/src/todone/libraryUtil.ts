@@ -1023,14 +1023,43 @@ export function getScoreDisplay(score: number, plus?: boolean, sub?: boolean): s
  */
 export function getScoreStarColor(score: number): string {
     const value = Math.max(1, Math.min(5, score || 1));
-    const scoreStarColorMap: Record<number, string> = {
-        1: '#ffffff',
-        2: '#52c41a',
-        3: '#1677ff',
-        4: '#722ed1',
-        5: '#faad14',
-    };
-    return scoreStarColorMap[value] || '#faad14';
+    return LIBRARY_SCORE_LEVEL_COLORS[value] || LIBRARY_SCORE_LEVEL_COLORS[5];
+}
+
+/**
+ * 评分等级色（零→满，稀有度色阶），卡片星标、详情、评分梯度共用
+ */
+export const LIBRARY_SCORE_LEVEL_COLORS: Record<number, string> = {
+    1: '#8c8c8c',
+    2: '#52c41a',
+    3: '#1677ff',
+    4: '#722ed1',
+    5: '#faad14',
+};
+
+/**
+ * 同一色阶的浅色版本，用于深色背景（详情头部）
+ */
+export const LIBRARY_SCORE_LEVEL_COLORS_ON_DARK: Record<number, string> = {
+    1: '#d9d9d9',
+    2: '#95de64',
+    3: '#69b1ff',
+    4: '#c39bf5',
+    5: '#ffd666',
+};
+
+const LIBRARY_CATEGORY_DOT_COLORS = ['#1677ff', '#13c2c2', '#52c41a', '#fa8c16', '#eb2f96', '#722ed1', '#faad14', '#2f54eb'];
+
+/**
+ * 分类色点：按分类名稳定取色
+ */
+export function getLibraryCategoryDotColor(category: string): string {
+    let hash = 0;
+    for (let i = 0; i < category.length; i++) {
+        hash = ((hash << 5) - hash) + category.charCodeAt(i);
+        hash = hash & hash;
+    }
+    return LIBRARY_CATEGORY_DOT_COLORS[Math.abs(hash) % LIBRARY_CATEGORY_DOT_COLORS.length];
 }
 
 /**
@@ -1248,6 +1277,24 @@ export function formatDate(dateStr: string): string {
 export function formatDateTime(dateStr: string): string {
     const date = new Date(dateStr);
     return `${formatDate(dateStr)} ${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
+}
+
+/**
+ * 简短日期：当年省略年份，如 2月18日；跨年为 2025年2月18日
+ */
+export function formatShortDate(dateStr: string): string {
+    const date = new Date(dateStr);
+    if (Number.isNaN(date.getTime())) return '-';
+    const monthDay = `${date.getMonth() + 1}月${date.getDate()}日`;
+    return date.getFullYear() === new Date().getFullYear() ? monthDay : `${date.getFullYear()}年${monthDay}`;
+}
+
+/**
+ * 简短日期范围：2月18日 – 5月29日
+ */
+export function formatShortDateRange(startStr: string, endStr?: string): string {
+    const start = formatShortDate(startStr);
+    return endStr ? `${start} – ${formatShortDate(endStr)}` : `${start} 起`;
 }
 
 /**

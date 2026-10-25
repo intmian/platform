@@ -53,7 +53,11 @@ Last verified: 2026-07-27 (score-detail migration and lazy-loading/edit flow pas
 8. Mobile layout regression:
    - photo wall should stay at fixed 2 columns on mobile viewport.
    - opening detail drawer on mobile should not show right-side blank strip / horizontal overflow.
-   - detail `体验记录` header should keep `体验记录` on one line; count and controls may wrap to the next line instead of squeezing the title vertically.
+   - detail `体验记录` header should keep `体验记录` on one line; controls may wrap to the next line instead of squeezing the title vertically.
+   - first screen on mobile: title row + search/`筛选` row only, then the card grid; `添加` is the floating button.
+   - long-press a card (touch) opens `.library-action-sheet`, and the tap that ends the long press must not also open the detail drawer.
+   - detail header actions must not push the close button off-screen at 360px width (icon-only on mobile).
+   - round header on mobile: round name stays on one line, date range on the second line, actions behind `...`.
    - hover/touch visual regression: real-cover card shine should stay continuous without visible hard edge / cutoff band.
 9. Export content regression:
    - opening detail `分享预览` should load only `mainScoreID` detail, disable export until loaded, and include its main evaluation text in the exported card.
@@ -138,7 +142,7 @@ Last verified: 2026-07-27 (score-detail migration and lazy-loading/edit flow pas
     - in `隐藏`, note rows disappear
     - in `显示`, each note row renders content plus edit/delete/time controls
 14. Detail quick note entry:
-    - click `体验记录` header `新增最新备注`
+    - click `体验记录` header `记备注`
     - verify it opens the same `添加备注` modal as the current-round footer button
     - submit and verify `createLibraryNote` writes a D1 note for the current round UUID
     - verify `Task.Note` and Library `updatedAt` are unchanged

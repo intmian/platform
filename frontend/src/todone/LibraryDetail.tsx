@@ -6,8 +6,6 @@ import {
     Col,
     Collapse,
     DatePicker,
-    Descriptions,
-    Divider,
     Dropdown,
     Drawer,
     Empty,
@@ -77,6 +75,8 @@ import {
     getCurrentTodoReason,
     createLibraryScoreID,
     formatDateTime,
+    formatShortDate,
+    formatShortDateRange,
     getDisplayStatusInfo,
     getLatestWaitReason,
     getLibraryCoverPaletteByTitle,
@@ -86,6 +86,7 @@ import {
     getLibraryPreviewCoverUrl,
     getScoreDisplay,
     getScoreStarColor,
+    LIBRARY_SCORE_LEVEL_COLORS_ON_DARK,
     getScoreText,
     isUpdatedAtDrivenLogType,
     LIBRARY_WAIT_EXPIRED_RULE_TEXT,
@@ -296,9 +297,12 @@ interface LibraryDetailProps {
     onSave: (item: LibraryItemFull) => Promise<boolean>;
     onToggleFavorite?: (item: LibraryItemFull) => void;
     onDelete?: (item: LibraryItemFull) => void;
+    // 打开详情时直接弹出新增备注（列表快捷操作）
+    openAddNoteOnShow?: boolean;
+    onAddNoteOpened?: () => void;
 }
 
-export default function LibraryDetail({visible, item, noteContext, categories = [], todoReasonOptions = [], onClose, onSave, onToggleFavorite, onDelete}: LibraryDetailProps) {
+export default function LibraryDetail({visible, item, noteContext, categories = [], todoReasonOptions = [], onClose, onSave, onToggleFavorite, onDelete, openAddNoteOnShow, onAddNoteOpened}: LibraryDetailProps) {
     const isMobile = useIsMobile();
     const [editMode, setEditMode] = useState(false);
     const [localItem, setLocalItem] = useState<LibraryItemFull | null>(null);
@@ -322,6 +326,13 @@ export default function LibraryDetail({visible, item, noteContext, categories = 
     const [scoreAiDigest, setScoreAiDigest] = useState<LibraryReviewNotesDigestResp | null>(null);
     const [scoreAiLoading, setScoreAiLoading] = useState(false);
     const [showAddNote, setShowAddNote] = useState(false);
+
+    useEffect(() => {
+        if (visible && openAddNoteOnShow) {
+            setShowAddNote(true);
+            onAddNoteOpened?.();
+        }
+    }, [visible, openAddNoteOnShow, onAddNoteOpened]);
     const [noteContent, setNoteContent] = useState('');
     const [addNoteVoiceRecording, setAddNoteVoiceRecording] = useState(false);
     const [addNoteVoicePreview, setAddNoteVoicePreview] = useState('');
@@ -1489,6 +1500,13 @@ export default function LibraryDetail({visible, item, noteContext, categories = 
             return false;
         };
 
+        // 当前状态下最常用的下一步
+        const recommendedStatus = currentStatus === LibraryItemStatus.DOING
+            ? LibraryItemStatus.DONE
+            : (currentStatus === LibraryItemStatus.DONE || currentStatus === LibraryItemStatus.ARCHIVED)
+                ? undefined
+                : LibraryItemStatus.DOING;
+
         const buttons = [
             {status: LibraryItemStatus.TODO, icon: <ClockCircleOutlined/>, label: '等待'},
             {status: LibraryItemStatus.DOING, icon: <PlayCircleOutlined/>, label: '开始'},
@@ -1499,14 +1517,15 @@ export default function LibraryDetail({visible, item, noteContext, categories = 
         ];
         
         return (
-            <Space wrap>
+            <Space wrap size={[6, 6]}>
                 {buttons.map(btn => {
                     const disabled = isStatusButtonDisabled(btn.status);
                     return (
                         <Button
                             key={btn.status}
                             disabled={disabled}
-                            type={currentStatus === btn.status ? 'primary' : 'default'}
+                            className={currentStatus === btn.status ? 'library-status-btn is-current' : 'library-status-btn'}
+                            type={recommendedStatus === btn.status ? 'primary' : 'default'}
                             icon={btn.icon}
                             onClick={() => {
                                 if (btn.status === LibraryItemStatus.WAIT || btn.status === LibraryItemStatus.TODO) {
@@ -1656,7 +1675,7 @@ export default function LibraryDetail({visible, item, noteContext, categories = 
                             <Button
                                 type="text"
                                 size="small"
-                                danger
+                                className="library-quiet-danger"
                                 icon={<DeleteOutlined/>}
                             />
                         </Popconfirm>
@@ -1666,9 +1685,11 @@ export default function LibraryDetail({visible, item, noteContext, categories = 
                             icon={<ClockCircleOutlined/>}
                             onClick={() => openLogTimeEditor(roundIndex, logIndex, log.time)}
                         />
-                        <Text type="secondary" style={{fontSize: 11, whiteSpace: 'nowrap'}}>
-                            {formatDateTime(log.time)}
-                        </Text>
+                        <Tooltip title={formatDateTime(log.time)}>
+                            <Text type="secondary" style={{fontSize: 12, whiteSpace: 'nowrap'}}>
+                                {formatShortDate(log.time)}
+                            </Text>
+                        </Tooltip>
                     </Space>
                 </Flex>
             </Timeline.Item>
@@ -1710,12 +1731,14 @@ export default function LibraryDetail({visible, item, noteContext, categories = 
                             cancelText="取消"
                             okButtonProps={{danger: true}}
                         >
-                            <Button type="text" size="small" danger icon={<DeleteOutlined/>}/>
+                            <Button type="text" size="small" className="library-quiet-danger" icon={<DeleteOutlined/>}/>
                         </Popconfirm>
                         <Button type="text" size="small" icon={<ClockCircleOutlined/>} onClick={() => openNoteTimeEditor(note)}/>
-                        <Text type="secondary" style={{fontSize: 11, whiteSpace: 'nowrap'}}>
-                            {formatDateTime(note.EventTime)}
-                        </Text>
+                        <Tooltip title={formatDateTime(note.EventTime)}>
+                            <Text type="secondary" style={{fontSize: 12, whiteSpace: 'nowrap'}}>
+                                {formatShortDate(note.EventTime)}
+                            </Text>
+                        </Tooltip>
                     </Space>
                 </Flex>
             </Timeline.Item>
@@ -1729,9 +1752,9 @@ export default function LibraryDetail({visible, item, noteContext, categories = 
     ) => {
         const firstNote = entry.notes[0];
         const lastNote = entry.notes[entry.notes.length - 1];
-        const timeRangeText = entry.notes.length > 1
-            ? `${formatDateTime(firstNote.EventTime)} - ${formatDateTime(lastNote.EventTime)}`
-            : formatDateTime(firstNote.EventTime);
+        const firstDate = formatShortDate(firstNote.EventTime);
+        const lastDate = formatShortDate(lastNote.EventTime);
+        const timeRangeText = firstDate === lastDate ? firstDate : `${firstDate} – ${lastDate}`;
 
         return (
             <Timeline.Item key={`${roundIndex}-note-group-${displayIndex}`} color="#1890ff">
@@ -1754,61 +1777,99 @@ export default function LibraryDetail({visible, item, noteContext, categories = 
             <Collapse.Panel
                 key={roundIndex}
                 header={
-                    <Space>
-                        <Text strong>{round.name}</Text>
-                        <Tooltip title="重命名">
-                            <Button
-                                type="text"
-                                size="small"
-                                icon={<EditOutlined/>}
-                                aria-label="重命名周目"
-                                onClick={(event) => {
-                                    event.stopPropagation();
-                                    openRenameRound(roundIndex);
+                    <div className="library-round-header">
+                        <div className="library-round-header-main">
+                            <Text strong className="library-round-name">{round.name}</Text>
+                            {isCurrentRound && <Tag color="blue" bordered={false} style={{marginInlineEnd: 0}}>当前</Tag>}
+                            <span className="library-round-date">{formatShortDateRange(round.startTime, round.endTime)}</span>
+                        </div>
+                        {isMobile ? (
+                            <Dropdown
+                                trigger={['click']}
+                                placement="bottomRight"
+                                menu={{
+                                    items: [
+                                        {key: 'rename', icon: <EditOutlined/>, label: '重命名'},
+                                        {key: 'startTime', icon: <ClockCircleOutlined/>, label: '调整开始时间'},
+                                        {key: 'delete', icon: <DeleteOutlined/>, label: '删除周目', danger: true, disabled: isLastRound},
+                                    ],
+                                    onClick: ({key, domEvent}) => {
+                                        domEvent.stopPropagation();
+                                        if (key === 'rename') openRenameRound(roundIndex);
+                                        if (key === 'startTime') openRoundStartTimeEditor(roundIndex);
+                                        if (key === 'delete') {
+                                            Modal.confirm({
+                                                title: '删除该周目？',
+                                                content: '会删除该周目的全部日志，且不可恢复',
+                                                okText: '删除',
+                                                okButtonProps: {danger: true},
+                                                cancelText: '取消',
+                                                onOk: () => handleDeleteRound(roundIndex),
+                                            });
+                                        }
+                                    },
                                 }}
-                            />
-                        </Tooltip>
-                        <Tooltip title="调整开始时间">
-                            <Button
-                                type="text"
-                                size="small"
-                                icon={<ClockCircleOutlined/>}
-                                aria-label="调整周目开始时间"
-                                onClick={(event) => {
-                                    event.stopPropagation();
-                                    openRoundStartTimeEditor(roundIndex);
-                                }}
-                            />
-                        </Tooltip>
-                        <Popconfirm
-                            title="删除该周目？"
-                            description={isLastRound ? '至少保留一个周目' : '会删除该周目的全部日志，且不可恢复'}
-                            onConfirm={() => handleDeleteRound(roundIndex)}
-                            okText="删除"
-                            cancelText="取消"
-                            okButtonProps={{danger: true}}
-                            disabled={isLastRound}
-                        >
-                            <Tooltip title="删除周目">
+                            >
                                 <Button
                                     type="text"
                                     size="small"
-                                    danger
-                                    disabled={isLastRound}
-                                    icon={<DeleteOutlined/>}
-                                    aria-label="删除周目"
-                                    onClick={(event) => {
-                                        event.stopPropagation();
-                                    }}
+                                    icon={<EllipsisOutlined/>}
+                                    aria-label="周目操作"
+                                    onClick={(event) => event.stopPropagation()}
                                 />
-                            </Tooltip>
-                        </Popconfirm>
-                        {isCurrentRound && <Tag color="blue">当前</Tag>}
-                        <Text type="secondary" style={{fontSize: 12}}>
-                            {formatDateTime(round.startTime)}
-                            {round.endTime && ` - ${formatDateTime(round.endTime)}`}
-                        </Text>
-                    </Space>
+                            </Dropdown>
+                        ) : (
+                            <Space size={0} className="library-round-actions">
+                                <Tooltip title="重命名">
+                                    <Button
+                                        type="text"
+                                        size="small"
+                                        icon={<EditOutlined/>}
+                                        aria-label="重命名周目"
+                                        onClick={(event) => {
+                                            event.stopPropagation();
+                                            openRenameRound(roundIndex);
+                                        }}
+                                    />
+                                </Tooltip>
+                                <Tooltip title="调整开始时间">
+                                    <Button
+                                        type="text"
+                                        size="small"
+                                        icon={<ClockCircleOutlined/>}
+                                        aria-label="调整周目开始时间"
+                                        onClick={(event) => {
+                                            event.stopPropagation();
+                                            openRoundStartTimeEditor(roundIndex);
+                                        }}
+                                    />
+                                </Tooltip>
+                                <Popconfirm
+                                    title="删除该周目？"
+                                    description={isLastRound ? '至少保留一个周目' : '会删除该周目的全部日志，且不可恢复'}
+                                    onConfirm={() => handleDeleteRound(roundIndex)}
+                                    okText="删除"
+                                    cancelText="取消"
+                                    okButtonProps={{danger: true}}
+                                    disabled={isLastRound}
+                                >
+                                    <Tooltip title="删除周目">
+                                        <Button
+                                            type="text"
+                                            size="small"
+                                            className="library-quiet-danger"
+                                            disabled={isLastRound}
+                                            icon={<DeleteOutlined/>}
+                                            aria-label="删除周目"
+                                            onClick={(event) => {
+                                                event.stopPropagation();
+                                            }}
+                                        />
+                                    </Tooltip>
+                                </Popconfirm>
+                            </Space>
+                        )}
+                    </div>
                 }
             >
                 <Timeline>
@@ -1822,12 +1883,12 @@ export default function LibraryDetail({visible, item, noteContext, categories = 
                 </Timeline>
                 
                 {isCurrentRound && (
-                    <Flex style={{marginTop: 8}} gap={8} wrap="wrap">
+                    <Flex style={{marginTop: 8}} gap={8} wrap={isMobile ? 'nowrap' : 'wrap'}>
                         <Button
                             size="small"
                             icon={<StarOutlined/>}
                             onClick={() => void handleOpenAddScore()}
-                            style={isMobile ? {flex: '1 1 calc(50% - 4px)'} : undefined}
+                            style={isMobile ? {flex: '1 1 0'} : undefined}
                         >
                             添加评分
                         </Button>
@@ -1836,16 +1897,16 @@ export default function LibraryDetail({visible, item, noteContext, categories = 
                             icon={<EditOutlined/>}
                             disabled={coreSaving || noteSaving}
                             onClick={() => setShowAddNote(true)}
-                            style={isMobile ? {flex: '1 1 calc(50% - 4px)'} : undefined}
+                            style={isMobile ? {flex: '1 1 0'} : undefined}
                         >
                             添加备注
                         </Button>
                         <Button
                             size="small"
                             onClick={handleSetTimelineCutoff}
-                            style={isMobile ? {flex: '1 1 100%'} : undefined}
+                            style={isMobile ? {flex: '1 1 0'} : undefined}
                         >
-                            不加入时间线（断点）
+                            {isMobile ? '设断点' : '不加入时间线（断点）'}
                         </Button>
                     </Flex>
                 )}
@@ -1867,6 +1928,21 @@ export default function LibraryDetail({visible, item, noteContext, categories = 
     const useMobileSplitLayout = isMobile && !editMode;
     const remarkText = (localItem.extra.remark || '').trim();
     const showRemarkClamp = remarkText.length > 0;
+    const currentStatusValue = getCurrentStatus(localItem.extra);
+    const statusReason = currentStatusValue === LibraryItemStatus.TODO
+        ? getCurrentTodoReason(localItem.extra)
+        : currentStatusValue === LibraryItemStatus.WAIT
+            ? getLatestWaitReason(localItem.extra)
+            : '';
+    const currentRoundName = localItem.extra.rounds[localItem.extra.currentRound]?.name || '';
+    // 空字段直接不显示
+    const heroMetaParts = [
+        localItem.extra.category,
+        localItem.extra.author,
+        localItem.extra.year ? String(localItem.extra.year) : '',
+        localItem.extra.rounds.length > 1 ? currentRoundName : '',
+        `${formatShortDate(localItem.extra.createdAt)}加入`,
+    ].filter((part): part is string => !!part && part.trim() !== '');
     const renderMoreActions = () => (
         <Dropdown
             trigger={['click']}
@@ -1882,6 +1958,15 @@ export default function LibraryDetail({visible, item, noteContext, categories = 
                         label: '图片库',
                         icon: <EyeOutlined/>,
                     },
+                    ...(onDelete ? [
+                        {type: 'divider' as const},
+                        {
+                            key: 'delete',
+                            label: '删除此条目',
+                            icon: <DeleteOutlined/>,
+                            danger: true,
+                        },
+                    ] : []),
                 ],
                 onClick: ({key}) => {
                     if (key === 'favorite' && onToggleFavorite) {
@@ -1890,12 +1975,23 @@ export default function LibraryDetail({visible, item, noteContext, categories = 
                     }
                     if (key === 'imageLibrary') {
                         setShowRawCoverModal(true);
+                        return;
+                    }
+                    if (key === 'delete' && onDelete) {
+                        Modal.confirm({
+                            title: '确认删除',
+                            content: `确认要删除《${localItem.title}》吗？此操作不可恢复。`,
+                            okText: '删除',
+                            okButtonProps: {danger: true},
+                            cancelText: '取消',
+                            onOk: () => onDelete(localItem),
+                        });
                     }
                 },
             }}
         >
-            <Button size={actionButtonSize} icon={<EllipsisOutlined/>}>
-                更多
+            <Button size={actionButtonSize} icon={<EllipsisOutlined/>} aria-label="更多">
+                {isMobile ? null : '更多'}
             </Button>
         </Dropdown>
     );
@@ -1904,17 +2000,19 @@ export default function LibraryDetail({visible, item, noteContext, categories = 
             <Button
                 size={actionButtonSize}
                 icon={<ReloadOutlined/>}
+                aria-label="刷新"
                 onClick={handleRefreshUpdatedAt}
             >
-                刷新
+                {isMobile ? null : '刷新'}
             </Button>
             <Button
                 size={actionButtonSize}
                 icon={<ShareAltOutlined/>}
                 loading={shareLoading}
+                aria-label="分享"
                 onClick={() => void handleOpenShare()}
             >
-                分享
+                {isMobile ? null : '分享'}
             </Button>
             {editMode ? (
                 <>
@@ -1952,11 +2050,11 @@ export default function LibraryDetail({visible, item, noteContext, categories = 
     return (
         <Drawer
             className="library-detail-drawer"
-            title={
+            title={editMode ? (
                 <span className="library-detail-drawer-title" title={displayTitle || '未命名'}>
                     {displayTitle || '未命名'}
                 </span>
-            }
+            ) : null}
             placement="right"
             width={isMobile ? '100vw' : 600}
             styles={isMobile ? {header: {paddingInline: 12}, body: {paddingInline: 12, overflowX: 'hidden'}} : undefined}
@@ -1977,25 +2075,9 @@ export default function LibraryDetail({visible, item, noteContext, categories = 
             }}
             onClose={onClose}
             open={visible}
-            extra={isMobile ? undefined : drawerActions}
-            footer={
-                onDelete && (
-                    <Flex justify="flex-start">
-                        <Popconfirm
-                            title="确认删除"
-                            description="删除后无法恢复，确定要删除吗？"
-                            onConfirm={() => localItem && onDelete(localItem)}
-                            okText="删除"
-                            cancelText="取消"
-                            okButtonProps={{danger: true}}
-                        >
-                            <Button danger>删除此条目</Button>
-                        </Popconfirm>
-                    </Flex>
-                )
-            }
+            extra={isMobile && editMode ? undefined : drawerActions}
         >
-            {isMobile ? (
+            {isMobile && editMode ? (
                 <div style={{marginBottom: 12}}>
                     <Flex align="flex-start" justify="space-between" gap={8}>
                         <Space size={8} wrap style={{flex: 1}}>
@@ -2006,8 +2088,9 @@ export default function LibraryDetail({visible, item, noteContext, categories = 
                 </div>
             ) : null}
             {/* 封面和基本信息 */}
-            <Row gutter={16} wrap={!useMobileSplitLayout}>
-                <Col span={useMobileSplitLayout ? 10 : (isMobile ? 24 : 8)}>
+            {editMode ? (
+                <Row gutter={16} wrap={!useMobileSplitLayout}>
+                    <Col span={useMobileSplitLayout ? 10 : (isMobile ? 24 : 8)}>
                     <div
                         ref={detailCoverRef}
                         style={{
@@ -2017,8 +2100,8 @@ export default function LibraryDetail({visible, item, noteContext, categories = 
                             aspectRatio: '2 / 3',
                             borderRadius: 8,
                             overflow: 'hidden',
-                            background: '#f5f5f5',
-                            border: '1px solid #d9d9d9',
+                            background: 'var(--lib-surface-2)',
+                            border: '1px solid var(--lib-border)',
                         }}
                     >
                         <LibraryLoadingImage
@@ -2061,9 +2144,8 @@ export default function LibraryDetail({visible, item, noteContext, categories = 
                             )}
                         />
                     </div>
-                </Col>
-                <Col span={useMobileSplitLayout ? 14 : (isMobile ? 24 : 16)} style={{marginTop: useMobileSplitLayout ? 0 : (isMobile ? 12 : 0)}}>
-                    {editMode ? (
+                    </Col>
+                    <Col span={useMobileSplitLayout ? 14 : (isMobile ? 24 : 16)} style={{marginTop: useMobileSplitLayout ? 0 : (isMobile ? 12 : 0)}}>
                         <Form form={form} layout="vertical" size="small">
                             <Form.Item name="title" label="名称" rules={[{required: true}]}>
                                 <Input/>
@@ -2119,122 +2201,144 @@ export default function LibraryDetail({visible, item, noteContext, categories = 
                                 </Space>
                             </Form.Item>
                         </Form>
-                    ) : (
-                        <Descriptions column={1} size="small">
-                            <Descriptions.Item label="状态">
-                                <Tag color={displayStatus.color}>
-                                    {displayStatus.name}
-                                </Tag>
-                            </Descriptions.Item>
-                            <Descriptions.Item label="作者">{localItem.extra.author || '-'}</Descriptions.Item>
-                            <Descriptions.Item label="分类">{localItem.extra.category || '-'}</Descriptions.Item>
-                            <Descriptions.Item label="添加时间">{formatDateTime(localItem.extra.createdAt)}</Descriptions.Item>
-                            <Descriptions.Item label="年份">{localItem.extra.year || '-'}</Descriptions.Item>
-                            <Descriptions.Item label="备注">
-                                {showRemarkClamp ? (
-                                    <div
-                                        style={{
-                                            marginBottom: 0,
-                                            maxWidth: '100%',
-                                            display: '-webkit-box',
-                                            WebkitLineClamp: '1',
-                                            WebkitBoxOrient: 'vertical',
-                                            overflow: 'hidden',
-                                            textOverflow: 'ellipsis',
-                                            wordBreak: 'break-word',
-                                            overflowWrap: 'anywhere',
-                                            cursor: 'pointer',
-                                        }}
-                                        onClick={() => setShowRemarkPreview(true)}
-                                        title="点击查看完整备注"
-                                    >
-                                        {remarkText}
-                                    </div>
-                                ) : (remarkText || '-')}
-                            </Descriptions.Item>
-                            {getCurrentStatus(localItem.extra) === LibraryItemStatus.TODO && (
-                                <Descriptions.Item label="等待原因">{getCurrentTodoReason(localItem.extra) || '-'}</Descriptions.Item>
+                    </Col>
+                </Row>
+            ) : (
+                <div className="library-detail-hero">
+                    <div
+                        className="library-detail-hero-bg"
+                        style={realCoverUrl
+                            ? {backgroundImage: `url("${realCoverUrl}")`}
+                            : {background: `linear-gradient(140deg, ${coverPalette.bg} 0%, ${coverPalette.text} 100%)`}}
+                    />
+                    <div className="library-detail-hero-body">
+                        <div className="library-detail-hero-cover">
+                    <div
+                        ref={detailCoverRef}
+                        style={{
+                            position: 'relative',
+                            width: useMobileSplitLayout ? '100%' : (isMobile ? 'min(42vw, 170px)' : '100%'),
+                            margin: isMobile ? '0 auto' : undefined,
+                            aspectRatio: '2 / 3',
+                            borderRadius: 8,
+                            overflow: 'hidden',
+                            background: 'var(--lib-surface-2)',
+                            border: '1px solid var(--lib-border)',
+                        }}
+                    >
+                        <LibraryLoadingImage
+                            src={realCoverUrl}
+                            alt={displayTitle || '未命名'}
+                            containerStyle={{position: 'absolute', inset: 0}}
+                            imageStyle={{
+                                position: 'absolute',
+                                inset: 0,
+                                width: '100%',
+                                height: '100%',
+                                objectFit: 'cover',
+                                objectPosition: 'center',
+                            }}
+                            placeholder={(
+                                <div
+                                    className="library-detail-cover-placeholder"
+                                    style={{
+                                        position: 'absolute',
+                                        inset: 0,
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        padding: placeholderPadding,
+                                        boxSizing: 'border-box',
+                                        textAlign: 'center',
+                                        wordBreak: 'normal',
+                                        overflowWrap: 'anywhere',
+                                        whiteSpace: 'normal',
+                                        overflow: 'hidden',
+                                        background: `linear-gradient(140deg, ${coverPalette.bg} 0%, #ffffff 100%)`,
+                                        color: coverPalette.text,
+                                        fontWeight: 600,
+                                        fontSize: placeholderFontSize,
+                                        lineHeight: 1.35,
+                                    }}
+                                >
+                                    {displayTitle || '未命名'}
+                                </div>
                             )}
-                            {getCurrentStatus(localItem.extra) === LibraryItemStatus.WAIT && (
-                                <Descriptions.Item label="搁置原因">{getLatestWaitReason(localItem.extra) || '-'}</Descriptions.Item>
-                            )}
-                            <Descriptions.Item label="主评分">
+                        />
+                    </div>
+                        </div>
+                        <div className="library-detail-hero-info">
+                            <div className="library-detail-hero-title">{displayTitle || '未命名'}</div>
+                            {heroMetaParts.length > 0 ? (
+                                <div className="library-detail-hero-meta">{heroMetaParts.join(' · ')}</div>
+                            ) : null}
+                            <div className="library-detail-hero-status">
+                                <span className="library-detail-status-dot" style={{background: displayStatus.color}}/>
+                                <span>{displayStatus.name}</span>
+                                {statusReason ? <span className="library-detail-hero-reason">{statusReason}</span> : null}
+                            </div>
+                            {showRemarkClamp ? (
+                                <div
+                                    className="library-detail-hero-remark"
+                                    onClick={() => setShowRemarkPreview(true)}
+                                    title="点击查看完整备注"
+                                >
+                                    {remarkText}
+                                </div>
+                            ) : null}
+                            <div className="library-detail-hero-score">
                                 {mainScoreEntry ? (
-                                    <div style={{display: 'inline-flex', alignItems: 'center'}}>
-                                        <TextRate
-                                            sequence={SCORE_SEQ}
-                                            editable={false}
-                                            initialValue={getScoreText(mainScoreEntry.score || 0, mainScoreEntry.scorePlus, mainScoreEntry.scoreSub)}
-                                            fontSize={20}
-                                            fontSize2={13}
-                                        />
-                                    </div>
+                                    <TextRate
+                                        sequence={SCORE_SEQ}
+                                        editable={false}
+                                        initialValue={getScoreText(mainScoreEntry.score || 0, mainScoreEntry.scorePlus, mainScoreEntry.scoreSub)}
+                                        fontSize={isMobile ? 22 : 26}
+                                        fontSize2={13}
+                                        activeColor={LIBRARY_SCORE_LEVEL_COLORS_ON_DARK[Math.max(1, Math.min(5, mainScoreEntry.score || 1))]}
+                                        inactiveColor="rgba(255, 255, 255, 0.45)"
+                                    />
                                 ) : (
-                                    <Text type="secondary">暂无评分</Text>
+                                    <span className="library-detail-hero-noscore">暂无评分</span>
                                 )}
-                            </Descriptions.Item>
-                        </Descriptions>
-                    )}
-                </Col>
-            </Row>
-            
-            <Divider/>
-            
-            {/* 状态操作 */}
-            <div style={{marginBottom: 16}}>
-                <Text strong>操作</Text>
-                <div style={{marginTop: 8}}>
-                    {renderStatusButtons()}
+                            </div>
+                        </div>
+                    </div>
                 </div>
+            )}
+
+            {/* 状态操作 */}
+            <div className="library-detail-section">
+                {renderStatusButtons()}
             </div>
-            
-            <Divider/>
-            
+
             {/* 周目和日志 */}
-            <div>
-                {isMobile ? (
-                    <Space direction="vertical" size={8} style={{width: '100%', marginBottom: 8}}>
-                        <Flex justify="space-between" align="center" gap={8}>
-                            <Text strong style={{whiteSpace: 'nowrap'}}>体验记录</Text>
-                            <Text type="secondary" style={{whiteSpace: 'nowrap'}}>
-                                {localItem.extra.rounds.length} 个周目
-                            </Text>
-                        </Flex>
-                        <Flex align="center" gap={8} wrap>
-                            <Button
-                                size="small"
-                                icon={<EditOutlined/>}
-                                disabled={coreSaving || noteSaving}
-                                onClick={() => setShowAddNote(true)}
-                            >
-                                新增最新备注
-                            </Button>
-                            {recordHeaderFilter}
-                        </Flex>
+            <div className="library-detail-section">
+                <Flex className="library-detail-record-header" justify="space-between" align="center" gap={8}>
+                    <Text strong style={{whiteSpace: 'nowrap'}}>体验记录</Text>
+                    <Space size={8}>
+                        <Button
+                            size="small"
+                            icon={<EditOutlined/>}
+                            disabled={coreSaving || noteSaving}
+                            onClick={() => setShowAddNote(true)}
+                        >
+                            记备注
+                        </Button>
+                        {recordHeaderFilter}
                     </Space>
-                ) : (
-                    <Flex justify="space-between" align="center" style={{marginBottom: 8}}>
-                        <Text strong>体验记录</Text>
-                        <Space size={8} wrap>
-                            <Text type="secondary">{localItem.extra.rounds.length} 个周目</Text>
-                            <Button
-                                size="small"
-                                icon={<EditOutlined/>}
-                                disabled={coreSaving || noteSaving}
-                                onClick={() => setShowAddNote(true)}
-                            >
-                                新增最新备注
-                            </Button>
-                            {recordHeaderFilter}
-                        </Space>
-                    </Flex>
-                )}
-                
+                </Flex>
+
+                {/* 最新周目在上 */}
                 <Collapse
+                    className="library-detail-rounds"
+                    bordered={false}
                     defaultActiveKey={[localItem.extra.currentRound]}
                     accordion
                 >
-                    {localItem.extra.rounds.map((round, index) => renderRound(round, index))}
+                    {localItem.extra.rounds
+                        .map((round, index) => ({round, index}))
+                        .reverse()
+                        .map(({round, index}) => renderRound(round, index))}
                 </Collapse>
                 {notesLoading ? <Text type="secondary">正在加载备注...</Text> : null}
                 {notesError ? (
@@ -2672,7 +2776,7 @@ export default function LibraryDetail({visible, item, noteContext, categories = 
                                 style={{
                                     overflowX: 'auto',
                                     borderRadius: 6,
-                                    border: '1px solid #f0f0f0',
+                                    border: '1px solid var(--lib-border)',
                                     padding: 6,
                                 }}
                             >
@@ -2697,7 +2801,7 @@ export default function LibraryDetail({visible, item, noteContext, categories = 
                                                 display: 'flex',
                                                 alignItems: 'center',
                                                 justifyContent: 'center',
-                                                background: '#fafafa',
+                                                background: 'var(--lib-surface-2)',
                                                 color: '#999',
                                                 fontSize: 12,
                                             }}
@@ -2739,7 +2843,7 @@ export default function LibraryDetail({visible, item, noteContext, categories = 
                 }
                 styles={{
                     footer: {
-                        borderTop: '1px solid #f0f0f0',
+                        borderTop: '1px solid var(--lib-border)',
                         paddingTop: 12,
                         marginTop: 0,
                     },

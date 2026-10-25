@@ -7,6 +7,8 @@ interface TextRateProps {
     onChange?: (value: string) => void;
     fontSize?: number;
     fontSize2?: number;
+    activeColor?: string;
+    inactiveColor?: string;
 }
 
 const TextRate: React.FC<TextRateProps> = ({
@@ -15,7 +17,9 @@ const TextRate: React.FC<TextRateProps> = ({
                                                initialValue,
                                                onChange,
                                                fontSize = 14,
-                                               fontSize2 = 10
+                                               fontSize2 = 10,
+                                               activeColor = "#333",
+                                               inactiveColor = "#aaa",
                                            }) => {
     const [value, setValue] = useState(initialValue || "");
     const [hoverIndex, setHoverIndex] = useState<number | null>(null);
@@ -113,7 +117,7 @@ const TextRate: React.FC<TextRateProps> = ({
                         }
                         style={{
                             fontSize: isActive ? fontSize : fontSize2,
-                            color: isActive ? "#333" : "#aaa",
+                            color: isActive ? activeColor : inactiveColor,
                             cursor: editable ? "pointer" : "default",
                             transition: "font-size 0.2s ease, color 0.2s ease, font-weight 0.2s ease",
                             fontWeight: isActive ? 600 : 400,
