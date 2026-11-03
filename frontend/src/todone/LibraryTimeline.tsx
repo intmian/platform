@@ -25,6 +25,7 @@ import {
     PlayCircleFilled,
     StarFilled,
     StopOutlined,
+    SwapOutlined,
 } from '@ant-design/icons';
 import {
     LibraryStatusNames,
@@ -64,6 +65,80 @@ const SCORE_GRADIENT_COLORS: Record<number, string> = {
     4: '#73d13d',
     5: '#40a9ff',
 };
+const ALL_SCORE_LEVELS: number[] = [...SCORE_GRADIENT_LEVELS];
+const TIMELINE_ORDER_STORAGE_KEY = 'library_timeline_order';
+const WEEKDAY_NAMES = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
+const DEFAULT_TIMELINE_STATUSES: TimelineStatusOption[] = [
+    LibraryItemStatus.DOING,
+    LibraryItemStatus.DONE,
+    'waitExpired',
+    LibraryItemStatus.GIVE_UP,
+];
+type TimelineOrder = 'asc' | 'desc';
+
+function readTimelineOrder(): TimelineOrder {
+    try {
+        return window.localStorage.getItem(TIMELINE_ORDER_STORAGE_KEY) === 'desc' ? 'desc' : 'asc';
+    } catch {
+        return 'asc';
+    }
+}
+
+/**
+ * 筛选胶囊的点选规则：
+ * - 当前为全选时点击某项 → 只看它；
+ * - 已经只看它时再点 → 回到全选；
+ * - 其他情况点击为增减；减到空时回到全选（不会出现“全部取消”的空状态）；
+ * - solo=true（⌘/Ctrl/Alt+点击）总是只看它。
+ */
+function applyChipSelection<T>(current: T[], all: T[], value: T, solo: boolean): T[] {
+    const isAll = all.every((v) => current.includes(v));
+    if (current.length === 1 && current[0] === value) {
+        return [...all];
+    }
+    if (solo || isAll) {
+        return [value];
+    }
+    const next = current.includes(value)
+        ? current.filter((v) => v !== value)
+        : [...current, value];
+    return next.length === 0 ? [...all] : all.filter((v) => next.includes(v));
+}
+
+function isSoloClick(event: React.MouseEvent): boolean {
+    return event.metaKey || event.ctrlKey || event.altKey;
+}
+
+interface FilterChipProps {
+    label: React.ReactNode;
+    active: boolean;
+    color?: string;
+    count?: number;
+    onClick: (event: React.MouseEvent) => void;
+}
+
+function FilterChip({label, active, color, count, onClick}: FilterChipProps) {
+    return (
+        <button
+            type="button"
+            className={`library-filter-chip${active ? ' is-active' : ''}`}
+            style={color ? {'--chip-color': color} as React.CSSProperties : undefined}
+            aria-pressed={active}
+            onClick={onClick}
+        >
+            {color ? <span className="library-filter-chip-dot"/> : null}
+            <span>{label}</span>
+            {count !== undefined ? <span className="library-filter-chip-count">{count}</span> : null}
+        </button>
+    );
+}
+
+interface TimelineMonthGroup {
+    key: string;
+    year: number;
+    month: number;
+    entries: DisplayTimelineEntry[];
+}
 
 interface DisplayTimelineEntry extends TimelineEntry {
     mergedStartStatus?: LibraryItemStatus.DONE | LibraryItemStatus.GIVE_UP;
@@ -198,12 +273,26 @@ export default function LibraryTimeline({visible, items, onClose, onItemClick}: 
         return () => window.clearInterval(timer);
     }, []);
 
-    const [selectedStatuses, setSelectedStatuses] = useState<TimelineStatusOption[]>([
-        LibraryItemStatus.DOING,
-        LibraryItemStatus.DONE,
-        'waitExpired',
-        LibraryItemStatus.GIVE_UP,
-    ]);
+    const [selectedStatuses, setSelectedStatuses] = useState<TimelineStatusOption[]>(DEFAULT_TIMELINE_STATUSES);
+    const [selectedScoreLevels, setSelectedScoreLevels] = useState<number[]>(ALL_SCORE_LEVELS);
+    const [order, setOrder] = useState<TimelineOrder>(readTimelineOrder);
+    const [activeMonthKey, setActiveMonthKey] = useState('');
+    // 抽屉内容晚于首次 effect 挂载，用 state 承载列表节点以便挂载后再绑定滚动监听
+    const [timelineListEl, setTimelineListEl] = useState<HTMLDivElement | null>(null);
+    // 点击月份跳转后短暂锁定高亮，避免平滑滚动过程或滚不到顶的末尾月份被滚动监听覆盖
+    const monthNavLockUntilRef = useRef(0);
+
+    const toggleOrder = () => {
+        setOrder((prev) => {
+            const next = prev === 'asc' ? 'desc' : 'asc';
+            try {
+                window.localStorage.setItem(TIMELINE_ORDER_STORAGE_KEY, next);
+            } catch {
+                // 存储不可用时仅在本次会话生效
+            }
+            return next;
+        });
+    };
 
     const itemMap = useMemo(() => {
         const result = new Map<number, LibraryItemFull>();
@@ -377,8 +466,8 @@ export default function LibraryTimeline({visible, items, onClose, onItemClick}: 
         selectedYear,
     ]);
 
-    // 当前显示的条目
-    const displayEntries = useMemo<DisplayTimelineEntry[]>(() => {
+    // 合并“开始并完成/放弃”后的条目（尚未按状态筛选）
+    const mergedEntries = useMemo<DisplayTimelineEntry[]>(() => {
         const doingIndexesByDay = new Map<string, number[]>();
         baseEntries.forEach((entry, index) => {
             if (entry.logType === LibraryLogType.changeStatus && entry.status === LibraryItemStatus.DOING) {
@@ -444,36 +533,82 @@ export default function LibraryTimeline({visible, items, onClose, onItemClick}: 
             mergedEntries.push(entry);
         });
 
-        return mergedEntries.filter((entry) => {
-            const option = getEntryStatusOption(entry);
-            if (option === undefined) {
-                return false;
-            }
-            return selectedStatuses.includes(option);
-        });
+        return mergedEntries;
     }, [
         baseEntries,
         roundHasAnyDoingLogSet,
-        getEntryStatusOption,
-        selectedStatuses,
     ]);
+
+    const statusCounts = useMemo(() => {
+        const counts = new Map<TimelineStatusOption, number>();
+        mergedEntries.forEach((entry) => {
+            const option = getEntryStatusOption(entry);
+            if (option !== undefined) {
+                counts.set(option, (counts.get(option) || 0) + 1);
+            }
+        });
+        return counts;
+    }, [mergedEntries, getEntryStatusOption]);
+
+    // 当前显示的条目（时间正序，合并逻辑依赖正序）
+    const displayEntries = useMemo(() => mergedEntries.filter((entry) => {
+        const option = getEntryStatusOption(entry);
+        return option !== undefined && selectedStatuses.includes(option);
+    }), [mergedEntries, getEntryStatusOption, selectedStatuses]);
+
+    // 按用户选择的方向排列，用于浏览与导出
+    const orderedEntries = useMemo(
+        () => (order === 'desc' ? displayEntries.slice().reverse() : displayEntries),
+        [displayEntries, order]
+    );
+
+    const monthGroups = useMemo<TimelineMonthGroup[]>(() => {
+        const groups: TimelineMonthGroup[] = [];
+        orderedEntries.forEach((entry) => {
+            const date = new Date(entry.time);
+            const year = date.getFullYear();
+            const month = date.getMonth() + 1;
+            const key = `${year}-${String(month).padStart(2, '0')}`;
+            let group = groups[groups.length - 1];
+            if (!group || group.key !== key) {
+                group = {key, year, month, entries: []};
+                groups.push(group);
+            }
+            group.entries.push(entry);
+        });
+        return groups;
+    }, [orderedEntries]);
 
     const allCategoryChecked =
         categoryOptions.length > 0 && selectedCategoriesFinal.length === categoryOptions.length;
-    const categoryIndeterminate =
-        selectedCategoriesFinal.length > 0 && selectedCategoriesFinal.length < categoryOptions.length;
 
     const allStatusValues = useMemo(
         () => statusOptions.map((option) => option.value),
         [statusOptions]
     );
     const allStatusChecked = selectedStatuses.length === allStatusValues.length;
-    const statusIndeterminate = selectedStatuses.length > 0 && selectedStatuses.length < allStatusValues.length;
+    const defaultStatusChecked = selectedStatuses.length === DEFAULT_TIMELINE_STATUSES.length
+        && DEFAULT_TIMELINE_STATUSES.every((status) => selectedStatuses.includes(status));
+
+    const handleCategoryChipClick = (value: string, event: React.MouseEvent) => {
+        const next = applyChipSelection(selectedCategoriesFinal, categoryOptions, value, isSoloClick(event));
+        // 全选时存空数组，后续新增分类自动纳入
+        setSelectedCategories(next.length === categoryOptions.length ? [] : next);
+    };
+
+    const handleStatusChipClick = (value: TimelineStatusOption, event: React.MouseEvent) => {
+        setSelectedStatuses(applyChipSelection(selectedStatuses, allStatusValues, value, isSoloClick(event)));
+    };
+
+    const handleScoreLevelClick = (level: number, event: React.MouseEvent) => {
+        setSelectedScoreLevels(applyChipSelection(selectedScoreLevels, ALL_SCORE_LEVELS, level, isSoloClick(event)));
+    };
+
     const exportPreviewEntries = useMemo(
-        () => displayEntries.filter((entry) => (
+        () => orderedEntries.filter((entry) => (
             !excludedExportEntryKeys.has(buildTimelineEntryKey(entry))
         )),
-        [displayEntries, excludedExportEntryKeys]
+        [orderedEntries, excludedExportEntryKeys]
     );
     const excludedExportCount = Math.max(0, displayEntries.length - exportPreviewEntries.length);
 
@@ -508,10 +643,47 @@ export default function LibraryTimeline({visible, items, onClose, onItemClick}: 
     }, [baseEntries]);
 
     const scoreGradientTotal = useMemo(() => {
-        return SCORE_GRADIENT_LEVELS.reduce((total, level) => (
+        return selectedScoreLevels.reduce((total, level) => (
             total + (scoreGradientEntriesByLevel.get(level)?.length || 0)
         ), 0);
-    }, [scoreGradientEntriesByLevel]);
+    }, [scoreGradientEntriesByLevel, selectedScoreLevels]);
+
+    // 滚动时高亮当前所在月份
+    useEffect(() => {
+        const list = timelineListEl;
+        const scroller = list?.closest('.ant-drawer-body') as HTMLElement | null;
+        if (!list || !scroller) {
+            return;
+        }
+        const update = () => {
+            if (Date.now() < monthNavLockUntilRef.current) {
+                return;
+            }
+            const sections = Array.from(list.querySelectorAll<HTMLElement>('[data-month-key]'));
+            const top = scroller.getBoundingClientRect().top + 8;
+            let current = sections[0]?.dataset.monthKey || '';
+            sections.forEach((section) => {
+                if (section.getBoundingClientRect().top <= top) {
+                    current = section.dataset.monthKey || current;
+                }
+            });
+            // 滚到底时末尾几个短月份无法顶到上沿，直接高亮最后一个
+            if (scroller.scrollTop + scroller.clientHeight >= scroller.scrollHeight - 8 && scroller.scrollTop > 0) {
+                current = sections[sections.length - 1]?.dataset.monthKey || current;
+            }
+            setActiveMonthKey(current);
+        };
+        update();
+        scroller.addEventListener('scroll', update, {passive: true});
+        return () => scroller.removeEventListener('scroll', update);
+    }, [timelineListEl, monthGroups]);
+
+    const scrollToMonth = (key: string) => {
+        const target = timelineListEl?.querySelector<HTMLElement>(`[data-month-key="${key}"]`);
+        target?.scrollIntoView({block: 'start', behavior: 'smooth'});
+        monthNavLockUntilRef.current = Date.now() + 1000;
+        setActiveMonthKey(key);
+    };
 
     const getCategoryLabel = (value: string) => {
         if (value === UNCATEGORIZED_KEY) {
@@ -638,6 +810,13 @@ export default function LibraryTimeline({visible, items, onClose, onItemClick}: 
         }
     };
 
+    const getStatusOptionColor = (option: TimelineStatusOption): string => {
+        if (option === 'addToLibrary') return '#722ed1';
+        if (option === 'score') return '#faad14';
+        if (option === 'waitExpired') return WAIT_EXPIRED_TIMELINE_COLOR;
+        return LibraryStatusColors[option];
+    };
+
     // 获取时间线条目颜色
     const getEntryColor = (entry: TimelineEntry): string => {
         if (isWaitExpiredEntry(entry)) {
@@ -665,14 +844,7 @@ export default function LibraryTimeline({visible, items, onClose, onItemClick}: 
         const previewCoverUrl = entry.picturePreview?.trim() || entry.pictureAddressPreview?.trim() || '';
         const realCoverUrl = previewCoverUrl || originalCoverUrl;
         const placeholderColor = getLibraryCoverPaletteByTitle(entry.itemTitle || '未命名');
-        const mergedActionText = getMergedStartActionText(entry.mergedStartStatus);
-        const actionText = isWaitExpiredEntry(entry)
-            ? '鸽了'
-            : mergedActionText
-                ? mergedActionText
-            : entry.logType === LibraryLogType.score
-                ? `评分 ${getScoreText(entry.score || 0, entry.scorePlus, entry.scoreSub)}`
-                : getLogTypeText(entry.logType, entry.status);
+        const actionText = getEntryActionText(entry);
         const trimmedComment = entry.logType === LibraryLogType.score ? '' : (entry.comment || '').trim();
         const shouldHideComment = (
             entry.logType === LibraryLogType.changeStatus
@@ -845,8 +1017,140 @@ export default function LibraryTimeline({visible, items, onClose, onItemClick}: 
         return <Timeline>{elements}</Timeline>;
     };
 
+    const getEntryActionText = (entry: DisplayTimelineEntry): string => {
+        if (isWaitExpiredEntry(entry)) {
+            return '鸽了';
+        }
+        const mergedActionText = getMergedStartActionText(entry.mergedStartStatus);
+        if (mergedActionText) {
+            return mergedActionText;
+        }
+        if (entry.logType === LibraryLogType.score) {
+            return `评分 ${getScoreText(entry.score || 0, entry.scorePlus, entry.scoreSub)}`;
+        }
+        return getLogTypeText(entry.logType, entry.status);
+    };
+
+    // 浏览用卡片：按月分组后在宽抽屉里多列平铺
+    const renderTimelineCard = (entry: DisplayTimelineEntry, index: number) => {
+        const originalCoverUrl = entry.pictureAddress?.trim() || '';
+        const previewCoverUrl = entry.picturePreview?.trim() || entry.pictureAddressPreview?.trim() || '';
+        const realCoverUrl = previewCoverUrl || originalCoverUrl;
+        const placeholderColor = getLibraryCoverPaletteByTitle(entry.itemTitle || '未命名');
+        const actionText = getEntryActionText(entry);
+        const color = getEntryColor(entry);
+        const entryDate = new Date(entry.time);
+        const trimmedComment = entry.logType === LibraryLogType.score ? '' : (entry.comment || '').trim();
+        const shouldHideComment = (
+            entry.logType === LibraryLogType.changeStatus
+            && entry.status === LibraryItemStatus.DOING
+            && isLibraryAutoRoundStartComment(trimmedComment, entry.roundName)
+        ) || trimmedComment === actionText;
+
+        return (
+            <button
+                key={`${entry.itemId}-${entry.time}-${index}`}
+                type="button"
+                className="library-tl-card"
+                style={{'--entry-color': color} as React.CSSProperties}
+                onClick={() => onItemClick?.(entry.itemId)}
+            >
+                <div className="library-tl-card-cover">
+                    <LibraryLoadingImage
+                        src={realCoverUrl}
+                        alt={entry.itemTitle || '未命名'}
+                        containerStyle={{position: 'absolute', inset: 0}}
+                        sizes="120px"
+                        imageStyle={{
+                            width: '100%',
+                            height: '100%',
+                            objectFit: 'cover',
+                            objectPosition: 'center',
+                            display: 'block',
+                        }}
+                        placeholder={(
+                            <div
+                                className="library-score-gradient-placeholder"
+                                style={{
+                                    background: `linear-gradient(140deg, ${placeholderColor.bg} 0%, #ffffff 100%)`,
+                                    color: placeholderColor.text,
+                                }}
+                            >
+                                {entry.itemTitle || '未命名'}
+                            </div>
+                        )}
+                    />
+                </div>
+                <div className="library-tl-card-body">
+                    <div className="library-tl-card-head">
+                        <span className="library-tl-card-title">{entry.itemTitle || '未命名'}</span>
+                        <span className="library-tl-card-date">
+                            {entryDate.getMonth() + 1}/{entryDate.getDate()} {WEEKDAY_NAMES[entryDate.getDay()]}
+                        </span>
+                    </div>
+                    <div className="library-tl-card-meta">
+                        <span className="library-tl-card-action">
+                            {getLogIcon(entry)}
+                            {actionText}
+                        </span>
+                        {entry.roundName !== '首周目' ? (
+                            <span className="library-tl-card-round">{entry.roundName}</span>
+                        ) : null}
+                    </div>
+                    {trimmedComment && !shouldHideComment ? (
+                        <div className="library-tl-card-comment">{trimmedComment}</div>
+                    ) : null}
+                </div>
+            </button>
+        );
+    };
+
+    const renderBrowseTimeline = () => {
+        if (monthGroups.length === 0) {
+            return <Empty description="暂无记录"/>;
+        }
+        const showYearInMonth = selectedYear === 'all';
+        const formatMonthLabel = (group: TimelineMonthGroup) => (
+            showYearInMonth ? `${group.year}年${group.month}月` : `${group.month}月`
+        );
+        const monthNav = monthGroups.length > 1 ? (
+            <nav className="library-tl-month-nav" aria-label="按月跳转">
+                {monthGroups.map((group) => (
+                    <button
+                        key={group.key}
+                        type="button"
+                        className={`library-tl-month-nav-item${activeMonthKey === group.key ? ' is-active' : ''}`}
+                        onClick={() => scrollToMonth(group.key)}
+                    >
+                        <span>{showYearInMonth ? `${String(group.year).slice(2)}.${group.month}` : `${group.month}月`}</span>
+                        <span className="library-tl-month-nav-count">{group.entries.length}</span>
+                    </button>
+                ))}
+            </nav>
+        ) : null;
+
+        return (
+            <div className="library-tl-layout">
+                {monthNav}
+                <div className="library-tl-list" ref={setTimelineListEl}>
+                    {monthGroups.map((group) => (
+                        <section key={group.key} className="library-tl-month" data-month-key={group.key}>
+                            <header className="library-tl-month-header">
+                                <span className="library-tl-month-title">{formatMonthLabel(group)}</span>
+                                <span className="library-tl-month-count">{group.entries.length} 条</span>
+                            </header>
+                            <div className="library-tl-month-grid">
+                                {group.entries.map(renderTimelineCard)}
+                            </div>
+                        </section>
+                    ))}
+                </div>
+            </div>
+        );
+    };
+
     const renderScoreGradientCover = (entry: DisplayTimelineEntry, index: number) => {
-        const coverWidth = isMobile ? 44 : 54;
+        const coverWidth = isMobile ? 52 : 72;
         const coverHeight = Math.round(coverWidth * 1.5);
         const originalCoverUrl = entry.pictureAddress?.trim() || '';
         const previewCoverUrl = entry.picturePreview?.trim() || entry.pictureAddressPreview?.trim() || '';
@@ -856,8 +1160,12 @@ export default function LibraryTimeline({visible, items, onClose, onItemClick}: 
         const title = `${entry.itemTitle || '未命名'} · ${scoreText} · ${formatDate(entry.time)}`;
 
         return (
-            <button
+            <div
                 key={`${entry.itemId}-${entry.time}-${index}`}
+                className="library-score-gradient-item"
+                style={{width: coverWidth}}
+            >
+            <button
                 type="button"
                 className="library-score-gradient-card"
                 title={title}
@@ -896,8 +1204,34 @@ export default function LibraryTimeline({visible, items, onClose, onItemClick}: 
                     <span className="library-score-gradient-sign">{entry.scorePlus ? '+' : '-'}</span>
                 ) : null}
             </button>
+            {!isMobile ? (
+                <span className="library-score-gradient-title" title={entry.itemTitle || '未命名'}>
+                    {entry.itemTitle || '未命名'}
+                </span>
+            ) : null}
+            </div>
         );
     };
+
+    const renderScoreLevelChips = () => (
+        <div className="library-filter-chip-row">
+            <FilterChip
+                label="全部"
+                active={selectedScoreLevels.length === ALL_SCORE_LEVELS.length}
+                onClick={() => setSelectedScoreLevels(ALL_SCORE_LEVELS)}
+            />
+            {SCORE_GRADIENT_LEVELS.map((level) => (
+                <FilterChip
+                    key={level}
+                    label={getScoreText(level)}
+                    color={SCORE_GRADIENT_COLORS[level]}
+                    count={scoreGradientEntriesByLevel.get(level)?.length || 0}
+                    active={selectedScoreLevels.includes(level)}
+                    onClick={(event) => handleScoreLevelClick(level, event)}
+                />
+            ))}
+        </div>
+    );
 
     const renderScoreGradient = () => {
         if (scoreGradientTotal === 0) {
@@ -906,19 +1240,27 @@ export default function LibraryTimeline({visible, items, onClose, onItemClick}: 
 
         return (
             <div className="library-score-gradient-board">
-                {SCORE_GRADIENT_LEVELS.map((level) => {
+                {SCORE_GRADIENT_LEVELS.filter((level) => selectedScoreLevels.includes(level)).map((level) => {
                     const entries = scoreGradientEntriesByLevel.get(level) || [];
                     const label = getScoreText(level);
                     return (
                         <div className="library-score-gradient-row" key={level}>
-                            <div
+                            <button
+                                type="button"
                                 className="library-score-gradient-label"
+                                title="点击只看该档；再点回到全部"
                                 style={{background: SCORE_GRADIENT_COLORS[level]}}
+                                onClick={() => setSelectedScoreLevels((prev) => (
+                                    prev.length === 1 && prev[0] === level ? ALL_SCORE_LEVELS : [level]
+                                ))}
                             >
-                                {label}
-                            </div>
+                                <span>{label}</span>
+                                <span className="library-score-gradient-label-count">{entries.length}</span>
+                            </button>
                             <div className="library-score-gradient-track">
-                                {entries.map(renderScoreGradientCover)}
+                                {entries.length > 0
+                                    ? entries.map(renderScoreGradientCover)
+                                    : <Text className="library-score-gradient-empty" style={{fontSize: 12}}>暂无</Text>}
                             </div>
                         </div>
                     );
@@ -953,12 +1295,13 @@ export default function LibraryTimeline({visible, items, onClose, onItemClick}: 
                 </Flex>
             }
             placement="right"
-            width={isMobile ? '100%' : 500}
+            width={isMobile ? '100%' : 'min(1120px, 92vw)'}
+            className="library-timeline-drawer"
             onClose={onClose}
             open={visible}
         >
             <div>
-                <Space direction="vertical" size={10} style={{width: '100%', marginBottom: 14}}>
+                <div className="library-tl-toolbar">
                     <Segmented
                         value={viewMode}
                         onChange={(value) => setViewMode(value as LibraryTimelineViewMode)}
@@ -967,115 +1310,81 @@ export default function LibraryTimeline({visible, items, onClose, onItemClick}: 
                             {value: 'scoreGradient', label: '评分梯度'},
                         ]}
                     />
-
-                    <Flex gap={8} wrap="wrap" align="center">
-                        <Select
-                            value={selectedYear}
-                            onChange={setSelectedYear}
-                            style={{width: 120}}
-                            options={[
-                                {value: 'all', label: '全部年份'},
-                                ...years.map(year => ({value: year, label: `${year}年`})),
-                            ]}
-                        />
-
-                        <Checkbox
-                            checked={allCategoryChecked}
-                            indeterminate={categoryIndeterminate}
-                            onChange={(event) => {
-                                if (event.target.checked) {
-                                    setSelectedCategories([...categoryOptions]);
-                                } else {
-                                    setSelectedCategories([]);
-                                }
-                            }}
-                        >
-                            分类全选
-                        </Checkbox>
-
-                        <Checkbox
-                            checked={allStatusChecked}
-                            indeterminate={statusIndeterminate}
-                            onChange={(event) => {
-                                if (event.target.checked) {
-                                    setSelectedStatuses([...allStatusValues]);
-                                } else {
-                                    setSelectedStatuses([]);
-                                }
-                            }}
-                        >
-                            状态全选
-                        </Checkbox>
-                    </Flex>
-
-                    <Checkbox.Group
-                        value={selectedCategoriesFinal}
-                        onChange={(values) => setSelectedCategories(values as string[])}
-                    >
-                        <Flex gap={8} wrap="wrap">
-                            {categoryOptions.map((value) => (
-                                <Checkbox key={value} value={value}>
-                                    {getCategoryLabel(value)}
-                                </Checkbox>
-                            ))}
-                        </Flex>
-                    </Checkbox.Group>
-
+                    <Select
+                        value={selectedYear}
+                        onChange={setSelectedYear}
+                        style={{width: 120}}
+                        options={[
+                            {value: 'all', label: '全部年份'},
+                            ...years.map(year => ({value: year, label: `${year}年`})),
+                        ]}
+                    />
                     {viewMode === 'timeline' ? (
-                        <>
-                            <Checkbox.Group
-                                value={selectedStatuses}
-                                onChange={(values) => setSelectedStatuses(values as TimelineStatusOption[])}
-                            >
-                                <Flex gap={8} wrap="wrap">
-                                    {statusOptions.map((option) => (
-                                        <Checkbox key={String(option.value)} value={option.value}>
-                                            {option.label}
-                                        </Checkbox>
-                                    ))}
-                                </Flex>
-                            </Checkbox.Group>
-
-                            <Space size={8}>
-                                {[
-                                    LibraryItemStatus.DOING,
-                                    LibraryItemStatus.DONE,
-                                    LibraryItemStatus.WAIT,
-                                    'waitExpired' as TimelineStatusOption,
-                                    LibraryItemStatus.ARCHIVED,
-                                ].map(status => {
-                                    const count = displayEntries.reduce((total, entry) => {
-                                        const option = getEntryStatusOption(entry);
-                                        if (option === status) {
-                                            return total + 1;
-                                        }
-                                        if (status === LibraryItemStatus.DOING && entry.mergedStartStatus) {
-                                            return total + 1;
-                                        }
-                                        return total;
-                                    }, 0);
-                                    if (count === 0) return null;
-                                    const color = status === 'waitExpired' ? WAIT_EXPIRED_TIMELINE_COLOR : LibraryStatusColors[status as LibraryItemStatus];
-                                    const text = status === 'waitExpired'
-                                        ? '鸽了'
-                                        : getLogTypeText(LibraryLogType.changeStatus, status as LibraryItemStatus);
-                                    return (
-                                        <Tag
-                                            key={status}
-                                            color={color}
-                                            style={{margin: 0}}
-                                        >
-                                            {text} {count}
-                                        </Tag>
-                                    );
-                                })}
-                            </Space>
-                        </>
+                        <Button icon={<SwapOutlined rotate={90}/>} onClick={toggleOrder}>
+                            {order === 'asc' ? '最早在前' : '最新在前'}
+                        </Button>
                     ) : null}
+                </div>
 
-                </Space>
+                <div className="library-timeline-filter-panel">
+                    <div className="library-filter-group">
+                        <span className="library-filter-group-label">分类</span>
+                        <div className="library-filter-chip-row">
+                            <FilterChip
+                                label="全部"
+                                active={allCategoryChecked}
+                                onClick={() => setSelectedCategories([])}
+                            />
+                            {categoryOptions.map((value) => (
+                                <FilterChip
+                                    key={value}
+                                    label={getCategoryLabel(value)}
+                                    active={!allCategoryChecked && selectedCategoriesFinal.includes(value)}
+                                    onClick={(event) => handleCategoryChipClick(value, event)}
+                                />
+                            ))}
+                        </div>
+                    </div>
+                    {viewMode === 'timeline' ? (
+                        <div className="library-filter-group">
+                            <span className="library-filter-group-label">状态</span>
+                            <div className="library-filter-chip-row">
+                                <FilterChip
+                                    label="全部"
+                                    active={allStatusChecked}
+                                    onClick={() => setSelectedStatuses([...allStatusValues])}
+                                />
+                                <FilterChip
+                                    label="默认"
+                                    active={defaultStatusChecked}
+                                    onClick={() => setSelectedStatuses(DEFAULT_TIMELINE_STATUSES)}
+                                />
+                                {statusOptions.map((option) => (
+                                    <FilterChip
+                                        key={String(option.value)}
+                                        label={option.label}
+                                        color={getStatusOptionColor(option.value)}
+                                        count={statusCounts.get(option.value) || 0}
+                                        active={!allStatusChecked && selectedStatuses.includes(option.value)}
+                                        onClick={(event) => handleStatusChipClick(option.value, event)}
+                                    />
+                                ))}
+                            </div>
+                        </div>
+                    ) : null}
+                    <div className="library-filter-hint">
+                        全部时点一下＝只看它；再点一次回到全部；其余情况点击为增减{isMobile ? '' : '；⌘/Ctrl+点击直接只看它'}
+                    </div>
+                </div>
 
-                {viewMode === 'timeline' ? renderGroupedTimeline() : renderScoreGradient()}
+                {viewMode === 'scoreGradient' ? (
+                    <div className="library-filter-group library-score-level-filter">
+                        <span className="library-filter-group-label">档位</span>
+                        {renderScoreLevelChips()}
+                    </div>
+                ) : null}
+
+                {viewMode === 'timeline' ? renderBrowseTimeline() : renderScoreGradient()}
             </div>
 
             <Modal
@@ -1120,7 +1429,7 @@ export default function LibraryTimeline({visible, items, onClose, onItemClick}: 
                 </Flex>
                 <div style={{maxHeight: '70vh', overflowY: 'auto', background: '#fff', paddingBottom: 8}}>
                     <div ref={exportPreviewRef} style={{padding: '0 12px'}}>
-                        {renderGroupedTimeline(displayEntries, {
+                        {renderGroupedTimeline(orderedEntries, {
                             exportPreview: true,
                             excludedEntryKeys: excludedExportEntryKeys,
                             onToggleEntry: toggleExportEntry,

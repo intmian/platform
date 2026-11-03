@@ -154,7 +154,7 @@ Wait-expired (`鸽了`) rule:
 
 Timeline rules:
 
-1. Aggregate core logs across rounds by time descending; private notes never enter the all-library timeline, filters, or exports.
+1. Aggregate core logs across rounds; merging (rule 5) runs on ascending order, then the drawer shows entries `最早在前` (default) or `最新在前` via an order toggle persisted in `localStorage` key `library_timeline_order`. Export preview follows the same order. Private notes never enter the all-library timeline, filters, or exports.
 2. `timelineCutoff` log itself is hidden.
 3. Logs before cutoff are excluded.
 4. Legacy `note: 添加到库` is normalized to `addToLibrary`.
@@ -171,9 +171,10 @@ Timeline rules:
    - new rounds persist `autoRoundStart=true` on the first `DOING` status log
    - legacy data without the flag falls back to the first `DOING` log whose comment matches `开始<旧周目名>` or `开始了<旧周目名>`
    - once matched during rename/start-time edit, the log is normalized by writing back `autoRoundStart=true`
-8. Timeline drawer has two views:
-   - `时间线`: existing chronological log list with status/category/year filters and export preview.
-   - `评分梯度`: score-log-only board grouped by main score levels from top to bottom as `满/优/合/差/零`; it reuses the timeline year and category filters, keeps score `+/-` markers, orders covers within each score row by sign (`+`, none, `-`) and then chronologically within the same sign, wraps many covers onto additional lines, and clicking a cover opens the item detail.
+8. Timeline drawer (desktop width `min(1120px, 92vw)`, mobile full width) has two views:
+   - `时间线`: entries grouped by month (sticky month header with count); each month is a multi-column card grid (cover, title, `M/D 周X`, action, round, 2-line comment), single column on mobile. Desktop shows a sticky left month rail that jumps to a month and highlights the month currently at the top. The on-screen view no longer uses AntD `Timeline`; export preview/image still renders the vertical `Timeline` list.
+   - `评分梯度`: score-log-only board grouped by main score levels from top to bottom as `满/优/合/差/零`; it reuses the timeline year and category filters, keeps score `+/-` markers, orders covers within each score row by sign (`+`, none, `-`) and then chronologically within the same sign, wraps many covers onto additional lines, and clicking a cover opens the item detail. Each row label shows its count; a `档位` chip row filters levels, and clicking a row label solos that level (click again to restore all). Desktop shows the title under each cover.
+   - Filters (category, status, score level) are chips with one shared rule: when everything is selected, clicking a chip shows only it; clicking the only selected chip restores all; otherwise a click toggles it, and removing the last one restores all (no empty state). `⌘/Ctrl/Alt+click` always solos. Each group has a `全部` chip; status also has `默认` (`进行中/已完成/鸽了/放弃`) and shows per-status counts.
 9. All-library timeline, timeline export, score gradient, and detail experience-record rows read only slim core scores and never load or preview score evaluation details.
 
 Timeline export preview rules:
