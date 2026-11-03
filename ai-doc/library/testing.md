@@ -110,10 +110,9 @@ Last verified: 2026-07-27 (score-detail migration and lazy-loading/edit flow pas
    - verify category filters also narrow score-gradient rows
    - verify rows render from top to bottom as `满/优/合/差/零`, each score log appears in its matching row, score `+/-` markers remain visible, same-row entries sort by `+`, none, `-` before time, and many entries wrap inside the row instead of overflowing horizontally
    - click a cover in the gradient board and verify it opens that item detail
-   - with all levels selected, click `满` in `档位` → only `满` row; click it again → all rows; click a row label → solo that level
-   - timeline view: category/status chips follow the solo-then-toggle rule (all → click = only it; deselect last = all; `⌘/Ctrl+click` solos)
-   - toggle `最早在前/最新在前`, reopen the drawer and verify the choice persists; export preview follows the order
-   - desktop month rail jumps to a month and highlights the month at the top while scrolling
+   - category/status/`档位` dropdowns: click a label → only that option; checkbox toggles; `选择全部` / `恢复默认` restore
+   - switch `最早在前/最新在前`, reopen the drawer and verify the choice persists; export preview follows the order
+   - desktop month `Anchor` jumps to a month without changing the URL and highlights the month at the top while scrolling
 9. Guide modal:
    - click title-row `?` button
    - verify modal `娱乐库状态与评分说明` opens
