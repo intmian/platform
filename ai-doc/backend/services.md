@@ -25,7 +25,7 @@ Last verified: 2026-07-13
 
 ## Not currently registered
 
-1. `note` flag exists in shared enums but is not registered in `platform/core.go`.
+1. `FlagNote = 2` is reserved for the retired Note Mini integration. No active `note` name mapping, configuration metadata or registered service remains; stored legacy values are preserved.
 2. `web-storage` service code exists, but is not registered in `platform/core.go`.
 
 ## Common RPC gateway contract

@@ -6,7 +6,6 @@ import {Cmd} from "./tool/cmd.tsx";
 import {ErrorPage} from "./misc/ErrorPage.tsx";
 import Anniversary from "./misc/love";
 
-import {lazy} from 'react';
 import ReportPanel from "./report/report";
 import {Todone} from "./todone/Main";
 import NutritionCalculator from "./misc/NutritionCalculator";
@@ -23,8 +22,6 @@ import {
     MoneyImportPage,
     MoneyReconcilePage
 } from "./money/MoneyPages.tsx";
-
-const Memos = lazy(() => import('./misc/memos'));
 
 const router = createBrowserRouter([
     {
@@ -63,10 +60,6 @@ const router = createBrowserRouter([
     {
         path: '/love47',
         element: <Anniversary/>,
-    },
-    {
-        path: '/note_mini',
-        element: <Memos/>,
     },
     {
         path: '/day-report',

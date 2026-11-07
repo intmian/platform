@@ -16,9 +16,12 @@
 - `/todone`：任务板（支持普通分组 + 娱乐库分组）
 - `/cmd`：脚本工具与运行环境
 - `/day-report`：日报与新闻汇总
-- `/note_mini`：快速发送到 Memos
 - `/loss-fat`：营养计算器
 - `/kana`：假名练习
+
+## Note Mini 已独立
+
+Platform 已移除旧 `/note_mini` 页面及其专属配置入口；Note Mini 由独立项目 `memos-mian` 维护。既有配置、浏览器草稿和历史文件不做删除或迁移。共享 R2 上传、AI 改写／转写及娱乐库、TODONE 笔记功能继续保留。源码调整不修改线上 Caddy、Cloudflare 或 R2 规则，退役边界见 [说明](ai-doc/note-mini/knowledge.md)。
 
 ## 娱乐库语音输入
 

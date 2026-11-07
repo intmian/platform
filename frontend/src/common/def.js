@@ -79,7 +79,6 @@ export const AllPermission = [
     'admin',
     "auto",
     "auto.report",
-    "note.cfg",
     "ai",
     "gpt",
     "todone",

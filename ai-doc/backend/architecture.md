@@ -47,7 +47,7 @@ Last verified: 2026-07-10
    - `account`
    - `cmd`
    - `todone`
-2. Service flags include `note`, but `note` is currently not registered into `core.service`.
+2. `FlagNote = 2` is a reserved retired identifier; there is no active `note` name mapping or registered `note` service. Existing numeric service IDs remain unchanged.
 3. Stop gate:
    - services with `SvrPropCore` or `SvrPropCoreOptional` cannot be stopped via admin API.
 4. Startup gate uses storage key `<service>/open_when_start` design intent, but current code reads `auto/open_when_start` for all services (`platform/core.go`, code fact).

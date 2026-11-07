@@ -127,7 +127,6 @@ function IndexHeader({onLoginSuc, onLogOut}) {
                         defaultSelectedKeys={['home']}
                         items={[
                             getItem('管理', 'home'),
-                            getItem('笔记', 'note'),
                             getItem('工具', 'tool'),
                         ]
                         }

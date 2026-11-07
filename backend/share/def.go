@@ -32,7 +32,6 @@ type SvrName string
 
 const (
 	NameAuto    SvrName = "auto"
-	NameNote    SvrName = "note"
 	NameAccount SvrName = "account"
 	NameCmd     SvrName = "cmd"
 	NameTodone  SvrName = "todone"
@@ -41,7 +40,7 @@ const (
 const (
 	FlagNone SvrFlag = iota
 	FlagAuto
-	FlagNote
+	FlagNote // Reserved retired Note Mini slot (2); never reuse or shift following service IDs.
 	FlagAccount
 	FlagCmd
 	FlagTodone

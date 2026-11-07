@@ -29,7 +29,6 @@ Last verified: 2026-07-27
 4. Domain pages:
    - `/todone`
    - `/todone/:group`
-   - `/note_mini`
    - `/day-report`
    - `/day-report/:date`
    - `/subscription`
@@ -50,6 +49,8 @@ Last verified: 2026-07-27
 8. `/subscription` is a logged-in user page with manual subscription checks, and does not require `admin` permission.
 9. Subscription API returns relative share paths; the page resolves them against `window.location.origin` for display/copy.
 10. `/money` is a logged-in family money book module; admin users can manage books/items/records/Excel imports/JSON archives/delete flows, while viewer users only receive dashboard access from the backend per-book ACL.
+
+`/note_mini` was retired from Platform source on 2026-11-04. The independent `memos-mian` application owns Note Mini; see `note-mini/knowledge.md` for the preserved historical file/link contract and shared-dependency boundary.
 
 ## Shared request model
 

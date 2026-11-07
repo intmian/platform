@@ -40,10 +40,11 @@ Last verified: 2026-07-23
 3. `POST /cfg/:svr/:user/*` currently has no explicit permission check in gateway code.
 4. Because user-scoped config routes are looser than platform/service routes, changes there should be reviewed carefully before reuse.
 
+The retired Note Mini integration no longer registers `note.setting` metadata or an active `note` service mapping. Existing stored values are not deleted; shared AI/R2 configuration remains active. See `note-mini/knowledge.md`.
+
 ## Registered platform keys
 
 1. Core platform keys registered in `PlatForm.InitCfg()`:
-   - `note.setting`
    - `PLAT.realUrl`
    - `PLAT.outUrl`
    - `PLAT.baseUrl`

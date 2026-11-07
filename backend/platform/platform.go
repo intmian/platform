@@ -171,7 +171,6 @@ func (p *PlatForm) Init(c context.Context) error {
 	p.tool.flag2name = make(map[share.SvrFlag]share.SvrName)
 	p.tool.name2flag = make(map[share.SvrName]share.SvrFlag)
 	p.tool.flag2name[share.FlagAuto] = share.NameAuto
-	p.tool.flag2name[share.FlagNote] = share.NameNote
 	p.tool.flag2name[share.FlagAccount] = share.NameAccount
 	p.tool.flag2name[share.FlagCmd] = share.NameCmd
 	p.tool.flag2name[share.FlagTodone] = share.NameTodone
@@ -245,12 +244,6 @@ func resolveD1LogWorkerConfig(s share.BaseSetting) (string, string, error) {
 func (p *PlatForm) InitCfg() error {
 	params := []*xstorage.CfgParam{
 		// 新配置注册
-		{
-			Key:       "note.setting",
-			ValueType: xstorage.ValueTypeString,
-			CanUser:   false,
-			RealKey:   "note.setting",
-		},
 		{
 			Key:       "PLAT.realUrl",
 			ValueType: xstorage.ValueTypeString,

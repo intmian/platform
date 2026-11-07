@@ -1,125 +1,46 @@
-# Note Mini Knowledge
+# Retired Note Mini integration
 
-Last verified: 2026-08-24
+Last verified: 2026-11-04 (source inspection)
 
-## Module role
+## Status and ownership
 
-1. `note_mini` is a lightweight private memo sender, not a first-party backend domain service.
-2. It combines frontend drafting/upload/local encryption/AI rewrite UX with platform config/misc APIs and an external memos API.
+Note Mini is now a feature of the independently maintained `memos-mian` application. Platform no longer owns its page, account/configuration bridge, memo submission or tag queries. There is no replacement URL or automatic redirect in Platform.
 
-## Test reference
+The following dedicated integration was removed from Platform source:
 
-1. Standard safe test flow is documented in `note-mini/testing.md`.
-2. Preferred mode is virtual URL/KEY + local mock endpoint, so formal memo data is not polluted during feature tests.
+- `/note_mini` and its `frontend/src/misc/memos.tsx` component.
+- The admin header's legacy `笔记` entry and the `note.cfg` permission option.
+- Registration of `note.setting` configuration metadata in `PlatForm.InitCfg()`.
+- The active `note` service-name/flag mapping. `FlagNote` remains reserved at numeric value 2; `FlagAccount`, `FlagCmd` and `FlagTodone` retain values 3, 4 and 5.
 
-## Frontend entry
+There was never a registered first-party Note Mini backend service. Service-wide `/cfg/note/get` and `/cfg/note/set` now fail the gateway's existing unknown-service check. Generic configuration routes and shared permissions are otherwise unchanged; this retirement is not a redesign of the configuration gateway.
 
-1. Route is `/note_mini`, component entry is `frontend/src/misc/memos.tsx`.
-2. Shared auth/request shell behaviors come from `ai-doc/frontend/architecture.md`.
+## Preserved data and shared features
 
-## API surface
+No migration or deletion accompanies retirement. Stored `note.setting`, previously granted permission strings, browser drafts/settings and uploaded files are left intact. In particular, removal does not clear `note.lastInput`, rewrite historical memo bodies, fetch historical links, delete R2 objects or create native attachment records for old links.
 
-1. Platform-side calls:
-   - `POST /cfg/note/get`
-   - `POST /cfg/note/set`
-   - `POST /misc/gpt-rewrite`
-   - `POST /misc/r2-presigned-url`
-2. Real memo submit target:
-   - `POST {url}/api/v1/memos`
+The following Platform facilities remain shared and active:
 
-## Backend dependency
+- Native account/configuration infrastructure for other modules.
+- R2 signing/upload helpers and `PLAT.r2.*` configuration.
+- AI rewrite, file transcription, realtime transcription, `WhisperButton`, recording/worklet helpers and their configuration.
+- Library/Todone notes, ratings, voice input and review-digest workflows.
+- The `backend/mian_go_lib` submodule and its separate history.
 
-1. `note_mini` has no dedicated first-party backend service module in this repo.
-2. It depends on platform gateway/config APIs for settings and utility calls:
-   - `POST /cfg/note/get`
-   - `POST /cfg/note/set`
-   - `POST /misc/gpt-rewrite`
-   - `POST /misc/r2-presigned-url` (used by shared upload helper)
-3. Real memo submit target is external memos API (`POST {url}/api/v1/memos`), not `/service/note/*`.
-4. If task involves auth/config/permission failures around note-mini, additionally load:
-   - `ai-doc/frontend/architecture.md`
-   - `ai-doc/backend/architecture.md`
-   - `ai-doc/backend/gateway-auth.md`
-   - `ai-doc/backend/config-and-ai.md`
-   - `ai-doc/backend/services.md`
-   - `ai-doc/backend/testing.md`
-5. `note` config routes work because `note` exists in service-flag mapping even though a real note backend service is not registered.
+Their contracts live in `frontend/architecture.md`, `backend/config-and-ai.md`, `library/knowledge.md` and `todone/knowledge.md`. Removing a caller does not authorize deleting these dependencies.
 
-## User-side capabilities
+## Historical encrypted-file compatibility
 
-1. The page is a lightweight private memo sender:
-   - input area supports markdown text
-   - keyboard submit supports Ctrl+Enter on Windows/Linux and Command+Enter on macOS, including from the tag area
-   - upload supports local files and clipboard images from the bottom file-upload icon, then inserts markdown link/image
-   - encrypted upload turns the current draft into a local AES-GCM binary file, uploads that file, then sends only the public tip, optional password hint, download link, and selected tags through the normal memo queue
-   - bottom action bar includes `WhisperButton` voice input; realtime text is previewed at the end of the draft and the authoritative completed text is then appended
-   - while realtime voice recognition is active, the draft editor is read-only; its preview remains transient and does not update the committed draft or `note.lastInput`
-   - while voice recording is active, the send button is removed and the shared expanded recording pill occupies that action-bar space; the send button returns after recording stops
-   - submit queue shows recent send status icons (success/failure/loading)
-3. Upload trigger path uses a reused hidden `input[type=file]` (not recreated per click), and resets `value` before click to avoid occasional "click upload but nothing happens" behavior.
-4. The top-right control area places a small eye toggle to the left of the logged-in user; it switches between visible/hidden draft display without moving the bottom action bar layout.
-5. When the draft is fully deleted, hide mode is cancelled automatically so the page-level hidden state does not remain latched on an empty input.
-6. The top-right settings button writes note service config into `note.setting` through `sendCfgServiceSet`.
-7. Input draft is cached in browser `localStorage` key `note.lastInput`; clearing input or deleting all content removes it.
-8. Mobile tag selector on `/note_mini` truncates selected tag text (`maxTagTextLength=3`) and uses responsive tag collapsing (`maxTagCount="responsive"`) to avoid bottom action row layout break on narrow screens.
+This is a read-compatibility reference, not an active Platform feature. The retired composer encrypted UTF-8 text with AES-256-GCM using `SHA-256(UTF-8 password)` as the key, a fresh 12-byte IV, a 128-bit authentication tag and no salt or AAD. The `.notemini.enc` file contains `IV || ciphertext || tag`.
 
-## Data contract and submit flow
+The old public memo body joined these lines with single newlines:
 
-1. Real submit call is `SendMemosReq`, posting to `POST {url}/api/v1/memos`.
-2. Queue/history is frontend-only (`reqHis`), capped to 20 entries, each carrying:
-   - `content`
-   - selected `tags`
-   - local id
-3. Payload content format is always:
-   - `<content>\n#tag1 #tag2 ...`
-4. The top status bar is hidden when there is no send history.
-5. The top status bar is horizontally scrollable when history exists; overflow history remains hidden until the user scrolls.
-6. Queue status items open a click popover for text review/copy. Failure retry is an explicit popover action, not the icon's default click behavior.
-7. Mobile suppresses the queue status hover tooltips while retaining each item's click popover.
+1. The public tip.
+2. Optional `密码提示：<hint>`.
+3. `[下载加密文件](<publishUrl>)`.
 
-## Encrypted upload contract
+Selected tags followed the body. The download URL can be opaque and need not end in `.notemini.enc`; it was a Markdown link, not necessarily a native attachment record. `memos-mian` owns current import/decryption behavior. Preserve these historical links and their original objects.
 
-1. The encrypted-upload modal contains:
-   - required `tip`
-   - required password
-   - optional password hint
-2. Encryption is entirely browser-side:
-   - encode draft and password as UTF-8
-   - derive the 256-bit AES key as `SHA-256(password)` with no salt
-   - generate a fresh random 12-byte IV
-   - encrypt with AES-GCM and a 128-bit authentication tag, without AAD
-3. The uploaded `application/octet-stream` file is named `note-mini-<ISO timestamp>.notemini.enc` and has this binary layout:
-   - bytes `0..11`: IV
-   - remaining bytes: Web Crypto AES-GCM output `ciphertext || 16-byte authentication tag`
-4. The password is not persisted or sent. There is no first-party decrypt UI.
-5. The queued memo content is:
-   - first line: `tip`
-   - optional second line: `密码提示：<password hint>`
-   - final line: `[下载加密文件](<public R2 URL>)`
-   - selected tags are appended by the existing queue contract
-6. Encryption or file-upload failure preserves the draft, tags, and open modal. The draft is cleared only after the encrypted file has uploaded and its memo content has entered the existing send queue.
+## Infrastructure boundary
 
-## Bottom action behavior (verified from code)
-
-1. The bottom area has one fixed action row:
-   - left: a tag button that shows `标签` when empty, otherwise shows selected tag names joined with `、`; long content stays on one line and is ellipsized without pushing the right-side actions out of place
-   - right: encrypted upload, AI optimization, file upload, a divider, voice input, and send actions
-2. Clicking the tag button opens the tag selector in a popover above the row; the button uses its selected style while open, and the selector is focused with its option dropdown expanded after the outer popover finishes positioning so the nested dropdown always measures its real width.
-3. The tag popover overlays the page instead of consuming layout height, so opening or closing it does not resize the memo input.
-4. Encrypted upload, AI optimization, file upload, and voice input are icon-only controls with tooltips and accessible labels. Mobile suppresses the voice button tooltip, including its recording stop hint, while retaining click-to-stop behavior.
-5. File upload uses `FileAddOutlined` and preserves clipboard-image detection on supported desktop browsers; it is disabled while settings are loading or an upload is already running.
-6. AI rewrite uses `RobotOutlined` and is disabled until the memo has content and settings are ready.
-7. Voice input remains the shared `WhisperButton`; while recording, its expanded pill replaces the send button space and shows the latest real 16-bucket PCM waveform rather than a repeated synthetic pattern.
-8. The send button stays at the far right when voice recording is inactive.
-9. Hide/show remains in the top-right control area next to the logged-in user.
-10. Note Mini suppresses the floating `实时转写` popover on all screen sizes. Confirmed sentences plus the current mutable partial sentence appear directly at the end of the draft editor instead.
-11. Realtime preview and final insertion share the existing separator rule: add a newline only when the existing draft is non-empty and ends with neither a newline nor a space. Completion commits the authoritative final result once. If recognition fails after producing text, the visible best-effort aggregate is appended once, ordinary editing resumes, and the error is still reported; cancellation removes the transient preview and preserves the original draft.
-
-## Verification focus
-
-1. Load `note-mini/testing.md` for safe mock-based verification flow.
-2. Regression should include:
-   - normal submit path
-   - encrypted upload path
-   - AI rewrite path
-   - upload path
+These source edits do not modify deployed Caddy routing, Cloudflare rules, R2 CORS policy, production configuration or running services. Release memos-mian and verify its production entry before deploying this Platform retirement; only then remove confirmed bridge-only cross-origin rules in a separately authorized infrastructure change. Shared R2 upload/read policies and historical file domains are not retirement targets. Any inspection or cleanup of those external resources must follow `shared/production-operations.md` and the user's authorization for that operation.

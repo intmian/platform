@@ -35,7 +35,7 @@ Last verified: 2026-07-12
 
 - Todone: `todone/knowledge.md`, `todone/testing.md`, `todone/ui-locator.md`
 - Library: `library/knowledge.md`, `library/testing.md`, `library/ui-locator.md`
-- Note Mini: `note-mini/knowledge.md`, `note-mini/testing.md`
+- Retired Platform Note Mini integration (ownership, preserved historical links/files, removal checks): `note-mini/knowledge.md`, `note-mini/testing.md`
 - Subscription: `subscription/knowledge.md`
 - Family money book: `money/knowledge.md`, `money/testing.md`, `money/ui-locator.md`
 
