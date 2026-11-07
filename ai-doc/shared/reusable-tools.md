@@ -27,4 +27,4 @@ Last verified: 2026-07-13
 15. `gorm-d1-adapter/workers/d1-proxy` + per-target local Wrangler configs: Todone/Log/Test 三个 Worker 共用代理源码但独立绑定 D1 和 `AUTH_TOKEN`；生产操作先遵循 `shared/production-operations.md`，具体命令见 `backend/d1-worker-operations.md`。
 16. `Codex in-app Browser` + `frontend/src/debug/debug.jsx`: 本地前端渲染、响应式检查和交互验证的默认流程；仅在用户明确要求、需要正式 Playwright 产物/规范，或内置浏览器按恢复流程仍不可用时使用独立 Playwright。
 
-17. `LibraryVoiceInput` + `LibraryVoiceProvider`: Library 评分评价和作品备注共用的语音文本框；兼容 Form 的 value/onChange，逐框实时预览与追加转写，协调录音/识别占用，关闭表单后忽略迟到结果。
+17. `LibraryVoiceInput` + `LibraryVoiceProvider`: Library 评分评价、作品备注和体验备注共用的语音文本框，麦克风悬浮在文本框右下角；兼容 Form 的 value/onChange，逐框实时预览与追加转写，协调录音/识别占用，关闭表单后忽略迟到结果。
