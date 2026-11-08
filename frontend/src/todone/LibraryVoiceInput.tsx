@@ -60,9 +60,9 @@ function VoiceSession({value = '', onChange, disabled, rows, placeholder, label,
         readOnly: busy,
         onChange: (event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => onChange?.(event.target.value),
     };
-    // 按钮悬浮在文本框右下角，避免每个评价框下方多出一整行；录音时按钮会横向展开，临时加大底部留白防止遮挡预览文字。
+    // 固定预留底部空间，容纳展开的录音按钮，避免语音启停时文本框尺寸跳变。
     return <div style={{position: 'relative', ...style}}>
-        <Input.TextArea {...inputProps} rows={rows} style={{paddingRight: 36, paddingBottom: busy ? 36 : undefined}}/>
+        <Input.TextArea {...inputProps} rows={rows} style={{paddingRight: 36, paddingBottom: 36}}/>
         <div style={{position: 'absolute', right: 6, bottom: 6, zIndex: 2, lineHeight: 0}}>
             <WhisperButton
                 size="small"
