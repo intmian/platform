@@ -425,6 +425,9 @@ export function WhisperButton({
             return;
         }
 
+        // Clear the previous terminal state before re-arming its result/error handlers.
+        // Capability lookup can re-render the caller before the next recorder starts.
+        realtime.reset();
         setResolvingMode(true);
         lastRealtimeErrorRef.current = "";
         lastRealtimeCompletionRef.current = "";
