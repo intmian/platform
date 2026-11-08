@@ -23,6 +23,7 @@ const (
 	dashScopeRealtimePath         = "/api-ws/v1/inference"
 	dashScopeRealtimeSampleRate   = 8000
 	realtimeHandshakeTimeout      = 15 * time.Second
+	realtimeCloseTimeout          = 2 * time.Second
 	realtimeTranscriptionTimeout  = 10 * time.Minute
 	realtimeClientMessageMaxBytes = 64 << 10
 )
@@ -371,10 +372,13 @@ func (m *webMgr) bridgeDashScopeRealtime(client *websocket.Conn, upstream *webso
 					parts = append(parts, text)
 				}
 			}
-			return writeRealtimeClientEvent(client, realtimeTranscriptionServerEvent{
+			if err := writeRealtimeClientEvent(client, realtimeTranscriptionServerEvent{
 				Type: "completed",
 				Text: strings.Join(parts, ""),
-			})
+			}); err != nil {
+				return err
+			}
+			return closeRealtimeClientNormally(client, clientDone)
 		case "task-failed":
 			eventErr := dashScopeRealtimeEventError(event)
 			_ = writeRealtimeClientEvent(client, realtimeTranscriptionServerEvent{
@@ -385,6 +389,27 @@ func (m *webMgr) bridgeDashScopeRealtime(client *websocket.Conn, upstream *webso
 			return eventErr
 		}
 	}
+}
+
+func closeRealtimeClientNormally(client *websocket.Conn, clientDone <-chan error) error {
+	deadline := time.Now().Add(realtimeCloseTimeout)
+	err := client.WriteControl(websocket.CloseMessage,
+		websocket.FormatCloseMessage(websocket.CloseNormalClosure, "completed"), deadline)
+	// The browser may initiate closing as soon as it processes completed. In that
+	// case the existing reader has already sent the close response.
+	if err != nil && !errors.Is(err, websocket.ErrCloseSent) {
+		return err
+	}
+
+	// Only forwardRealtimeClientAudio reads this socket. Let it process the peer's
+	// close frame before the handler's deferred Close releases the connection.
+	timer := time.NewTimer(time.Until(deadline))
+	defer timer.Stop()
+	select {
+	case <-clientDone:
+	case <-timer.C:
+	}
+	return nil
 }
 
 func forwardRealtimeClientAudio(client *websocket.Conn, upstream *websocket.Conn, taskID string) error {

@@ -211,3 +211,131 @@ func TestHostName(t *testing.T) {
 		t.Fatalf("hostName DNS = %q", got)
 	}
 }
+
+func TestBridgeDashScopeRealtimeCompletionClosesNormally(t *testing.T) {
+	for _, mode := range []string{"reply_after_close", "close_after_completed", "no_close_reply"} {
+		t.Run(mode, func(t *testing.T) {
+			client, browser := realtimeTestSocketPair(t)
+			provider, upstream := realtimeTestSocketPair(t)
+			bridgeDone := make(chan error, 1)
+			go func() {
+				err := new(webMgr).bridgeDashScopeRealtime(client, upstream, "test-task")
+				_ = upstream.Close()
+				_ = client.Close()
+				bridgeDone <- err
+			}()
+
+			if err := browser.WriteJSON(realtimeTranscriptionClientEvent{Type: "finish"}); err != nil {
+				t.Fatal(err)
+			}
+			var finish struct {
+				Header struct {
+					Action string `json:"action"`
+					TaskID string `json:"task_id"`
+				} `json:"header"`
+			}
+			if err := provider.ReadJSON(&finish); err != nil {
+				t.Fatalf("read finish-task: %v", err)
+			}
+			if finish.Header.Action != "finish-task" || finish.Header.TaskID != "test-task" {
+				t.Fatalf("unexpected finish-task: %#v", finish)
+			}
+
+			// Final sentences may arrive out of order or be corrected before completion.
+			for _, sentence := range []struct {
+				id   int
+				text string
+			}{{2, "世界。"}, {1, "您好，"}, {1, "你好，"}} {
+				event := dashScopeRealtimeEvent{}
+				event.Header.Event = "result-generated"
+				event.Payload.Output.Sentence.SentenceID = sentence.id
+				event.Payload.Output.Sentence.Text = sentence.text
+				event.Payload.Output.Sentence.SentenceEnd = true
+				if err := provider.WriteJSON(event); err != nil {
+					t.Fatal(err)
+				}
+				var result realtimeTranscriptionServerEvent
+				if err := browser.ReadJSON(&result); err != nil {
+					t.Fatal(err)
+				}
+				if result.Type != "final" || result.Text != sentence.text {
+					t.Fatalf("unexpected sentence: %#v", result)
+				}
+			}
+
+			started := time.Now()
+			if err := provider.WriteJSON(map[string]any{"header": map[string]string{"event": "task-finished"}}); err != nil {
+				t.Fatal(err)
+			}
+			var completed realtimeTranscriptionServerEvent
+			if err := browser.ReadJSON(&completed); err != nil {
+				t.Fatalf("read completed: %v", err)
+			}
+			if completed.Type != "completed" || completed.Text != "你好，世界。" {
+				t.Fatalf("unexpected completion: %#v", completed)
+			}
+
+			// Read the server close frame without automatically acknowledging it.
+			browser.SetCloseHandler(func(int, string) error { return nil })
+			reply := func() {
+				t.Helper()
+				if err := browser.WriteControl(websocket.CloseMessage,
+					websocket.FormatCloseMessage(websocket.CloseNormalClosure, "done"),
+					time.Now().Add(time.Second)); err != nil {
+					t.Fatalf("send close reply: %v", err)
+				}
+			}
+			if mode == "close_after_completed" {
+				reply()
+			}
+			if _, _, err := browser.ReadMessage(); !websocket.IsCloseError(err, websocket.CloseNormalClosure) {
+				t.Fatalf("close = %v, want WebSocket code 1000", err)
+			}
+			if mode == "reply_after_close" {
+				select {
+				case err := <-bridgeDone:
+					t.Fatalf("bridge returned before close reply: %v", err)
+				default:
+				}
+				reply()
+			}
+			select {
+			case err := <-bridgeDone:
+				if err != nil {
+					t.Fatalf("bridge: %v", err)
+				}
+			case <-time.After(4 * time.Second):
+				t.Fatal("bridge did not release connections after close")
+			}
+			if mode == "no_close_reply" && time.Since(started) < 2*time.Second {
+				t.Fatal("bridge did not wait for the close handshake timeout")
+			}
+		})
+	}
+}
+
+func realtimeTestSocketPair(t *testing.T) (*websocket.Conn, *websocket.Conn) {
+	t.Helper()
+	accepted := make(chan *websocket.Conn, 1)
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		conn, err := (&websocket.Upgrader{}).Upgrade(writer, request, nil)
+		if err != nil {
+			t.Errorf("upgrade test socket: %v", err)
+			return
+		}
+		accepted <- conn
+	}))
+	t.Cleanup(server.Close)
+	peer, _, err := websocket.DefaultDialer.Dial("ws"+strings.TrimPrefix(server.URL, "http"), nil)
+	if err != nil {
+		t.Fatalf("dial test socket: %v", err)
+	}
+	t.Cleanup(func() { _ = peer.Close() })
+	conn := <-accepted
+	t.Cleanup(func() { _ = conn.Close() })
+	for _, socket := range []*websocket.Conn{conn, peer} {
+		_ = socket.SetReadDeadline(time.Now().Add(5 * time.Second))
+		_ = socket.SetWriteDeadline(time.Now().Add(5 * time.Second))
+	}
+	return conn, peer
+}
