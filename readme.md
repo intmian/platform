@@ -72,7 +72,7 @@ Platform 已移除旧 `/note_mini` 页面及其专属配置入口；Note Mini �
 backend/      Go 后端与服务实现
 frontend/     React 前端
 ai-doc/       当前架构、领域知识与验证说明
-.agents/skills/ 仓库级开发、测试、调试和知识维护技能（Codex 直接读取；Claude Code 需本地运行一次 `node scripts/link-agent-skills.mjs`，把 .claude/skills 链接到这里，该链接不入库）
+.agents/skills/ 仓库级开发、测试、调试和知识维护技能（Codex 直接读取；Claude Code 需本地运行一次 `scripts/link-agent-skills.sh`（Windows：`scripts\link-agent-skills.bat`），把 .claude/skills 链接到这里，该链接不入库）
 docs/         设计、计划与历史材料
 plan/         中长期产品规划
 ```
