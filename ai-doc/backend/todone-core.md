@@ -16,12 +16,14 @@ Last verified: 2026-07-13
 5. `TagsDB`: task-tag relation (`task_id`, `tag`, user).
 6. `LibraryNoteDB`: private Library round notes (`task_id`, stable `round_id`, content, event time, revision, idempotency id, soft delete).
 7. `LibraryScoreDetailDB`: per-score evaluation detail (`score id`, task/round scope, mode, main/dimension comments and values, revision, idempotency id, soft delete).
+8. `RoutineNodeDB` (`routine_nodes`): routine checklist config/current state per node. String primary key `kind:nodeID` (kind 0 group, 1 subgroup, 2 task), scoped by `user_id`+`group_id`; fields `folder`, `optional`, `temp`, `rule` (JSON), `mark`, `prev_mark`. No history rows.
 
 ## Group type contract
 
 1. `GroupTypeNormal = 0`
 2. `GroupTypeLibrary = 1`
-3. Frontend library mode depends on group type from backend group data.
+3. `GroupTypeRoutine = 2`
+4. Frontend library/routine mode depends on group type from backend group data.
 
 ## Service startup and DB connect
 
@@ -34,6 +36,7 @@ Last verified: 2026-07-13
    - subgroup
    - library note
    - library score detail
+   - routine
    Every `ConnectType` maps to the same root GORM handle and underlying `database/sql` pool.
 3. Auto-migrate runs serially in the above order at startup; it no longer writes the connection map or migrates the same D1 concurrently.
 4. `library_notes.revision` is initialized explicitly by application/migration writes and intentionally has no GORM database-default tag. The D1 adapter cannot introspect column defaults, so adding one makes a second `AutoMigrate` incorrectly request a destructive alteration. UUID columns likewise use D1 `TEXT` without GORM size declarations.
@@ -91,6 +94,16 @@ Last verified: 2026-07-13
 5. Score deletion removes the slim core score. Its detail row is retained but becomes inaccessible, matching removed-round note behavior.
 6. `backend/cmd/migrate_library_score_details` performs the stopped-service conversion: stable score IDs and `mainScoreID` remain in Task, while comments/mode/complex dimensions move into the side table.
 
+## Routine checklist contract
+
+1. Public commands are `getRoutine` (all nodes of one group) and `saveRoutine` under the Todone RPC namespace, with the normal `admin|todone` gate and exact user match; the group must be `GroupTypeRoutine`.
+2. `saveRoutine` validates every node and deletion first (group node ID must equal the group, subgroup must belong to the group, task must be live, owned by the user and belong to `SubGroupID`), then deletes `DelTasks` through `SubGroupLogic.OnDeleteTasks` plus their routine nodes, then upserts nodes. Deleted task IDs in the same request are skipped from upsert.
+3. Upsert reads existing IDs then updates/creates rows; it does not depend on dialect `ON CONFLICT` support. Limits: rule 2 KiB, marks 64 bytes, 2000 nodes per request.
+4. Backend stores rules and marks opaquely; refresh dates, the current period, grace and missed counts are computed in the frontend (`routineRule.ts`) using the viewer's local date. See `routine/knowledge.md`.
+5. Orphan nodes left by ordinary `delTask`/`delSubGroup` are harmless and ignored by the frontend.
+6. Task ownership checks read `TaskDB` directly. Do not validate foreign IDs through `SubGroupLogic.GetTaskLogic`: for uncached tasks it calls `taskSequence.GetSequenceOrAdd`, which appends the ID to that subgroup's order before any ownership check.
+7. `UserLogic.CreateGroup` seeds a "默认" subgroup for every group type except `GroupTypeRoutine`.
+
 ## Subgroup autosave behavior
 
 1. `SubGroupLogic` starts autosave goroutine at creation.
@@ -135,4 +148,5 @@ Last verified: 2026-07-13
 1. User-level global mutex simplifies consistency but serializes all operations per user.
 2. Task order correctness depends on subgroup `taskSequence` integrity.
 3. Mixed soft/hard delete strategy means troubleshooting should inspect both logical flags and physical rows.
-4. Confirmed via real Worker interaction (2026-07-10): when a brand-new user has no dir row, the first `getDirTree` creates the root DB row but leaves the in-memory root unbound and panics in `dirTreeToProtocol`; the next request succeeds after rebuilding from the persisted row.
+4. Confirmed via real Worker interaction (2026-11-09): `CreateTask` only appends to `taskSequence` after the subgroup cache is loaded, while creating a child calls `GetTaskLogic(parent)`, which appends the parent immediately. Creating tasks through the API on a subgroup whose cache was never loaded therefore moves parents with children ahead of earlier siblings. The UI always loads `getTasks` first; API seed scripts must call `getTasks` for each subgroup before creating tasks.
+5. Confirmed via real Worker interaction (2026-07-10): when a brand-new user has no dir row, the first `getDirTree` creates the root DB row but leaves the in-memory root unbound and panics in `dirTreeToProtocol`; the next request succeeds after rebuilding from the persisted row.

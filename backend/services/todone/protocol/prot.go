@@ -79,3 +79,17 @@ type PLibraryScoreDetail struct {
 	CreatedAt     time.Time
 	UpdatedAt     time.Time
 }
+
+// PRoutineNode 例行清单节点配置与当前状态。
+// Kind: 0=group 1=subgroup 2=task；SubGroupID 仅 task 节点需要，用于归属校验。
+type PRoutineNode struct {
+	Kind       uint8
+	NodeID     uint32
+	SubGroupID uint32
+	Folder     bool
+	Optional   bool
+	Temp       bool
+	Rule       string
+	Mark       string
+	PrevMark   string
+}

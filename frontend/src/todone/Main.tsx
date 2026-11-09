@@ -14,6 +14,7 @@ import User from "../common/User";
 import {useParams} from "react-router-dom";
 import TaskTree from "./TaskTree";
 import Library from "./Library";
+import Routine from "./Routine";
 import {useLoginGate} from "../common/useLoginGate";
 
 const TodoneConfigs = new ConfigsCtr(ConfigsType.Server, 'todone')
@@ -29,6 +30,17 @@ export function TodoneSetting() {
     return <Card title="Todone Worker 配置" style={{marginBottom: 16}}>
         <UniConfig configCtr={TodoneConfigs}/>
     </Card>
+}
+
+function groupPageTitle(groupType: number, title: string) {
+    switch (groupType) {
+        case GroupType.Library:
+            return `TODONE 娱乐库: ${title}`;
+        case GroupType.Routine:
+            return `TODONE 例行清单: ${title}`;
+        default:
+            return `TODONE 任务板: ${title}`;
+    }
 }
 
 export function Todone() {
@@ -63,10 +75,7 @@ export function Todone() {
     }, []);
 
     useEffect(() => {
-        const title = chooseGroupType === GroupType.Library 
-            ? `TODONE 娱乐库: ${chooseTitle}` 
-            : `TODONE 任务板: ${chooseTitle}`;
-        document.title = title;
+        document.title = groupPageTitle(chooseGroupType, chooseTitle);
     }, [chooseTitle, chooseGroupType]);
 
     useEffect(() => {
@@ -150,9 +159,7 @@ export function Todone() {
                         window.history.replaceState({}, '', `/todone/${encodedGroup}`);
                         setShowDir(false);
                         // 修改标题
-                        document.title = groupType === GroupType.Library 
-                            ? `TODONE 娱乐库: ${title}` 
-                            : `TODONE 任务板: ${title}`;
+                        document.title = groupPageTitle(groupType ?? GroupType.Normal, title);
                     }}
                     onSelectDir={(addr) => {
                         // 暂无逻辑
@@ -169,6 +176,12 @@ export function Todone() {
         >
             {chooseGroupType === GroupType.Library ? (
                 <Library
+                    addr={chooseAddr}
+                    groupTitle={chooseTitle}
+                />
+            ) : chooseGroupType === GroupType.Routine ? (
+                <Routine
+                    key={chooseAddr?.toString()}
                     addr={chooseAddr}
                     groupTitle={chooseTitle}
                 />

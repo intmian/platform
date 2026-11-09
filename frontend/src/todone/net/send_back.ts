@@ -1,5 +1,5 @@
 import {UniPost, UniResult} from "../../common/newSendHttp";
-import {LibraryNote, LibraryScoreDetail, LibraryScoreDetailDimension, PDirTree, PSubGroup, PTask} from "./protocal";
+import {LibraryNote, LibraryScoreDetail, LibraryScoreDetailDimension, PDirTree, PRoutineNode, PSubGroup, PTask} from "./protocal";
 import config from "../../config.json";
 
 export interface GetDirTreeReq {
@@ -607,4 +607,43 @@ export function sendTaskDelTag(req: TaskDelTagReq, callback: (ret: { data: TaskD
 
         callback(result);
     });
+}
+
+export interface GetRoutineReq {
+    UserID: string
+    DirID: number
+    GroupID: number
+}
+
+export interface GetRoutineRet {
+    Nodes: PRoutineNode[] | null
+}
+
+export interface RoutineDelTasks {
+    SubGroupID: number
+    TaskIDs: number[]
+}
+
+// 在同一把用户锁内删除临时任务并批量写入节点状态
+export interface SaveRoutineReq {
+    UserID: string
+    DirID: number
+    GroupID: number
+    Nodes: PRoutineNode[]
+    DelTasks: RoutineDelTasks[]
+}
+
+export type SaveRoutineRet = object
+
+export async function postTodone<T>(cmd: string, req: object): Promise<{ data: T, ok: boolean }> {
+    const res = await UniPost(api_base_url + cmd, req);
+    return {data: res.data as T, ok: res.ok};
+}
+
+export function sendGetRoutine(req: GetRoutineReq) {
+    return postTodone<GetRoutineRet>('getRoutine', req);
+}
+
+export function sendSaveRoutine(req: SaveRoutineReq) {
+    return postTodone<SaveRoutineRet>('saveRoutine', req);
 }

@@ -5,8 +5,8 @@ Last verified: 2026-07-27
 ## Scope and loading boundary
 
 1. Todone is the shared task platform module under `frontend/src/todone` + `backend/services/todone`.
-2. Group `Type=0` is normal task board; `Type=1` is library extension branch.
-3. When current work touches library-specific behavior (timeline/score/cover/category/share), load `ai-doc/library/*` in addition to this file.
+2. Group `Type=0` is normal task board; `Type=1` is library extension branch; `Type=2` is the routine checklist branch.
+3. When current work touches library-specific behavior (timeline/score/cover/category/share), load `ai-doc/library/*` in addition to this file. When it touches routine checklists (refresh rules, periods, reset, temp items), load `ai-doc/routine/knowledge.md`.
 4. When current work touches shared frontend routing/auth/request behavior, also load:
    - `ai-doc/frontend/architecture.md`
 5. When current work touches backend internals (service startup/permission, sequence/cache/move correctness, DB model), also load:
@@ -35,6 +35,7 @@ Last verified: 2026-07-27
 5. Page title switches by group type:
    - normal: `TODONE 任务板: <title>`
    - library: `TODONE 娱乐库: <title>`
+   - routine: `TODONE 例行清单: <title>`
 6. Page favicon is replaced to `/todone-mini.png` in `Todone` mount effect.
 
 ## API surface
@@ -48,6 +49,8 @@ Last verified: 2026-07-27
    - `getTask`, `getTasks`, `createTask`, `changeTask`, `delTask`, `taskMove`, `taskAddTag`, `taskDelTag`
 5. Library private-note commands in the same todone namespace:
    - `getLibraryNotes`, `createLibraryNote`, `changeLibraryNote`, `delLibraryNote`
+6. Routine checklist commands in the same todone namespace:
+   - `getRoutine`, `saveRoutine`
 
 ## Backend dependency
 
@@ -71,6 +74,7 @@ Last verified: 2026-07-27
 3. Group type selection is available when creating group in dir tree:
    - `0` 普通
    - `1` 图书馆
+   - `2` 例行清单
 4. Normal group page (`Group.tsx`) loads subgroup list via `getSubGroup`.
 5. Subgroup panel (`SubGroups.tsx`) loads task list via `getTasks`:
    - default `ContainDone=false` in normal todone board

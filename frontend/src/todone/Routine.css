@@ -1,0 +1,1310 @@
+/* 例行清单：颜色全部来自 antd token（在 .rt-root 上注入为 CSS 变量） */
+.rt-root {
+    --rt-ease: cubic-bezier(.22, 1, .36, 1);
+    --rt-spring: cubic-bezier(.34, 1.56, .64, 1);
+    --rt-radius: 14px;
+    padding: 28px 0 200px;
+    color: var(--rt-text);
+}
+
+/* ---------- 头部 ---------- */
+.rt-hero {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 20px;
+    animation: rt-fade-up .45s var(--rt-ease) both;
+}
+
+.rt-hero-main {
+    flex: 1;
+    min-width: 0;
+}
+
+.rt-hero-title {
+    font-size: 24px;
+    font-weight: 600;
+    line-height: 1.25;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.rt-hero-sub {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    margin-top: 6px;
+}
+
+.rt-hero-opt {
+    font-size: 12px;
+    color: var(--rt-text-3);
+}
+
+.rt-hero-actions {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    align-self: flex-start;
+}
+
+@media (max-width: 640px) {
+    .rt-root {
+        padding-top: 64px;
+    }
+
+    .rt-hero {
+        flex-wrap: wrap;
+        gap: 12px;
+    }
+
+    .rt-hero-actions {
+        width: 100%;
+        justify-content: flex-end;
+        order: 3;
+        margin-top: -6px;
+    }
+
+    .rt-hero-title {
+        font-size: 20px;
+    }
+}
+
+.rt-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 1px 9px;
+    border-radius: 999px;
+    font-size: 12px;
+    line-height: 20px;
+    color: var(--rt-primary);
+    background: var(--rt-primary-bg);
+    cursor: pointer;
+    transition: filter .2s;
+    white-space: nowrap;
+}
+
+.rt-chip:hover {
+    filter: brightness(.96);
+}
+
+.rt-chip-sm {
+    font-size: 11px;
+    line-height: 18px;
+    padding: 0 7px;
+    font-weight: normal;
+}
+
+/* ---------- 进度环 ---------- */
+.rt-ring {
+    position: relative;
+    flex: none;
+}
+
+.rt-ring svg {
+    display: block;
+}
+
+.rt-ring-track {
+    fill: none;
+    stroke: var(--rt-fill);
+}
+
+.rt-ring-bar {
+    fill: none;
+    stroke: var(--rt-primary);
+    stroke-linecap: round;
+    transition: stroke-dashoffset .7s var(--rt-ease), stroke .4s;
+}
+
+
+
+.rt-ring-inner {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.rt-ring-num {
+    font-size: 18px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+}
+
+.rt-ring-num small {
+    font-size: 12px;
+    font-weight: normal;
+    color: var(--rt-text-3);
+}
+
+.rt-ring-ok {
+    font-size: 26px;
+    color: var(--rt-primary);
+    animation: rt-pop .5s var(--rt-spring) both;
+}
+
+/* ---------- 卡片 ---------- */
+.rt-card {
+    background: var(--rt-card);
+    border: 1px solid var(--rt-border);
+    border-radius: var(--rt-radius);
+    margin-bottom: 14px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, .03), 0 4px 16px -8px rgba(0, 0, 0, .08);
+    overflow: hidden;
+    animation: rt-fade-up .45s var(--rt-ease) both;
+    transition: border-color .3s, box-shadow .3s;
+}
+
+.rt-card:hover {
+    box-shadow: 0 1px 2px rgba(0, 0, 0, .04), 0 8px 24px -10px rgba(0, 0, 0, .14);
+}
+
+.rt-card:nth-child(2) { animation-delay: .04s; }
+.rt-card:nth-child(3) { animation-delay: .08s; }
+.rt-card:nth-child(4) { animation-delay: .12s; }
+.rt-card:nth-child(5) { animation-delay: .16s; }
+
+
+
+.rt-card-head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 10px 10px 16px;
+}
+
+.rt-card-title {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    user-select: none;
+}
+
+.rt-card-title {
+    flex-wrap: wrap;
+    row-gap: 4px;
+}
+
+/* 名称不让位给节奏标签：放不下时标签换到下一行 */
+.rt-card-name {
+    flex: 0 1 auto;
+    min-width: 2em;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.rt-card-title .rt-rhythm-wrap {
+    min-width: 0;
+}
+
+.rt-card-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    user-select: none;
+}
+
+.rt-card-count {
+    font-size: 12px;
+    color: var(--rt-text-3);
+    font-variant-numeric: tabular-nums;
+}
+
+.rt-dot {
+    min-width: 18px;
+    height: 18px;
+    padding: 0 5px;
+    border-radius: 999px;
+    font-size: 11px;
+    line-height: 18px;
+    text-align: center;
+    color: #fff;
+}
+
+.rt-dot-overdue {
+    background: var(--rt-error);
+}
+
+.rt-bar {
+    height: 2px;
+    margin: 0 16px;
+    background: var(--rt-fill);
+    border-radius: 2px;
+    overflow: hidden;
+}
+
+.rt-bar > div {
+    height: 100%;
+    background: var(--rt-primary);
+    border-radius: 2px;
+    transition: width .6s var(--rt-ease), background .3s;
+}
+
+
+
+.rt-card-body {
+    padding: 6px 6px 10px;
+}
+
+.rt-card-empty {
+    padding: 10px 14px;
+    font-size: 13px;
+    color: var(--rt-text-3);
+}
+
+.rt-caret {
+    width: 8px;
+    height: 8px;
+    margin: 0 4px;
+    border-right: 1.5px solid var(--rt-text-3);
+    border-bottom: 1.5px solid var(--rt-text-3);
+    transform: rotate(-45deg);
+    transition: transform .3s var(--rt-ease);
+    cursor: pointer;
+    flex: none;
+}
+
+.rt-caret-open {
+    transform: rotate(45deg) translate(-2px, -2px);
+}
+
+/* ---------- 折叠动画 ---------- */
+.rt-collapse {
+    display: grid;
+    grid-template-rows: 0fr;
+    opacity: 0;
+    transition: grid-template-rows .35s var(--rt-ease), opacity .25s;
+}
+
+.rt-collapse-open {
+    grid-template-rows: 1fr;
+    opacity: 1;
+}
+
+.rt-collapse-inner {
+    min-height: 0;
+    overflow: hidden;
+}
+
+/* ---------- 行 ---------- */
+.rt-node {
+    position: relative;
+}
+
+/* ---------- 拖动 ---------- */
+.rt-drag-src > .rt-row,
+.rt-drag-src > .rt-collapse {
+    opacity: .35;
+}
+
+.rt-drag-src > .rt-row {
+    background: var(--rt-fill-2);
+}
+
+/* 插入线和高亮都画在行内部，不会被折叠容器裁掉 */
+.rt-drop-before {
+    box-shadow: inset 0 2px 0 var(--rt-primary);
+    border-top-left-radius: 0;
+    border-top-right-radius: 0;
+}
+
+.rt-drop-after {
+    box-shadow: inset 0 -2px 0 var(--rt-primary);
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+}
+
+.rt-drop-inside {
+    background: var(--rt-primary-bg) !important;
+    box-shadow: inset 0 0 0 1.5px var(--rt-primary);
+}
+
+.rt-drop-card {
+    border-color: var(--rt-primary);
+    box-shadow: 0 0 0 2px var(--rt-primary-bg);
+}
+
+.rt-overlay {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    height: 100%;
+    padding: 0 14px 0 6px;
+    border-radius: 10px;
+    background: var(--rt-card);
+    box-shadow: 0 12px 32px -10px rgba(0, 0, 0, .35), 0 0 0 1px var(--rt-border);
+    cursor: grabbing;
+}
+
+.rt-overlay-handle {
+    color: var(--rt-text-3);
+}
+
+.rt-overlay-title {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 15px;
+}
+
+.rt-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 11px 4px 11px 2px; /* 22 + 22 = 44px 行高 */
+    border-radius: 10px;
+    cursor: pointer;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+    transition: background .2s, transform .2s var(--rt-ease), box-shadow .2s;
+}
+
+.rt-row:hover {
+    background: var(--rt-fill);
+}
+
+.rt-row:active {
+    transform: scale(.985);
+}
+
+/* 行内按钮区：占满整行高度（抵消行的上下内边距），点偏也落在按钮上 */
+.rt-zone {
+    flex: none;
+    align-self: stretch;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    position: relative;
+    margin: -11px 0;
+    padding-top: 13px;
+    color: var(--rt-text-3);
+    cursor: pointer;
+    transition: color .2s, opacity .2s;
+}
+
+/* 点击区保持直角（圆角会让角落点不中），悬停底色画在内层 */
+.rt-zone::before {
+    content: '';
+    position: absolute;
+    inset: 4px 2px;
+    border-radius: 8px;
+    transition: background .2s;
+}
+
+.rt-zone > * {
+    position: relative;
+}
+
+.rt-zone:hover {
+    color: var(--rt-text);
+}
+
+.rt-zone:hover::before {
+    background: var(--rt-fill-2);
+}
+
+.rt-handle {
+    width: 26px;
+    margin-left: -2px;
+    padding-top: 14px;
+    opacity: 0;
+    cursor: grab;
+    touch-action: none;
+}
+
+.rt-row:hover .rt-handle {
+    opacity: .8;
+}
+
+@media (hover: none) {
+    .rt-handle {
+        opacity: .4;
+    }
+}
+
+.rt-zone-caret {
+    width: 30px;
+    padding-top: 17px;
+}
+
+.rt-zone-caret .rt-caret {
+    margin: 0;
+}
+
+.rt-zone-more {
+    width: 36px;
+    margin-right: -4px;
+    opacity: .6;
+}
+
+.rt-row:hover .rt-zone-more {
+    opacity: 1;
+}
+
+.rt-card-more {
+    width: 32px !important;
+    height: 32px !important;
+    color: var(--rt-text-3) !important;
+}
+
+.rt-row-main {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.rt-row-line {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    column-gap: 8px;
+    row-gap: 2px;
+    min-height: 22px;
+}
+
+
+
+.rt-row-title {
+    position: relative;
+    font-size: 15px;
+    line-height: 1.4;
+    word-break: break-word;
+    transition: color .3s;
+    /* 删除线：用背景渐变从左到右划过 */
+    background: linear-gradient(currentColor, currentColor) no-repeat 0 55% / 0 1px;
+}
+
+.rt-row-on .rt-row-title {
+    color: var(--rt-text-3);
+    background-size: 100% 1px;
+    transition: color .3s, background-size .35s var(--rt-ease);
+}
+
+.rt-row-tags {
+    max-width: 100%;
+    min-width: 0;
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px;
+}
+
+.rt-row-sub {
+    font-size: 12px;
+    color: var(--rt-text-3);
+    font-variant-numeric: tabular-nums;
+}
+
+.rt-row-optional .rt-row-title {
+    color: var(--rt-text-2);
+}
+
+
+
+.rt-children {
+    margin-left: 25px;
+    padding-left: 8px;
+    border-left: 1px dashed var(--rt-border);
+}
+
+.rt-rows > .rt-collapse {
+    animation: rt-fade-up .3s var(--rt-ease) both;
+}
+
+/* ---------- 标签 ---------- */
+.rt-tag {
+    padding: 0 6px;
+    border-radius: 6px;
+    font-size: 11px;
+    line-height: 18px;
+    color: var(--rt-text-3);
+    border: 1px solid var(--rt-border);
+}
+
+.rt-tag-temp {
+    color: var(--rt-warning);
+    border: 1px dashed var(--rt-warning);
+    background: var(--rt-warning-bg);
+}
+
+.rt-tag-rule {
+    color: var(--rt-primary);
+    border-color: transparent;
+    background: var(--rt-primary-bg);
+}
+
+/* ---------- 节奏标签：左规则 + 右状态 ---------- */
+.rt-rhythm-wrap {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.rt-rhythm {
+    display: inline-flex;
+    align-items: stretch;
+    border-radius: 999px;
+    font-size: 12px;
+    line-height: 20px;
+    font-weight: normal;
+    white-space: nowrap;
+    overflow: hidden;
+    cursor: pointer;
+    background: var(--rt-primary-bg);
+    transition: filter .2s;
+}
+
+.rt-rhythm:hover {
+    filter: brightness(.96);
+}
+
+.rt-rhythm-wrap, .rt-rhythm {
+    max-width: 100%;
+}
+
+/* 规则文字过长时省略，状态始终完整显示 */
+.rt-rhythm-rule {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    padding: 0 8px 0 9px;
+    color: var(--rt-primary);
+}
+
+.rt-rhythm-state {
+    flex: none;
+    padding: 0 9px 0 7px;
+    border-left: 1px solid rgba(255, 255, 255, .6);
+    transition: background .3s, color .3s;
+}
+
+.rt-rhythm-sm {
+    font-size: 11px;
+    line-height: 18px;
+}
+
+.rt-rhythm-sm .rt-rhythm-rule {
+    padding: 0 6px 0 7px;
+}
+
+.rt-rhythm-sm .rt-rhythm-state {
+    padding: 0 7px 0 6px;
+}
+
+.rt-rhythm-today .rt-rhythm-state {
+    color: #fff;
+    background: var(--rt-warning);
+}
+
+.rt-rhythm-grace .rt-rhythm-state {
+    color: var(--rt-warning);
+    background: var(--rt-warning-bg);
+}
+
+.rt-rhythm-overdue .rt-rhythm-state {
+    color: #fff;
+    background: var(--rt-error);
+}
+
+.rt-rhythm-done .rt-rhythm-state {
+    color: var(--rt-primary);
+}
+
+.rt-rhythm-waiting {
+    background: var(--rt-fill-2);
+}
+
+.rt-rhythm-waiting .rt-rhythm-rule,
+.rt-rhythm-waiting .rt-rhythm-state {
+    color: var(--rt-text-3);
+}
+
+.rt-missed {
+    font-size: 11px;
+    line-height: 18px;
+    color: var(--rt-error);
+    white-space: nowrap;
+}
+
+.rt-stat {
+    padding: 0 8px;
+    border-radius: 999px;
+    font-size: 12px;
+    line-height: 20px;
+    white-space: nowrap;
+}
+
+.rt-stat-overdue {
+    color: var(--rt-error);
+    background: var(--rt-error-bg);
+}
+
+.rt-stat-today {
+    color: var(--rt-warning);
+    background: var(--rt-warning-bg);
+}
+
+.rt-hero-link {
+    cursor: pointer;
+}
+
+.rt-hero-link:hover {
+    color: var(--rt-primary);
+}
+
+/* 还没开始的节奏：整行变淡，不能勾 */
+.rt-row-waiting {
+    cursor: default;
+}
+
+.rt-row-waiting .rt-row-title {
+    color: var(--rt-text-3);
+}
+
+.rt-row-waiting:active {
+    transform: none;
+}
+
+.rt-card-waiting .rt-card-name {
+    color: var(--rt-text-3);
+}
+
+/* ---------- 勾选框（全部在 SVG 内绘制） ---------- */
+.rt-check {
+    flex: none;
+    display: inline-flex;
+    cursor: pointer;
+    transition: transform .2s var(--rt-ease);
+}
+
+.rt-check svg {
+    display: block;
+    overflow: visible;
+}
+
+.rt-check-ring {
+    fill: transparent;
+    stroke: var(--rt-text-3);
+    stroke-width: 1.5;
+    transition: fill .25s, stroke .25s;
+}
+
+.rt-check-mark {
+    fill: none;
+    stroke: #fff;
+    stroke-width: 2.4;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-dasharray: 16;
+    stroke-dashoffset: 16;
+    transition: stroke-dashoffset .3s var(--rt-ease) .05s;
+}
+
+.rt-check-on .rt-check-ring {
+    fill: var(--rt-primary);
+    stroke: var(--rt-primary);
+}
+
+.rt-check-mixed .rt-check-ring {
+    fill: var(--rt-primary-bg);
+    stroke: var(--rt-primary);
+}
+
+.rt-check-on .rt-check-mark, .rt-check-mixed .rt-check-mark {
+    stroke-dashoffset: 0;
+}
+
+.rt-check-mixed .rt-check-mark {
+    stroke: var(--rt-primary);
+}
+
+.rt-check-pop {
+    animation: rt-pop .4s var(--rt-spring);
+}
+
+.rt-check-optional.rt-check-off .rt-check-ring {
+    stroke-dasharray: 2 2.4;
+}
+
+.rt-check-optional.rt-check-on .rt-check-ring {
+    fill: var(--rt-text-3);
+    stroke: var(--rt-text-3);
+}
+
+.rt-check-disabled {
+    cursor: default;
+}
+
+.rt-check-disabled .rt-check-ring {
+    stroke: var(--rt-text-4);
+    stroke-dasharray: 2 2.4;
+}
+
+.rt-check-disabled:hover {
+    transform: none;
+}
+
+.rt-row-temp .rt-check-off .rt-check-ring {
+    stroke: var(--rt-warning);
+    stroke-dasharray: 3 2;
+}
+
+.rt-row-overdue .rt-check-off .rt-check-ring {
+    stroke: var(--rt-error);
+}
+
+.rt-check:hover {
+    transform: scale(1.08);
+}
+
+
+
+/* ---------- 新增 ---------- */
+.rt-adders {
+    display: flex;
+    gap: 8px;
+    padding: 6px 8px 0;
+}
+
+.rt-adder {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 10px;
+    border: 1px solid transparent;
+    border-radius: 999px;
+    background: transparent;
+    font-size: 13px;
+    color: var(--rt-text-3);
+    cursor: pointer;
+    transition: color .2s, background .2s, border-color .2s;
+}
+
+.rt-adder:hover {
+    color: var(--rt-primary);
+    background: var(--rt-primary-bg);
+}
+
+.rt-adder-temp {
+    border: 1px dashed var(--rt-border);
+}
+
+.rt-adder-temp:hover {
+    color: var(--rt-warning);
+    background: var(--rt-warning-bg);
+    border-color: var(--rt-warning);
+}
+
+.rt-inline-adder {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin: 6px 6px 0;
+    padding: 2px 4px 2px 6px;
+    border-radius: 10px;
+    background: var(--rt-fill);
+    border: 1px solid var(--rt-primary);
+    animation: rt-fade-up .25s var(--rt-ease) both;
+}
+
+.rt-inline-adder-temp {
+    border-style: dashed;
+    border-color: var(--rt-warning);
+    background: var(--rt-warning-bg);
+}
+
+.rt-add-sg {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    width: 100%;
+    padding: 14px;
+    border: 1.5px dashed var(--rt-border);
+    border-radius: var(--rt-radius);
+    background: transparent;
+    color: var(--rt-text-3);
+    font-size: 14px;
+    cursor: pointer;
+    transition: color .2s, border-color .2s, background .2s;
+}
+
+.rt-add-sg:hover {
+    color: var(--rt-primary);
+    border-color: var(--rt-primary);
+    background: var(--rt-primary-bg);
+}
+
+.rt-root > .rt-inline-adder {
+    margin: 0 0 14px;
+    padding: 8px 8px 8px 10px;
+}
+
+.rt-empty {
+    padding: 32px 0 12px;
+}
+
+.rt-footnote {
+    margin-top: 18px;
+    font-size: 12px;
+    color: var(--rt-text-3);
+    text-align: center;
+}
+
+/* ---------- 抽屉 ---------- */
+.rt-drawer .ant-drawer-content {
+    border-radius: 0;
+}
+
+.rt-drawer.ant-drawer-content-wrapper,
+.ant-drawer-bottom .rt-drawer {
+    border-top-left-radius: 16px;
+    border-top-right-radius: 16px;
+}
+
+.rt-section {
+    margin-bottom: 22px;
+}
+
+.rt-section-title {
+    margin-bottom: 8px;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: .04em;
+    color: var(--rt-text-3);
+}
+
+.rt-section-hint {
+    margin-top: 6px;
+    font-size: 12px;
+    color: var(--rt-text-3);
+}
+
+.rt-danger {
+    padding-top: 8px;
+    border-top: 1px solid var(--rt-border);
+}
+
+.rt-rule-editor {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.rt-rule-body {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 12px;
+    border-radius: 10px;
+    background: var(--rt-fill);
+    animation: rt-fade-up .25s cubic-bezier(.22, 1, .36, 1) both;
+}
+
+.rt-rule-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.rt-rule-hint {
+    font-size: 12px;
+    line-height: 1.6;
+    color: var(--rt-text-3);
+}
+
+/* ---------- 复核 ---------- */
+.rt-review-hero {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px;
+    margin-bottom: 18px;
+    border-radius: 14px;
+    background: var(--rt-primary-bg);
+    transition: background .4s;
+}
+
+
+
+.rt-review-hero > div:last-child {
+    display: flex;
+    flex-direction: column;
+}
+
+.rt-review-hero > div:last-child > span {
+    font-size: 12px;
+    color: var(--rt-text-3);
+}
+
+.rt-review-block {
+    margin-bottom: 18px;
+}
+
+.rt-review-head {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--rt-text-3);
+}
+
+.rt-review-head span {
+    padding: 0 6px;
+    border-radius: 999px;
+    background: var(--rt-fill);
+    font-weight: normal;
+}
+
+.rt-review-req .rt-review-head {
+    color: var(--rt-error);
+}
+
+.rt-review-temp .rt-review-head {
+    color: var(--rt-warning);
+}
+
+.rt-review-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 10px;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: background .2s, opacity .3s;
+}
+
+.rt-review-item:hover {
+    background: var(--rt-fill);
+}
+
+.rt-review-item-on {
+    opacity: .5;
+}
+
+.rt-review-title {
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.rt-review-sg {
+    font-size: 11px;
+    color: var(--rt-text-3);
+}
+
+.rt-review-empty {
+    padding: 4px 10px;
+    font-size: 13px;
+    color: var(--rt-text-3);
+}
+
+/* ---------- 分组行 / 备注 ---------- */
+.rt-row-folder .rt-row-title {
+    font-weight: 600;
+}
+
+.rt-note {
+    font-size: 12px;
+    line-height: 1.6;
+    color: var(--rt-text-3);
+    white-space: pre-wrap;
+    word-break: break-word;
+    display: -webkit-box;
+    -webkit-line-clamp: 1;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    cursor: pointer;
+    border-radius: 6px;
+    transition: background .2s;
+}
+
+.rt-note:hover {
+    background: var(--rt-fill);
+}
+
+.rt-note-open {
+    -webkit-line-clamp: unset;
+    display: block;
+}
+
+.rt-card-note {
+    margin: -4px 16px 8px 50px;
+}
+
+.rt-hero-meta {
+    font-size: 12px;
+    color: var(--rt-text-3);
+}
+
+.rt-hero-rest {
+    margin-top: 6px;
+    font-size: 13px;
+    color: var(--rt-text-2);
+    animation: rt-fade-up .35s var(--rt-ease) both;
+}
+
+.rt-adders-compact {
+    max-height: 0;
+    padding: 0 0 0 26px;
+    overflow: hidden;
+    opacity: 0;
+    transition: max-height .25s var(--rt-ease), opacity .2s, padding .25s;
+}
+
+.rt-node:hover > .rt-collapse .rt-adders-compact,
+.rt-adders-compact:focus-within {
+    max-height: 32px;
+    padding: 2px 0 4px 26px;
+    opacity: 1;
+}
+
+@media (hover: none) {
+    .rt-adders-compact {
+        max-height: 32px;
+        padding: 2px 0 4px 26px;
+        opacity: .8;
+    }
+}
+
+.rt-adders-compact .rt-adder {
+    font-size: 12px;
+    padding: 1px 8px;
+}
+
+.rt-editor-adds {
+    display: flex;
+    gap: 8px;
+}
+
+.rt-editor-adds > .ant-btn {
+    flex: 1;
+}
+
+.rt-review-main {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+/* ---------- 动画 ---------- */
+@keyframes rt-pop {
+    0% { transform: scale(.7); }
+    60% { transform: scale(1.15); }
+    100% { transform: scale(1); }
+}
+
+@keyframes rt-fade-up {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .rt-root *, .rt-root *::before, .rt-root *::after {
+        animation: none !important;
+        transition: none !important;
+    }
+}
+
+
+/* ---------- 周期编辑器 ---------- */
+.rt-rule-label {
+    font-size: 13px;
+    color: var(--rt-text-2);
+    white-space: nowrap;
+}
+
+.rt-rule-warn {
+    font-size: 12px;
+    color: var(--rt-error);
+}
+
+.rt-wd-picker {
+    display: flex;
+    gap: 6px;
+}
+
+.rt-wd {
+    flex: 1;
+    max-width: 38px;
+    aspect-ratio: 1;
+    border: 1px solid var(--rt-border);
+    border-radius: 50%;
+    background: var(--rt-card);
+    color: var(--rt-text-2);
+    font-size: 13px;
+    cursor: pointer;
+    transition: background .2s, color .2s, border-color .2s, transform .2s var(--rt-spring);
+}
+
+.rt-wd:hover {
+    border-color: var(--rt-primary);
+    color: var(--rt-primary);
+}
+
+.rt-wd-on {
+    background: var(--rt-primary);
+    border-color: var(--rt-primary);
+    color: #fff !important;
+    transform: scale(1.04);
+}
+
+.rt-rule-more {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding-top: 10px;
+    border-top: 1px dashed var(--rt-border);
+}
+
+.rt-rule-preview {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px 6px;
+    padding: 8px 10px;
+    border-radius: 8px;
+    background: var(--rt-card);
+    font-size: 12px;
+    color: var(--rt-text-3);
+}
+
+.rt-rule-preview b {
+    padding: 0 6px;
+    border-radius: 6px;
+    background: var(--rt-primary-bg);
+    color: var(--rt-primary);
+    font-weight: normal;
+}
+
+/* ---------- 重置 ---------- */
+.rt-reset-sum {
+    font-size: 14px;
+    line-height: 1.7;
+}
+
+.rt-reset-sum span {
+    display: block;
+    font-size: 12px;
+    color: var(--rt-text-3);
+}
+
+.rt-reset-list {
+    margin-top: 14px;
+    padding: 10px;
+    border-radius: 10px;
+    background: var(--rt-warning-bg);
+}
+
+.rt-reset-head {
+    margin-bottom: 6px;
+    font-size: 12px;
+    color: var(--rt-warning);
+}
+
+.rt-reset-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 7px 8px;
+    border-radius: 8px;
+    background: var(--rt-card);
+    cursor: pointer;
+}
+
+.rt-reset-item + .rt-reset-item {
+    margin-top: 4px;
+}
+
+.rt-reset-title {
+    flex: 1;
+    min-width: 0;
+    color: var(--rt-text-3);
+    text-decoration: line-through;
+    transition: color .2s;
+}
+
+.rt-reset-item-keep .rt-reset-title {
+    color: var(--rt-text);
+    text-decoration: none;
+}
+
+.rt-reset-opt {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: var(--rt-text-3);
+}
+
+.rt-rule-preview b.rt-rule-cur {
+    background: var(--rt-primary);
+    color: #fff;
+}
+
+.rt-rhythm-text {
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* ---------- 跟随上级的节奏 / 各层计数 ---------- */
+.rt-rhythm-inherit {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    min-width: 0;
+    max-width: 100%;
+    font-size: 12px;
+    line-height: 18px;
+    font-weight: normal;
+    color: var(--rt-text-3);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    cursor: pointer;
+    transition: color .2s;
+}
+
+.rt-rhythm-inherit:hover {
+    color: var(--rt-primary);
+}
+
+.rt-count-others {
+    color: var(--rt-text-4);
+}
+
+.rt-check-spacer {
+    flex: none;
+    display: inline-block;
+}
+
+/* 相邻按钮区之间不留可误勾的缝 */
+.rt-zone-caret, .rt-zone-more {
+    margin-left: -6px;
+}
+
+.rt-handle {
+    margin-right: -4px;
+}

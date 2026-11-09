@@ -10,7 +10,7 @@ export interface PGroup {
     Title: string;
     Note: string;
     Index: number;
-    Type?: number; // GroupType: 0=Normal, 1=Library
+    Type?: number; // GroupType: 0=Normal, 1=Library, 2=Routine
 }
 
 export interface PDirTree {
@@ -267,4 +267,25 @@ export const LibraryStatusColors: Record<LibraryItemStatus, string> = {
 export enum GroupType {
     Normal = 0,
     Library = 1,
+    Routine = 2,
+}
+
+// 例行清单节点挂载层级
+export enum RoutineNodeKind {
+    Group = 0,
+    SubGroup = 1,
+    Task = 2,
+}
+
+// 例行清单节点配置与当前状态（不保留历史）
+export interface PRoutineNode {
+    Kind: RoutineNodeKind
+    NodeID: number
+    SubGroupID: number // 仅 Task 节点需要
+    Folder: boolean // 分组节点：只组织子项，自身不参与勾选
+    Optional: boolean
+    Temp: boolean
+    Rule: string // 周期规则 JSON，空串表示继承上级
+    Mark: string // 当前完成标记
+    PrevMark: string // 上一次标记，用于撤销勾选
 }

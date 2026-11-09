@@ -7,6 +7,7 @@ type GroupType int
 const (
 	GroupTypeNormal  GroupType = iota // 普通
 	GroupTypeLibrary                  // 娱乐管理系统
+	GroupTypeRoutine                  // 例行清单
 )
 
 type GroupDB struct {

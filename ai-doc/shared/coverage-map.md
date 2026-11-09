@@ -34,6 +34,7 @@ Last verified: 2026-07-12
 ## Domain coverage
 
 - Todone: `todone/knowledge.md`, `todone/testing.md`, `todone/ui-locator.md`
+- Routine checklist (Todone group type 2): `routine/knowledge.md`
 - Library: `library/knowledge.md`, `library/testing.md`, `library/ui-locator.md`
 - Retired Platform Note Mini integration (ownership, preserved historical links/files, removal checks): `note-mini/knowledge.md`, `note-mini/testing.md`
 - Subscription: `subscription/knowledge.md`

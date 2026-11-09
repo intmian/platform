@@ -483,6 +483,7 @@ function DirAddPanel({DirID, onAddDir, onAddGroup, onCancel, userID, startAdd,}:
                                 options={[
                                     {label: "普通", value: 0},
                                     {label: "图书馆", value: 1},
+                                    {label: "例行清单", value: 2},
                                 ]}
                             />
                         </Form.Item> : null

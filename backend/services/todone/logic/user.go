@@ -524,9 +524,12 @@ func (u *UserLogic) CreateGroup(parentDirID uint32, title, note string, afterID 
 		return 0, errors.Join(err, errors.New("save group failed")), 0
 	}
 
-	_, err = group.CreateSubGroupLogic("默认", "默认子任务组")
-	if err != nil {
-		return 0, errors.Join(err, errors.New("create default subgroup failed")), 0
+	// 例行清单的顶层分组由用户自己规划，不预置“默认”子分组
+	if groupType != db.GroupTypeRoutine {
+		_, err = group.CreateSubGroupLogic("默认", "默认子任务组")
+		if err != nil {
+			return 0, errors.Join(err, errors.New("create default subgroup failed")), 0
+		}
 	}
 
 	return groupDB.ID, nil, group.dbData.Index
