@@ -13,3 +13,4 @@ backend/main/__debug_bin*
 AGENTS.override.md
 /.playwright-cli
 /.tmp
+/.claude/skills
