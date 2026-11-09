@@ -18,7 +18,7 @@ Unit tests do not by themselves prove visual layout or full browser behavior.
 
 1. Read the user's requested scope and the current diff before selecting tests.
 2. Load only the matched backend or domain testing document from `../README.md`.
-3. Use the Codex in-app Browser as the default surface for local frontend rendering, responsive inspection, and browser interaction. Keep it in the background unless the user asks to see the page. Use standalone Playwright only by explicit request, for a required formal Playwright artifact/spec, or when the in-app Browser remains unavailable after its recovery flow.
+3. Use the current agent's built-in browser (Codex in-app Browser or Claude Code browser pane) as the default surface for local frontend rendering, responsive inspection, and browser interaction. Keep it in the background unless the user asks to see the page. Use standalone Playwright only by explicit request, for a required formal Playwright artifact/spec, or when the built-in browser remains unavailable after its recovery flow.
 4. Prefer an existing component harness or development-only debug page. Do not add a permanent production route solely for testing; clean up temporary fixtures after use.
 5. The test workflow may add or update test files and fixtures, but must not silently change production behavior to make a test pass. Report the defect or use `$platform-debug`/`$platform-dev` when a production fix is requested.
 6. Record persistent test data created or changed and clean it up when safe.

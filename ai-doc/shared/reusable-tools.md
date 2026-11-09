@@ -25,7 +25,7 @@ Last verified: 2026-07-13
 13. `C:\GITHUB\gorm-d1-adapter\scripts\benchmark-v2.ps1` + `cmd/d1bench`: 新 adapter 的 REST/Worker 双模式验证与性能报告入口；不读取 platform 业务配置，输出 p50/p95/p99、失败率和 D1 meta。
 14. `backend/cmd/migrate_library_notes`: Library Note 停服迁移参考实现；默认只读 plan，apply/rollback 强制确认停服，使用 0600 独占 JSONL 备份，并支持独立 verify 与回滚。
 15. `gorm-d1-adapter/workers/d1-proxy` + per-target local Wrangler configs: Todone/Log/Test 三个 Worker 共用代理源码但独立绑定 D1 和 `AUTH_TOKEN`；生产操作先遵循 `shared/production-operations.md`，具体命令见 `backend/d1-worker-operations.md`。
-16. `Codex in-app Browser` + `frontend/src/debug/debug.jsx`: 本地前端渲染、响应式检查和交互验证的默认流程；仅在用户明确要求、需要正式 Playwright 产物/规范，或内置浏览器按恢复流程仍不可用时使用独立 Playwright。
+16. Agent 内置浏览器（Codex in-app Browser / Claude Code 浏览器面板）+ `frontend/src/debug/debug.jsx`: 本地前端渲染、响应式检查和交互验证的默认流程；仅在用户明确要求、需要正式 Playwright 产物/规范，或内置浏览器按恢复流程仍不可用时使用独立 Playwright。
 
 17. `LibraryVoiceInput` + `LibraryVoiceProvider`: Library 评分评价、作品备注和体验备注共用的语音文本框，麦克风悬浮在文本框右下角；兼容 Form 的 value/onChange，逐框实时预览与追加转写，协调录音/识别占用，关闭表单后忽略迟到结果。
 18. `常见问题-WebSocket 转写完成后异常断连`: 写出 `completed` 后先发送 `Close(1000)`，复用已有读取循环等待关闭回应（最多两秒）再释放底层连接，避免直接 `Close()` 造成 `1006`；逐句 `final` 不代表整次完成。
