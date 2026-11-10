@@ -21,7 +21,7 @@
 
 ## Note Mini 已独立
 
-Platform 已移除旧 `/note_mini` 页面及其专属配置入口；Note Mini 由独立项目 `memos-mian` 维护。既有配置、浏览器草稿和历史文件不做删除或迁移。共享 R2 上传、AI 改写／转写及娱乐库、TODONE 笔记功能继续保留。源码调整不修改线上 Caddy、Cloudflare 或 R2 规则，退役边界见 [说明](ai-doc/note-mini/knowledge.md)。
+Platform 已移除旧 `/note_mini` 页面及其专属配置入口；Note Mini 由独立项目 `memos-mian` 维护。既有配置、浏览器草稿和历史文件不做删除或迁移。共享 R2 上传、AI 改写／转写及娱乐库、TODONE 笔记功能继续保留。源码调整不修改线上 Caddy、Cloudflare 或 R2 规则。
 
 ## 娱乐库语音输入
 
@@ -71,8 +71,8 @@ Platform 已移除旧 `/note_mini` 页面及其专属配置入口；Note Mini �
 ```text
 backend/      Go 后端与服务实现
 frontend/     React 前端
-ai-doc/       当前架构、领域知识与验证说明
-.agents/skills/ 仓库级开发、测试、调试和知识维护技能（Codex 直接读取；Claude Code 需本地运行一次 `scripts/link-agent-skills.sh`（Windows：`scripts\link-agent-skills.bat`），把 .claude/skills 链接到这里，该链接不入库）
+AGENTS.md     AI 协作说明；各模块目录下的 AGENTS.md 记录该模块的产品决定和坑
+.agents/skills/ AI 技能：本地环境与测试数据（platform-local）、生产数据与 D1 操作（platform-data）。Codex 直接读取；Claude Code 需本地运行一次 `scripts/link-agent-skills.sh`（Windows：`scripts\link-agent-skills.bat`），把 .claude/skills 链接到这里，该链接不入库
 docs/         设计、计划与历史材料
 plan/         中长期产品规划
 ```

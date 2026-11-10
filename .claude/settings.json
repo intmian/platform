@@ -1,0 +1,25 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python3 .agents/skills/platform-local/scripts/api.py:*)",
+      "Bash(npx tsc --noEmit:*)",
+      "Bash(npx vite build:*)",
+      "Bash(go build:*)",
+      "Bash(go test:*)",
+      "Bash(git status:*)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)"
+    ],
+    "ask": [
+      "Bash(npx wrangler d1 execute:*)",
+      "Bash(npx wrangler d1 export:*)",
+      "Bash(npx wrangler d1 time-travel restore:*)",
+      "Bash(npx wrangler d1 delete:*)",
+      "Bash(npx wrangler deploy:*)",
+      "Bash(npx wrangler rollback:*)",
+      "Bash(npx wrangler secret:*)",
+      "Bash(npx wrangler delete:*)",
+      "Bash(wrangler:*)"
+    ]
+  }
+}
