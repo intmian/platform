@@ -1,17 +1,26 @@
-import {AudioOutlined, LoadingOutlined} from "@ant-design/icons";
-import {Button, Input, InputNumber, message, Modal, Popover, Select, Space, Tooltip, Typography} from "antd";
+import {AudioOutlined, DisconnectOutlined, LoadingOutlined} from "@ant-design/icons";
+import {Button, Input, InputNumber, message, Modal, Popconfirm, Popover, Select, Space, theme, Tooltip, Typography} from "antd";
 import type {ButtonProps} from "antd";
 import {useCallback, useEffect, useMemo, useRef, useState} from "react";
-import {getTranscriptionCapability, transcribeAudio} from "./aiGateway";
-import type {AiTranscribeResp} from "./aiProtocol";
+import {getTranscriptionCapability, peekTranscriptionCapability, transcribeAudio} from "./aiGateway";
+import type {AiTranscribeCapability, AiTranscribeResp} from "./aiProtocol";
 import {useAudioRecorder} from "./useAudioRecorder";
 import {useRealtimeTranscription} from "./useRealtimeTranscription";
+import {
+    addPendingVoiceClip,
+    PendingVoiceClip,
+    removePendingVoiceClip,
+    transcribePendingVoiceClip,
+    usePendingVoiceClips,
+} from "./voicePending";
 
 const STORAGE_KEY = "platform.ai.transcribe.settings.v1";
 const LONG_PRESS_MS = 900;
 const LONG_PRESS_PROGRESS_DELAY_MS = 300;
 const DEFAULT_LANGUAGE = "zh";
-const DEFAULT_MAX_DURATION_SECONDS = 120;
+const DEFAULT_MAX_DURATION_SECONDS = 300;
+// Stop on its own once no new words (or, offline, no voice) for this long.
+const IDLE_STOP_MS = 30000;
 const MIN_MAX_DURATION_SECONDS = 10;
 const MAX_MAX_DURATION_SECONDS = 600;
 const ZH_STYLE_PROMPT = "请使用简体中文写法和中文标点风格。";
@@ -135,6 +144,14 @@ function RecordingWave({waveform}: {waveform: number[]}) {
     </span>;
 }
 
+function formatClipTime(timestamp: number): string {
+    const date = new Date(timestamp);
+    const time = `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
+    return date.toDateString() === new Date().toDateString()
+        ? time
+        : `${date.getMonth() + 1}/${date.getDate()} ${time}`;
+}
+
 function audioFileName(blob: Blob): string {
     const type = blob.type.toLowerCase();
     if (type.includes("mp4")) {
@@ -169,8 +186,16 @@ export function WhisperButton({
     ...buttonProps
 }: WhisperButtonProps) {
     const recorder = useAudioRecorder();
-    const realtime = useRealtimeTranscription();
     const [settings, setSettings] = useState<WhisperSettings>(() => readStoredSettings());
+    const maxDurationSeconds = normalizeMaxDuration(settings.maxDurationSeconds);
+    const realtime = useRealtimeTranscription({
+        maxDurationMs: maxDurationSeconds * 1000,
+        idleStopMs: IDLE_STOP_MS,
+    });
+    const {token} = theme.useToken();
+    const pendingClips = usePendingVoiceClips();
+    const [pendingOpen, setPendingOpen] = useState(false);
+    const [retryingClipID, setRetryingClipID] = useState("");
     const [draftSettings, setDraftSettings] = useState<WhisperSettings>(() => readStoredSettings());
     const [configOpen, setConfigOpen] = useState(false);
     const [transcribing, setTranscribing] = useState(false);
@@ -182,7 +207,7 @@ export function WhisperButton({
     const skipClickRef = useRef(false);
     const finishInFlightRef = useRef(false);
     const autoStopTriggeredRef = useRef(false);
-    const lastRealtimeCompletionRef = useRef("");
+    const lastRealtimeResultRef = useRef(0);
     const lastRealtimeErrorRef = useRef("");
     const onRecordingChangeRef = useRef(onRecordingChange);
     const onBusyChangeRef = useRef(onBusyChange);
@@ -205,18 +230,16 @@ export function WhisperButton({
             nextPrompt,
         ].filter(Boolean).join("\n");
     }, [effectiveLanguage, effectivePrompt]);
-    const maxDurationSeconds = normalizeMaxDuration(settings.maxDurationSeconds);
     const realtimeRecording = realtime.status === "recording";
-    const realtimeActive = ["connecting", "recording", "finishing"].includes(realtime.status);
-    const realtimePreview = [realtime.finalText, realtime.partialText]
-        .map((text) => text.trim())
-        .filter(Boolean)
-        .join("");
+    const realtimeActive = ["starting", "recording", "finishing"].includes(realtime.status);
+    const realtimePreview = realtime.previewText;
+    const retrying = Boolean(retryingClipID);
     const recording = recorder.recording || realtimeActive;
     const busy = transcribing
         || resolvingMode
+        || retrying
         || recorder.state === "stopping"
-        || realtime.status === "connecting"
+        || realtime.status === "starting"
         || realtime.status === "finishing";
     const isDisabled = Boolean(disabled || busy);
     const sessionBusy = recording || busy;
@@ -231,9 +254,12 @@ export function WhisperButton({
         onRecordingChangeRef.current = onRecordingChange;
     }, [onRecordingChange]);
 
+    // A retry inserts text like a recording does, so callers that remember the
+    // cursor on recording start need to see it as one.
+    const insertingVoice = recording || retrying;
     useEffect(() => {
-        onRecordingChangeRef.current?.(recording);
-    }, [recording]);
+        onRecordingChangeRef.current?.(insertingVoice);
+    }, [insertingVoice]);
 
     useEffect(() => {
         return () => onRecordingChangeRef.current?.(false);
@@ -256,53 +282,34 @@ export function WhisperButton({
             return;
         }
         lastRealtimeErrorRef.current = realtime.error;
-        const text = realtimePreview.trim();
-        const recoveryKey = `${realtime.ready?.taskID || "unknown"}:${text}`;
-        if (text && lastRealtimeCompletionRef.current !== recoveryKey) {
-            lastRealtimeCompletionRef.current = recoveryKey;
-            onText(text, {
-                text,
-                language: "zh",
-                duration: realtime.durationMs / 1000,
-            });
-        }
         emitError(realtime.error);
-    }, [
-        emitError,
-        onText,
-        realtime.durationMs,
-        realtime.error,
-        realtime.ready?.taskID,
-        realtime.status,
-        realtimePreview,
-    ]);
+    }, [emitError, realtime.error, realtime.status]);
 
     useEffect(() => {
-        if (realtime.status !== "completed") {
+        const result = realtime.result;
+        if (!result || lastRealtimeResultRef.current === result.id) {
             return;
         }
-        const text = realtime.finalText.trim();
-        const completionKey = `${realtime.ready?.taskID || "unknown"}:${text}`;
-        if (lastRealtimeCompletionRef.current === completionKey) {
-            return;
+        lastRealtimeResultRef.current = result.id;
+        const text = result.text.trim();
+        if (text) {
+            onText(text, {text, language: "zh", duration: result.durationMs / 1000});
         }
-        lastRealtimeCompletionRef.current = completionKey;
-        if (!text) {
+        if (result.failedAudio) {
+            void addPendingVoiceClip({
+                kind: "pcm8k",
+                data: result.failedAudio,
+                durationMs: result.failedDurationMs,
+            });
+            const seconds = Math.max(1, Math.round(result.failedDurationMs / 1000));
+            message.warning({
+                content: `${text ? "最后" : ""}有 ${seconds} 秒语音没能转写（${result.failedReason || "网络异常"}），录音已保存，可稍后点按钮旁的「重试」`,
+                duration: 6,
+            }).then();
+        } else if (!text) {
             message.info("未检测到有效语音").then();
-            return;
         }
-        onText(text, {
-            text,
-            language: "zh",
-            duration: realtime.durationMs / 1000,
-        });
-    }, [
-        onText,
-        realtime.durationMs,
-        realtime.finalText,
-        realtime.ready?.taskID,
-        realtime.status,
-    ]);
+    }, [onText, realtime.result]);
 
     const clearLongPress = useCallback(() => {
         if (holdTimerRef.current !== null) {
@@ -350,6 +357,7 @@ export function WhisperButton({
             return;
         }
         finishInFlightRef.current = true;
+        let failedBlob: Blob | null = null;
         try {
             const recording = await recorder.stop();
             if (!mountedRef.current) return;
@@ -363,6 +371,7 @@ export function WhisperButton({
                 return;
             }
             setTranscribing(true);
+            failedBlob = blob;
             const response = await transcribeAudio({
                 file: blob,
                 fileName: fileName || audioFileName(blob),
@@ -375,7 +384,20 @@ export function WhisperButton({
             }
             onText(response.text, response);
         } catch (error) {
-            emitError(error instanceof Error ? error.message : "语音转写失败");
+            if (failedBlob) {
+                void addPendingVoiceClip({
+                    kind: "file",
+                    data: failedBlob,
+                    fileName: fileName || audioFileName(failedBlob),
+                    durationMs: recorder.durationMs,
+                });
+                message.warning({
+                    content: `语音转写失败（${error instanceof Error ? error.message : "网络异常"}），录音已保存，可稍后点按钮旁的「重试」`,
+                    duration: 6,
+                }).then();
+            } else {
+                emitError(error instanceof Error ? error.message : "语音转写失败");
+            }
         } finally {
             setTranscribing(false);
             finishInFlightRef.current = false;
@@ -383,30 +405,20 @@ export function WhisperButton({
     }, [emitError, fileName, onText, recorder, requestPrompt]);
 
     useEffect(() => {
-        if (!recorder.recording && !realtimeRecording) {
+        // The realtime session stops itself (idle + max duration); this covers
+        // the file-upload recorder.
+        if (!recorder.recording) {
             autoStopTriggeredRef.current = false;
             return;
         }
-        const durationMs = realtimeRecording ? realtime.durationMs : recorder.durationMs;
         if (
-            durationMs >= maxDurationSeconds * 1000
+            recorder.durationMs >= maxDurationSeconds * 1000
             && !autoStopTriggeredRef.current
         ) {
             autoStopTriggeredRef.current = true;
-            if (realtimeRecording) {
-                realtime.stop();
-            } else {
-                void finishRecording();
-            }
+            void finishRecording();
         }
-    }, [
-        finishRecording,
-        maxDurationSeconds,
-        realtime,
-        realtimeRecording,
-        recorder.durationMs,
-        recorder.recording,
-    ]);
+    }, [finishRecording, maxDurationSeconds, recorder.durationMs, recorder.recording]);
 
     const handleClick = useCallback(async () => {
         if (skipClickRef.current) {
@@ -428,11 +440,20 @@ export function WhisperButton({
         // Clear the previous terminal state before re-arming its result/error handlers.
         // Capability lookup can re-render the caller before the next recorder starts.
         realtime.reset();
-        setResolvingMode(true);
         lastRealtimeErrorRef.current = "";
-        lastRealtimeCompletionRef.current = "";
+        const cached = peekTranscriptionCapability();
+        if (!cached) {
+            setResolvingMode(true);
+        }
         try {
-            const capability = await getTranscriptionCapability();
+            let capability: AiTranscribeCapability;
+            if (cached) {
+                capability = cached;
+                // Pick up mode changes for next time without delaying this start.
+                void getTranscriptionCapability().catch(() => undefined);
+            } else {
+                capability = await getTranscriptionCapability();
+            }
             if (!mountedRef.current) return;
             if (capability.mode === "realtime") {
                 await realtime.start();
@@ -472,14 +493,48 @@ export function WhisperButton({
         setConfigOpen(false);
     }, [draftSettings.language, draftSettings.maxDurationSeconds, draftSettings.prompt]);
 
+    const retryClip = useCallback(async (clip: PendingVoiceClip) => {
+        if (retryingClipID || recording) {
+            return;
+        }
+        setRetryingClipID(clip.id);
+        try {
+            const text = await transcribePendingVoiceClip(clip, requestPrompt);
+            if (!mountedRef.current) return;
+            if (text) {
+                onText(text, {text, language: "zh", duration: clip.durationMs / 1000});
+                message.success("已补上这段录音的文字").then();
+            } else {
+                message.info("这段录音没有识别出文字").then();
+            }
+            await removePendingVoiceClip(clip.id);
+        } catch (error) {
+            emitError(`重试失败：${error instanceof Error ? error.message : "语音转写失败"}，录音仍保留`);
+        } finally {
+            if (mountedRef.current) setRetryingClipID("");
+        }
+    }, [emitError, onText, recording, requestPrompt, retryingClipID]);
+
+    useEffect(() => {
+        if (pendingClips.length === 0) setPendingOpen(false);
+    }, [pendingClips.length]);
+
     const progressDegrees = Math.round(holdProgress * 360);
-    const loading = transcribing || resolvingMode || realtime.status === "connecting" || realtime.status === "finishing";
+    const loading = transcribing
+        || resolvingMode
+        || retrying
+        || realtime.status === "starting"
+        || realtime.status === "finishing";
     const defaultIcon = loading ? <LoadingOutlined spin/> : <AudioOutlined/>;
     const iconOnly = children == null;
     const iconOnlySize = buttonProps.size === "large" ? 40 : buttonProps.size === "small" ? 24 : 32;
     const recordingWidth = buttonProps.size === "small" ? 144 : buttonProps.size === "large" ? 184 : 164;
     const recordingDurationMs = realtimeRecording ? realtime.durationMs : recorder.durationMs;
     const recordingWaveform = realtimeRecording ? realtime.waveform : recorder.waveform;
+    const realtimeOffline = realtimeRecording && !realtime.online;
+    const idleCountdown = realtimeRecording && realtime.idleRemainingMs !== null
+        ? Math.ceil(realtime.idleRemainingMs / 1000)
+        : null;
     const recordingContent = <span
         style={{
             width: "100%",
@@ -491,11 +546,53 @@ export function WhisperButton({
         }}
     >
         <span style={{display: "inline-flex", alignItems: "center", gap: 7}}>
-            <span aria-hidden={true} style={{fontSize: 9}}>●</span>
+            {realtimeOffline
+                ? <DisconnectOutlined aria-label="网络中断，录音继续" style={{fontSize: 11}}/>
+                : <span aria-hidden={true} style={{fontSize: 9}}>●</span>}
             <span>{formatDuration(recordingDurationMs)}</span>
         </span>
-        <RecordingWave waveform={recordingWaveform}/>
+        {idleCountdown !== null
+            ? <span style={{fontSize: 12, opacity: 0.9}}>{idleCountdown}s 后结束</span>
+            : <RecordingWave waveform={recordingWaveform}/>}
     </span>;
+    const pendingContent = <div style={{width: 280, maxWidth: "70vw"}}>
+        <Typography.Paragraph type="secondary" style={{fontSize: 12, marginBottom: 8}}>
+            这些录音当时没能转写，录音还在。网络恢复后点「转写」，文字会插到当前输入位置。
+        </Typography.Paragraph>
+        <Space direction="vertical" size={6} style={{width: "100%"}}>
+            {pendingClips.map((clip) => <div
+                key={clip.id}
+                style={{display: "flex", alignItems: "center", gap: 8}}
+            >
+                <span style={{flex: 1, fontVariantNumeric: "tabular-nums"}}>
+                    {formatDuration(clip.durationMs)} 录音
+                    <Typography.Text type="secondary" style={{marginLeft: 6, fontSize: 12}}>
+                        {formatClipTime(clip.createdAt)}
+                    </Typography.Text>
+                </span>
+                <Button
+                    size="small"
+                    type="primary"
+                    loading={retryingClipID === clip.id}
+                    disabled={Boolean(disabled) || recording || (retrying && retryingClipID !== clip.id)}
+                    onClick={() => void retryClip(clip)}
+                >
+                    转写
+                </Button>
+                <Popconfirm
+                    title="放弃这段录音？"
+                    description="录音会被删除，无法找回。"
+                    okText="放弃"
+                    okButtonProps={{danger: true}}
+                    cancelText="保留"
+                    onConfirm={() => void removePendingVoiceClip(clip.id)}
+                >
+                    <Button size="small" type="text" danger disabled={retryingClipID === clip.id}>放弃</Button>
+                </Popconfirm>
+            </div>)}
+        </Space>
+    </div>;
+    const showPendingBadge = pendingClips.length > 0 && !recording;
 
     return <>
         <Popover
@@ -516,8 +613,10 @@ export function WhisperButton({
             </Typography.Text>}
         >
             <Tooltip
-                open={showTooltip ? undefined : false}
-                title={realtimeRecording ? "点击停止实时识别" : recorder.recording ? "点击停止录音" : tooltip}
+                open={showTooltip && !pendingOpen ? undefined : false}
+                title={realtimeOffline
+                    ? "网络中断，录音继续，恢复后自动补转；点击停止"
+                    : realtimeRecording ? "点击停止实时识别" : recorder.recording ? "点击停止录音" : tooltip}
             >
                 <span
                     style={{
@@ -572,6 +671,40 @@ export function WhisperButton({
                     >
                         {recording ? recordingContent : children}
                     </Button>
+                    {showPendingBadge && <Popover
+                        open={pendingOpen}
+                        onOpenChange={setPendingOpen}
+                        trigger="click"
+                        placement="topRight"
+                        title="待重试的录音"
+                        content={pendingContent}
+                    >
+                        <button
+                            type="button"
+                            aria-label={`${pendingClips.length} 段录音待重试`}
+                            onClick={(event) => event.stopPropagation()}
+                            style={{
+                                position: "absolute",
+                                top: -6,
+                                right: -6,
+                                zIndex: 2,
+                                minWidth: 16,
+                                height: 16,
+                                padding: "0 4px",
+                                border: `1.5px solid ${token.colorBgContainer}`,
+                                borderRadius: 999,
+                                background: token.colorError,
+                                color: token.colorTextLightSolid,
+                                fontSize: 10,
+                                lineHeight: "13px",
+                                fontWeight: 600,
+                                cursor: "pointer",
+                                boxShadow: token.boxShadowTertiary,
+                            }}
+                        >
+                            {retrying ? "…" : pendingClips.length}
+                        </button>
+                    </Popover>}
                 </span>
             </Tooltip>
         </Popover>

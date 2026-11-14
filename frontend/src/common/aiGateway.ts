@@ -71,6 +71,27 @@ export async function transcribeAudio(req: AiTranscribeReq): Promise<AiTranscrib
     }
 }
 
+const CAPABILITY_STORAGE_KEY = "platform.ai.transcribe.capability.v1";
+let capabilityMemo: AiTranscribeCapability | null = null;
+
+// Last known mode, so a click can start recording without a round trip.
+// Callers should refresh it in the background with getTranscriptionCapability.
+export function peekTranscriptionCapability(): AiTranscribeCapability | null {
+    if (capabilityMemo) {
+        return capabilityMemo;
+    }
+    try {
+        const raw = window.localStorage.getItem(CAPABILITY_STORAGE_KEY);
+        const parsed = raw ? JSON.parse(raw) as Partial<AiTranscribeCapability> : null;
+        if (parsed && (parsed.mode === "file" || parsed.mode === "realtime")) {
+            capabilityMemo = parsed as AiTranscribeCapability;
+        }
+    } catch {
+        // Ignore unreadable cache; the next fetch rewrites it.
+    }
+    return capabilityMemo;
+}
+
 export async function getTranscriptionCapability(): Promise<AiTranscribeCapability> {
     const res: UniResult = await UniPost(
         config.api_base_url + "/misc/ai/transcribe/capability",
@@ -83,5 +104,11 @@ export async function getTranscriptionCapability(): Promise<AiTranscribeCapabili
     if (capability.mode !== "file" && capability.mode !== "realtime") {
         throw new Error("语音转写模式无效");
     }
-    return capability as AiTranscribeCapability;
+    capabilityMemo = capability as AiTranscribeCapability;
+    try {
+        window.localStorage.setItem(CAPABILITY_STORAGE_KEY, JSON.stringify(capabilityMemo));
+    } catch {
+        // localStorage can be unavailable in private or restricted browser modes.
+    }
+    return capabilityMemo;
 }
