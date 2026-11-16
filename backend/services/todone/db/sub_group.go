@@ -26,7 +26,7 @@ func CreateSubGroup(db *gorm.DB, parentGroupID uint32, title, note string, index
 func GetSubGroupByParentSortByIndex(db *gorm.DB, parentGroupID uint32) []*SubGroupDB {
 	var subGroups []*SubGroupDB
 	subGroups = make([]*SubGroupDB, 0)
-	db.Where("parent_group_id = ?", parentGroupID).Order("`Index`").Find(&subGroups)
+	db.Where("parent_group_id = ?", parentGroupID).Order("`Index`, id").Find(&subGroups) // 老数据序号大量重复，按创建先后兜底
 	return subGroups
 }
 
@@ -39,8 +39,14 @@ func DeleteSubGroupByParentGroupID(db *gorm.DB, parentGroupID uint32) error {
 }
 
 func GetParentGroupIDMaxIndex(db *gorm.DB, parentGroupID uint32) float32 {
+	// index 是 SQL 关键字，必须加反引号；之前写成 max(index) 一直报错被吞掉，所有新卡片的序号都成了 1。
+	// COALESCE 让没有子分组时返回 0 而不是 NULL（NULL 扫不进 float32）。
 	var maxIndex float32
-	db.Model(&SubGroupDB{}).Where("parent_group_id = ?", parentGroupID).Select("max(index)").Scan(&maxIndex)
+	err := db.Model(&SubGroupDB{}).Where("parent_group_id = ?", parentGroupID).
+		Select("COALESCE(MAX(`index`), 0)").Row().Scan(&maxIndex)
+	if err != nil {
+		println("GetParentGroupIDMaxIndex error:", err.Error())
+	}
 	return maxIndex
 }
 

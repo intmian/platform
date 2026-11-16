@@ -19,6 +19,8 @@
   - `SubGroupLogic.GetTaskLogic` 对未缓存的任务会把它追加进顺序：校验外来 ID 时要直接查 `TaskDB`，不能借它。
   - 子分组缓存没加载时，`createTask` 不会写入顺序，而建子任务会把父任务提前插入。用接口批量造数据前，先对每个子分组调一次 `getTasks`。
 - 新用户第一次 `getDirTree` 会建根目录行但在内存里没绑上，那一次会 panic，第二次请求就好了。
+- Todone 表里有叫 `index` 的列，是 SQL 关键字：手写 SQL 里要写成 `` `index` ``。gorm 的 `Scan` 报错不会冒出来，曾经因此导致线上所有子分组的序号都是 1（老数据至今重复，排序靠 `id` 兜底）。
+- 服务重启后，要先调一次 `getDirTree` 把用户加载进内存，否则 `createGroup` 等写接口会直接返回 `svr error`。
 - Todone 删除策略混用：目录、子分组是硬删，分组、任务是软删（`deleted`），排查时两种都要看。
 - 每个用户的 Todone 操作共用一把锁，天然串行。子分组每 5 秒自动落盘一次变更。
 - `platform/core.go` 里所有服务的"启动时开启"都读的是 `auto/open_when_start`（已知问题）；`auto` 服务内部又用 `<unit>.open`，两者不一致。
