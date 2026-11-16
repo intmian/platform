@@ -190,9 +190,9 @@ export function describeRule(rule: RoutineRule): string {
             const sep = rule.day.type === 'date' ? ' ' : '';
             if (rule.every === 1) return `每月${sep}${daySpecText(rule.day)}`;
             if (rule.every === 12) return `每年 ${rule.offset + 1} 月${sep}${daySpecText(rule.day)}`;
-            // 季度、半年等直接列出月份，比“每季度第 2 个月”更直观也更短
-            const months = Array.from({length: 12 / rule.every}, (_, i) => rule.offset + 1 + i * rule.every);
-            return `${months.join('/')} 月${sep}${daySpecText(rule.day)}`;
+            // 周期从第一个月开始时只写“每季度 1 号”；从中间月份开始才补“第 N 个月”
+            const nth = rule.offset ? `第 ${rule.offset + 1} 个月` : '';
+            return `${monthEveryText(rule.every)}${nth}${sep}${daySpecText(rule.day)}`;
         }
         case 'after':
             return `完成后 ${rule.days} 天`;

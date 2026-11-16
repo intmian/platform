@@ -1308,3 +1308,61 @@
 .rt-handle {
     margin-right: -4px;
 }
+
+/* ---------- 顶层卡片拖动排序 ---------- */
+
+.rt-card-head {
+    padding-left: 2px;
+}
+
+.rt-card-handle {
+    flex: none;
+    align-self: stretch;
+    width: 22px;
+    margin: -12px -4px -10px 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--rt-text-3);
+    opacity: 0;
+    cursor: grab;
+    touch-action: none;
+    transition: opacity .2s;
+}
+
+.rt-card-head:hover .rt-card-handle {
+    opacity: .8;
+}
+
+@media (hover: none) {
+    .rt-card-handle {
+        opacity: .4;
+    }
+}
+
+/* 插入线画在卡片内侧，和行的插入线一致 */
+.rt-card-drop-before {
+    box-shadow: inset 0 3px 0 var(--rt-primary);
+}
+
+.rt-card-drop-after {
+    box-shadow: inset 0 -3px 0 var(--rt-primary);
+}
+
+.rt-card-drag-src {
+    opacity: .45;
+}
+
+.rt-overlay-card {
+    font-weight: 600;
+    font-size: 15px;
+}
+
+.rt-saving {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: var(--rt-text-3);
+    white-space: nowrap;
+}

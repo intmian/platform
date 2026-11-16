@@ -78,6 +78,16 @@ function defaultNode(kind: RoutineNodeKind, id: number, sgID = 0): PRoutineNode 
     return {Kind: kind, NodeID: id, SubGroupID: sgID, Folder: false, Optional: false, Temp: false, Rule: '', Mark: '', PrevMark: ''};
 }
 
+/**
+ * 卡片、分组的展开状态。还没开始的默认收起，这次手动展开的只在本次页面里有效，
+ * 不写进本地记忆；开始之后回到平时记住的展开状态。
+ */
+function useFold(key: string, notStarted: boolean): [boolean, (v: boolean) => void] {
+    const [saved, setSaved] = useLocalFlag(key, true);
+    const [peek, setPeek] = useState(false);
+    return notStarted ? [peek, setPeek] : [saved, setSaved];
+}
+
 function useLocalFlag(key: string, init: boolean): [boolean, (v: boolean) => void] {
     const [v, setV] = useState<boolean>(() => {
         try {
@@ -303,6 +313,10 @@ interface DropTarget {
 /** 指针所在的行优先，其次是所在的卡片（放到卡片末尾）。 */
 const dropCollision: CollisionDetection = (args) => {
     const hits = pointerWithin(args);
+    if (String(args.active.id).startsWith('sgdrag-')) {
+        const card = hits.find((h) => String(h.id).startsWith('card-'));
+        return card ? [card] : [];
+    }
     const row = hits.find((h) => String(h.id).startsWith('row-'));
     if (row) return [row];
     const card = hits.find((h) => String(h.id).startsWith('card-'));
@@ -431,6 +445,33 @@ export default function Routine(props: RoutineProps) {
 
     // ---------- 写入 ----------
 
+    // 界面先变、请求后台发。track 记下还在路上的请求：超过 400ms 没回来才显示“保存中…”，
+    // 还有没存完的就关页面时让浏览器拦一下。
+    const pendingRef = useRef(0);
+    const [pending, setPending] = useState(0);
+    const [slowSaving, setSlowSaving] = useState(false);
+    const track = useCallback(<T, >(p: Promise<T>): Promise<T> => {
+        pendingRef.current++;
+        setPending(pendingRef.current);
+        return p.finally(() => {
+            pendingRef.current--;
+            setPending(pendingRef.current);
+        });
+    }, []);
+    useEffect(() => {
+        if (!pending) {
+            setSlowSaving(false);
+            return;
+        }
+        const t = window.setTimeout(() => setSlowSaving(true), 400);
+        const guard = (e: BeforeUnloadEvent) => e.preventDefault();
+        window.addEventListener('beforeunload', guard);
+        return () => {
+            window.clearTimeout(t);
+            window.removeEventListener('beforeunload', guard);
+        };
+    }, [pending > 0]); // eslint-disable-line react-hooks/exhaustive-deps
+
     const commit = useCallback(async (changed: PRoutineNode[], delTasks: RoutineDelTasks[] = []) => {
         const before = nodesRef.current;
         setNodes((prev) => {
@@ -450,14 +491,14 @@ export default function Routine(props: RoutineProps) {
                 return next;
             });
         }
-        const ret = await sendSaveRoutine({UserID: userID, DirID: dirID, GroupID: groupID, Nodes: changed, DelTasks: delTasks});
+        const ret = await track(sendSaveRoutine({UserID: userID, DirID: dirID, GroupID: groupID, Nodes: changed, DelTasks: delTasks}));
         if (!ret.ok) {
             message.error('保存失败，已恢复');
             setNodes(before);
             if (delTasks.length) loadAll().then();
         }
         return ret.ok;
-    }, [userID, dirID, groupID, loadAll]);
+    }, [userID, dirID, groupID, loadAll, track]);
 
     /**
      * 叶子变化后同步节奏层的完成记录：这一期做齐了就记下完成日（“完成后 N 天”据此算下次刷新），
@@ -573,6 +614,9 @@ export default function Routine(props: RoutineProps) {
     const [dragID, setDragID] = useState<number | null>(null);
     const [drop, setDrop] = useState<DropTarget | null>(null);
     const [moving, setMoving] = useState(false);
+    // 拖顶层卡片：被拖的子分组 ID，和插到哪张卡片的前/后
+    const [dragCard, setDragCard] = useState<number | null>(null);
+    const [cardDrop, setCardDrop] = useState<CardDrop | null>(null);
     const sensors = useSensors(
         useSensor(MouseSensor, {activationConstraint: {distance: 5}}),
         useSensor(TouchSensor, {activationConstraint: {delay: 180, tolerance: 6}}),
@@ -597,12 +641,52 @@ export default function Routine(props: RoutineProps) {
     const sameDrop = (a: DropTarget | null, b: DropTarget | null) =>
         a?.kind === b?.kind && a?.id === b?.id && a?.pos === b?.pos;
 
+    const computeCardDrop = (e: DragMoveEvent | DragEndEvent): CardDrop | null => {
+        const d = e.over?.data.current as { kind: string, id: number } | undefined;
+        if (!e.over || d?.kind !== 'card') return null;
+        const rel = (pointerY(e) - e.over.rect.top) / Math.max(1, e.over.rect.height);
+        return {id: d.id, after: rel >= 0.5};
+    };
+
+    const onCardDragEnd = (e: DragEndEvent) => {
+        const target = computeCardDrop(e);
+        const src = dragCard;
+        setDragCard(null);
+        setCardDrop(null);
+        if (!src || !target || target.id === src) return;
+        const ids = subGroups.map((sg) => sg.ID).filter((id) => id !== src);
+        const at = ids.indexOf(target.id) + (target.after ? 1 : 0);
+        ids.splice(at, 0, src);
+        if (ids.every((id, i) => subGroups[i].ID === id)) return;
+        // 整体重新编号 1..n，只发生变化的卡片
+        const byID = new Map(subGroups.map((sg) => [sg.ID, sg]));
+        const next = ids.map((id, i) => ({...byID.get(id)!, Index: i + 1}));
+        const changed = next.filter((sg) => byID.get(sg.ID)!.Index !== sg.Index);
+        setSubGroups(next);
+        track(Promise.all(changed.map((sg) => call(sendChangeSubGroup, {UserID: userID, ParentDirID: dirID, GroupID: groupID, Data: sg}))))
+            .then((rets) => {
+                if (rets.every((r) => r.ok)) return;
+                message.error('排序保存失败，已恢复');
+                loadAll().then();
+            });
+    };
+
     const onDragMove = (e: DragMoveEvent) => {
+        if (dragCard) {
+            const next = computeCardDrop(e);
+            setCardDrop((prev) => prev?.id === next?.id && prev?.after === next?.after ? prev : next);
+            return;
+        }
         const next = computeDrop(e);
         setDrop((prev) => sameDrop(prev, next) ? prev : next);
     };
 
     const onDragEnd = (e: DragEndEvent) => {
+        if (dragCard) {
+            setPointerTracking(false);
+            onCardDragEnd(e);
+            return;
+        }
         const target = computeDrop(e);
         setPointerTracking(false);
         const v = dragID ? model.byTask.get(dragID) : undefined;
@@ -649,6 +733,8 @@ export default function Routine(props: RoutineProps) {
         hideDone,
         dragID,
         drop,
+        dragCard,
+        cardDrop,
         onToggle: toggle,
         onEdit: (taskID) => setEditor({type: 'task', taskID}),
         onCreate: createItem,
@@ -675,7 +761,8 @@ export default function Routine(props: RoutineProps) {
     const resting = total.total === 0 && total.waiting > 0;
     const editorNode = editor?.type === 'task' ? model.byTask.get(editor.taskID) : undefined;
     const groupReset = resettable(model, model.leaves);
-    const groupHasRhythm = model.groupRule.kind !== 'manual';
+    // 清单没设过节奏时默认是手动，这时不显示“手动重置”，免得像是设过什么
+    const groupHasRhythm = model.groupRule.kind !== 'manual' || !!parseRule(model.groupNode.Rule);
 
     return <div className="rt-root" style={rootStyle}>
         {/* ---------- 头部 ---------- */}
@@ -688,9 +775,8 @@ export default function Routine(props: RoutineProps) {
             <div className="rt-hero-main">
                 <div className="rt-hero-title">{props.groupTitle}</div>
                 <div className="rt-hero-sub">
-                    {groupHasRhythm
-                        ? <RhythmChip rule={model.groupRule} view={model.groupOwner.view} onClick={() => setEditor({type: 'group'})}/>
-                        : <span className="rt-rhythm-inherit" onClick={() => setEditor({type: 'group'})}><RuleIcon rule={model.groupRule}/>{describeRule(model.groupRule)}</span>}
+                    {groupHasRhythm &&
+                        <RhythmChip rule={model.groupRule} view={model.groupOwner.view} onClick={() => setEditor({type: 'group'})}/>}
                     {total.overdue > 0 && <span className="rt-stat rt-stat-overdue">{total.overdue} 项逾期</span>}
                     {total.today > 0 && <span className="rt-stat rt-stat-today">{total.today} 项今天</span>}
                     {total.total > 0 && total.reqTotal < total.total &&
@@ -700,6 +786,7 @@ export default function Routine(props: RoutineProps) {
             </div>
             <div className="rt-hero-actions">
                 {(loading || moving) && <Spin size="small"/>}
+                {slowSaving && !loading && !moving && <span className="rt-saving"><Spin size="small"/> 保存中…</span>}
                 <Tooltip title={hideDone ? '显示已完成' : '隐藏已完成'}>
                     <Button type="text" icon={hideDone ? <EyeInvisibleOutlined/> : <EyeOutlined/>}
                             onClick={() => setHideDone(!hideDone)}/>
@@ -707,9 +794,9 @@ export default function Routine(props: RoutineProps) {
                 <Tooltip title="复核">
                     <Button type="text" icon={<UnorderedListOutlined/>} onClick={() => setReviewOpen(true)}/>
                 </Tooltip>
-                {(groupReset.manual > 0 || groupReset.temps.length > 0) &&
-                    <Tooltip title={groupReset.any ? '清空重来' : '没有需要清空的内容'}>
-                        <Button type="text" icon={<RedoOutlined/>} disabled={!groupReset.any}
+                {groupReset.any &&
+                    <Tooltip title="清空重来">
+                        <Button type="text" icon={<RedoOutlined/>}
                                 onClick={() => setResetTarget({title: props.groupTitle, leaves: model.leaves})}/>
                     </Tooltip>}
                 <Tooltip title="清单设置">
@@ -731,7 +818,9 @@ export default function Routine(props: RoutineProps) {
             onDragStart={(e) => {
                 lastPointer.y = 0;
                 setPointerTracking(true);
-                setDragID((e.active.data.current as { id: number }).id);
+                const data = e.active.data.current as { id?: number, cardID?: number };
+                if (data.cardID) setDragCard(data.cardID);
+                else setDragID(data.id ?? null);
             }}
             onDragMove={onDragMove}
             onDragEnd={onDragEnd}
@@ -739,6 +828,8 @@ export default function Routine(props: RoutineProps) {
                 setPointerTracking(false);
                 setDragID(null);
                 setDrop(null);
+                setDragCard(null);
+                setCardDrop(null);
             }}
         >
         {model.sgs.map((sgm) =>
@@ -757,6 +848,10 @@ export default function Routine(props: RoutineProps) {
             />)}
             {/* 拖动浮层：不受任何折叠容器裁剪 */}
             <DragOverlay dropAnimation={null}>
+                {dragCard && <div className="rt-overlay rt-overlay-card">
+                    <HolderOutlined className="rt-overlay-handle"/>
+                    <span className="rt-overlay-title">{subGroups.find((sg) => sg.ID === dragCard)?.Title}</span>
+                </div>}
                 {draggedNode && <div className="rt-overlay">
                     <HolderOutlined className="rt-overlay-handle"/>
                     <RoutineCheck value={checkValue(draggedNode.leaves)} optional={draggedNode.optional}/>
@@ -810,7 +905,7 @@ export default function Routine(props: RoutineProps) {
             rootStyle={rootStyle}
         >
             {editor?.type === 'group' &&
-                <Section title="刷新节奏" hint="没有单独设置节奏的分组和事项都跟随这里">
+                <Section title="刷新节奏">
                     <RuleEditor value={model.groupRule} inherited={null} onApply={(r) => applyRule({type: 'group'}, r)}/>
                 </Section>}
             {editor?.type === 'subgroup' && (() => {
@@ -850,10 +945,17 @@ export default function Routine(props: RoutineProps) {
 
 // ---------------- 顶层分组卡片 ----------------
 
+interface CardDrop {
+    id: number // 目标子分组
+    after: boolean
+}
+
 interface RowCtx {
     hideDone: boolean
     dragID: number | null
     drop: DropTarget | null
+    dragCard: number | null
+    cardDrop: CardDrop | null
     onToggle: (leaves: VNode[]) => void
     onEdit: (taskID: number) => void
     onCreate: (sgID: number, parentID: number, title: string, opt?: CreateOpt) => Promise<void>
@@ -868,17 +970,23 @@ function SubGroupCard(props: {
     onDelete: () => void
 }) {
     const {sgm} = props;
-    const [open, setOpen] = useLocalFlag(`todone:routine:sgOpen:${sgm.sg.ID}`, true);
+    const notStarted = sgm.leaves.length > 0 && sgm.leaves.every((l) => !l.active);
+    const [open, setOpen] = useFold(`todone:routine:sgOpen:${sgm.sg.ID}`, notStarted);
     const scope = ownScope(sgm.leaves, sgm.owner);
-    const others = sgm.leaves.length - scope.length;
+    const others = sgm.leaves.filter((l) => l.owner !== sgm.owner);
     const agg = aggregate(scope);
     const overdue = aggregate(sgm.leaves).overdue; // 红点统计整块，方便扫出哪块有问题
     const cv = checkValue(scope);
-    const container = scope.length === 0 && others > 0;
+    const container = scope.length === 0 && others.length > 0;
     const waiting = agg.total === 0 && agg.waiting > 0;
     const allDone = checkValue(sgm.leaves) === 'on';
     const reset = resettable(props.model, sgm.leaves);
     const {setNodeRef} = useDroppable({id: `card-${sgm.sg.ID}`, data: {kind: 'card', id: sgm.sg.ID}});
+    const cardDrag = useDraggable({id: `sgdrag-${sgm.sg.ID}`, data: {cardID: sgm.sg.ID}});
+    const cardDropPos = props.ctx.cardDrop?.id === sgm.sg.ID && props.ctx.dragCard !== sgm.sg.ID
+        ? (props.ctx.cardDrop.after ? ' rt-card-drop-after' : ' rt-card-drop-before') : '';
+    // 拖卡片排序时所有卡片收成一行，好对准
+    const shown = open && !props.ctx.dragCard;
     const dropHere = props.ctx.drop?.kind === 'card' && props.ctx.drop.id === sgm.sg.ID;
     // 拖到收起的卡片上停一会儿自动展开
     useEffect(() => {
@@ -888,8 +996,12 @@ function SubGroupCard(props: {
     }, [dropHere, open, setOpen]);
 
     return <div ref={setNodeRef}
-                className={`rt-card${allDone ? ' rt-card-done' : ''}${waiting ? ' rt-card-waiting' : ''}${dropHere ? ' rt-drop-card' : ''}`}>
-        <div className="rt-card-head">
+                className={`rt-card${allDone ? ' rt-card-done' : ''}${waiting ? ' rt-card-waiting' : ''}${dropHere ? ' rt-drop-card' : ''}${cardDropPos}${props.ctx.dragCard === sgm.sg.ID ? ' rt-card-drag-src' : ''}`}>
+        {/* 浮层尺寸取自 setNodeRef 的元素，所以挂在整个头部上，拖动手势只在把手上 */}
+        <div className="rt-card-head" ref={cardDrag.setNodeRef}>
+            <span className="rt-card-handle" {...cardDrag.attributes} {...cardDrag.listeners} title="拖动调整顺序">
+                <HolderOutlined/>
+            </span>
             {container
                 ? <span className="rt-check-spacer" style={{width: 24}}/>
                 : <RoutineCheck value={cv} size={24} disabled={waiting} onClick={() => props.ctx.onToggle(scope)}/>}
@@ -900,15 +1012,14 @@ function SubGroupCard(props: {
             <div className="rt-card-meta" onClick={() => setOpen(!open)}>
                 {overdue > 0 && <span className="rt-dot rt-dot-overdue">{overdue}</span>}
                 <LayerCount agg={agg} waiting={waiting} others={others}/>
-                <span className={`rt-caret${open ? ' rt-caret-open' : ''}`}/>
+                <span className={`rt-caret${shown ? ' rt-caret-open' : ''}`}/>
             </div>
             <Dropdown
                 trigger={['click']}
                 menu={{
                     items: [
                         {key: 'edit', icon: <EditOutlined/>, label: '名称、备注与节奏'},
-                        ...(reset.manual > 0 || reset.temps.length > 0
-                            ? [{key: 'reset', icon: <RedoOutlined/>, label: reset.any ? '清空重来' : '清空重来（没有可清空的）', disabled: !reset.any}] : []),
+                        ...(reset.any ? [{key: 'reset', icon: <RedoOutlined/>, label: '清空重来'}] : []),
                         {type: 'divider' as const},
                         {key: 'del', icon: <DeleteOutlined/>, label: '删除分组', danger: true},
                     ],
@@ -927,7 +1038,7 @@ function SubGroupCard(props: {
         </div>
         {sgm.sg.Note && <Note text={sgm.sg.Note} className="rt-card-note"/>}
         <div className="rt-bar"><div style={{width: `${agg.total ? agg.done / agg.total * 100 : 0}%`}}/></div>
-        <Collapse open={open}>
+        <Collapse open={shown}>
             <div className="rt-card-body">
                 <RowList nodes={sgm.roots} ctx={props.ctx}/>
                 {sgm.roots.length === 0 && <div className="rt-card-empty">还没有内容</div>}
@@ -949,10 +1060,11 @@ function RowList(props: { nodes: VNode[], ctx: RowCtx }) {
 function Row(props: { v: VNode, ctx: RowCtx }) {
     const {v, ctx} = props;
     const scope = v.folder ? ownScope(v.leaves, v.owner) : [v];
-    const others = v.leaves.length - scope.length;
-    const container = v.folder && scope.length === 0 && others > 0;
+    const others = v.leaves.filter((l) => l.owner !== v.owner);
+    const container = v.folder && scope.length === 0 && others.length > 0;
     const cv = checkValue(scope);
-    const [open, setOpen] = useLocalFlag(`todone:routine:taskOpen:${v.task.ID}`, true);
+    const notStarted = v.folder && v.leaves.length > 0 && v.leaves.every((l) => !l.active);
+    const [open, setOpen] = useFold(`todone:routine:taskOpen:${v.task.ID}`, notStarted);
     const drag = useDraggable({id: `drag-${v.task.ID}`, data: {id: v.task.ID}});
     const dropZone = useDroppable({id: `row-${v.task.ID}`, data: {kind: 'row', id: v.task.ID}});
     const rowRef = (el: HTMLElement | null) => {
@@ -1034,6 +1146,8 @@ function Row(props: { v: VNode, ctx: RowCtx }) {
 /** 一层的节奏：自己设的显示规则和状态；跟随上级的只用淡色小字写出规则。 */
 function LayerRhythm(props: { own: boolean, rule: RoutineRule, view: RoundView, onEdit: () => void }) {
     if (props.own) return <RhythmChip rule={props.rule} view={props.view} size="sm" onClick={props.onEdit}/>;
+    // 跟随来的“手动”没有任何信息量（清单默认就是手动），不显示
+    if (props.rule.kind === 'manual') return null;
     return <span className="rt-rhythm-inherit" title="跟随上级，点击可单独设置" onClick={(e) => {
         e.stopPropagation();
         props.onEdit();
@@ -1042,15 +1156,34 @@ function LayerRhythm(props: { own: boolean, rule: RoutineRule, view: RoundView, 
     </span>
 }
 
-/** 一层的完成比例：只算跟随这一层节奏的事项；有各自节奏的子项另外注明。 */
-function LayerCount(props: { agg: Agg, waiting: boolean, others: number, small?: boolean }) {
+/**
+ * 一层的完成比例：只算跟随这一层节奏的事项。
+ * 有自己节奏的子项（others）不进比例，只补一句它们现在的情况：几项待做，或者最近哪天刷新。
+ */
+function LayerCount(props: { agg: Agg, waiting: boolean, others: VNode[], small?: boolean }) {
     const {agg} = props;
     const cls = props.small ? 'rt-row-sub' : 'rt-card-count';
-    if (agg.total === 0 && agg.waiting === 0) return props.others ? <span className={cls}>{props.others} 项各自节奏</span> : null;
+    const otherText = othersText(props.others, agg.total > 0 || agg.waiting > 0);
+    if (agg.total === 0 && agg.waiting === 0) return otherText ? <span className={cls}>{otherText}</span> : null;
     return <span className={cls}>
         {!props.waiting && `${agg.done}/${agg.total}`}
-        {props.others > 0 && <span className="rt-count-others">{props.waiting ? '' : ' · '}另有 {props.others} 项各自节奏</span>}
+        {otherText && <span className="rt-count-others">{props.waiting ? '' : ' · '}{otherText}</span>}
     </span>
+}
+
+/** extra：前面已经有本层的比例，这里是“另外”的部分，措辞要接得上。 */
+function othersText(others: VNode[], extra: boolean): string {
+    if (!others.length) return '';
+    const pending = others.filter((l) => l.active && !l.checked).length;
+    if (pending > 0) return extra ? `另有 ${pending} 项待做` : `${pending} 项待做`;
+    // 都做完了或都没开始：给出最近一次刷新的日期
+    let next = '';
+    others.forEach((l) => {
+        const d = l.active ? l.owner.round.next : l.owner.round.start;
+        if (d && (!next || d < next)) next = d;
+    });
+    if (!next) return extra ? '' : `${others.length} 项`;
+    return extra ? `其余 ${shortDate(next)} 刷新` : `最近 ${shortDate(next)} 刷新`;
 }
 
 /** 备注：默认单行，点击展开。 */
@@ -1081,7 +1214,6 @@ function Adders(props: { sgID: number, parentID: number, ctx: RowCtx, compact?: 
     }
     return <div className={`rt-adders${props.compact ? ' rt-adders-compact' : ''}`}>
         <button className="rt-adder" onClick={() => setAdding('item')}><PlusOutlined/> 事项</button>
-        <button className="rt-adder" onClick={() => setAdding('folder')}><PlusOutlined/> 分组</button>
         <button className="rt-adder rt-adder-temp" onClick={() => setAdding('temp')}><PlusOutlined/> 本次补充</button>
     </div>
 }
@@ -1221,35 +1353,31 @@ function TaskEditor(props: {
     onDelete: () => void
 }) {
     const {v} = props;
-    const [adding, setAdding] = useState<null | 'item' | 'folder'>(null);
+    const [adding, setAdding] = useState(false);
     return <>
         <Section title="名称"><TextField value={v.task.Title} onSave={(t) => props.onSave({Title: t})}/></Section>
         <Section title="备注">
             <TextField value={v.task.Note} multiline allowEmpty placeholder="操作说明、注意事项…" onSave={(t) => props.onSave({Note: t})}/>
         </Section>
-        <Section title="类型" hint={v.optional && !v.node.Optional ? '上级是可选的，这里也按可选处理' : '可选项不影响“这一期是否做完”'}>
+        <Section title="类型" hint={v.optional && !v.node.Optional ? '上级是可选的，这里也按可选处理' : undefined}>
             <Segmented block value={v.node.Optional ? 'opt' : 'req'} onChange={(k) => props.onOptional(k === 'opt')}
                        options={[{label: '必选', value: 'req'}, {label: '可选', value: 'opt'}]}/>
         </Section>
         {v.temp
-            ? <Section title="本次补充" hint="跟随上级的节奏；清空重来时可以选择留下或移除">
+            ? <Section title="本次补充">
                 {v.node.Temp ? <Button block onClick={props.onMakePermanent}>转为常驻</Button> : <div className="rt-section-hint">随上级一起处理</div>}
             </Section>
-            : <Section title="刷新节奏" hint={v.folder ? '里面没有单独设置节奏的事项都跟随这里' : '单独设置后，这一项按自己的节奏刷新，不受上级影响'}>
+            : <Section title="刷新节奏">
                 <RuleEditor value={v.ownRule} inherited={v.inheritedRule} onApply={props.onRule}/>
             </Section>}
-        <Section title={v.folder ? '添加到分组' : '拆分'} hint={v.folder ? undefined : '添加子项后，这一项会变成分组，可以整组勾选'}>
+        {/* 分组就是带子项的事项：给事项加子项，它就变成分组 */}
+        <Section title="子项">
             {adding
-                ? <InlineAdder placeholder={adding === 'folder' ? '分组名称，回车创建' : '事项名称，回车添加'}
-                               keepOpen={adding === 'item'}
-                               onSubmit={async (t) => {
-                                   await props.onAdd(t, adding === 'folder');
-                                   if (adding === 'folder') setAdding(null);
-                               }}
-                               onCancel={() => setAdding(null)}/>
+                ? <InlineAdder placeholder="子项名称，回车添加" keepOpen
+                               onSubmit={(t) => props.onAdd(t, false)}
+                               onCancel={() => setAdding(false)}/>
                 : <div className="rt-editor-adds">
-                    <Button icon={<PlusOutlined/>} onClick={() => setAdding('item')}>事项</Button>
-                    <Button icon={<PlusOutlined/>} onClick={() => setAdding('folder')}>分组</Button>
+                    <Button icon={<PlusOutlined/>} onClick={() => setAdding(true)}>添加子项</Button>
                 </div>}
         </Section>
         <div className="rt-danger">

@@ -213,9 +213,9 @@ export function RuleEditor(props: {
         <Segmented block size="small" options={options} value={mode} onChange={(m) => setMode(m as Mode)}/>
         <div className="rt-rule-body" key={mode}>
             {mode === 'inherit' && props.inherited &&
-                <div className="rt-rule-hint">跟随上级的节奏：{describeRule(props.inherited)}。上级刷新时这里一起清空。</div>}
+                <div className="rt-rule-hint">跟随上级：{describeRule(props.inherited)}</div>}
             {mode === 'manual' &&
-                <div className="rt-rule-hint">不会自动刷新，勾选一直保留，直到清空重来。适合出门清单这类随用随查的事项。</div>}
+                <div className="rt-rule-hint">不自动刷新，勾选保留到清空重来。</div>}
 
             {mode === 'day' && <div className="rt-rule-row">
                 <SegLabel>每</SegLabel>
@@ -286,9 +286,6 @@ export function RuleEditor(props: {
                     <SegLabel>宽限</SegLabel>
                     <InputNumber min={0} max={365} value={grace} placeholder="0" onChange={(n) => setGrace(n)} style={{width: 76}}/>
                     <SegLabel>天</SegLabel>
-                </div>
-                <div className="rt-rule-hint">
-                    {grace ? `刷新后 ${grace} 天内做完都不算逾期。` : '刷新当天没做完，第二天起算逾期。'}
                 </div>
             </div>}
 

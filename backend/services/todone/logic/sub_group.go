@@ -377,6 +377,10 @@ func (s *SubGroupLogic) ChangeFromProtocol(data protocol.PSubGroup) error {
 	if s.dbData.Note != data.Note {
 		s.dbData.Note = data.Note
 	}
+	// Index 从 1 起分配；0 视为调用方没带，保持原值（例行清单的卡片拖动排序靠它）
+	if data.Index > 0 {
+		s.dbData.Index = data.Index
+	}
 	connect := db.GTodoneDBMgr.GetConnect(db.ConnectTypeSubGroup)
 	return db.UpdateSubGroup(connect, s.dbData.ID, s.dbData.Title, s.dbData.Note, s.dbData.Index, s.dbData.TaskSequence)
 }
