@@ -257,6 +257,7 @@ export function TaskDetail(props: TaskDetailProps) {
         />
         <Flex gap='10px'>
             <DatePicker
+                inputReadOnly={isMobile}
                 placeholder="无开始时间"
                 allowClear
                 style={{width: "45%"}}
@@ -270,6 +271,7 @@ export function TaskDetail(props: TaskDetailProps) {
                 }}
             />
             <DatePicker
+                inputReadOnly={isMobile}
                 placeholder="无结束时间"
                 allowClear
                 value={endTimeJs}

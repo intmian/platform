@@ -2,6 +2,7 @@ import {useEffect, useMemo, useRef, useState} from "react";
 import {Button, DatePicker, InputNumber, Segmented, Select} from "antd";
 import {RedoOutlined, ScheduleOutlined} from "@ant-design/icons";
 import dayjs from "dayjs";
+import {useIsMobile} from "../common/hooksv2";
 import {
     DATE_FMT,
     DaySpec,
@@ -129,6 +130,7 @@ export function RuleEditor(props: {
 }) {
     const v = props.value;
     const today = todayStr();
+    const isMobile = useIsMobile();
     const [mode, setMode] = useState<Mode>('manual');
     const [dayEvery, setDayEvery] = useState(1);
     const [weekEvery, setWeekEvery] = useState(1);
@@ -278,7 +280,7 @@ export function RuleEditor(props: {
             {periodic && <div className="rt-rule-more">
                 <div className="rt-rule-row">
                     <SegLabel>{mode === 'after' ? '第一次' : '从'}</SegLabel>
-                    <DatePicker allowClear={false} value={dayjs(start)} style={{width: 140}}
+                    <DatePicker allowClear={false} value={dayjs(start)} style={{width: 140}} inputReadOnly={isMobile}
                                 onChange={(d) => d && setStart(d.format(DATE_FMT))}/>
                     <SegLabel>{mode === 'after' ? '开始' : '起算'}</SegLabel>
                 </div>
