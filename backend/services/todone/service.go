@@ -179,6 +179,12 @@ func (s *Service) HandleRpc(msg backendshare.Msg, valid backendshare.Valid) (int
 		return backendshare.HandleRpcTool("getRoutine", msg, valid, s.OnGetRoutine)
 	case CmdSaveRoutine:
 		return backendshare.HandleRpcTool("saveRoutine", msg, valid, s.OnSaveRoutine)
+	case CmdGetOverview:
+		return backendshare.HandleRpcTool("getOverview", msg, valid, s.OnGetOverview)
+	case CmdSetTaskDone:
+		return backendshare.HandleRpcTool("setTaskDone", msg, valid, s.OnSetTaskDone)
+	case CmdSetGroupFavorite:
+		return backendshare.HandleRpcTool("setGroupFavorite", msg, valid, s.OnSetGroupFavorite)
 	case CmdChangeLibraryScoreDetail:
 		return backendshare.HandleRpcTool("changeLibraryScoreDetail", msg, valid, s.OnChangeLibraryScoreDetail)
 	}

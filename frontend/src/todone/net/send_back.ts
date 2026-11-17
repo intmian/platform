@@ -647,3 +647,59 @@ export function sendGetRoutine(req: GetRoutineReq) {
 export function sendSaveRoutine(req: SaveRoutineReq) {
     return postTodone<SaveRoutineRet>('saveRoutine', req);
 }
+
+// ---------------- 总视图 ----------------
+
+export interface OverviewGroup {
+    DirID: number
+    GroupID: number
+    Type: number
+    Title: string
+    Path: string[] | null
+}
+
+/** 收藏项，按收藏先后排列。SubGroupID 为 0 表示整个分组。 */
+export interface OverviewFavorite {
+    GroupID: number
+    SubGroupID: number
+}
+
+export interface OverviewSubGroup {
+    ID: number
+    GroupID: number
+    Title: string
+    Index: number
+}
+
+export interface OverviewTask {
+    GroupID: number
+    SubGroupID: number
+    ParentTitle: string
+    Task: PTask // 不含 Note
+}
+
+export interface OverviewRoutineNode {
+    GroupID: number
+    Node: PRoutineNode
+}
+
+export interface GetOverviewRet {
+    Groups: OverviewGroup[] | null
+    SubGroups: OverviewSubGroup[] | null
+    Tasks: OverviewTask[] | null
+    RoutineNodes: OverviewRoutineNode[] | null
+    Favorites: OverviewFavorite[] | null
+}
+
+export function sendGetOverview(req: { UserID: string }) {
+    return postTodone<GetOverviewRet>('getOverview', req);
+}
+
+export function sendSetGroupFavorite(req: { UserID: string, ParentDirID: number, GroupID: number, SubGroupID: number, Favorite: boolean }) {
+    return postTodone<object>('setGroupFavorite', req);
+}
+
+/** 只改完成状态；总视图的任务不含 Note，不能用 changeTask 整体覆盖。 */
+export function sendSetTaskDone(req: { UserID: string, DirID: number, GroupID: number, SubGroupID: number, TaskID: number, Done: boolean }) {
+    return postTodone<object>('setTaskDone', req);
+}

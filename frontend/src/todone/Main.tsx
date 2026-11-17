@@ -3,12 +3,12 @@ import {LoginCtr, LoginCtx} from "../common/loginCtx";
 import {Dir} from "./Dir";
 import {ConfigsCtr, UniConfig} from "../common/UniConfig";
 import {ConfigsType, ConfigType} from "../common/UniConfigDef";
-import {Card, Drawer, FloatButton, message} from "antd";
+import {Card, Drawer, FloatButton, message, theme} from "antd";
 import {Addr} from "./addr";
 import Group from "./Group";
 import {TaskDetail} from "./TaskDetail";
 import {GroupType, PTask} from "./net/protocal";
-import {MenuOutlined} from "@ant-design/icons";
+import {MenuOutlined, SunOutlined} from "@ant-design/icons";
 import {useIsMobile} from "../common/hooksv2";
 import User from "../common/User";
 import {useParams} from "react-router-dom";
@@ -16,6 +16,8 @@ import TaskTree from "./TaskTree";
 import Library from "./Library";
 import Routine from "./Routine";
 import {useLoginGate} from "../common/useLoginGate";
+import Overview from "./Overview";
+import {OverviewGroup} from "./net/send_back";
 
 const TodoneConfigs = new ConfigsCtr(ConfigsType.Server, 'todone')
 TodoneConfigs.addBaseConfig('db.worker_endpoint', 'Worker Endpoint', ConfigType.String, 'https://worker.example.com')
@@ -32,7 +34,10 @@ export function TodoneSetting() {
     </Card>
 }
 
-function groupPageTitle(groupType: number, title: string) {
+function groupPageTitle(groupType: number, title: string, overview = false) {
+    if (overview) {
+        return 'TODONE 今天';
+    }
     switch (groupType) {
         case GroupType.Library:
             return `TODONE 娱乐库: ${title}`;
@@ -57,6 +62,7 @@ export function Todone() {
     const treeRef = useRef<TaskTree>();
     const [showDir, setShowDir] = useState(false);
     const isMobile = useIsMobile()
+    const {token} = theme.useToken();
     const {loginPanel} = useLoginGate();
 
     // 更换Favicon为/todone-mini.png
@@ -74,14 +80,65 @@ export function Todone() {
 
     }, []);
 
+    const showOverview = chooseAddr === null;
+
     useEffect(() => {
-        document.title = groupPageTitle(chooseGroupType, chooseTitle);
-    }, [chooseTitle, chooseGroupType]);
+        document.title = groupPageTitle(chooseGroupType, chooseTitle, showOverview);
+    }, [chooseTitle, chooseGroupType, showOverview]);
+
+    const openGroup = (addr: Addr, title: string, groupType: number) => {
+        setChooseAddr(addr);
+        setChooseTitle(title);
+        setChooseGroupType(groupType);
+        const encodedGroup = encodeURIComponent(`${addr.toString()}|${title}|${groupType}`);
+        window.history.pushState({}, '', `/todone/${encodedGroup}`);
+        setShowDir(false);
+    };
+
+    const openOverview = () => {
+        setChooseAddr(null);
+        setChooseTitle('');
+        setChooseGroupType(GroupType.Normal);
+        window.history.pushState({}, '', '/todone');
+        setShowDir(false);
+    };
+
+    const openOverviewGroup = (g: OverviewGroup) => {
+        const addr = new Addr(loginCtr.loginInfo.usr);
+        addr.addDir(g.DirID);
+        addr.addGroup(g.GroupID);
+        openGroup(addr, g.Title, g.Type);
+    };
+
+    // 浏览器后退/前进：按地址栏重新解析
+    useEffect(() => {
+        const onPop = () => {
+            const m = window.location.pathname.match(/^\/todone\/?(.*)$/);
+            const raw = m?.[1] ? decodeURIComponent(m[1]) : '';
+            const parts = raw.split('|');
+            if (parts.length < 2 || !parts[0] || !parts[1]) {
+                setChooseAddr(null);
+                setChooseTitle('');
+                setChooseGroupType(GroupType.Normal);
+                return;
+            }
+            const addr = new Addr(loginCtr.loginInfo.usr);
+            addr.bindAddr(parts[0]);
+            setChooseAddr(addr);
+            setChooseTitle(parts[1]);
+            setChooseGroupType(parts[2] ? parseInt(parts[2]) : GroupType.Normal);
+        };
+        window.addEventListener('popstate', onPop);
+        return () => window.removeEventListener('popstate', onPop);
+    }, [loginCtr.loginInfo.usr]);
 
     useEffect(() => {
         // 使用竖线分隔group: addr|title|type
         if (!group) {
-            setShowDir(true);
+            // 没选分组时显示总视图
+            setChooseAddr(null);
+            setChooseTitle('');
+            setChooseGroupType(GroupType.Normal);
             return;
         }
         // url解码
@@ -143,23 +200,27 @@ export function Todone() {
                     width: "100%",
                 }}
             >
+                <div
+                    onClick={openOverview}
+                    style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 8,
+                        padding: '6px 10px',
+                        marginBottom: 12,
+                        borderRadius: token.borderRadius,
+                        cursor: 'pointer',
+                        fontWeight: 500,
+                        color: showOverview ? token.colorPrimary : token.colorText,
+                        background: showOverview ? token.colorPrimaryBg : token.colorFillQuaternary,
+                    }}
+                >
+                    <SunOutlined/> 今天
+                </div>
                 <Dir
                     userID={loginCtr.loginInfo.usr}
                     onSelectGroup={(addr, title, groupType) => {
-                        setChooseAddr(addr);
-                        setChooseTitle(title);
-                        setChooseGroupType(groupType ?? GroupType.Normal);
-                        // 修改路由
-                        const newAddr = addr.toString();
-                        const newTitle = title;
-                        const typeStr = groupType ?? GroupType.Normal;
-                        const newGroup = `${newAddr}|${newTitle}|${typeStr}`;
-                        // 对group进行URL编码
-                        const encodedGroup = encodeURIComponent(newGroup);
-                        window.history.replaceState({}, '', `/todone/${encodedGroup}`);
-                        setShowDir(false);
-                        // 修改标题
-                        document.title = groupPageTitle(groupType ?? GroupType.Normal, title);
+                        openGroup(addr, title, groupType ?? GroupType.Normal);
                     }}
                     onSelectDir={(addr) => {
                         // 暂无逻辑
@@ -170,11 +231,16 @@ export function Todone() {
 
         <div
             style={{
-            width: (isMobile || chooseGroupType === GroupType.Library) ? '90%' : '650px',
+            // 总视图在宽屏是看板，铺满；窄一点时由 Overview 自己限宽居中
+            width: showOverview
+                ? (isMobile ? '90%' : '94%')
+                : (isMobile || chooseGroupType === GroupType.Library) ? '90%' : '650px',
             minHeight: '100%',
             }}
         >
-            {chooseGroupType === GroupType.Library ? (
+            {showOverview ? (
+                <Overview userID={loginCtr.loginInfo.usr} onOpenGroup={openOverviewGroup}/>
+            ) : chooseGroupType === GroupType.Library ? (
                 <Library
                     addr={chooseAddr}
                     groupTitle={chooseTitle}

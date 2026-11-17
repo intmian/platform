@@ -2,6 +2,7 @@ package logic
 
 import (
 	"errors"
+	"sort"
 	"sync"
 
 	"github.com/intmian/platform/backend/services/todone/db"
@@ -572,4 +573,45 @@ func (u *UserLogic) GetTaskLogic(DirID uint32, GroupID uint32, SubgroupID uint32
 		return nil
 	}
 	return task
+}
+
+// GroupSnapshot 目录树里一个活着的分组，供只读汇总在锁外使用。
+type GroupSnapshot struct {
+	DirID uint32
+	ID    uint32
+	Type  db.GroupType
+	Title string
+	Path  []string // 从根目录下一级到所在目录的标题
+}
+
+// SnapshotGroups 按目录树顺序（目录、分组各自按 Index）列出所有分组。只读内存，调用方需持有用户锁。
+func (u *UserLogic) SnapshotGroups() ([]GroupSnapshot, error) {
+	if err := u.loadDirTree(); err != nil {
+		return nil, err
+	}
+	if u.dirTree == nil {
+		return nil, errors.New("dir tree not loaded")
+	}
+	res := make([]GroupSnapshot, 0)
+	var walk func(node *dirTreeNode, path []string)
+	walk = func(node *dirTreeNode, path []string) {
+		groups := append([]*GroupLogic(nil), node.groups...)
+		sort.SliceStable(groups, func(i, j int) bool { return groups[i].dbData.Index < groups[j].dbData.Index })
+		for _, g := range groups {
+			res = append(res, GroupSnapshot{
+				DirID: node.dir.dbData.ID,
+				ID:    g.dbData.ID,
+				Type:  g.dbData.Type,
+				Title: g.dbData.Title,
+				Path:  append([]string(nil), path...),
+			})
+		}
+		childs := append([]*dirTreeNode(nil), node.childs...)
+		sort.SliceStable(childs, func(i, j int) bool { return childs[i].dir.dbData.Index < childs[j].dir.dbData.Index })
+		for _, c := range childs {
+			walk(c, append(append([]string(nil), path...), c.dir.dbData.Title))
+		}
+	}
+	walk(u.dirTree, nil)
+	return res, nil
 }

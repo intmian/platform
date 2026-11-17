@@ -1,0 +1,513 @@
+/* 总视图：沿用例行清单的视觉语言（颜色变量同样在根节点上由 antd token 注入） */
+.ov-root {
+    --rt-ease: cubic-bezier(.22, 1, .36, 1);
+    --rt-radius: 14px;
+    padding: 28px 0 160px;
+    color: var(--rt-text);
+}
+
+.ov-loading {
+    display: flex;
+    justify-content: center;
+    padding: 120px 0;
+}
+
+/* ---------- 头部 ---------- */
+.ov-hero {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    margin-bottom: 18px;
+    animation: rt-fade-up .45s var(--rt-ease) both;
+}
+
+.ov-hero-main {
+    flex: 1;
+    min-width: 0;
+}
+
+.ov-hero-title {
+    font-size: 24px;
+    font-weight: 600;
+    line-height: 1.25;
+}
+
+.ov-hero-sub {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+    margin-top: 6px;
+    font-size: 13px;
+    color: var(--rt-text-2);
+}
+
+.ov-count {
+    color: var(--rt-text);
+}
+
+.ov-count-error {
+    color: var(--rt-error);
+}
+
+.ov-calm {
+    padding: 28px 0 8px;
+    color: var(--rt-text-3);
+    font-size: 14px;
+}
+
+@media (max-width: 640px) {
+    .ov-root {
+        padding-top: 64px;
+    }
+
+    .ov-hero-title {
+        font-size: 20px;
+    }
+}
+
+/* ---------- 分组 ---------- */
+.ov-section {
+    margin-top: 22px;
+    animation: rt-fade-up .45s var(--rt-ease) both;
+}
+
+.ov-section-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--rt-text-2);
+    margin: 0 0 4px 2px;
+}
+
+.ov-section-overdue .ov-section-title {
+    color: var(--rt-error);
+}
+
+.ov-section-count {
+    font-weight: normal;
+    color: var(--rt-text-3);
+    font-variant-numeric: tabular-nums;
+}
+
+.ov-fav {
+    margin-top: 34px;
+}
+
+.ov-fav-add {
+    margin-left: auto;
+    color: var(--rt-text-2);
+}
+
+.ov-picker {
+    width: 300px;
+    max-width: 80vw;
+}
+
+.ov-picker-list {
+    max-height: 320px;
+    overflow-y: auto;
+    margin: 6px -4px 0;
+}
+
+.ov-picker-item {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    padding: 7px 8px;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+.ov-picker-item:hover {
+    background: rgba(0, 0, 0, .04);
+}
+
+.ov-picker-title {
+    white-space: nowrap;
+}
+
+.ov-picker-path {
+    flex: 1;
+    min-width: 0;
+    font-size: 12px;
+    opacity: .5;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.ov-picker-empty {
+    padding: 12px 8px;
+    font-size: 13px;
+    opacity: .5;
+}
+
+/* ---------- 行 ---------- */
+.ov-list {
+    border-top: 1px solid var(--rt-border);
+}
+
+.ov-row-wrap, .ov-list > .ov-row {
+    border-bottom: 1px solid var(--rt-border);
+}
+
+.ov-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 10px 4px 9px 2px;
+    transition: background .2s;
+}
+
+.ov-row:hover {
+    background: var(--rt-fill);
+}
+
+.ov-row-check {
+    display: flex;
+    padding-top: 1px;
+}
+
+.ov-row-main {
+    flex: 1;
+    min-width: 0;
+}
+
+.ov-row-title {
+    font-size: 14px;
+    line-height: 22px;
+    word-break: break-word;
+}
+
+.ov-row-parent {
+    color: var(--rt-text-3);
+    margin-right: 4px;
+}
+
+.ov-row-progress {
+    margin-left: 8px;
+    font-size: 12px;
+    color: var(--rt-text-3);
+    font-variant-numeric: tabular-nums;
+}
+
+.ov-row-arrow {
+    margin-left: 6px;
+    font-size: 10px;
+    color: var(--rt-text-4);
+}
+
+.ov-row-src {
+    display: inline-block;
+    max-width: 100%;
+    font-size: 12px;
+    line-height: 18px;
+    color: var(--rt-text-3) !important;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    vertical-align: top;
+}
+
+.ov-row-src:hover {
+    color: var(--rt-primary) !important;
+}
+
+.ov-row-done .ov-row-title,
+.ov-row-done .ov-subrow-title {
+    color: var(--rt-text-3);
+    text-decoration: line-through;
+}
+
+.ov-flag {
+    color: var(--rt-error);
+    margin-right: 5px;
+    font-size: 12px;
+}
+
+.ov-sublist {
+    padding: 0 0 4px 28px;
+}
+
+/* 例行清单在上半部分按清单归成一块 */
+.ov-rblock {
+    padding: 8px 0 6px;
+}
+
+.ov-rblock-head {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin: 0 0 2px 4px;
+    font-size: 12px;
+    color: var(--rt-text-3) !important;
+}
+
+.ov-rblock-head:hover {
+    color: var(--rt-primary) !important;
+}
+
+.ov-rblock-kind {
+    padding: 0 6px;
+    border-radius: 4px;
+    font-size: 11px;
+    line-height: 16px;
+    background: var(--rt-fill-2, rgba(0, 0, 0, .06)); /* 弹层在根节点之外，取不到变量时用兜底色 */
+}
+
+.ov-rrow {
+    padding-left: 3px;
+}
+
+/* ---------- 标签 ---------- */
+.ov-tag {
+    flex: none;
+    margin-top: 1px;
+    padding: 0 8px;
+    border-radius: 999px;
+    font-size: 12px;
+    line-height: 20px;
+    white-space: nowrap;
+    color: var(--rt-text-2);
+    background: var(--rt-fill-2);
+}
+
+.ov-tag-error {
+    color: var(--rt-error);
+    background: var(--rt-error-bg);
+}
+
+.ov-tag-warning {
+    color: var(--rt-warning);
+    background: var(--rt-warning-bg);
+}
+
+.ov-tag-primary {
+    color: var(--rt-primary);
+    background: var(--rt-primary-bg);
+}
+
+.ov-row-done .ov-tag {
+    opacity: .5;
+}
+
+/* ---------- 收藏卡片 ---------- */
+.ov-card {
+    background: var(--rt-card);
+    border: 1px solid var(--rt-border);
+    border-radius: var(--rt-radius);
+    margin-top: 12px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, .03), 0 4px 16px -8px rgba(0, 0, 0, .08);
+    overflow: hidden;
+}
+
+.ov-card-head {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 8px 10px 10px;
+}
+
+.ov-card-fold {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    font-size: 10px;
+    color: var(--rt-text-3);
+    cursor: pointer;
+}
+
+.ov-card-name {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    cursor: pointer;
+    overflow: hidden;
+}
+
+.ov-card-title {
+    font-size: 15px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.ov-card-path {
+    font-size: 12px;
+    color: var(--rt-text-3);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.ov-card-meta {
+    flex: none;
+    font-size: 12px;
+    color: var(--rt-text-3);
+    font-variant-numeric: tabular-nums;
+    margin-right: 2px;
+}
+
+.ov-card-body {
+    padding: 0 12px 10px 14px;
+}
+
+.ov-card-empty {
+    padding: 6px 4px 4px;
+    font-size: 13px;
+    color: var(--rt-text-3);
+}
+
+.ov-block + .ov-block {
+    margin-top: 8px;
+}
+
+.ov-block-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    color: var(--rt-text-3);
+    padding: 6px 4px 2px;
+}
+
+.ov-block-rhythm {
+    color: var(--rt-text-4);
+}
+
+.ov-folder {
+    font-size: 13px;
+    color: var(--rt-text-2);
+    padding-top: 6px;
+    padding-bottom: 2px;
+}
+
+.ov-subrow {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 36px;
+    padding-right: 4px;
+    border-radius: 8px;
+    transition: background .2s;
+}
+
+.ov-subrow:hover {
+    background: var(--rt-fill);
+}
+
+.ov-subrow-title {
+    flex: 1;
+    min-width: 0;
+    font-size: 14px;
+    line-height: 20px;
+    word-break: break-word;
+}
+
+.ov-picker-sub {
+    padding-left: 24px;
+}
+
+/* ---------- 窄屏：单列往下排 ---------- */
+.ov-col-empty {
+    display: none;
+}
+
+@media (max-width: 1099px) {
+    .ov-root {
+        max-width: 720px;
+        margin: 0 auto;
+    }
+
+    .ov-section-none, .ov-focus-empty {
+        display: none;
+    }
+}
+
+/* ---------- 宽屏：看板 ---------- */
+@media (min-width: 1100px) {
+    .ov-root {
+        max-width: 1640px;
+        margin: 0 auto;
+    }
+
+    .ov-calm {
+        display: none;
+    }
+
+    /* 上半部分四组固定并排，空的列也留着，位置不跳 */
+    .ov-focus {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 14px;
+        align-items: start;
+        margin-top: 4px;
+    }
+
+    .ov-col {
+        margin-top: 0;
+        padding: 10px 12px 4px;
+        background: var(--rt-card);
+        border: 1px solid var(--rt-border);
+        border-radius: var(--rt-radius);
+        box-shadow: 0 1px 2px rgba(0, 0, 0, .03), 0 4px 16px -8px rgba(0, 0, 0, .08);
+    }
+
+    .ov-col .ov-section-title {
+        margin-bottom: 6px;
+    }
+
+    /* 某一列特别长时列内滚动，免得把下面的收藏顶得很远 */
+    .ov-col .ov-list {
+        border-top: none;
+        max-height: min(560px, 60vh);
+        overflow-y: auto;
+        margin-right: -8px;
+        padding-right: 8px;
+    }
+
+    .ov-col .ov-list > :last-child {
+        border-bottom: none;
+    }
+
+    .ov-col-empty {
+        display: block;
+        padding: 14px 2px 16px;
+        font-size: 13px;
+        color: var(--rt-text-4);
+    }
+
+    /* 逾期这一列有内容时加一道细的红色顶边，一眼能看到 */
+    .ov-section-overdue:not(.ov-section-none) {
+        border-top: 2px solid var(--rt-error);
+    }
+
+    /* 收藏：每一项是一列，横向排开，放不下就横向滚动；列太高时列内滚动 */
+    .ov-board {
+        display: flex;
+        align-items: flex-start;
+        gap: 14px;
+        overflow-x: auto;
+        padding: 2px 2px 12px;
+        margin: 0 -2px;
+    }
+
+    .ov-board > .ov-card {
+        flex: 1 0 300px;
+        max-width: 440px;
+        margin-top: 0;
+        display: flex;
+        flex-direction: column;
+        max-height: calc(100vh - 120px);
+    }
+
+    .ov-board > .ov-card > .ov-card-body {
+        overflow-y: auto;
+    }
+}

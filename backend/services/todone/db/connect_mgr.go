@@ -45,6 +45,7 @@ func InitGMgr(setting Setting) error {
 		{ConnectTypeLibraryNote, &LibraryNoteDB{}},
 		{ConnectTypeLibraryScoreDetail, &LibraryScoreDetailDB{}},
 		{ConnectTypeRoutine, &RoutineNodeDB{}},
+		{ConnectTypeFavorite, &GroupFavoriteDB{}},
 	}
 	for _, connection := range connections {
 		if err = GTodoneDBMgr.Connect(connection.connectType, connection.model); err != nil {
@@ -59,7 +60,8 @@ func InitGMgr(setting Setting) error {
 	connectLibraryNote := GTodoneDBMgr.GetConnect(ConnectTypeLibraryNote)
 	connectLibraryScoreDetail := GTodoneDBMgr.GetConnect(ConnectTypeLibraryScoreDetail)
 	connectRoutine := GTodoneDBMgr.GetConnect(ConnectTypeRoutine)
-	if connectDir == nil || connectGroup == nil || connectTask == nil || connectTags == nil || connectSubGroup == nil || connectLibraryNote == nil || connectLibraryScoreDetail == nil || connectRoutine == nil {
+	connectFavorite := GTodoneDBMgr.GetConnect(ConnectTypeFavorite)
+	if connectDir == nil || connectGroup == nil || connectTask == nil || connectTags == nil || connectSubGroup == nil || connectLibraryNote == nil || connectLibraryScoreDetail == nil || connectRoutine == nil || connectFavorite == nil {
 		return errors.New("connect is nil")
 	}
 	return nil
@@ -195,4 +197,5 @@ const (
 	ConnectTypeLibraryNote
 	ConnectTypeLibraryScoreDetail
 	ConnectTypeRoutine
+	ConnectTypeFavorite
 )
