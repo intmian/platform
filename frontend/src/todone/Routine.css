@@ -689,6 +689,29 @@
     color: var(--rt-text-3);
 }
 
+/* 停用：整行（或整张卡片）变淡，不能勾 */
+.rt-row-paused {
+    cursor: default;
+}
+
+.rt-row-paused .rt-row-title,
+.rt-card-paused .rt-card-name {
+    color: var(--rt-text-4);
+}
+
+.rt-row-paused:active {
+    transform: none;
+}
+
+.rt-card-paused {
+    opacity: .72;
+    box-shadow: none;
+}
+
+.rt-card-paused .rt-bar {
+    visibility: hidden;
+}
+
 /* ---------- 勾选框（全部在 SVG 内绘制） ---------- */
 .rt-check {
     flex: none;
@@ -901,6 +924,9 @@
 }
 
 .rt-danger {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
     padding-top: 8px;
     border-top: 1px solid var(--rt-border);
 }

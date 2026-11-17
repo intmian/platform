@@ -39,6 +39,7 @@ export interface VNode {
     ownsRhythm: boolean // 这一层自己设了节奏
     optional: boolean
     temp: boolean
+    paused: boolean // 自己或某个上级被停用。停用的叶子不进任何 leaves / ownLeaves，所以不参与勾选、进度和逾期
     children: VNode[]
     leaves: VNode[]
     active: boolean // 叶子：所在节奏已开始
@@ -51,6 +52,7 @@ export interface SgModel {
     ownRule: RoutineRule | null
     rule: RoutineRule
     owner: Owner
+    paused: boolean // 整张卡片被停用
     roots: VNode[]
     leaves: VNode[]
 }
@@ -93,7 +95,7 @@ export function buildModel(groupID: number, subGroups: PSubGroup[], tasks: Recor
         });
         kids.forEach((arr) => arr.sort((a, b) => a.Index - b.Index));
 
-        const build = (t: PTask, parentOwner: Owner, inheritedOptional: boolean, inheritedTemp: boolean): VNode => {
+        const build = (t: PTask, parentOwner: Owner, inheritedOptional: boolean, inheritedTemp: boolean, inheritedPaused: boolean): VNode => {
             const node = {...(nodes[nodeKey(RoutineNodeKind.Task, t.ID)] ?? defaultNode(RoutineNodeKind.Task, t.ID, sg.ID)), SubGroupID: sg.ID};
             const temp = inheritedTemp || node.Temp;
             // 本次补充没有自己的节奏，跟随上级
@@ -101,13 +103,16 @@ export function buildModel(groupID: number, subGroups: PSubGroup[], tasks: Recor
             const owner = ownRule ? makeOwner(`t${t.ID}`, ownRule, node, today) : parentOwner;
             if (ownRule) owners.push(owner);
             const optional = inheritedOptional || node.Optional;
-            const children = (kids.get(t.ID) ?? []).map((c) => build(c, owner, optional, temp));
+            const paused = inheritedPaused || !!node.Paused;
+            const children = (kids.get(t.ID) ?? []).map((c) => build(c, owner, optional, temp, paused));
             const folder = node.Folder || children.length > 0;
             const v: VNode = {
                 task: t, sgID: sg.ID, node, folder, ownRule, inheritedRule: parentOwner.rule, rule: owner.rule, owner,
-                ownsRhythm: !!ownRule, optional, temp, children, leaves: [], active: false, checked: false,
+                ownsRhythm: !!ownRule, optional, temp, paused, children, leaves: [], active: false, checked: false,
             };
-            if (!folder) {
+            if (!folder && paused) {
+                // 停用的叶子：不算数，leaves 留空
+            } else if (!folder) {
                 v.leaves = [v];
                 v.active = !owner.round.waiting;
                 if (ownRule) {
@@ -123,8 +128,9 @@ export function buildModel(groupID: number, subGroups: PSubGroup[], tasks: Recor
             byTask.set(t.ID, v);
             return v;
         };
-        const roots = (kids.get(0) ?? []).map((t) => build(t, sgOwner, false, false));
-        return {sg, node: sgNode, ownRule: sgOwn, rule: sgOwner.rule, owner: sgOwner, roots, leaves: roots.flatMap((r) => r.leaves)};
+        const sgPaused = !!sgNode.Paused;
+        const roots = (kids.get(0) ?? []).map((t) => build(t, sgOwner, false, false, sgPaused));
+        return {sg, node: sgNode, ownRule: sgOwn, rule: sgOwner.rule, owner: sgOwner, paused: sgPaused, roots, leaves: roots.flatMap((r) => r.leaves)};
     });
 
     owners.forEach((o) => {
@@ -248,4 +254,60 @@ function leafDoneDate(v: VNode): string {
 /** 暂不用做的叶子下一次要做的日子：做完的看下次刷新，没开始的看开始日。 */
 export function restDate(v: VNode): string {
     return (v.active ? v.owner.round.next : v.owner.round.start) ?? '';
+}
+
+/**
+ * 恢复一个停用的卡片或事项时要写的节点。
+ * 原则是“从现在重新开始”，不翻旧账：
+ * - 跟随上级节奏的事项直接回到上级的这一期里，算没做；
+ * - 这一层里自己设了节奏的：这一期还在期限内就算这一期待做；已经过了期限就跳过这一期，等下次刷新；
+ *   “完成后 N 天”的从今天开始算。
+ * 返回值还要再过一遍 withOwnerSync。
+ */
+export function resumeNodes(groupID: number, subGroups: PSubGroup[], tasks: Record<number, PTask[]>,
+                            nodes: Record<string, PRoutineNode>, target: PRoutineNode, today: string): PRoutineNode[] {
+    const own: PRoutineNode = {...target, Paused: false};
+    const model = buildModel(groupID, subGroups, tasks, {...nodes, [nodeKey(own.Kind, own.NodeID)]: own}, today);
+    const out = new Map<string, PRoutineNode>([[nodeKey(own.Kind, own.NodeID), own]]);
+    const put = (n: PRoutineNode, patch: Partial<PRoutineNode>) => {
+        const key = nodeKey(n.Kind, n.NodeID);
+        out.set(key, {...(out.get(key) ?? n), ...patch});
+    };
+
+    // 这一层下面所有恢复过来的节点（里面仍然单独停用着的不动）
+    const sgm = own.Kind === RoutineNodeKind.SubGroup ? model.sgs.find((s) => s.sg.ID === own.NodeID) : undefined;
+    const root = own.Kind === RoutineNodeKind.Task ? model.byTask.get(own.NodeID) : undefined;
+    const all: VNode[] = [];
+    const walk = (v: VNode) => {
+        if (v.paused) return;
+        all.push(v);
+        v.children.forEach(walk);
+    };
+    (sgm ? sgm.roots : root ? [root] : []).forEach(walk);
+
+    const owners = new Set<Owner>();
+    if (sgm?.ownRule) owners.add(sgm.owner);
+    all.forEach((v) => {
+        if (v.ownsRhythm) owners.add(v.owner);
+    });
+    const now = dayjs().toISOString();
+    // 跟随外面节奏的叶子：清掉旧勾选，回到那一期里待做
+    all.forEach((v) => {
+        if (!v.folder && !owners.has(v.owner)) put(v.node, {Mark: '', PrevMark: ''});
+    });
+    owners.forEach((o) => {
+        if (o.rule.kind === 'manual') return;
+        if (o.rule.kind === 'after') {
+            put(o.node, {Mark: `${today}|`, PrevMark: ''});
+            if (!o.leafOwner) o.ownLeaves.forEach((l) => put(l.node, {Mark: '', PrevMark: ''}));
+            return;
+        }
+        const undone = undoneMark(o.rule, o.round);
+        const round = evalRound(o.rule, undone, today);
+        const expired = !round.waiting && !!round.deadline && round.deadline < today;
+        put(o.node, {Mark: expired ? doneMark(round, today) : undone, PrevMark: ''});
+        // 节奏层的完成记录要和叶子的勾选对得上，否则会被 withOwnerSync 改回去
+        if (!o.leafOwner) o.ownLeaves.forEach((l) => put(l.node, {Mark: expired ? now : '', PrevMark: ''}));
+    });
+    return Array.from(out.values());
 }

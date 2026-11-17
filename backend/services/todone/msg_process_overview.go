@@ -260,7 +260,7 @@ func (s *Service) OnGetOverview(_ backendshare.Valid, req GetOverviewReq) (ret G
 		ret.RoutineNodes = append(ret.RoutineNodes, OverviewRoutineNode{
 			GroupID: n.GroupID,
 			Node: protocol.PRoutineNode{
-				Kind: uint8(n.Kind), NodeID: n.NodeID, Folder: n.Folder, Optional: n.Optional, Temp: n.Temp,
+				Kind: uint8(n.Kind), NodeID: n.NodeID, Folder: n.Folder, Optional: n.Optional, Temp: n.Temp, Paused: n.Paused,
 				Rule: n.Rule, Mark: n.Mark, PrevMark: n.PrevMark,
 			},
 		})

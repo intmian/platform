@@ -526,13 +526,15 @@
         align-items: flex-start;
         gap: 14px;
         overflow-x: auto;
-        padding: 2px 2px 12px;
-        margin: 0 -2px;
+        /* 左右不留内边距，列的竖边才能和上面三栏对齐 */
+        padding: 2px 0 12px;
     }
 
+    /* 每列和上面三栏同宽（三等分减去两道间距），竖边上下对齐；多出来的列往右排 */
     .ov-board > .ov-card {
-        flex: 1 0 300px;
-        max-width: 440px;
+        flex: 0 0 calc((100% - 28px) / 3);
+        min-width: 0;
+        box-sizing: border-box; /* 宽度把边框算在内，才和上面的栏一样宽 */
         margin-top: 0;
         display: flex;
         flex-direction: column;

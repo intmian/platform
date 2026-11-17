@@ -8,7 +8,7 @@ import {Addr} from "./addr";
 import Group from "./Group";
 import {TaskDetail} from "./TaskDetail";
 import {GroupType, PTask} from "./net/protocal";
-import {EyeOutlined, MenuOutlined} from "@ant-design/icons";
+import {MenuOutlined, StarOutlined} from "@ant-design/icons";
 import {useIsMobile} from "../common/hooksv2";
 import User from "../common/User";
 import {useParams} from "react-router-dom";
@@ -218,7 +218,7 @@ export function Todone() {
                         background: showOverview ? token.colorPrimaryBg : token.colorFillQuaternary,
                     }}
                 >
-                    <EyeOutlined/> 关注
+                    <StarOutlined/> 关注
                 </div>
                 <Dir
                     userID={loginCtr.loginInfo.usr}

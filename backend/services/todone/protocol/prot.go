@@ -89,6 +89,7 @@ type PRoutineNode struct {
 	Folder     bool
 	Optional   bool
 	Temp       bool
+	Paused     bool
 	Rule       string
 	Mark       string
 	PrevMark   string

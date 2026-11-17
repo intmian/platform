@@ -82,7 +82,7 @@ func (s *Service) OnGetRoutine(_ backendshare.Valid, req GetRoutineReq) (ret Get
 		ret.Nodes = make([]protocol.PRoutineNode, 0, len(nodes))
 		for _, node := range nodes {
 			ret.Nodes = append(ret.Nodes, protocol.PRoutineNode{
-				Kind: uint8(node.Kind), NodeID: node.NodeID, Folder: node.Folder, Optional: node.Optional, Temp: node.Temp,
+				Kind: uint8(node.Kind), NodeID: node.NodeID, Folder: node.Folder, Optional: node.Optional, Temp: node.Temp, Paused: node.Paused,
 				Rule: node.Rule, Mark: node.Mark, PrevMark: node.PrevMark,
 			})
 		}
@@ -129,7 +129,7 @@ func (s *Service) OnSaveRoutine(_ backendshare.Valid, req SaveRoutineReq) (ret S
 			}
 			nodes = append(nodes, db.RoutineNodeDB{
 				UserID: req.UserID, GroupID: req.GroupID, Kind: db.RoutineNodeKind(node.Kind), NodeID: node.NodeID,
-				Folder: node.Folder, Optional: node.Optional, Temp: node.Temp, Rule: node.Rule, Mark: node.Mark, PrevMark: node.PrevMark,
+				Folder: node.Folder, Optional: node.Optional, Temp: node.Temp, Paused: node.Paused, Rule: node.Rule, Mark: node.Mark, PrevMark: node.PrevMark,
 			})
 		}
 

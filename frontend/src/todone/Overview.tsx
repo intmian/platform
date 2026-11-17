@@ -583,11 +583,12 @@ function RoutineBlock(props: {
 
 function RoutineOwnerRow(props: { item: RoutineItem, onToggle: (leaves: VNode[]) => void, onJump: (target: LocateTarget) => void }) {
     const {owner, timing, title, subTitle, target} = props.item;
-    const [open, setOpen] = useState(false);
+    const [open, setOpen] = useState(true); // 里面的事项默认摊开，能直接勾
     const leaves = owner.ownLeaves;
     const act = leaves.filter((l) => l.active);
     const done = act.filter((l) => l.checked).length;
     const multi = leaves.length > 1;
+    const waiting = act.length === 0; // 还没开始（“接下来”里的）：不能勾，只列出有哪些
     const value = owner.complete ? 'on' : done > 0 ? 'mixed' : 'off';
     return <>
         <div className={`ov-subrow ov-rrow ${owner.complete ? 'ov-row-done' : ''}`}>
@@ -595,15 +596,16 @@ function RoutineOwnerRow(props: { item: RoutineItem, onToggle: (leaves: VNode[])
             <span className="ov-subrow-title" onClick={() => multi && setOpen(!open)} style={{cursor: multi ? 'pointer' : undefined}}>
                 {subTitle && <span className="ov-row-parent">{subTitle} ›</span>}
                 {title}
-                {multi && <span className="ov-row-progress">{done}/{act.length}</span>}
+                {multi && <span className="ov-row-progress">{waiting ? `共 ${leaves.length} 项` : `${done}/${act.length}`}</span>}
                 {multi && (open ? <DownOutlined className="ov-row-arrow"/> : <RightOutlined className="ov-row-arrow"/>)}
             </span>
             <TimingTag timing={timing}/>
             <JumpBtn onClick={() => props.onJump(target)}/>
         </div>
-        {open && <div className="ov-sublist">
-            {act.map((l) => <div key={l.task.ID} className={`ov-subrow ${l.checked ? 'ov-row-done' : ''}`}>
-                <RoutineCheck value={l.checked ? 'on' : 'off'} size={18} optional={l.optional} onClick={() => props.onToggle([l])}/>
+        {open && multi && <div className="ov-sublist">
+            {(waiting ? leaves : act).map((l) => <div key={l.task.ID} className={`ov-subrow ${l.checked ? 'ov-row-done' : ''}`}>
+                <RoutineCheck value={l.checked ? 'on' : 'off'} size={18} optional={l.optional} disabled={waiting}
+                              onClick={() => !waiting && props.onToggle([l])}/>
                 <span className="ov-subrow-title">{l.task.Title}</span>
                 <JumpBtn onClick={() => props.onJump({taskID: l.task.ID, subGroupID: l.sgID})}/>
             </div>)}

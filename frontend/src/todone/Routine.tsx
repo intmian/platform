@@ -1,18 +1,6 @@
 import {useCallback, useEffect, useMemo, useRef, useState} from "react";
 import {Button, Drawer, Dropdown, Empty, Input, InputRef, message, Modal, Popconfirm, Segmented, Spin, Switch, theme, Tooltip} from "antd";
-import {
-    CheckCircleFilled,
-    DeleteOutlined,
-    EditOutlined,
-    EyeInvisibleOutlined,
-    EyeOutlined,
-    HolderOutlined,
-    MoreOutlined,
-    PlusOutlined,
-    RedoOutlined,
-    SettingOutlined,
-    UnorderedListOutlined,
-} from "@ant-design/icons";
+import {CheckCircleFilled, DeleteOutlined, EditOutlined, EyeInvisibleOutlined, EyeOutlined, HolderOutlined, MoreOutlined, PauseCircleOutlined, PlayCircleOutlined, PlusOutlined, RedoOutlined, SettingOutlined, UnorderedListOutlined} from "@ant-design/icons";
 import {
     CollisionDetection,
     DndContext,
@@ -46,7 +34,7 @@ import {
 import {describeRule, MANUAL_RULE, parseRule, RoundView, RoutineRule, shortDate, stringifyRule, todayStr} from "./routineRule";
 import {CheckValue, ProgressRing, RhythmChip, RoutineCheck, RuleEditor, RuleIcon} from "./RoutineParts";
 import {useIsMobile} from "../common/hooksv2";
-import {aggregate, Agg, buildModel, defaultNode, leafState, Model, nodeKey, Owner, restDate, SgModel, toggleLeaves, VNode, withOwnerSync} from "./routineModel";
+import {aggregate, Agg, buildModel, defaultNode, leafState, Model, nodeKey, Owner, restDate, resumeNodes, SgModel, toggleLeaves, VNode, withOwnerSync} from "./routineModel";
 import "./Routine.css";
 
 // ---------------- 工具 ----------------
@@ -455,6 +443,12 @@ export default function Routine(props: RoutineProps) {
         commit(syncOwners([next])).then((ok) => ok && message.success('节奏已更新'));
     };
 
+    /** 停用或恢复一张卡片、一个事项（连同下面的子项）。 */
+    const setPaused = (node: PRoutineNode, paused: boolean) => {
+        const changed = paused ? [{...node, Paused: true}] : resumeNodes(groupID, subGroups, tasks, nodesRef.current, node, today);
+        commit(syncOwners(changed)).then((ok) => ok && message.success(paused ? '已停用' : '已恢复'));
+    };
+
     // ---------- 拖动：同层排序、跨层级、拖进分组、跨卡片 ----------
 
     const [dragID, setDragID] = useState<number | null>(null);
@@ -687,6 +681,7 @@ export default function Routine(props: RoutineProps) {
                 ctx={ctx}
                 onReset={() => setResetTarget({title: sgm.sg.Title, leaves: sgm.leaves})}
                 onEdit={() => setEditor({type: 'subgroup', sgID: sgm.sg.ID})}
+                onPause={(paused) => setPaused(sgm.node, paused)}
                 onDelete={async () => {
                     const ret = await call(sendDelSubGroup, {UserID: userID, ParentDirID: dirID, GroupID: groupID, SubGroupID: sgm.sg.ID});
                     if (ret.ok) setSubGroups((prev) => prev.filter((s) => s.ID !== sgm.sg.ID));
@@ -779,6 +774,7 @@ export default function Routine(props: RoutineProps) {
                     onOptional={(optional) => commit(syncOwners([{...editorNode.node, Optional: optional}]))}
                     onMakePermanent={() => commit([{...editorNode.node, Temp: false}]).then()}
                     onRule={(r) => applyRule(editor, r)}
+                    onPause={(paused) => setPaused(editorNode.node, paused)}
                     onAdd={(title, folder) => createItem(editorNode.sgID, editorNode.task.ID, title, {folder, temp: false})}
                     onDelete={() => {
                         const ids = collectSubtree(editorNode);
@@ -815,11 +811,13 @@ function SubGroupCard(props: {
     ctx: RowCtx
     onReset: () => void
     onEdit: () => void
+    onPause: (paused: boolean) => void
     onDelete: () => void
 }) {
     const {sgm} = props;
     const arr = props.ctx.arrangement;
-    const [open, setOpen] = useFold(`todone:routine:sgOpen:${sgm.sg.ID}`, arr.idle.has(`s${sgm.sg.ID}`), arr.ver);
+    // 停用的卡片和“没有要做的”一样默认收起
+    const [open, setOpen] = useFold(`todone:routine:sgOpen:${sgm.sg.ID}`, sgm.paused || arr.idle.has(`s${sgm.sg.ID}`), arr.ver);
     const scope = ownScope(sgm.leaves, sgm.owner);
     const others = sgm.leaves.filter((l) => l.owner !== sgm.owner);
     const agg = aggregate(scope);
@@ -844,7 +842,7 @@ function SubGroupCard(props: {
     }, [dropHere, open, setOpen]);
 
     return <div ref={setNodeRef} data-todone-subgroup={sgm.sg.ID}
-                className={`rt-card${allDone ? ' rt-card-done' : ''}${waiting ? ' rt-card-waiting' : ''}${dropHere ? ' rt-drop-card' : ''}${cardDropPos}${props.ctx.dragCard === sgm.sg.ID ? ' rt-card-drag-src' : ''}`}>
+                className={`rt-card${allDone ? ' rt-card-done' : ''}${waiting ? ' rt-card-waiting' : ''}${sgm.paused ? ' rt-card-paused' : ''}${dropHere ? ' rt-drop-card' : ''}${cardDropPos}${props.ctx.dragCard === sgm.sg.ID ? ' rt-card-drag-src' : ''}`}>
         {/* 浮层尺寸取自 setNodeRef 的元素，所以挂在整个头部上，拖动手势只在把手上 */}
         <div className="rt-card-head" ref={cardDrag.setNodeRef}>
             <span className="rt-card-handle" {...cardDrag.attributes} {...cardDrag.listeners} title="拖动调整顺序">
@@ -852,10 +850,12 @@ function SubGroupCard(props: {
             </span>
             {container
                 ? <span className="rt-check-spacer" style={{width: 24}}/>
-                : <RoutineCheck value={cv} size={24} disabled={waiting} onClick={() => props.ctx.onToggle(scope)}/>}
+                : <RoutineCheck value={cv} size={24} disabled={waiting || sgm.paused} onClick={() => !sgm.paused && props.ctx.onToggle(scope)}/>}
             <div className="rt-card-title" onClick={() => setOpen(!open)}>
                 <span className="rt-card-name">{sgm.sg.Title}</span>
-                <LayerRhythm own={!!sgm.ownRule} rule={sgm.rule} view={sgm.owner.view} onEdit={props.onEdit}/>
+                {sgm.paused
+                    ? <span className="rt-tag">已停用</span>
+                    : <LayerRhythm own={!!sgm.ownRule} rule={sgm.rule} view={sgm.owner.view} onEdit={props.onEdit}/>}
             </div>
             <div className="rt-card-meta" onClick={() => setOpen(!open)}>
                 {overdue > 0 && <span className="rt-dot rt-dot-overdue">{overdue}</span>}
@@ -868,12 +868,17 @@ function SubGroupCard(props: {
                     items: [
                         {key: 'edit', icon: <EditOutlined/>, label: '名称、备注与节奏'},
                         ...(reset.any ? [{key: 'reset', icon: <RedoOutlined/>, label: '清空重来'}] : []),
+                        sgm.paused
+                            ? {key: 'resume', icon: <PlayCircleOutlined/>, label: '恢复'}
+                            : {key: 'pause', icon: <PauseCircleOutlined/>, label: '停用'},
                         {type: 'divider' as const},
                         {key: 'del', icon: <DeleteOutlined/>, label: '删除分组', danger: true},
                     ],
                     onClick: ({key}) => {
                         if (key === 'edit') props.onEdit();
                         if (key === 'reset') props.onReset();
+                        if (key === 'pause') props.onPause(true);
+                        if (key === 'resume') props.onPause(false);
                         if (key === 'del') Modal.confirm({
                             title: `删除分组「${sgm.sg.Title}」？`, content: '分组下的事项会一起删除，无法恢复。',
                             okText: '删除', okButtonProps: {danger: true}, cancelText: '取消', onOk: props.onDelete,
@@ -898,11 +903,15 @@ function SubGroupCard(props: {
 
 // ---------------- 行 ----------------
 
-/** 一层的列表：暂不用做的事项收到最底下的一行里，点开才显示。 */
+/**
+ * 一层的列表：暂不用做的事项收到最底下的一行里，点开才显示。
+ * 停用的事项（自己被停用的那一层，叶子或分组都算）也收在同一行里，而且是当场收进去。
+ */
 function RowList(props: { nodes: VNode[], ctx: RowCtx }) {
     const rest = props.ctx.arrangement.rest;
-    const main = props.nodes.filter((n) => !rest.has(n.task.ID));
-    const resting = props.nodes.filter((n) => rest.has(n.task.ID));
+    const inRest = (n: VNode) => !!n.node.Paused || rest.has(n.task.ID);
+    const main = props.nodes.filter((n) => !inRest(n));
+    const resting = props.nodes.filter(inRest);
     if (props.nodes.length === 0) return null;
     return <div className="rt-rows">
         {main.map((n) => <Row key={n.task.ID} v={n} ctx={props.ctx}/>)}
@@ -912,11 +921,14 @@ function RowList(props: { nodes: VNode[], ctx: RowCtx }) {
 
 function RestFold(props: { nodes: VNode[], ctx: RowCtx }) {
     const [open, setOpen] = useState(false);
-    const dates = props.nodes.map(restDate).filter(Boolean).sort();
+    const dates = props.nodes.filter((n) => !n.paused).map(restDate).filter(Boolean).sort();
+    const paused = props.nodes.filter((n) => n.paused).length;
     return <>
         <div className="rt-rest" onClick={() => setOpen(!open)}>
             <span className={`rt-caret${open ? ' rt-caret-open' : ''}`}/>
-            <span className="rt-rest-text">暂不用做 {props.nodes.length} 项{dates.length > 0 && ` · 最早 ${shortDate(dates[0])}`}</span>
+            <span className="rt-rest-text">{paused === props.nodes.length
+                ? `已停用 ${paused} 项`
+                : <>暂不用做 {props.nodes.length} 项{dates.length > 0 && ` · 最早 ${shortDate(dates[0])}`}{paused > 0 && ` · 含停用 ${paused} 项`}</>}</span>
         </div>
         <Collapse open={open}>
             <div className="rt-rest-list">
@@ -934,7 +946,7 @@ function Row(props: { v: VNode, ctx: RowCtx }) {
     const cv = checkValue(scope);
     const arr = ctx.arrangement;
     const resting = arr.rest.has(v.task.ID);
-    const [open, setOpen] = useFold(`todone:routine:taskOpen:${v.task.ID}`, arr.idle.has(`t${v.task.ID}`), arr.ver);
+    const [open, setOpen] = useFold(`todone:routine:taskOpen:${v.task.ID}`, v.paused || arr.idle.has(`t${v.task.ID}`), arr.ver);
     const drag = useDraggable({id: `drag-${v.task.ID}`, data: {id: v.task.ID}});
     const dropZone = useDroppable({id: `row-${v.task.ID}`, data: {kind: 'row', id: v.task.ID}});
     const rowRef = (el: HTMLElement | null) => {
@@ -954,13 +966,14 @@ function Row(props: { v: VNode, ctx: RowCtx }) {
     const hidden = ctx.hideDone && !resting && checkValue(v.leaves) === 'on';
     const agg = v.folder ? aggregate(scope) : null;
     // 未勾的叶子所在节奏逾期时，勾选框描红
-    const overdue = !v.folder && !v.checked && v.owner.view.phase === 'overdue';
+    const overdue = !v.folder && !v.paused && !v.checked && v.owner.view.phase === 'overdue';
     const cls = [
         'rt-row', `rt-row-${cv}`,
         v.folder ? 'rt-row-folder' : '',
         v.optional ? 'rt-row-optional' : '',
         v.temp ? 'rt-row-temp' : '',
         waiting ? 'rt-row-waiting' : '',
+        v.paused ? 'rt-row-paused' : '',
         overdue ? 'rt-row-overdue' : '',
         dropPos ? `rt-drop-${dropPos}` : '',
     ].filter(Boolean).join(' ');
@@ -972,7 +985,8 @@ function Row(props: { v: VNode, ctx: RowCtx }) {
     return <Collapse open={!hidden || isSource}>
         <div className={`rt-node${isSource ? ' rt-drag-src' : ''}`}>
             <div ref={rowRef} className={cls} data-todone-task={v.task.ID}
-                 onClick={() => container ? setOpen(!open) : scope.length ? ctx.onToggle(scope) : ctx.onEdit(v.task.ID)}>
+                 onClick={() => v.paused ? (v.folder && v.children.length ? setOpen(!open) : ctx.onEdit(v.task.ID))
+                     : container ? setOpen(!open) : scope.length ? ctx.onToggle(scope) : ctx.onEdit(v.task.ID)}>
                 {/* 把手和右侧按钮都占满整行高度，点偏也不会误勾 */}
                 <span className="rt-zone rt-handle" {...drag.attributes} {...drag.listeners} onClick={(e) => e.stopPropagation()}
                       title="拖动排序，拖到分组中间可放进分组">
@@ -980,18 +994,19 @@ function Row(props: { v: VNode, ctx: RowCtx }) {
                 </span>
                 {container
                     ? <span className="rt-check-spacer" style={{width: 22}}/>
-                    : <RoutineCheck value={cv} optional={v.optional} disabled={waiting}/>}
+                    : <RoutineCheck value={cv} optional={v.optional} disabled={waiting || v.paused}/>}
                 <div className="rt-row-main">
                     <div className="rt-row-line">
                         <span className="rt-row-title">{v.task.Title}</span>
                         <span className="rt-row-tags">
                             {v.node.Temp && <span className="rt-tag rt-tag-temp">本次</span>}
                             {v.node.Optional && <span className="rt-tag">可选</span>}
-                            {(v.ownsRhythm || v.folder) &&
+                            {v.node.Paused && <span className="rt-tag">已停用</span>}
+                            {(v.ownsRhythm || v.folder) && !v.paused &&
                                 <LayerRhythm own={v.ownsRhythm} rule={v.rule} view={v.owner.view} onEdit={() => ctx.onEdit(v.task.ID)}/>}
                             {agg && v.leaves.length > 0 && <LayerCount agg={agg} waiting={waiting} others={others} small/>}
-                            {v.folder && v.leaves.length === 0 && <span className="rt-row-sub">空分组</span>}
-                            {resting && !v.ownsRhythm && restDate(v) &&
+                            {v.folder && v.leaves.length === 0 && !v.paused && <span className="rt-row-sub">空分组</span>}
+                            {resting && !v.paused && !v.ownsRhythm && restDate(v) &&
                                 <span className="rt-row-sub">{v.active ? `下次 ${shortDate(restDate(v))}` : `${shortDate(restDate(v))} 开始`}</span>}
                         </span>
                     </div>
@@ -1223,6 +1238,7 @@ function TaskEditor(props: {
     onMakePermanent: () => void
     onRule: (rule: RoutineRule | null) => void
     onAdd: (title: string, folder: boolean) => Promise<void>
+    onPause: (paused: boolean) => void
     onDelete: () => void
 }) {
     const {v} = props;
@@ -1254,6 +1270,12 @@ function TaskEditor(props: {
                 </div>}
         </Section>
         <div className="rt-danger">
+            {/* 停用：留着不删，但不用做、不算进度和逾期，收进“暂不用做”里。上级停用时这里跟着停，不能单独恢复 */}
+            {v.node.Paused
+                ? <Button type="text" icon={<PlayCircleOutlined/>} onClick={() => props.onPause(false)}>恢复</Button>
+                : v.paused
+                    ? <span className="rt-section-hint">上级已停用</span>
+                    : <Button type="text" icon={<PauseCircleOutlined/>} onClick={() => props.onPause(true)}>停用</Button>}
             <Popconfirm title={`删除这个${v.folder ? '分组' : '事项'}？`} description={v.children.length ? '里面的内容会一起删除' : undefined}
                         okText="删除" okButtonProps={{danger: true}} cancelText="取消" onConfirm={props.onDelete}>
                 <Button danger type="text" icon={<DeleteOutlined/>}>删除</Button>

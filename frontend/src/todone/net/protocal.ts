@@ -285,6 +285,7 @@ export interface PRoutineNode {
     Folder: boolean // 分组节点：只组织子项，自身不参与勾选
     Optional: boolean
     Temp: boolean
+    Paused?: boolean // 停用：留着不删，但不参与勾选、进度和逾期（子项跟着停）
     Rule: string // 周期规则 JSON，空串表示继承上级
     Mark: string // 当前完成标记
     PrevMark: string // 上一次标记，用于撤销勾选
