@@ -1,6 +1,6 @@
 import {useCallback, useEffect, useMemo, useRef, useState} from "react";
 import {Button, Dropdown, Empty, Input, message, Popover, Spin, theme, Tooltip} from "antd";
-import {DownOutlined, FlagFilled, MoreOutlined, PlusOutlined, ReloadOutlined, RightOutlined} from "@ant-design/icons";
+import {AimOutlined, DownOutlined, FlagFilled, MoreOutlined, PlusOutlined, ReloadOutlined, RightOutlined} from "@ant-design/icons";
 import dayjs, {Dayjs} from "dayjs";
 import {GroupType, PRoutineNode, PSubGroup, PTask, TaskType} from "./net/protocal";
 import {
@@ -17,28 +17,30 @@ import {aggregate, buildModel, Model, nodeKey, Owner, toggleLeaves, VNode, withO
 import {DATE_FMT, roundView, shortDate, todayStr} from "./routineRule";
 import {RoutineCheck} from "./RoutineParts";
 import {IsDateEmptyFromGoEmpty} from "../common/tool";
+import {LocateTarget} from "./locate";
 import "./Routine.css";
 import "./Overview.css";
 
 /**
- * 总视图：今天要关注的内容。
- * - 上半部分自动汇总：普通任务按开始/截止时间、持续进行、插旗挑出来；例行清单按节奏算出到期的层。
- * - 下半部分是收藏的分组或子分组（任务板或例行清单），列出全部未完成项，可以直接勾。
- * 宽屏下像看板：上半部分四组并排成列，收藏的每一项是一列、横向排开；窄屏都是单列往下排。
+ * 关注页：只看收藏的清单（整个分组或其中一栏）。
+ * - 上半部分从收藏里挑出带日期的事，分三栏：逾期、进行中、接下来。
+ *   没设日期的任务（常开着的、持续进行的）不进上半部分，只在下面的收藏卡片里。
+ * - 下半部分是收藏的每一项，列出全部未完成项，可以直接勾。
+ * - 每一行右边的定位按钮跳到它在清单里的原位置。
+ * 宽屏下像看板：上半部分三栏并排，收藏的每一项是一列、横向排开；窄屏都是单列往下排。
  * 数据一次请求拿全（getOverview），勾选先改界面再发请求，失败退回。
  */
 
 const FLAG_TAG = "[system]flag";
 const SOON_DAYS = 7;
 
-type Bucket = 'overdue' | 'today' | 'soon' | 'ongoing';
+type Bucket = 'overdue' | 'doing' | 'soon';
 type Tone = 'error' | 'warning' | 'primary' | 'plain';
 
 const BUCKETS: { key: Bucket, title: string }[] = [
     {key: 'overdue', title: '逾期'},
-    {key: 'today', title: '今天'},
+    {key: 'doing', title: '进行中'},
     {key: 'soon', title: `接下来 ${SOON_DAYS} 天`},
-    {key: 'ongoing', title: '进行中和插旗的'},
 ];
 
 interface Timing {
@@ -64,6 +66,7 @@ interface RoutineItem {
     owner: Owner
     group: OverviewGroup
     subTitle: string // 节奏层所在的子分组（如果不是清单本身）
+    target: LocateTarget // 跳到清单里的哪个位置
 }
 
 type FocusItem = TaskItem | RoutineItem;
@@ -85,37 +88,38 @@ function dayWord(d: Dayjs, today: Dayjs): string {
     return shortDate(d);
 }
 
-/** 普通任务进哪一组。返回 null 表示不进上半部分（只在收藏卡片里出现）。 */
+/**
+ * 普通任务进哪一栏。只看日期：开始和截止都没设的返回 null（不进上半部分）。
+ * - 开始日期还没到：7 天内的进“接下来”，更远的先不显示；
+ * - 过了截止日期，或者标成“未开始”却过了开始日期：逾期；
+ * - 其余（已经开始、还没过期）：进行中。
+ */
 function taskTiming(t: PTask, today: Dayjs): Timing | null {
     const begin = dateOf(t.BeginTime);
     const end = dateOf(t.EndTime);
-    const flagged = !!t.Tags?.includes(FLAG_TAG);
-    const doing = t.TaskType === TaskType.DOING;
-    const fallback = (label: string, sort = 0): Timing | null =>
-        flagged || doing ? {bucket: 'ongoing', label, tone: 'plain', sort} : null;
+    if (!begin && !end) return null;
 
-    const waitingByTime = !!begin && begin.isAfter(today);
-    if (!t.Started || waitingByTime) {
-        if (!begin) return fallback('未开始');
+    if (begin && begin.isAfter(today)) {
         const n = begin.diff(today, 'day');
-        if (n < 0) return {bucket: 'overdue', label: `该开始了 · 晚 ${-n} 天`, tone: 'error', sort: n};
-        if (n === 0) return {bucket: 'today', label: '今天开始', tone: 'primary', sort: 1};
-        if (n <= SOON_DAYS) return {bucket: 'soon', label: `${dayWord(begin, today)}开始`, tone: 'plain', sort: n};
-        return fallback(`${shortDate(begin)} 开始`, n);
+        return n <= SOON_DAYS ? {bucket: 'soon', label: `${dayWord(begin, today)}开始`, tone: 'plain', sort: n} : null;
+    }
+    if (begin && !t.Started && begin.isBefore(today)) {
+        const n = today.diff(begin, 'day');
+        return {bucket: 'overdue', label: `该开始了 · 晚 ${n} 天`, tone: 'error', sort: -n};
     }
     if (end) {
         const n = end.diff(today, 'day');
         if (n < 0) return {bucket: 'overdue', label: `过期 ${-n} 天`, tone: 'error', sort: n};
-        if (n === 0) return {bucket: 'today', label: '今天截止', tone: 'warning', sort: 0};
-        if (n <= SOON_DAYS) return {bucket: 'soon', label: `${dayWord(end, today)}截止`, tone: 'plain', sort: n};
-        return {bucket: 'ongoing', label: `还剩 ${n} 天`, tone: 'plain', sort: n};
+        if (n === 0) return {bucket: 'doing', label: '今天截止', tone: 'warning', sort: 0};
+        if (n <= SOON_DAYS) return {bucket: 'doing', label: `${dayWord(end, today)}截止`, tone: 'plain', sort: n};
+        return {bucket: 'doing', label: `还剩 ${n} 天`, tone: 'plain', sort: n};
     }
-    if (begin?.isSame(today)) return {bucket: 'today', label: '今天开始', tone: 'primary', sort: 1};
-    if (begin) return {bucket: 'ongoing', label: `${shortDate(begin)} 起`, tone: 'plain', sort: 0};
-    return fallback(doing ? '持续' : '');
+    // 只设了开始日期、没有截止：排在有截止日期的后面
+    if (begin!.isSame(today)) return {bucket: 'doing', label: '今天开始', tone: 'primary', sort: 1e5};
+    return {bucket: 'doing', label: `${shortDate(begin!)} 起`, tone: 'plain', sort: 1e5 + today.diff(begin!, 'day')};
 }
 
-/** 例行清单的节奏层进哪一组。手动节奏只在收藏卡片里出现。 */
+/** 例行清单的节奏层进哪一栏。手动节奏没有日期，只在收藏卡片里出现。 */
 function ownerTiming(o: Owner, today: Dayjs): Timing | null {
     if (o.round.manual || o.ownLeaves.length === 0) return null;
     if (o.round.waiting) {
@@ -123,13 +127,13 @@ function ownerTiming(o: Owner, today: Dayjs): Timing | null {
         const n = dayjs(o.round.start).diff(today, 'day');
         return n > 0 && n <= SOON_DAYS ? {bucket: 'soon', label: `${dayWord(dayjs(o.round.start), today)}开始`, tone: 'plain', sort: n} : null;
     }
-    // 这次勾完的层按“没做完”时的状态归组，免得一勾就跳到别的分组里
+    // 这次勾完的层按“没做完”时的状态归栏，免得一勾就跳到别的栏里
     const v = o.complete ? roundView(o.round, false, today.format(DATE_FMT)) : o.view;
     if (v.phase === 'overdue') return {bucket: 'overdue', label: v.label, tone: 'error', sort: -1};
-    if (v.phase === 'today') return {bucket: 'today', label: v.label, tone: 'warning', sort: 0};
+    if (v.phase === 'today') return {bucket: 'doing', label: v.label, tone: 'warning', sort: 0};
     if (v.phase === 'grace') {
         const left = o.round.deadline ? dayjs(o.round.deadline).diff(today, 'day') : 99;
-        return {bucket: left <= SOON_DAYS ? 'soon' : 'ongoing', label: v.label, tone: 'plain', sort: left};
+        return {bucket: 'doing', label: v.label, tone: 'plain', sort: left};
     }
     return null;
 }
@@ -157,7 +161,7 @@ interface FavCandidate {
 
 interface OverviewProps {
     userID: string
-    onOpenGroup: (group: OverviewGroup) => void
+    onOpenGroup: (group: OverviewGroup, target?: LocateTarget) => void
 }
 
 interface RoutineData {
@@ -242,12 +246,22 @@ export default function Overview(props: OverviewProps) {
 
     // ---------- 上半部分 ----------
 
+    // 收藏范围：整个收藏的分组，和单独收藏的栏（子分组）
+    const favScope = useMemo(() => {
+        const favs = data?.Favorites ?? [];
+        return {
+            groups: new Set(favs.filter((f) => f.SubGroupID === 0).map((f) => f.GroupID)),
+            subGroups: new Set(favs.filter((f) => f.SubGroupID !== 0).map((f) => f.SubGroupID)),
+        };
+    }, [data]);
+
     const focus = useMemo(() => {
         const t0 = dayjs(today).startOf('day');
         const items: FocusItem[] = [];
         (data?.Tasks ?? []).forEach((ot) => {
             const g = groupByID.get(ot.GroupID);
             if (!g || g.Type !== GroupType.Normal) return;
+            if (!favScope.groups.has(ot.GroupID) && !favScope.subGroups.has(ot.SubGroupID)) return;
             const key = `t${ot.Task.ID}`;
             if (ot.Task.Done && !touched.has(key)) return;
             const timing = taskTiming(ot.Task, t0);
@@ -256,28 +270,50 @@ export default function Overview(props: OverviewProps) {
         models.forEach((model, gid) => {
             const g = groupByID.get(gid)!;
             const rd = routineData.get(gid)!;
-            model.owners.forEach((o) => {
+            const whole = favScope.groups.has(gid);
+            model.owners.forEach((full) => {
+                // 只收藏了清单里的几栏：节奏层只算这几栏里的事项
+                let o = full;
+                if (!whole) {
+                    const leaves = full.ownLeaves.filter((l) => favScope.subGroups.has(l.sgID));
+                    if (leaves.length === 0) return;
+                    if (leaves.length !== full.ownLeaves.length) {
+                        const need = leaves.filter((l) => l.active && !l.optional);
+                        o = {...full, ownLeaves: leaves, complete: need.length > 0 ? need.every((l) => l.checked) : full.complete};
+                    }
+                }
                 const key = `r${gid}:${o.key}`;
                 if (o.complete && !touched.has(key)) return;
                 const timing = ownerTiming(o, t0);
                 if (!timing) return;
                 let title = g.Title;
                 let subTitle = '';
+                let target: LocateTarget = {};
+                // 清单级的节奏、但只收藏了一栏：显示成那一栏的名字
+                const sgIDs = new Set(o.ownLeaves.map((l) => l.sgID));
+                if (!whole && sgIDs.size === 1) {
+                    const sg = rd.subGroups.find((s) => sgIDs.has(s.ID));
+                    title = sg?.Title || title;
+                    target = {subGroupID: sg?.ID};
+                }
                 if (o.key.startsWith('s')) {
-                    title = rd.subGroups.find((s) => `s${s.ID}` === o.key)?.Title ?? title;
+                    const sg = rd.subGroups.find((s) => `s${s.ID}` === o.key);
+                    title = sg?.Title ?? title;
+                    target = {subGroupID: sg?.ID};
                 } else if (o.key.startsWith('t')) {
                     const v = model.byTask.get(o.node.NodeID);
                     title = v?.task.Title ?? title;
                     subTitle = rd.subGroups.find((s) => s.ID === v?.sgID)?.Title ?? '';
+                    target = {taskID: o.node.NodeID, subGroupID: v?.sgID};
                 }
-                items.push({kind: 'routine', key, timing, title, owner: o, group: g, subTitle});
+                items.push({kind: 'routine', key, timing, title, owner: o, group: g, subTitle, target});
             });
         });
-        const by: Record<Bucket, FocusItem[]> = {overdue: [], today: [], soon: [], ongoing: []};
+        const by: Record<Bucket, FocusItem[]> = {overdue: [], doing: [], soon: []};
         items.forEach((it) => by[it.timing.bucket].push(it));
         Object.values(by).forEach((list) => list.sort((a, b) => a.timing.sort - b.timing.sort));
         return by;
-    }, [data, groupByID, models, routineData, touched, today]);
+    }, [data, groupByID, models, routineData, favScope, touched, today]);
 
     // ---------- 写入 ----------
 
@@ -343,8 +379,8 @@ export default function Overview(props: OverviewProps) {
             patch(!favorite);
             return;
         }
-        // 新收藏的任务板要拿到它全部的未完成任务（没设时间的任务之前没返回）
-        if (favorite && g.Type === GroupType.Normal) load(true).then();
+        // 后端只返回收藏范围内的任务，新收藏的要重新拉一次
+        if (favorite) load(true).then();
     };
 
     // ---------- 渲染 ----------
@@ -374,8 +410,8 @@ export default function Overview(props: OverviewProps) {
 
     const allSubGroups = [...(data.SubGroups ?? [])].sort((a, b) => a.Index - b.Index);
     const subGroupByID = new Map(allSubGroups.map((sg) => [sg.ID, sg]));
-    const wholeFav = new Set((data.Favorites ?? []).filter((f) => f.SubGroupID === 0).map((f) => f.GroupID));
-    const favSubIDs = new Set((data.Favorites ?? []).filter((f) => f.SubGroupID !== 0).map((f) => f.SubGroupID));
+    const wholeFav = favScope.groups;
+    const favSubIDs = favScope.subGroups;
     // 整个分组收藏了，它下面单独收藏的子分组就不再重复显示
     const favorites: FavItem[] = [];
     (data.Favorites ?? []).forEach((f) => {
@@ -401,7 +437,7 @@ export default function Overview(props: OverviewProps) {
     });
     const counts = {
         overdue: focus.overdue.filter((i) => !itemDone(i)).length,
-        today: focus.today.filter((i) => !itemDone(i)).length,
+        doing: focus.doing.filter((i) => !itemDone(i)).length,
     };
     const focusEmpty = BUCKETS.every((b) => focus[b.key].length === 0);
     const t0 = dayjs(today);
@@ -409,11 +445,11 @@ export default function Overview(props: OverviewProps) {
     return <div className="ov-root" style={rootStyle}>
         <div className="ov-hero">
             <div className="ov-hero-main">
-                <div className="ov-hero-title">今天</div>
+                <div className="ov-hero-title">关注</div>
                 <div className="ov-hero-sub">
                     <span>{t0.format('M月D日')} 周{'日一二三四五六'[t0.day()]}</span>
                     {counts.overdue > 0 && <span className="ov-count ov-count-error">{counts.overdue} 项逾期</span>}
-                    {counts.today > 0 && <span className="ov-count">{counts.today} 项今天要做</span>}
+                    {counts.doing > 0 && <span className="ov-count">{counts.doing} 项进行中</span>}
                 </div>
             </div>
             <Tooltip title="刷新">
@@ -421,8 +457,8 @@ export default function Overview(props: OverviewProps) {
             </Tooltip>
         </div>
 
-        {/* 窄屏只显示有内容的组；宽屏四组固定并排成列，空的列显示占位 */}
-        {focusEmpty && <div className="ov-calm">今天没有到期的事</div>}
+        {/* 窄屏只显示有内容的栏；宽屏三栏固定并排，空的栏显示占位 */}
+        {focusEmpty && <div className="ov-calm">{favorites.length === 0 ? '先在下面收藏要关注的清单' : '收藏的清单里没有带日期的事'}</div>}
         <div className={`ov-focus ${focusEmpty ? 'ov-focus-empty' : ''}`}>
             {BUCKETS.map((b) => <section key={b.key}
                                          className={`ov-section ov-col ov-section-${b.key} ${focus[b.key].length === 0 ? 'ov-section-none' : ''}`}>
@@ -432,10 +468,11 @@ export default function Overview(props: OverviewProps) {
                 </div>
                 {focus[b.key].length === 0 ? <div className="ov-col-empty">没有</div> : <div className="ov-list">
                     {splitBucket(focus[b.key]).map((part) => part.kind === 'task'
-                        ? <TaskRow key={part.item.key} item={part.item} onDone={setTaskDone} onOpen={() => props.onOpenGroup(part.item.group)}/>
+                        ? <TaskRow key={part.item.key} item={part.item} onDone={setTaskDone}
+                                   onJump={() => props.onOpenGroup(part.item.group, {taskID: part.item.ot.Task.ID, subGroupID: part.item.ot.SubGroupID})}/>
                         : <RoutineBlock key={`rg${part.group.GroupID}`} group={part.group} items={part.items}
                                         onToggle={(leaves, key) => toggleRoutine(part.group.GroupID, leaves, key)}
-                                        onOpen={() => props.onOpenGroup(part.group)}/>)}
+                                        onJump={(target) => props.onOpenGroup(part.group, target)}/>)}
                 </div>}
             </section>)}
         </div>
@@ -446,7 +483,7 @@ export default function Overview(props: OverviewProps) {
                 <FavPicker candidates={candidates} onPick={(c) => setFavorite(c.group, c.subGroup?.ID ?? 0, true)}/>
             </div>
             {favorites.length === 0
-                ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="收藏常看的清单或其中一栏，在这里直接勾"/>
+                ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="收藏要关注的清单或其中一栏，带日期的事会自动排到上面"/>
                 : <div className="ov-board">
                     {favorites.map((f) => {
                         const g = f.group;
@@ -454,7 +491,8 @@ export default function Overview(props: OverviewProps) {
                             foldKey: f.key,
                             title: f.subGroup ? (f.subGroup.Title || g.Title) : g.Title,
                             path: f.subGroup ? [...(g.Path ?? []), g.Title] : (g.Path ?? []),
-                            onOpen: () => props.onOpenGroup(g),
+                            onOpen: () => props.onOpenGroup(g, f.subGroup ? {subGroupID: f.subGroup.ID} : undefined),
+                            onJump: (target: LocateTarget) => props.onOpenGroup(g, target),
                             onUnfavorite: () => setFavorite(g, f.subGroup?.ID ?? 0, false),
                         };
                         if (g.Type === GroupType.Routine) {
@@ -499,7 +537,15 @@ function TimingTag(props: { timing: Timing }) {
     return <span className={`ov-tag ov-tag-${props.timing.tone}`}>{props.timing.label}</span>;
 }
 
-function TaskRow(props: { item: TaskItem, onDone: (ot: OverviewTask, done: boolean) => void, onOpen: () => void }) {
+/** 行尾的定位按钮：跳到这一项在清单里的原位置。 */
+function JumpBtn(props: { onClick: () => void }) {
+    return <span className="ov-jump" title="去清单里的原位置" onClick={(e) => {
+        e.stopPropagation();
+        props.onClick();
+    }}><AimOutlined/></span>;
+}
+
+function TaskRow(props: { item: TaskItem, onDone: (ot: OverviewTask, done: boolean) => void, onJump: () => void }) {
     const {ot, group, timing} = props.item;
     const t = ot.Task;
     const flagged = !!t.Tags?.includes(FLAG_TAG);
@@ -513,9 +559,10 @@ function TaskRow(props: { item: TaskItem, onDone: (ot: OverviewTask, done: boole
                 {ot.ParentTitle && <span className="ov-row-parent">{ot.ParentTitle} ›</span>}
                 {t.Title}
             </div>
-            <a className="ov-row-src" onClick={props.onOpen}>{groupPath(group)}</a>
+            <a className="ov-row-src" onClick={props.onJump}>{groupPath(group)}</a>
         </div>
         <TimingTag timing={timing}/>
+        <JumpBtn onClick={props.onJump}/>
     </div>;
 }
 
@@ -523,18 +570,19 @@ function RoutineBlock(props: {
     group: OverviewGroup
     items: RoutineItem[]
     onToggle: (leaves: VNode[], key: string) => void
-    onOpen: () => void
+    onJump: (target?: LocateTarget) => void
 }) {
     return <div className="ov-row-wrap ov-rblock">
-        <a className="ov-rblock-head" onClick={props.onOpen}>
+        <a className="ov-rblock-head" onClick={() => props.onJump()}>
             {groupPath(props.group)}<span className="ov-rblock-kind">例行</span>
         </a>
-        {props.items.map((it) => <RoutineOwnerRow key={it.key} item={it} onToggle={(leaves) => props.onToggle(leaves, it.key)}/>)}
+        {props.items.map((it) => <RoutineOwnerRow key={it.key} item={it} onToggle={(leaves) => props.onToggle(leaves, it.key)}
+                                                         onJump={props.onJump}/>)}
     </div>;
 }
 
-function RoutineOwnerRow(props: { item: RoutineItem, onToggle: (leaves: VNode[]) => void }) {
-    const {owner, timing, title, subTitle} = props.item;
+function RoutineOwnerRow(props: { item: RoutineItem, onToggle: (leaves: VNode[]) => void, onJump: (target: LocateTarget) => void }) {
+    const {owner, timing, title, subTitle, target} = props.item;
     const [open, setOpen] = useState(false);
     const leaves = owner.ownLeaves;
     const act = leaves.filter((l) => l.active);
@@ -551,11 +599,13 @@ function RoutineOwnerRow(props: { item: RoutineItem, onToggle: (leaves: VNode[])
                 {multi && (open ? <DownOutlined className="ov-row-arrow"/> : <RightOutlined className="ov-row-arrow"/>)}
             </span>
             <TimingTag timing={timing}/>
+            <JumpBtn onClick={() => props.onJump(target)}/>
         </div>
         {open && <div className="ov-sublist">
             {act.map((l) => <div key={l.task.ID} className={`ov-subrow ${l.checked ? 'ov-row-done' : ''}`}>
                 <RoutineCheck value={l.checked ? 'on' : 'off'} size={18} optional={l.optional} onClick={() => props.onToggle([l])}/>
                 <span className="ov-subrow-title">{l.task.Title}</span>
+                <JumpBtn onClick={() => props.onJump({taskID: l.task.ID, subGroupID: l.sgID})}/>
             </div>)}
         </div>}
     </>;
@@ -621,6 +671,7 @@ interface CardHeadInfo {
     title: string
     path: string[]
     onOpen: () => void
+    onJump: (target: LocateTarget) => void
     onUnfavorite: () => void
 }
 
@@ -633,9 +684,11 @@ function CardHead(props: { head: CardHeadInfo, folded: boolean, onFold: () => vo
             {head.path.length > 0 && <span className="ov-card-path">{head.path.join(' / ')}</span>}
         </div>
         <span className="ov-card-meta">{props.meta}</span>
+        <Tooltip title="打开清单">
+            <Button size="small" type="text" icon={<AimOutlined/>} onClick={head.onOpen}/>
+        </Tooltip>
         <Dropdown trigger={['click']} menu={{
             items: [
-                {key: 'open', label: '打开清单', onClick: head.onOpen},
                 {key: 'unfav', label: '取消收藏', onClick: head.onUnfavorite},
             ],
         }}>
@@ -687,7 +740,8 @@ function BoardCard(props: {
                             {flagged && <FlagFilled className="ov-flag"/>}
                             {t.Title}
                         </span>
-                        {timing && timing.bucket !== 'ongoing' && <TimingTag timing={timing}/>}
+                        {timing && <TimingTag timing={timing}/>}
+                        <JumpBtn onClick={() => props.head.onJump({taskID: t.ID, subGroupID: ot.SubGroupID})}/>
                     </div>;
                 })}
             </div>)}
@@ -722,6 +776,7 @@ function RoutineCard(props: {
             <RoutineCheck value={v.checked ? 'on' : 'off'} size={18} optional={v.optional} onClick={() => props.onToggle([v])}/>
             <span className="ov-subrow-title">{v.task.Title}</span>
             {rhythm && !v.checked && <span className={`ov-tag ov-tag-${v.owner.view.phase === 'overdue' ? 'error' : 'plain'}`}>{rhythm}</span>}
+            <JumpBtn onClick={() => props.head.onJump({taskID: v.task.ID, subGroupID: v.sgID})}/>
         </div>;
     };
 

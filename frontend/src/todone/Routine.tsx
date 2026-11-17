@@ -843,7 +843,7 @@ function SubGroupCard(props: {
         return () => window.clearTimeout(t);
     }, [dropHere, open, setOpen]);
 
-    return <div ref={setNodeRef}
+    return <div ref={setNodeRef} data-todone-subgroup={sgm.sg.ID}
                 className={`rt-card${allDone ? ' rt-card-done' : ''}${waiting ? ' rt-card-waiting' : ''}${dropHere ? ' rt-drop-card' : ''}${cardDropPos}${props.ctx.dragCard === sgm.sg.ID ? ' rt-card-drag-src' : ''}`}>
         {/* 浮层尺寸取自 setNodeRef 的元素，所以挂在整个头部上，拖动手势只在把手上 */}
         <div className="rt-card-head" ref={cardDrag.setNodeRef}>
@@ -971,7 +971,7 @@ function Row(props: { v: VNode, ctx: RowCtx }) {
 
     return <Collapse open={!hidden || isSource}>
         <div className={`rt-node${isSource ? ' rt-drag-src' : ''}`}>
-            <div ref={rowRef} className={cls}
+            <div ref={rowRef} className={cls} data-todone-task={v.task.ID}
                  onClick={() => container ? setOpen(!open) : scope.length ? ctx.onToggle(scope) : ctx.onEdit(v.task.ID)}>
                 {/* 把手和右侧按钮都占满整行高度，点偏也不会误勾 */}
                 <span className="rt-zone rt-handle" {...drag.attributes} {...drag.listeners} onClick={(e) => e.stopPropagation()}

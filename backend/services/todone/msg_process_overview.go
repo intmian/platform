@@ -4,7 +4,6 @@ import (
 	"errors"
 	"sort"
 	"sync"
-	"time"
 
 	"github.com/intmian/platform/backend/services/todone/db"
 	"github.com/intmian/platform/backend/services/todone/logic"
@@ -153,6 +152,10 @@ func (s *Service) OnGetOverview(_ backendshare.Valid, req GetOverviewReq) (ret G
 			favSubGroup[f.SubGroupID] = true
 		}
 	}
+	favTouched := make(map[uint32]bool) // 整个收藏或收藏了其中某一栏的分组
+	for _, f := range favorites {
+		favTouched[f.GroupID] = true
+	}
 	flagged := make(map[uint32]bool)
 	for _, t := range tags {
 		if t.Tag == flagTag {
@@ -208,8 +211,10 @@ func (s *Service) OnGetOverview(_ backendshare.Valid, req GetOverviewReq) (ret G
 		if !ok || !isAlive(t, 0) {
 			continue
 		}
+		// 只返回收藏范围内的任务。例行清单只要被收藏到（哪怕只收藏了一栏）就整张返回：
+		// 节奏层可能挂在清单上，前端要拿到全部事项才能算对这一期的状态。
 		favorite := favGroup[groupID] || favSubGroup[t.ParentSubGroupID]
-		if g.Type == db.GroupTypeNormal && !favorite && !overviewWorthy(t, flagged[t.TaskID]) {
+		if !favorite && !(g.Type == db.GroupTypeRoutine && favTouched[groupID]) {
 			continue
 		}
 		parentTitle := ""
@@ -261,15 +266,4 @@ func (s *Service) OnGetOverview(_ backendshare.Valid, req GetOverviewReq) (ret G
 		})
 	}
 	return
-}
-
-// overviewWorthy 未收藏的普通任务板里，哪些任务值得进总视图：设了时间、持续进行或插了旗。
-// 不看 Started：新建任务默认就是已开始。
-func overviewWorthy(t *db.TaskDB, flagged bool) bool {
-	return flagged || t.TaskType == db.TaskTypeDoing || validTime(t.BeginTime) || validTime(t.EndTime)
-}
-
-// validTime 前端用 Go 零值表示“没设”；D1 里可能读回带时区的零值，按年份判断更稳。
-func validTime(t time.Time) bool {
-	return !t.IsZero() && t.Year() > 1
 }

@@ -8,7 +8,7 @@ import {Addr} from "./addr";
 import Group from "./Group";
 import {TaskDetail} from "./TaskDetail";
 import {GroupType, PTask} from "./net/protocal";
-import {MenuOutlined, SunOutlined} from "@ant-design/icons";
+import {EyeOutlined, MenuOutlined} from "@ant-design/icons";
 import {useIsMobile} from "../common/hooksv2";
 import User from "../common/User";
 import {useParams} from "react-router-dom";
@@ -18,6 +18,7 @@ import Routine from "./Routine";
 import {useLoginGate} from "../common/useLoginGate";
 import Overview from "./Overview";
 import {OverviewGroup} from "./net/send_back";
+import {locateInPage, LocateTarget} from "./locate";
 
 const TodoneConfigs = new ConfigsCtr(ConfigsType.Server, 'todone')
 TodoneConfigs.addBaseConfig('db.worker_endpoint', 'Worker Endpoint', ConfigType.String, 'https://worker.example.com')
@@ -36,7 +37,7 @@ export function TodoneSetting() {
 
 function groupPageTitle(groupType: number, title: string, overview = false) {
     if (overview) {
-        return 'TODONE 今天';
+        return 'TODONE 关注';
     }
     switch (groupType) {
         case GroupType.Library:
@@ -103,11 +104,13 @@ export function Todone() {
         setShowDir(false);
     };
 
-    const openOverviewGroup = (g: OverviewGroup) => {
+    // 从“关注”页打开清单；带了 target 就滚到那条任务（或那一栏）并闪一下
+    const openOverviewGroup = (g: OverviewGroup, target?: LocateTarget) => {
         const addr = new Addr(loginCtr.loginInfo.usr);
         addr.addDir(g.DirID);
         addr.addGroup(g.GroupID);
         openGroup(addr, g.Title, g.Type);
+        if (target) locateInPage(target);
     };
 
     // 浏览器后退/前进：按地址栏重新解析
@@ -215,7 +218,7 @@ export function Todone() {
                         background: showOverview ? token.colorPrimaryBg : token.colorFillQuaternary,
                     }}
                 >
-                    <SunOutlined/> 今天
+                    <EyeOutlined/> 关注
                 </div>
                 <Dir
                     userID={loginCtr.loginInfo.usr}

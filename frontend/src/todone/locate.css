@@ -1,0 +1,20 @@
+/* 从“关注”页跳过来时，目标任务（或栏）闪两下 */
+@keyframes todone-locate-flash {
+    0%, 100% {
+        box-shadow: 0 0 0 0 rgba(22, 119, 255, 0);
+        background-color: transparent;
+    }
+    15%, 55% {
+        box-shadow: 0 0 0 2px rgba(22, 119, 255, .55);
+        background-color: rgba(22, 119, 255, .10);
+    }
+    35% {
+        box-shadow: 0 0 0 2px rgba(22, 119, 255, .15);
+        background-color: rgba(22, 119, 255, .03);
+    }
+}
+
+.todone-locate-flash {
+    border-radius: 8px;
+    animation: todone-locate-flash 2.4s ease-out;
+}

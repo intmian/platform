@@ -414,6 +414,38 @@
     padding-left: 24px;
 }
 
+/* 行尾的定位按钮：鼠标移到这一行才显示；触屏没有悬停，一直淡淡地显示 */
+.ov-jump {
+    flex: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    border-radius: 6px;
+    font-size: 13px;
+    color: var(--rt-text-3);
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity .15s, color .15s, background .15s;
+}
+
+.ov-row:hover .ov-jump,
+.ov-subrow:hover .ov-jump {
+    opacity: 1;
+}
+
+.ov-jump:hover {
+    color: var(--rt-primary);
+    background: var(--rt-primary-bg);
+}
+
+@media (hover: none) {
+    .ov-jump {
+        opacity: .55;
+    }
+}
+
 /* ---------- 窄屏：单列往下排 ---------- */
 .ov-col-empty {
     display: none;
@@ -441,10 +473,10 @@
         display: none;
     }
 
-    /* 上半部分四组固定并排，空的列也留着，位置不跳 */
+    /* 上半部分三栏固定并排，空的栏也留着，位置不跳 */
     .ov-focus {
         display: grid;
-        grid-template-columns: repeat(4, minmax(0, 1fr));
+        grid-template-columns: repeat(3, minmax(0, 1fr));
         gap: 14px;
         align-items: start;
         margin-top: 4px;

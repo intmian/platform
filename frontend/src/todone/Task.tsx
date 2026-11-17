@@ -606,6 +606,7 @@ export function Task(props: TaskProps) {
     return <div
         ref={setNodeRef}
         {...attributes}
+        data-todone-task={props.task.ID}
         style={{
             ...style,
             width: '100%',
