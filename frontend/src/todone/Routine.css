@@ -1366,3 +1366,39 @@
     color: var(--rt-text-3);
     white-space: nowrap;
 }
+
+/* ---------- 暂不用做 ---------- */
+
+/* 和行的勾选框对齐：左边让出把手的宽度 */
+.rt-rest {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 40px;
+    padding: 0 4px 0 28px;
+    border-radius: 10px;
+    font-size: 13px;
+    color: var(--rt-text-3);
+    cursor: pointer;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+    transition: background .2s, color .2s;
+}
+
+.rt-rest:hover {
+    background: var(--rt-fill-2);
+    color: var(--rt-text-2);
+}
+
+.rt-rest .rt-caret {
+    margin: 0 6px 0 4px;
+}
+
+.rt-rest-text {
+    font-variant-numeric: tabular-nums;
+}
+
+/* 展开后的事项整体淡一点，和要做的区分开 */
+.rt-rest-list {
+    opacity: .72;
+}

@@ -46,7 +46,7 @@ import {
 import {describeRule, MANUAL_RULE, parseRule, RoundView, RoutineRule, shortDate, stringifyRule, todayStr} from "./routineRule";
 import {CheckValue, ProgressRing, RhythmChip, RoutineCheck, RuleEditor, RuleIcon} from "./RoutineParts";
 import {useIsMobile} from "../common/hooksv2";
-import {aggregate, Agg, buildModel, defaultNode, Model, nodeKey, Owner, SgModel, toggleLeaves, VNode, withOwnerSync} from "./routineModel";
+import {aggregate, Agg, buildModel, defaultNode, leafState, Model, nodeKey, Owner, restDate, SgModel, toggleLeaves, VNode, withOwnerSync} from "./routineModel";
 import "./Routine.css";
 
 // ---------------- 工具 ----------------
@@ -62,10 +62,40 @@ function call<Req, Ret>(fn: (req: Req, cb: Cb<Ret>) => void, req: Req): Promise<
  * 卡片、分组的展开状态。还没开始的默认收起，这次手动展开的只在本次页面里有效，
  * 不写进本地记忆；开始之后回到平时记住的展开状态。
  */
-function useFold(key: string, notStarted: boolean): [boolean, (v: boolean) => void] {
+function useFold(key: string, idle: boolean, ver: number): [boolean, (v: boolean) => void] {
     const [saved, setSaved] = useLocalFlag(key, true);
-    const [peek, setPeek] = useState(false);
-    return notStarted ? [peek, setPeek] : [saved, setSaved];
+    // 记下是哪一次整理时展开的；重新整理后（比如跨天回到页面）又回到默认收起
+    const [peek, setPeek] = useState({ver: -1, open: false});
+    const setPeekOpen = useCallback((open: boolean) => setPeek({ver, open}), [ver]);
+    return idle ? [peek.ver === ver && peek.open, setPeekOpen] : [saved, setSaved];
+}
+
+/**
+ * 一次“整理”的结果：打开页面、或者跨天后回到页面时按当时的状态算一次，之后保持不变。
+ * 这样当场勾选、取消不会让事项跳来跳去，分组勾完最后一项也不会突然收起。
+ */
+interface Arrangement {
+    ver: number
+    rest: Set<number> // 收进“暂不用做”的叶子
+    idle: Set<string> // 没有要做的、也没有今天做完的卡片（s+ID）和分组（t+ID），默认收起
+}
+
+const EMPTY_ARRANGEMENT: Arrangement = {ver: 0, rest: new Set(), idle: new Set()};
+
+function arrange(model: Model, today: string, ver: number): Arrangement {
+    const rest = new Set<number>();
+    const idle = new Set<string>();
+    model.leaves.forEach((l) => {
+        if (leafState(l, today) === 'rest') rest.add(l.task.ID);
+    });
+    const isIdle = (leaves: VNode[]) => leaves.length > 0 && leaves.every((l) => rest.has(l.task.ID));
+    model.sgs.forEach((sg) => {
+        if (isIdle(sg.leaves)) idle.add(`s${sg.sg.ID}`);
+    });
+    model.byTask.forEach((v) => {
+        if (v.folder && isIdle(v.leaves)) idle.add(`t${v.task.ID}`);
+    });
+    return {ver, rest, idle};
 }
 
 function useLocalFlag(key: string, init: boolean): [boolean, (v: boolean) => void] {
@@ -203,6 +233,9 @@ export default function Routine(props: RoutineProps) {
     const [nodes, setNodes] = useState<Record<string, PRoutineNode>>({});
     const [loading, setLoading] = useState(false);
     const [today, setToday] = useState(todayStr());
+    // 每次需要重新整理时加一，和新数据在同一次渲染里生效
+    const [arrangeVer, setArrangeVer] = useState(0);
+    const arrangedDay = useRef('');
     const [hideDone, setHideDone] = useLocalFlag(`todone:routine:hideDone:${groupID}`, false);
     const [editor, setEditor] = useState<EditorTarget | null>(null);
     const [reviewOpen, setReviewOpen] = useState(false);
@@ -228,7 +261,7 @@ export default function Routine(props: RoutineProps) {
         return ret.ok;
     }, [userID, dirID, groupID]);
 
-    const loadAll = useCallback(async () => {
+    const loadAll = useCallback(async (rearrange = true) => {
         if (!userID || !groupID) return;
         setLoading(true);
         const [sgRet, rtRet] = await Promise.all([
@@ -251,10 +284,16 @@ export default function Routine(props: RoutineProps) {
         (rtRet.data.Nodes ?? []).forEach((n) => {
             nextNodes[nodeKey(n.Kind, n.NodeID)] = n;
         });
+        const day = todayStr();
+        setToday(day);
         setSubGroups(sgs);
         setTasks(nextTasks);
         setNodes(nextNodes);
         setLoading(false);
+        if (rearrange) {
+            arrangedDay.current = day;
+            setArrangeVer((v) => v + 1);
+        }
     }, [userID, dirID, groupID]);
 
     useEffect(() => {
@@ -267,6 +306,9 @@ export default function Routine(props: RoutineProps) {
     const model = useMemo(() => buildModel(groupID, subGroups, tasks, nodes, today),
         [groupID, subGroups, tasks, nodes, today]);
     const total = useMemo(() => aggregate(model.leaves), [model]);
+    // 只在 arrangeVer 变化时重新整理，数据变化（勾选、增删）不触发
+    const arrangement = useMemo(() => arrangeVer ? arrange(model, today, arrangeVer) : EMPTY_ARRANGEMENT,
+        [arrangeVer]); // eslint-disable-line react-hooks/exhaustive-deps
 
     // ---------- 写入 ----------
 
@@ -296,6 +338,19 @@ export default function Routine(props: RoutineProps) {
             window.removeEventListener('beforeunload', guard);
         };
     }, [pending > 0]); // eslint-disable-line react-hooks/exhaustive-deps
+
+    // 回到前台（切回标签、解锁手机）时重新拉数据，别的设备上的改动也能同步过来；
+    // 跨了一天就按刚打开页面那样重新整理。还有没存完的改动时先不拉，免得被旧数据盖掉。
+    useEffect(() => {
+        const onVisible = () => {
+            if (document.visibilityState !== 'visible') return;
+            setToday(todayStr());
+            if (pendingRef.current > 0) return;
+            loadAll(todayStr() !== arrangedDay.current).then();
+        };
+        document.addEventListener('visibilitychange', onVisible);
+        return () => document.removeEventListener('visibilitychange', onVisible);
+    }, [loadAll]);
 
     const commit = useCallback(async (changed: PRoutineNode[], delTasks: RoutineDelTasks[] = []) => {
         const before = nodesRef.current;
@@ -526,6 +581,7 @@ export default function Routine(props: RoutineProps) {
         drop,
         dragCard,
         cardDrop,
+        arrangement,
         onToggle: toggle,
         onEdit: (taskID) => setEditor({type: 'task', taskID}),
         onCreate: createItem,
@@ -742,6 +798,7 @@ interface CardDrop {
 }
 
 interface RowCtx {
+    arrangement: Arrangement
     hideDone: boolean
     dragID: number | null
     drop: DropTarget | null
@@ -761,8 +818,8 @@ function SubGroupCard(props: {
     onDelete: () => void
 }) {
     const {sgm} = props;
-    const notStarted = sgm.leaves.length > 0 && sgm.leaves.every((l) => !l.active);
-    const [open, setOpen] = useFold(`todone:routine:sgOpen:${sgm.sg.ID}`, notStarted);
+    const arr = props.ctx.arrangement;
+    const [open, setOpen] = useFold(`todone:routine:sgOpen:${sgm.sg.ID}`, arr.idle.has(`s${sgm.sg.ID}`), arr.ver);
     const scope = ownScope(sgm.leaves, sgm.owner);
     const others = sgm.leaves.filter((l) => l.owner !== sgm.owner);
     const agg = aggregate(scope);
@@ -841,11 +898,32 @@ function SubGroupCard(props: {
 
 // ---------------- 行 ----------------
 
+/** 一层的列表：暂不用做的事项收到最底下的一行里，点开才显示。 */
 function RowList(props: { nodes: VNode[], ctx: RowCtx }) {
+    const rest = props.ctx.arrangement.rest;
+    const main = props.nodes.filter((n) => !rest.has(n.task.ID));
+    const resting = props.nodes.filter((n) => rest.has(n.task.ID));
     if (props.nodes.length === 0) return null;
     return <div className="rt-rows">
-        {props.nodes.map((n) => <Row key={n.task.ID} v={n} ctx={props.ctx}/>)}
+        {main.map((n) => <Row key={n.task.ID} v={n} ctx={props.ctx}/>)}
+        {resting.length > 0 && <RestFold key={props.ctx.arrangement.ver} nodes={resting} ctx={props.ctx}/>}
     </div>
+}
+
+function RestFold(props: { nodes: VNode[], ctx: RowCtx }) {
+    const [open, setOpen] = useState(false);
+    const dates = props.nodes.map(restDate).filter(Boolean).sort();
+    return <>
+        <div className="rt-rest" onClick={() => setOpen(!open)}>
+            <span className={`rt-caret${open ? ' rt-caret-open' : ''}`}/>
+            <span className="rt-rest-text">暂不用做 {props.nodes.length} 项{dates.length > 0 && ` · 最早 ${shortDate(dates[0])}`}</span>
+        </div>
+        <Collapse open={open}>
+            <div className="rt-rest-list">
+                {props.nodes.map((n) => <Row key={n.task.ID} v={n} ctx={props.ctx}/>)}
+            </div>
+        </Collapse>
+    </>
 }
 
 function Row(props: { v: VNode, ctx: RowCtx }) {
@@ -854,8 +932,9 @@ function Row(props: { v: VNode, ctx: RowCtx }) {
     const others = v.leaves.filter((l) => l.owner !== v.owner);
     const container = v.folder && scope.length === 0 && others.length > 0;
     const cv = checkValue(scope);
-    const notStarted = v.folder && v.leaves.length > 0 && v.leaves.every((l) => !l.active);
-    const [open, setOpen] = useFold(`todone:routine:taskOpen:${v.task.ID}`, notStarted);
+    const arr = ctx.arrangement;
+    const resting = arr.rest.has(v.task.ID);
+    const [open, setOpen] = useFold(`todone:routine:taskOpen:${v.task.ID}`, arr.idle.has(`t${v.task.ID}`), arr.ver);
     const drag = useDraggable({id: `drag-${v.task.ID}`, data: {id: v.task.ID}});
     const dropZone = useDroppable({id: `row-${v.task.ID}`, data: {kind: 'row', id: v.task.ID}});
     const rowRef = (el: HTMLElement | null) => {
@@ -871,7 +950,8 @@ function Row(props: { v: VNode, ctx: RowCtx }) {
         return () => window.clearTimeout(t);
     }, [dropPos, open, setOpen]);
     const waiting = scope.length > 0 && scope.every((l) => !l.active);
-    const hidden = ctx.hideDone && checkValue(v.leaves) === 'on';
+    // “隐藏已完成”只管今天做完的和手动清单里勾过的；暂不用做的已经收在底下了
+    const hidden = ctx.hideDone && !resting && checkValue(v.leaves) === 'on';
     const agg = v.folder ? aggregate(scope) : null;
     // 未勾的叶子所在节奏逾期时，勾选框描红
     const overdue = !v.folder && !v.checked && v.owner.view.phase === 'overdue';
@@ -911,6 +991,8 @@ function Row(props: { v: VNode, ctx: RowCtx }) {
                                 <LayerRhythm own={v.ownsRhythm} rule={v.rule} view={v.owner.view} onEdit={() => ctx.onEdit(v.task.ID)}/>}
                             {agg && v.leaves.length > 0 && <LayerCount agg={agg} waiting={waiting} others={others} small/>}
                             {v.folder && v.leaves.length === 0 && <span className="rt-row-sub">空分组</span>}
+                            {resting && !v.ownsRhythm && restDate(v) &&
+                                <span className="rt-row-sub">{v.active ? `下次 ${shortDate(restDate(v))}` : `${shortDate(restDate(v))} 开始`}</span>}
                         </span>
                     </div>
                     {v.task.Note && <Note text={v.task.Note}/>}

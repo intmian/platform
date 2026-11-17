@@ -1,6 +1,6 @@
 import dayjs from "dayjs";
 import {PRoutineNode, PSubGroup, PTask, RoutineNodeKind} from "./net/protocal";
-import {doneMark, evalRound, leafChecked, MANUAL_RULE, parseRule, Round, roundView, RoundView, RoutineRule, undoneMark} from "./routineRule";
+import {DATE_FMT, doneMark, evalRound, leafChecked, MANUAL_RULE, parseRule, Round, roundView, RoundView, RoutineRule, splitMark, undoneMark} from "./routineRule";
 
 /**
  * 例行清单的内存模型：由子分组、任务和节点状态推导出每一层的节奏、这一期和勾选状态。
@@ -218,4 +218,34 @@ export function toggleLeaves(leaves: VNode[], today: string): { changed: PRoutin
         return {...l.node, Mark: allOn ? '' : now};
     });
     return {changed};
+}
+
+// ---------------- 页面上的三种状态 ----------------
+
+/**
+ * 叶子在页面上的归类（只影响摆放，不影响勾选和进度）：
+ * - pending：这一期已开始、还没勾
+ * - doneToday：今天勾的；手动节奏没有“下一次”，勾了就一直算这一类，直到清空重来
+ * - rest：暂不用做，之前就做完了在等下一次，或者第一次还没到
+ */
+export type LeafState = 'pending' | 'doneToday' | 'rest';
+
+export function leafState(v: VNode, today: string): LeafState {
+    if (!v.active) return 'rest';
+    if (!v.checked) return 'pending';
+    if (v.owner.round.manual) return 'doneToday';
+    const done = leafDoneDate(v);
+    return !done || done >= today ? 'doneToday' : 'rest';
+}
+
+/** 叶子的勾选日期：自己有节奏的记在标记的完成日里，跟随上级的标记就是勾选时间。 */
+function leafDoneDate(v: VNode): string {
+    if (v.ownsRhythm) return splitMark(v.node.Mark).done;
+    const d = dayjs(v.node.Mark);
+    return d.isValid() ? d.format(DATE_FMT) : '';
+}
+
+/** 暂不用做的叶子下一次要做的日子：做完的看下次刷新，没开始的看开始日。 */
+export function restDate(v: VNode): string {
+    return (v.active ? v.owner.round.next : v.owner.round.start) ?? '';
 }
