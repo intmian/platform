@@ -1,4 +1,5 @@
 import {PTask} from "./net/protocal";
+import {textMatch} from "./search";
 
 export type TaskTreeNode = {
     task: PTask
@@ -231,4 +232,9 @@ export default class TaskTree {
             }
         }
     }
+}
+/** 这个任务自己或者它下面任意一层子任务命中关键词。 */
+export function subtreeMatch(node: TaskTreeNode, kw: string): boolean {
+    if (textMatch(kw, node.task.Title, node.task.Note)) return true
+    return node.children.some((c) => subtreeMatch(c, kw))
 }

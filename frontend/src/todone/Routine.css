@@ -1428,3 +1428,8 @@
 .rt-rest-list {
     opacity: .72;
 }
+
+.rt-search-empty {
+    text-align: center;
+    color: var(--rt-text-3);
+}

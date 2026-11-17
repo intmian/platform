@@ -9,3 +9,11 @@
     user-select: none;
     -webkit-touch-callout: none;
 }
+
+/* 搜索命中高亮 */
+mark.todone-hl {
+    padding: 0 1px;
+    border-radius: 2px;
+    background: #ffe58f;
+    color: inherit;
+}

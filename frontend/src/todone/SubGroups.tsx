@@ -25,7 +25,7 @@ import {
     VerticalAlignTopOutlined
 } from "@ant-design/icons";
 import {lowLeverShadow} from "../css/shadow";
-import TaskTree from "./TaskTree";
+import TaskTree, {subtreeMatch} from "./TaskTree";
 import {TaskList} from "./TaskList";
 import {useStateWithLocal} from "../common/hooksv2";
 import './mist.css';
@@ -162,6 +162,8 @@ interface SubGroupProps {
     onSelectTask: (addr: Addr, pTask: PTask, refreshApi: () => void, tree: TaskTree) => void;
     moving?: boolean
     externalRefreshToken?: number
+    keyword?: string // 已经规整过的搜索词，空表示没在搜
+    onMatchChange?: (hit: boolean) => void
 }
 
 export function SubGroup(props: SubGroupProps) {
@@ -213,6 +215,19 @@ export function SubGroup(props: SubGroupProps) {
         })
     }, [containDone, props.externalRefreshToken]);
 
+    const keyword = props.keyword || "";
+    const hit = !keyword || taskTree.roots.some((n) => subtreeMatch(n, keyword));
+    const onMatchChange = props.onMatchChange;
+    useEffect(() => {
+        if (!loading) onMatchChange?.(hit);
+    }, [hit, loading]); // eslint-disable-line react-hooks/exhaustive-deps
+
+    // 搜索时没有命中的分组整块不显示；有命中的不管平时是否收起都展开
+    if (keyword && !hit && !loading) {
+        return null;
+    }
+    const shown = open || !!keyword;
+
     return <div
         data-todone-subgroup={props.subGroup.ID}
         style={{
@@ -249,7 +264,7 @@ export function SubGroup(props: SubGroupProps) {
                     }}
                             size="small"
                             type="text"
-                            icon={open ? <CaretUpOutlined/> : <CaretDownOutlined/>}
+                            icon={shown ? <CaretUpOutlined/> : <CaretDownOutlined/>}
                     />
                     <Tooltip title={indexSmallFirst ? "按Index升序排列" : "按Index降序排列"}>
                         <Button
@@ -384,7 +399,7 @@ export function SubGroup(props: SubGroupProps) {
                 transition: 'outline 120ms ease',
             }}
         >
-            {open ? <TaskList
+            {shown ? <TaskList
                 level={0}
                 tree={taskTree}
                 addr={subGroupAddr}
@@ -395,6 +410,7 @@ export function SubGroup(props: SubGroupProps) {
                 }}
                 onSelectTask={props.onSelectTask}
                 selectMode={selectMode}
+                keyword={keyword}
                 onSelModeSelect={(addr: Addr) => {
                     if (selectedRef.current.has(addr.getLastUnit().ID)) {
                         selectedRef.current.delete(addr.getLastUnit().ID);

@@ -12,7 +12,8 @@ import {
     HolderOutlined
 } from "@ant-design/icons";
 import {IsDateEmptyFromGoEmpty} from "../common/tool";
-import TaskTree, {TaskTreeNode} from "./TaskTree";
+import TaskTree, {subtreeMatch, TaskTreeNode} from "./TaskTree";
+import {Highlight} from "./search";
 import {TaskList} from "./TaskList";
 import {ChangeTaskReq, sendChangeTask, sendDelTask, sendTaskAddTag, sendTaskDelTag} from "./net/send_back";
 import {useStateWithLocal} from "../common/hooksv2";
@@ -157,9 +158,10 @@ interface TaskTitleProps {
     onSelectTask: () => void
     hasSon?: boolean
     onContextMenu: (e: React.MouseEvent<HTMLDivElement>) => void
+    keyword?: string
 }
 
-export function TaskTitle({task, clickShowSubTask, isShowSon, onSelectTask, hasSon, onContextMenu}: TaskTitleProps) {
+export function TaskTitle({task, clickShowSubTask, isShowSon, onSelectTask, hasSon, onContextMenu, keyword = ""}: TaskTitleProps) {
     // 判断任务状态
     let BeforeBegin = false;
     const beginTime = new Date(task.BeginTime);
@@ -199,7 +201,7 @@ export function TaskTitle({task, clickShowSubTask, isShowSon, onSelectTask, hasS
                 onClick={onSelectTask}
             >
                 {isFlag && <span style={{color: 'red'}}>★ </span>}
-                {task.Title}
+                <Highlight text={task.Title} kw={keyword}/>
             </div>
             <Button
                 size="small"
@@ -348,6 +350,7 @@ export interface TaskProps {
     onSelectTask: (addr: Addr, pTask: PTask, refreshApi: () => void, tree: TaskTree) => void
     selectMode: boolean
     onSelModeSelect: (addr: Addr) => void
+    keyword?: string
 }
 
 export function Task(props: TaskProps) {
@@ -397,6 +400,9 @@ export function Task(props: TaskProps) {
         hasSon = true;
     }
     const [showSubTask, setShowSubTask] = useStateWithLocal("todone:task:showSubTask:" + props.task.ID, hasSon);
+    // 搜索时子任务里有命中就展开，否则收起；不改平时记住的展开状态
+    const keyword = props.keyword || "";
+    const subShown = keyword ? props.taskNode.children.some((c) => subtreeMatch(c, keyword)) : showSubTask;
     const [operate, setOperate] = useState(false); // 是否操作
 
     // 菜单相关
@@ -745,8 +751,9 @@ export function Task(props: TaskProps) {
                 clickShowSubTask={() => {
                     setShowSubTask(!showSubTask);
                 }}
-                isShowSon={showSubTask}
+                isShowSon={subShown}
                 hasSon={hasSon}
+                keyword={keyword}
                 onContextMenu={handleContextMenu}
             />
             {props.selectMode && <Checkbox
@@ -759,7 +766,7 @@ export function Task(props: TaskProps) {
             <TaskTags task={props.task}/>
             <TaskWaitAndTime status={status} task={props.task}/>
         </Row>
-        {showSubTask && <Row style={{width: '100%'}}>
+        {subShown && <Row style={{width: '100%'}}>
             <div
                 ref={setChildrenDropRef}
                 style={{
@@ -780,6 +787,7 @@ export function Task(props: TaskProps) {
                     onSelectTask={props.onSelectTask}
                     selectMode={props.selectMode}
                     onSelModeSelect={props.onSelModeSelect}
+                    keyword={keyword}
                 />
             </div>
         </Row>

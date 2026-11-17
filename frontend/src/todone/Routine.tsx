@@ -36,6 +36,7 @@ import {CheckValue, ProgressRing, RhythmChip, RoutineCheck, RuleEditor, RuleIcon
 import {useIsMobile} from "../common/hooksv2";
 import {aggregate, Agg, buildModel, defaultNode, leafState, Model, nodeKey, Owner, restDate, resumeNodes, SgModel, toggleLeaves, VNode, withOwnerSync} from "./routineModel";
 import "./Routine.css";
+import {Highlight, normKeyword, SearchBox, textMatch} from "./search";
 
 // ---------------- 工具 ----------------
 
@@ -65,7 +66,7 @@ function useFold(key: string, idle: boolean, ver: number): [boolean, (v: boolean
 interface Arrangement {
     ver: number
     rest: Set<number> // 收进“暂不用做”的叶子
-    idle: Set<string> // 没有要做的、也没有今天做完的卡片（s+ID）和分组（t+ID），默认收起
+    idle: Set<string> // 没有要做的、也没有今天做完的分组（t+ID），默认收起。顶层卡片不在这里收起
 }
 
 const EMPTY_ARRANGEMENT: Arrangement = {ver: 0, rest: new Set(), idle: new Set()};
@@ -77,13 +78,24 @@ function arrange(model: Model, today: string, ver: number): Arrangement {
         if (leafState(l, today) === 'rest') rest.add(l.task.ID);
     });
     const isIdle = (leaves: VNode[]) => leaves.length > 0 && leaves.every((l) => rest.has(l.task.ID));
-    model.sgs.forEach((sg) => {
-        if (isIdle(sg.leaves)) idle.add(`s${sg.sg.ID}`);
-    });
     model.byTask.forEach((v) => {
         if (v.folder && isIdle(v.leaves)) idle.add(`t${v.task.ID}`);
     });
     return {ver, rest, idle};
+}
+
+/** 搜索：事项自己命中（标题或备注）。 */
+function selfHit(v: VNode, kw: string): boolean {
+    return textMatch(kw, v.task.Title, v.task.Note);
+}
+
+/** 搜索：事项自己或下面任意一层命中。 */
+function vHit(v: VNode, kw: string): boolean {
+    return selfHit(v, kw) || v.children.some((c) => vHit(c, kw));
+}
+
+function sgSelfHit(sgm: SgModel, kw: string): boolean {
+    return textMatch(kw, sgm.sg.Title, sgm.sg.Note);
 }
 
 function useLocalFlag(key: string, init: boolean): [boolean, (v: boolean) => void] {
@@ -225,6 +237,8 @@ export default function Routine(props: RoutineProps) {
     const [arrangeVer, setArrangeVer] = useState(0);
     const arrangedDay = useRef('');
     const [hideDone, setHideDone] = useLocalFlag(`todone:routine:hideDone:${groupID}`, false);
+    const [search, setSearch] = useState('');
+    const keyword = normKeyword(search);
     const [editor, setEditor] = useState<EditorTarget | null>(null);
     const [reviewOpen, setReviewOpen] = useState(false);
     const [resetTarget, setResetTarget] = useState<ResetTarget | null>(null);
@@ -571,6 +585,7 @@ export default function Routine(props: RoutineProps) {
 
     const ctx: RowCtx = {
         hideDone,
+        keyword,
         dragID,
         drop,
         dragCard,
@@ -628,6 +643,7 @@ export default function Routine(props: RoutineProps) {
             <div className="rt-hero-actions">
                 {(loading || moving) && <Spin size="small"/>}
                 {slowSaving && !loading && !moving && <span className="rt-saving"><Spin size="small"/> 保存中…</span>}
+                <SearchBox value={search} onChange={setSearch} width={isMobile ? 140 : 160}/>
                 <Tooltip title={hideDone ? '显示已完成' : '隐藏已完成'}>
                     <Button type="text" icon={hideDone ? <EyeInvisibleOutlined/> : <EyeOutlined/>}
                             onClick={() => setHideDone(!hideDone)}/>
@@ -651,6 +667,10 @@ export default function Routine(props: RoutineProps) {
             <div className="rt-empty">
                 <Empty description="还没有分组。比如「每周」「半月」「出门前」，分组里还能再建分组。"/>
             </div>}
+
+        {keyword && model.sgs.length > 0 &&
+            !model.sgs.some((s) => sgSelfHit(s, keyword) || s.roots.some((v) => vHit(v, keyword))) &&
+            <div className="rt-empty rt-search-empty">没有找到包含「{search.trim()}」的事项</div>}
 
         <DndContext
             sensors={sensors}
@@ -719,7 +739,7 @@ export default function Routine(props: RoutineProps) {
                 }}
                 onCancel={() => setAddingSg(false)}
             />
-            : <button className="rt-add-sg" onClick={() => setAddingSg(true)}><PlusOutlined/> 新建分组</button>}
+            : !keyword && <button className="rt-add-sg" onClick={() => setAddingSg(true)}><PlusOutlined/> 新建分组</button>}
 
         {/* ---------- 复核 ---------- */}
         <ReviewSheet open={reviewOpen} onClose={() => setReviewOpen(false)} model={model} agg={total}
@@ -796,6 +816,8 @@ interface CardDrop {
 interface RowCtx {
     arrangement: Arrangement
     hideDone: boolean
+    // 搜索词（已规整）。只显示命中的事项和通往它们的上级；某一层自己命中时，下面的内容不再过滤
+    keyword: string
     dragID: number | null
     drop: DropTarget | null
     dragCard: number | null
@@ -816,8 +838,8 @@ function SubGroupCard(props: {
 }) {
     const {sgm} = props;
     const arr = props.ctx.arrangement;
-    // 停用的卡片和“没有要做的”一样默认收起
-    const [open, setOpen] = useFold(`todone:routine:sgOpen:${sgm.sg.ID}`, sgm.paused || arr.idle.has(`s${sgm.sg.ID}`), arr.ver);
+    // 只有停用的卡片默认收起。没开始的卡片照常展开：里面的事项已经收进“暂不用做”那一行了，再收一层就要多点一次
+    const [open, setOpen] = useFold(`todone:routine:sgOpen:${sgm.sg.ID}`, sgm.paused, arr.ver);
     const scope = ownScope(sgm.leaves, sgm.owner);
     const others = sgm.leaves.filter((l) => l.owner !== sgm.owner);
     const agg = aggregate(scope);
@@ -831,8 +853,13 @@ function SubGroupCard(props: {
     const cardDrag = useDraggable({id: `sgdrag-${sgm.sg.ID}`, data: {cardID: sgm.sg.ID}});
     const cardDropPos = props.ctx.cardDrop?.id === sgm.sg.ID && props.ctx.dragCard !== sgm.sg.ID
         ? (props.ctx.cardDrop.after ? ' rt-card-drop-after' : ' rt-card-drop-before') : '';
+    const kw = props.ctx.keyword;
+    const titleHit = !!kw && sgSelfHit(sgm, kw);
+    const hit = !kw || titleHit || sgm.roots.some((v) => vHit(v, kw));
+    // 卡片名字命中时，里面照常显示；否则只显示命中的事项，并且强制展开
+    const rowCtx = titleHit ? {...props.ctx, keyword: ''} : props.ctx;
     // 拖卡片排序时所有卡片收成一行，好对准
-    const shown = open && !props.ctx.dragCard;
+    const shown = (open || (!!kw && !titleHit)) && !props.ctx.dragCard;
     const dropHere = props.ctx.drop?.kind === 'card' && props.ctx.drop.id === sgm.sg.ID;
     // 拖到收起的卡片上停一会儿自动展开
     useEffect(() => {
@@ -840,6 +867,8 @@ function SubGroupCard(props: {
         const t = window.setTimeout(() => setOpen(true), 500);
         return () => window.clearTimeout(t);
     }, [dropHere, open, setOpen]);
+
+    if (!hit) return null;
 
     return <div ref={setNodeRef} data-todone-subgroup={sgm.sg.ID}
                 className={`rt-card${allDone ? ' rt-card-done' : ''}${waiting ? ' rt-card-waiting' : ''}${sgm.paused ? ' rt-card-paused' : ''}${dropHere ? ' rt-drop-card' : ''}${cardDropPos}${props.ctx.dragCard === sgm.sg.ID ? ' rt-card-drag-src' : ''}`}>
@@ -852,7 +881,7 @@ function SubGroupCard(props: {
                 ? <span className="rt-check-spacer" style={{width: 24}}/>
                 : <RoutineCheck value={cv} size={24} disabled={waiting || sgm.paused} onClick={() => !sgm.paused && props.ctx.onToggle(scope)}/>}
             <div className="rt-card-title" onClick={() => setOpen(!open)}>
-                <span className="rt-card-name">{sgm.sg.Title}</span>
+                <span className="rt-card-name"><Highlight text={sgm.sg.Title} kw={kw}/></span>
                 {sgm.paused
                     ? <span className="rt-tag">已停用</span>
                     : <LayerRhythm own={!!sgm.ownRule} rule={sgm.rule} view={sgm.owner.view} onEdit={props.onEdit}/>}
@@ -893,9 +922,9 @@ function SubGroupCard(props: {
         <div className="rt-bar"><div style={{width: `${agg.total ? agg.done / agg.total * 100 : 0}%`}}/></div>
         <Collapse open={shown}>
             <div className="rt-card-body">
-                <RowList nodes={sgm.roots} ctx={props.ctx}/>
+                <RowList nodes={sgm.roots} ctx={rowCtx}/>
                 {sgm.roots.length === 0 && <div className="rt-card-empty">还没有内容</div>}
-                <Adders sgID={sgm.sg.ID} parentID={0} ctx={props.ctx}/>
+                {!rowCtx.keyword && <Adders sgID={sgm.sg.ID} parentID={0} ctx={rowCtx}/>}
             </div>
         </Collapse>
     </div>
@@ -909,6 +938,15 @@ function SubGroupCard(props: {
  */
 function RowList(props: { nodes: VNode[], ctx: RowCtx }) {
     const rest = props.ctx.arrangement.rest;
+    const kw = props.ctx.keyword;
+    if (kw) {
+        // 搜索时不分“暂不用做”，命中的直接列出来
+        const hits = props.nodes.filter((n) => vHit(n, kw));
+        if (hits.length === 0) return null;
+        return <div className="rt-rows">
+            {hits.map((n) => <Row key={n.task.ID} v={n} ctx={props.ctx}/>)}
+        </div>;
+    }
     const inRest = (n: VNode) => !!n.node.Paused || rest.has(n.task.ID);
     const main = props.nodes.filter((n) => !inRest(n));
     const resting = props.nodes.filter(inRest);
@@ -946,7 +984,12 @@ function Row(props: { v: VNode, ctx: RowCtx }) {
     const cv = checkValue(scope);
     const arr = ctx.arrangement;
     const resting = arr.rest.has(v.task.ID);
-    const [open, setOpen] = useFold(`todone:routine:taskOpen:${v.task.ID}`, v.paused || arr.idle.has(`t${v.task.ID}`), arr.ver);
+    const [foldOpen, setOpen] = useFold(`todone:routine:taskOpen:${v.task.ID}`, v.paused || arr.idle.has(`t${v.task.ID}`), arr.ver);
+    // 搜索时：自己命中就照常显示下面的内容；只是下面有命中的，强制展开并只列命中的
+    const kw = ctx.keyword;
+    const titleHit = !!kw && selfHit(v, kw);
+    const open = foldOpen || (!!kw && !titleHit);
+    const childCtx = titleHit ? {...ctx, keyword: ''} : ctx;
     const drag = useDraggable({id: `drag-${v.task.ID}`, data: {id: v.task.ID}});
     const dropZone = useDroppable({id: `row-${v.task.ID}`, data: {kind: 'row', id: v.task.ID}});
     const rowRef = (el: HTMLElement | null) => {
@@ -963,7 +1006,7 @@ function Row(props: { v: VNode, ctx: RowCtx }) {
     }, [dropPos, open, setOpen]);
     const waiting = scope.length > 0 && scope.every((l) => !l.active);
     // “隐藏已完成”只管今天做完的和手动清单里勾过的；暂不用做的已经收在底下了
-    const hidden = ctx.hideDone && !resting && checkValue(v.leaves) === 'on';
+    const hidden = !kw && ctx.hideDone && !resting && checkValue(v.leaves) === 'on';
     const agg = v.folder ? aggregate(scope) : null;
     // 未勾的叶子所在节奏逾期时，勾选框描红
     const overdue = !v.folder && !v.paused && !v.checked && v.owner.view.phase === 'overdue';
@@ -997,7 +1040,7 @@ function Row(props: { v: VNode, ctx: RowCtx }) {
                     : <RoutineCheck value={cv} optional={v.optional} disabled={waiting || v.paused}/>}
                 <div className="rt-row-main">
                     <div className="rt-row-line">
-                        <span className="rt-row-title">{v.task.Title}</span>
+                        <span className="rt-row-title"><Highlight text={v.task.Title} kw={kw}/></span>
                         <span className="rt-row-tags">
                             {v.node.Temp && <span className="rt-tag rt-tag-temp">本次</span>}
                             {v.node.Optional && <span className="rt-tag">可选</span>}
@@ -1023,8 +1066,8 @@ function Row(props: { v: VNode, ctx: RowCtx }) {
             {v.folder &&
                 <Collapse open={open}>
                     <div className="rt-children">
-                        <RowList nodes={v.children} ctx={ctx}/>
-                        <Adders sgID={v.sgID} parentID={v.task.ID} ctx={ctx} compact/>
+                        <RowList nodes={v.children} ctx={childCtx}/>
+                        {!childCtx.keyword && <Adders sgID={v.sgID} parentID={v.task.ID} ctx={childCtx} compact/>}
                     </div>
                 </Collapse>}
         </div>

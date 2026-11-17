@@ -1,7 +1,9 @@
-/* 总视图：沿用例行清单的视觉语言（颜色变量同样在根节点上由 antd token 注入） */
+/* 关注页：沿用例行清单的视觉语言（颜色变量同样在根节点上由 antd token 注入） */
 .ov-root {
     --rt-ease: cubic-bezier(.22, 1, .36, 1);
     --rt-radius: 14px;
+    max-width: 1280px;
+    margin: 0 auto;
     padding: 28px 0 160px;
     color: var(--rt-text);
 }
@@ -15,8 +17,9 @@
 /* ---------- 头部 ---------- */
 .ov-hero {
     display: flex;
-    align-items: flex-start;
-    gap: 12px;
+    align-items: flex-end;
+    flex-wrap: wrap;
+    gap: 12px 16px;
     margin-bottom: 18px;
     animation: rt-fade-up .45s var(--rt-ease) both;
 }
@@ -26,34 +29,379 @@
     min-width: 0;
 }
 
+.ov-hero-date {
+    white-space: nowrap;
+    font-size: 13px;
+    color: var(--rt-text-3);
+}
+
 .ov-hero-title {
-    font-size: 24px;
+    font-size: 26px;
     font-weight: 600;
     line-height: 1.25;
 }
 
-.ov-hero-sub {
+.ov-stats {
     display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 10px;
-    margin-top: 6px;
-    font-size: 13px;
+    gap: 8px;
+}
+
+.ov-stat {
+    display: flex;
+    align-items: baseline;
+    gap: 4px;
+    padding: 4px 12px;
+    border-radius: 10px;
+    background: var(--rt-card);
+    border: 1px solid var(--rt-border);
+    font-size: 12px;
     color: var(--rt-text-2);
 }
 
-.ov-count {
+.ov-stat b {
+    font-size: 18px;
+    font-weight: 600;
     color: var(--rt-text);
+    font-variant-numeric: tabular-nums;
 }
 
-.ov-count-error {
+.ov-stat-error b {
     color: var(--rt-error);
 }
 
+.ov-stat-warning b {
+    color: var(--rt-warning);
+}
+
+/* ---------- 上半部分：主栏 + 日程 ---------- */
+.ov-top {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 14px;
+    align-items: start;
+    animation: rt-fade-up .45s var(--rt-ease) both;
+}
+
+@media (min-width: 1000px) {
+    .ov-top {
+        grid-template-columns: minmax(0, 1fr) 300px;
+    }
+}
+
+.ov-panel {
+    background: var(--rt-card);
+    border: 1px solid var(--rt-border);
+    border-radius: var(--rt-radius);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, .03), 0 4px 16px -8px rgba(0, 0, 0, .08);
+    padding: 4px 0;
+}
+
+.ov-panel-title {
+    padding: 10px 16px 4px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--rt-text-2);
+}
+
 .ov-calm {
-    padding: 28px 0 8px;
+    padding: 18px 16px;
     color: var(--rt-text-3);
     font-size: 14px;
+}
+
+.ov-band {
+    padding: 4px 0 6px;
+}
+
+.ov-band + .ov-band {
+    border-top: 1px solid var(--rt-border);
+}
+
+.ov-band-title {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 16px 2px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--rt-text-2);
+}
+
+.ov-band-title::before {
+    content: "";
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--rt-text-4);
+}
+
+.ov-band-overdue .ov-band-title {
+    color: var(--rt-error);
+}
+
+.ov-band-overdue .ov-band-title::before {
+    background: var(--rt-error);
+}
+
+.ov-band-today .ov-band-title {
+    color: var(--rt-warning);
+}
+
+.ov-band-today .ov-band-title::before {
+    background: var(--rt-warning);
+}
+
+.ov-band-count {
+    font-weight: normal;
+    font-variant-numeric: tabular-nums;
+}
+
+/* ---------- 行 ---------- */
+/* 整行可点（勾选），和清单页一致 */
+.ov-row, .ov-subrow {
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.ov-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 8px 16px;
+    transition: background .2s;
+}
+
+.ov-row:hover {
+    background: var(--rt-fill);
+}
+
+.ov-row-check {
+    display: flex;
+    padding-top: 1px;
+}
+
+.ov-row-main {
+    flex: 1;
+    min-width: 0;
+}
+
+.ov-row-title {
+    font-size: 14px;
+    line-height: 22px;
+    word-break: break-word;
+}
+
+.ov-row-parent {
+    color: var(--rt-text-3);
+    margin-right: 4px;
+}
+
+.ov-row-progress {
+    margin-left: 6px;
+    font-size: 12px;
+    color: var(--rt-text-3);
+    font-variant-numeric: tabular-nums;
+}
+
+.ov-progress {
+    display: inline-block;
+    width: 44px;
+    height: 4px;
+    margin-left: 10px;
+    border-radius: 2px;
+    background: var(--rt-fill-2);
+    overflow: hidden;
+    vertical-align: middle;
+}
+
+.ov-progress i {
+    display: block;
+    height: 100%;
+    border-radius: 2px;
+    background: var(--rt-primary);
+    transition: width .3s var(--rt-ease);
+}
+
+.ov-row-src {
+    display: inline-block;
+    max-width: 100%;
+    font-size: 12px;
+    line-height: 18px;
+    color: var(--rt-text-3) !important;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    vertical-align: top;
+}
+
+.ov-row-src:hover {
+    color: var(--rt-primary) !important;
+}
+
+.ov-row-done .ov-row-title,
+.ov-row-done .ov-subrow-title {
+    color: var(--rt-text-3);
+    text-decoration: line-through;
+}
+
+.ov-flag {
+    color: var(--rt-error);
+    margin-right: 5px;
+    font-size: 12px;
+}
+
+/* 例行节奏层下面的事项：小胶囊铺开，点一下勾一项 */
+.ov-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin: 8px 0 2px;
+}
+
+.ov-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    max-width: 100%;
+    padding: 3px 10px 3px 6px;
+    border: 1px solid var(--rt-border);
+    border-radius: 999px;
+    background: var(--rt-card);
+    font-size: 13px;
+    line-height: 20px;
+    cursor: pointer;
+    transition: border-color .15s, background .15s;
+}
+
+.ov-chip:hover {
+    border-color: var(--rt-text-4);
+}
+
+.ov-chip-text {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.ov-chip-on {
+    background: var(--rt-fill);
+    color: var(--rt-text-3);
+}
+
+.ov-chip-on .ov-chip-text {
+    text-decoration: line-through;
+}
+
+/* ---------- 接下来：按天的日程 ---------- */
+.ov-agenda-empty {
+    padding: 8px 16px 14px;
+    font-size: 13px;
+    color: var(--rt-text-4);
+}
+
+.ov-days {
+    padding: 2px 0 8px;
+}
+
+.ov-day {
+    display: grid;
+    grid-template-columns: 44px minmax(0, 1fr);
+    gap: 8px;
+    padding: 8px 16px;
+}
+
+.ov-day + .ov-day {
+    border-top: 1px dashed var(--rt-border);
+}
+
+.ov-day-name {
+    display: flex;
+    flex-direction: column;
+    font-size: 12px;
+    line-height: 18px;
+    color: var(--rt-text-3);
+    font-variant-numeric: tabular-nums;
+}
+
+.ov-day-name b {
+    font-size: 13px;
+    line-height: 20px;
+    color: var(--rt-text);
+    font-weight: 600;
+}
+
+.ov-day-items {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.ov-ag {
+    display: flex;
+    flex-direction: column;
+    color: var(--rt-text) !important;
+}
+
+.ov-ag:hover .ov-ag-title {
+    color: var(--rt-primary);
+}
+
+.ov-ag-title {
+    font-size: 14px;
+    line-height: 20px;
+    word-break: break-word;
+}
+
+.ov-ag-n {
+    margin-left: 6px;
+    font-size: 12px;
+    color: var(--rt-text-3);
+}
+
+.ov-ag-src {
+    font-size: 12px;
+    line-height: 18px;
+    color: var(--rt-text-3);
+}
+
+/* ---------- 收藏 ---------- */
+.ov-fav {
+    margin-top: 30px;
+    animation: rt-fade-up .45s var(--rt-ease) both;
+}
+
+.ov-fav-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0 2px 10px;
+    font-size: 15px;
+    font-weight: 600;
+}
+
+/* 卡片按列往下排，高矮不齐也不留空 */
+.ov-board {
+    columns: 1;
+    column-gap: 14px;
+}
+
+@media (min-width: 700px) {
+    .ov-board {
+        columns: 2;
+    }
+}
+
+@media (min-width: 1100px) {
+    .ov-board {
+        columns: 3;
+    }
+}
+
+.ov-card-above {
+    padding: 6px 4px 2px;
+    font-size: 12px;
+    color: var(--rt-text-3);
 }
 
 @media (max-width: 640px) {
@@ -62,38 +410,23 @@
     }
 
     .ov-hero-title {
-        font-size: 20px;
+        font-size: 22px;
     }
-}
 
-/* ---------- 分组 ---------- */
-.ov-section {
-    margin-top: 22px;
-    animation: rt-fade-up .45s var(--rt-ease) both;
-}
+    .ov-progress {
+        display: none;
+    }
 
-.ov-section-title {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-size: 13px;
-    font-weight: 600;
-    color: var(--rt-text-2);
-    margin: 0 0 4px 2px;
-}
+    /* 统计放到标题下面单独一行，标题行只留刷新按钮 */
+    .ov-stats {
+        order: 3;
+        width: 100%;
+    }
 
-.ov-section-overdue .ov-section-title {
-    color: var(--rt-error);
-}
-
-.ov-section-count {
-    font-weight: normal;
-    color: var(--rt-text-3);
-    font-variant-numeric: tabular-nums;
-}
-
-.ov-fav {
-    margin-top: 34px;
+    .ov-row, .ov-band-title, .ov-panel-title, .ov-day {
+        padding-left: 12px;
+        padding-right: 12px;
+    }
 }
 
 .ov-fav-add {
@@ -145,123 +478,6 @@
     opacity: .5;
 }
 
-/* ---------- 行 ---------- */
-.ov-list {
-    border-top: 1px solid var(--rt-border);
-}
-
-.ov-row-wrap, .ov-list > .ov-row {
-    border-bottom: 1px solid var(--rt-border);
-}
-
-.ov-row {
-    display: flex;
-    align-items: flex-start;
-    gap: 10px;
-    padding: 10px 4px 9px 2px;
-    transition: background .2s;
-}
-
-.ov-row:hover {
-    background: var(--rt-fill);
-}
-
-.ov-row-check {
-    display: flex;
-    padding-top: 1px;
-}
-
-.ov-row-main {
-    flex: 1;
-    min-width: 0;
-}
-
-.ov-row-title {
-    font-size: 14px;
-    line-height: 22px;
-    word-break: break-word;
-}
-
-.ov-row-parent {
-    color: var(--rt-text-3);
-    margin-right: 4px;
-}
-
-.ov-row-progress {
-    margin-left: 8px;
-    font-size: 12px;
-    color: var(--rt-text-3);
-    font-variant-numeric: tabular-nums;
-}
-
-.ov-row-arrow {
-    margin-left: 6px;
-    font-size: 10px;
-    color: var(--rt-text-4);
-}
-
-.ov-row-src {
-    display: inline-block;
-    max-width: 100%;
-    font-size: 12px;
-    line-height: 18px;
-    color: var(--rt-text-3) !important;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    vertical-align: top;
-}
-
-.ov-row-src:hover {
-    color: var(--rt-primary) !important;
-}
-
-.ov-row-done .ov-row-title,
-.ov-row-done .ov-subrow-title {
-    color: var(--rt-text-3);
-    text-decoration: line-through;
-}
-
-.ov-flag {
-    color: var(--rt-error);
-    margin-right: 5px;
-    font-size: 12px;
-}
-
-.ov-sublist {
-    padding: 0 0 4px 28px;
-}
-
-/* 例行清单在上半部分按清单归成一块 */
-.ov-rblock {
-    padding: 8px 0 6px;
-}
-
-.ov-rblock-head {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    margin: 0 0 2px 4px;
-    font-size: 12px;
-    color: var(--rt-text-3) !important;
-}
-
-.ov-rblock-head:hover {
-    color: var(--rt-primary) !important;
-}
-
-.ov-rblock-kind {
-    padding: 0 6px;
-    border-radius: 4px;
-    font-size: 11px;
-    line-height: 16px;
-    background: var(--rt-fill-2, rgba(0, 0, 0, .06)); /* 弹层在根节点之外，取不到变量时用兜底色 */
-}
-
-.ov-rrow {
-    padding-left: 3px;
-}
-
 /* ---------- 标签 ---------- */
 .ov-tag {
     flex: none;
@@ -299,9 +515,10 @@
     background: var(--rt-card);
     border: 1px solid var(--rt-border);
     border-radius: var(--rt-radius);
-    margin-top: 12px;
     box-shadow: 0 1px 2px rgba(0, 0, 0, .03), 0 4px 16px -8px rgba(0, 0, 0, .08);
     overflow: hidden;
+    break-inside: avoid;
+    margin-bottom: 14px;
 }
 
 .ov-card-head {
@@ -442,106 +659,7 @@
 
 @media (hover: none) {
     .ov-jump {
-        opacity: .55;
-    }
-}
-
-/* ---------- 窄屏：单列往下排 ---------- */
-.ov-col-empty {
-    display: none;
-}
-
-@media (max-width: 1099px) {
-    .ov-root {
-        max-width: 720px;
-        margin: 0 auto;
-    }
-
-    .ov-section-none, .ov-focus-empty {
         display: none;
     }
 }
 
-/* ---------- 宽屏：看板 ---------- */
-@media (min-width: 1100px) {
-    .ov-root {
-        max-width: 1640px;
-        margin: 0 auto;
-    }
-
-    .ov-calm {
-        display: none;
-    }
-
-    /* 上半部分三栏固定并排，空的栏也留着，位置不跳 */
-    .ov-focus {
-        display: grid;
-        grid-template-columns: repeat(3, minmax(0, 1fr));
-        gap: 14px;
-        align-items: start;
-        margin-top: 4px;
-    }
-
-    .ov-col {
-        margin-top: 0;
-        padding: 10px 12px 4px;
-        background: var(--rt-card);
-        border: 1px solid var(--rt-border);
-        border-radius: var(--rt-radius);
-        box-shadow: 0 1px 2px rgba(0, 0, 0, .03), 0 4px 16px -8px rgba(0, 0, 0, .08);
-    }
-
-    .ov-col .ov-section-title {
-        margin-bottom: 6px;
-    }
-
-    /* 某一列特别长时列内滚动，免得把下面的收藏顶得很远 */
-    .ov-col .ov-list {
-        border-top: none;
-        max-height: min(560px, 60vh);
-        overflow-y: auto;
-        margin-right: -8px;
-        padding-right: 8px;
-    }
-
-    .ov-col .ov-list > :last-child {
-        border-bottom: none;
-    }
-
-    .ov-col-empty {
-        display: block;
-        padding: 14px 2px 16px;
-        font-size: 13px;
-        color: var(--rt-text-4);
-    }
-
-    /* 逾期这一列有内容时加一道细的红色顶边，一眼能看到 */
-    .ov-section-overdue:not(.ov-section-none) {
-        border-top: 2px solid var(--rt-error);
-    }
-
-    /* 收藏：每一项是一列，横向排开，放不下就横向滚动；列太高时列内滚动 */
-    .ov-board {
-        display: flex;
-        align-items: flex-start;
-        gap: 14px;
-        overflow-x: auto;
-        /* 左右不留内边距，列的竖边才能和上面三栏对齐 */
-        padding: 2px 0 12px;
-    }
-
-    /* 每列和上面三栏同宽（三等分减去两道间距），竖边上下对齐；多出来的列往右排 */
-    .ov-board > .ov-card {
-        flex: 0 0 calc((100% - 28px) / 3);
-        min-width: 0;
-        box-sizing: border-box; /* 宽度把边框算在内，才和上面的栏一样宽 */
-        margin-top: 0;
-        display: flex;
-        flex-direction: column;
-        max-height: calc(100vh - 120px);
-    }
-
-    .ov-board > .ov-card > .ov-card-body {
-        overflow-y: auto;
-    }
-}

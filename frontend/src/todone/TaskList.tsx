@@ -1,4 +1,4 @@
-import TaskTree, {ExportTasks} from "./TaskTree";
+import TaskTree, {ExportTasks, subtreeMatch} from "./TaskTree";
 import {Addr, AddrUnitType} from "./addr";
 import {ReactNode, useEffect, useRef, useState} from "react";
 import {PTask} from "./net/protocal";
@@ -137,7 +137,8 @@ export function TaskList({
                              refreshTree,
                              onSelectTask,
                              selectMode,
-                             onSelModeSelect
+                             onSelModeSelect,
+                             keyword = "",
                          }: {
     level: number
     tree: TaskTree
@@ -148,6 +149,7 @@ export function TaskList({
     onSelectTask: (addr: Addr, pTask: PTask, refreshApi: () => void, tree: TaskTree) => void
     selectMode: boolean
     onSelModeSelect: (addr: Addr) => void
+    keyword?: string // 搜索词（已规整），只显示自己或子任务命中的
 }) {
     let taskShow: PTask[]
     // tasks根据Index排序
@@ -162,6 +164,13 @@ export function TaskList({
             // 任务树
             taskShow = ExportTasks(node.children, indexSmallFirst);
         }
+    }
+
+    if (keyword) {
+        taskShow = taskShow.filter((t) => {
+            const node = tree.findTask(t.ID);
+            return !!node && subtreeMatch(node, keyword);
+        });
     }
 
     const isSubTask: boolean = addr.getLastUnit().Type == AddrUnitType.Task
@@ -265,13 +274,15 @@ export function TaskList({
             refreshApi={refreshTree}
         />
     </div>
+    // 搜索时只看结果，不显示新增输入框
+    const shownInput: ReactNode = keyword ? null : inputArea;
     let show: ReactNode;
     const itemIds = useMemo(() => taskShow.map(t => `task-${t.ID}`), [taskShow]);
 
     if (loadingTree) {
         show = <List
-            header={indexSmallFirst ? null : inputArea}
-            footer={indexSmallFirst ? inputArea : null}
+            header={indexSmallFirst ? null : shownInput}
+            footer={indexSmallFirst ? shownInput : null}
             // dataSource={taskShow}
             loading={{
                 spinning: loadingTree,
@@ -284,8 +295,8 @@ export function TaskList({
             <List
                 className="task-list"
                 // loading={loadingTree}
-                header={indexSmallFirst ? null : inputArea}
-                footer={indexSmallFirst ? inputArea : null}
+                header={indexSmallFirst ? null : shownInput}
+                footer={indexSmallFirst ? shownInput : null}
                 dataSource={taskShow.length > 0 ? taskShow : undefined}
                 locale={{emptyText: <div>---添加你的第一个任务吧🥰---</div>}} // 彻底隐藏空状态
                 renderItem={(item) => (
@@ -304,6 +315,7 @@ export function TaskList({
                             tree={tree}
                             selectMode={selectMode}
                             onSelModeSelect={onSelModeSelect}
+                            keyword={keyword}
                         />
                     </List.Item>
                 )}
