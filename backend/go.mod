@@ -13,7 +13,7 @@ require (
 	github.com/gin-gonic/gin v1.9.1
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/websocket v1.5.0
-	github.com/intmian/gorm-d1-adapter v0.0.0-20260710141231-e21e83b1f399
+	github.com/intmian/gorm-d1-adapter v0.0.0-20261117135530-1bcbea040c4a
 	github.com/intmian/mian_go_lib v0.0.0-20260119032423-6cbac09c2b60
 	github.com/pkg/errors v0.9.1
 	github.com/robfig/cron v1.2.0

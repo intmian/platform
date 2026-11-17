@@ -27,7 +27,7 @@ type RoutineNodeDB struct {
 	Folder    bool   // 分组节点：只用于组织子项，自身不参与勾选
 	Optional  bool   // 可选项（默认必选）
 	Temp      bool   // 仅本轮的临时项
-	Paused    bool   // 停用：留着不删，但不参与勾选、进度和逾期。不能加 default tag（D1 适配器读不到列默认值，会让下次自动迁移失败）
+	Paused    bool   // 停用：留着不删，但不参与勾选、进度和逾期
 	Rule      string // 周期规则 JSON，空表示继承上级
 	Mark      string // 当前完成标记，语义由前端按生效规则解释
 	PrevMark  string
