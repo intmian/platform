@@ -572,7 +572,7 @@ export interface DayDigest {
     coverage: DigestCoverage[];
 }
 
-// 关注关键词的联网搜索结果（模型 web_search），取代旧的 GoogleNews
+// 关注关键词的搜索结果（DeepSeek Search API + cheap 队列筛选），取代旧的 GoogleNews
 export interface KeywordNewsItem {
     title: string;
     url: string;

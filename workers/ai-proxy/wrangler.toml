@@ -2,8 +2,15 @@
 name = "platform-openai-proxy"
 main = "worker.js"
 compatibility_date = "2026-11-01"
-workers_dev = true
+# 已下线：香港服务器经 Worker 访问 OpenAI 仍被判定为香港，公网入口关闭，代码保留。
+workers_dev = false
+preview_urls = false
 
-# 固定在新加坡 AWS 机房附近运行，出口不在香港。
-[placement]
-region = "aws:ap-southeast-1"
+# 上游请求由固定在美国西部的 Durable Object 发出，见 worker.js。
+[[durable_objects.bindings]]
+name = "UPSTREAM_RELAY"
+class_name = "UpstreamRelay"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["UpstreamRelay"]

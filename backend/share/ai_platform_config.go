@@ -63,8 +63,9 @@ var fixedAIBusinesses = [...]AIBusinessConfig{
 	{Scene: AISceneSummary, Type: ai.ModelTypeText},
 	{Scene: AISceneTranslate, Type: ai.ModelTypeText},
 	{Scene: AISceneLibraryReviewDigest, Type: ai.ModelTypeText},
-	{Scene: AISceneWebSearch, Type: ai.ModelTypeText},
+	{Scene: AISceneKeywordNews, Type: ai.ModelTypeText},
 	{Scene: AISceneTranscribe, Type: ai.ModelTypeSTT},
+	{Scene: AISceneWebSearch, Type: ai.ModelTypeSearch},
 }
 
 type AIPlatformConfig struct {
@@ -108,11 +109,9 @@ type AITextQueueRequest struct {
 	Input string
 	// JSONSchema 非空时要求按结构输出 JSON。
 	JSONSchema *ai.ChatJSONSchema
-	// RequireWebSearch 为 true 时强制带上 web_search 工具，并跳过不支持它的模型。
-	RequireWebSearch bool
 }
 
-// AITextQueueResponse 在文本结果之外带上模型原始响应（引用、搜索动作、用量）。
+// AITextQueueResponse 在文本结果之外带上模型原始响应（引用、用量）。
 type AITextQueueResponse struct {
 	AITextQueueRunResult
 	Response ai.ChatResponse
@@ -444,7 +443,7 @@ func isFixedAIBusiness(scene AIScene, modelType ai.ModelType) bool {
 
 func isValidAIModelType(modelType ai.ModelType) bool {
 	switch modelType {
-	case ai.ModelTypeText, ai.ModelTypeSTT:
+	case ai.ModelTypeText, ai.ModelTypeSTT, ai.ModelTypeSearch:
 		return true
 	default:
 		return false
@@ -482,8 +481,11 @@ func ResolveAIModelCallProtocol(providerProtocol AIProviderProtocol, model ai.Mo
 			return ai.ModelCallProtocolOpenAISTT, nil
 		}
 	case AIProviderProtocolDeepSeek:
-		if model.Type == ai.ModelTypeText {
+		switch model.Type {
+		case ai.ModelTypeText:
 			return ai.ModelCallProtocolDeepSeekText, nil
+		case ai.ModelTypeSearch:
+			return ai.ModelCallProtocolDeepSeekSearch, nil
 		}
 	default:
 		return "", fmt.Errorf("provider protocol %q cannot infer a model call protocol", providerProtocol)
@@ -493,7 +495,7 @@ func ResolveAIModelCallProtocol(providerProtocol AIProviderProtocol, model ai.Mo
 
 func sourceTypeForAIModelCallProtocol(protocol ai.ModelCallProtocol) (ai.ProviderSourceType, error) {
 	switch protocol {
-	case ai.ModelCallProtocolDeepSeekText:
+	case ai.ModelCallProtocolDeepSeekText, ai.ModelCallProtocolDeepSeekSearch:
 		return ai.ProviderSourceTypeDeepSeek, nil
 	case ai.ModelCallProtocolOpenAIText,
 		ai.ModelCallProtocolOpenAISTT,
@@ -603,7 +605,7 @@ func (c *SceneAI) ChatContext(ctx context.Context, prompt string) (string, error
 	return result.Text, nil
 }
 
-// Request 用场景绑定的队列执行一次完整请求（可带结构化输出、联网搜索）。
+// Request 用场景绑定的队列执行一次完整请求（可带结构化输出）。
 func (c *SceneAI) Request(ctx context.Context, req AITextQueueRequest) (AITextQueueResponse, error) {
 	if c == nil {
 		return AITextQueueResponse{}, errors.New("scene ai is nil")
@@ -659,13 +661,6 @@ func (c AIPlatformConfig) RunTextQueueRequest(ctx context.Context, queueID strin
 			errs = append(errs, fmt.Errorf("%s/%s: %w", item.Provider.ID, item.Model.ID, err))
 			continue
 		}
-		if req.RequireWebSearch && (callProtocol != ai.ModelCallProtocolOpenAIText || !slices.Contains(item.Model.Tools, ai.ChatToolWebSearch)) {
-			attempt.Error = "model does not support web_search"
-			attempt.DurationMS = time.Since(startedAt).Milliseconds()
-			result.Attempts = append(result.Attempts, attempt)
-			errs = append(errs, fmt.Errorf("%s/%s: %s", item.Provider.ID, item.Model.ID, attempt.Error))
-			continue
-		}
 		sourceType, sourceErr := sourceTypeForAIModelCallProtocol(callProtocol)
 		if sourceErr != nil {
 			attempt.Error = sourceErr.Error()
@@ -706,16 +701,12 @@ func (c AIPlatformConfig) RunTextQueueRequest(ctx context.Context, queueID strin
 				thinking = ai.ThinkingTypeEnabled
 			}
 		}
-		tools := append([]ai.ChatTool(nil), item.Setting.Tools...)
-		if req.RequireWebSearch && !slices.Contains(tools, ai.ChatToolWebSearch) {
-			tools = append(tools, ai.ChatToolWebSearch)
-		}
 		resp, err := provider.Chat(ctx, ai.ChatRequest{
 			Model:           string(item.Model.ID),
 			Messages:        []ai.ChatMessage{{Role: ai.ChatRoleUser, Content: input}},
 			ReasoningEffort: reasoningEffort,
 			Thinking:        thinking,
-			Tools:           tools,
+			Tools:           item.Setting.Tools,
 			JSONSchema:      req.JSONSchema,
 		})
 		if err != nil {

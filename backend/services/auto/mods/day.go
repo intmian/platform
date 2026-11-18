@@ -446,9 +446,9 @@ func (d *Day) searchKeywordNewsForReport(keys []string, now time.Time) []Keyword
 	if len(keywords) == 0 {
 		return nil
 	}
-	searcher, err := backendshare.NewSceneAI(setting.GCfg, backendshare.AISceneWebSearch)
+	config, err := backendshare.GetAIPlatformConfig(setting.GCfg)
 	if err != nil {
-		tool.GLog.WarningErr("auto.Day", errors.Join(errors.New("web search scene unavailable"), err))
+		tool.GLog.WarningErr("auto.Day", errors.Join(errors.New("ai config unavailable"), err))
 		groups := make([]KeywordNewsGroup, 0, len(keywords))
 		for _, keyword := range keywords {
 			groups = append(groups, KeywordNewsGroup{Keyword: keyword, News: []KeywordNewsItem{}, Error: err.Error()})
@@ -456,7 +456,7 @@ func (d *Day) searchKeywordNewsForReport(keys []string, now time.Time) []Keyword
 		return groups
 	}
 	day := now.In(beijingLocation()).AddDate(0, 0, -1).Format("2006-01-02")
-	return searchAllKeywordNews(context.Background(), searcher, keywords, day, d.previousKeywordNews(now))
+	return searchAllKeywordNews(context.Background(), platformKeywordNewsAI{config: config}, keywords, day, d.previousKeywordNews(now))
 }
 
 // previousKeywordNews 读取前一天日报里每个关键词已经报道过的新闻，用于跨天去重。

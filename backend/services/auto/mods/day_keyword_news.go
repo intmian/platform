@@ -16,7 +16,7 @@ import (
 	backendshare "github.com/intmian/platform/backend/share"
 )
 
-// KeywordNewsGroup 是一个关键词当天的联网搜索结果，取代旧的 GoogleNews（RSS）。
+// KeywordNewsGroup 是一个关键词当天的搜索结果，取代旧的 GoogleNews（RSS）。
 type KeywordNewsGroup struct {
 	Keyword string `json:"keyword"`
 	// Summary 是当天动态的一句话概括；为空表示没有新动态。
@@ -42,10 +42,51 @@ const (
 	keywordNewsMaxItems    = 8
 	keywordNewsConcurrency = 3
 	keywordNewsTimeout     = 4 * time.Minute
+	// keywordNewsSearchCount 取接口上限：按请求次数计费，多取结果不加搜索费。
+	keywordNewsSearchCount = 50
+	// 搜索语法也算在查询长度里，接口上限是 128 个字符。
+	keywordNewsMaxKeywordRunes = 90
+	keywordNewsCandidateRunes  = 300
 )
 
-type keywordNewsSearcher interface {
+// keywordNewsAI 是关键词新闻依赖的两步：搜索网页、用模型筛选。
+type keywordNewsAI interface {
+	SearchWeb(ctx context.Context, req backendshare.AIWebSearchRequest) ([]backendshare.AIWebSearchResult, error)
 	Request(ctx context.Context, req backendshare.AITextQueueRequest) (backendshare.AITextQueueResponse, error)
+}
+
+type platformKeywordNewsAI struct {
+	config backendshare.AIPlatformConfig
+}
+
+func (a platformKeywordNewsAI) SearchWeb(ctx context.Context, req backendshare.AIWebSearchRequest) ([]backendshare.AIWebSearchResult, error) {
+	ret, err := a.config.RunWebSearchScene(ctx, backendshare.AISceneWebSearch, req)
+	return ret.Results, err
+}
+
+func (a platformKeywordNewsAI) Request(ctx context.Context, req backendshare.AITextQueueRequest) (backendshare.AITextQueueResponse, error) {
+	queueID, err := a.config.QueueIDForScene(backendshare.AISceneKeywordNews, ai.ModelTypeText)
+	if err != nil {
+		return backendshare.AITextQueueResponse{}, err
+	}
+	return a.config.RunTextQueueRequest(ctx, queueID, req)
+}
+
+// keywordNewsCandidate 是一条送去筛选的搜索结果，Published 已换算成北京时间的日期。
+type keywordNewsCandidate struct {
+	backendshare.AIWebSearchResult
+	Published string
+}
+
+// keywordNewsSelection 是模型对一条候选的处理结果，Ref 是候选编号，链接由代码按编号取，模型编不出来。
+type keywordNewsSelection struct {
+	Ref       int    `json:"ref"`
+	Title     string `json:"title"`
+	Source    string `json:"source"`
+	Published string `json:"published"`
+	Kind      string `json:"kind"`
+	Caution   string `json:"caution"`
+	Summary   string `json:"summary"`
 }
 
 func keywordNewsSchema() *ai.ChatJSONSchema {
@@ -53,9 +94,10 @@ func keywordNewsSchema() *ai.ChatJSONSchema {
 	item := map[string]any{
 		"type":                 "object",
 		"additionalProperties": false,
-		"required":             []string{"title", "url", "source", "published", "kind", "caution", "summary"},
+		"required":             []string{"ref", "title", "source", "published", "kind", "caution", "summary"},
 		"properties": map[string]any{
-			"title": str, "url": str, "source": str, "published": str, "caution": str, "summary": str,
+			"ref":   map[string]any{"type": "integer"},
+			"title": str, "source": str, "published": str, "caution": str, "summary": str,
 			"kind": map[string]any{"type": "string", "enum": []string{"新闻", "爆料", "前瞻", "讨论"}},
 		},
 	}
@@ -74,10 +116,56 @@ func keywordNewsSchema() *ai.ChatJSONSchema {
 	}
 }
 
-func buildKeywordNewsPrompt(keyword string, day string, previous []KeywordNewsItem) string {
+// buildKeywordNewsQuery 只搜一次，不限语言：实测限定中文会明显漏掉海外来源。
+func buildKeywordNewsQuery(keyword string, day string) string {
+	runes := []rune(keyword)
+	if len(runes) > keywordNewsMaxKeywordRunes {
+		runes = runes[:keywordNewsMaxKeywordRunes]
+	}
+	target, err := time.Parse("2006-01-02", day)
+	if err != nil {
+		return string(runes)
+	}
+	return fmt.Sprintf("%s after:%s before:%s", string(runes), target.AddDate(0, 0, -1).Format("2006-01-02"), target.AddDate(0, 0, 2).Format("2006-01-02"))
+}
+
+// publishedInBeijing 把接口返回的 UTC 时间换算成北京时间的日期，无法解析时返回空。
+func publishedInBeijing(raw string) string {
+	parsed, err := time.Parse(time.RFC3339, strings.TrimSpace(raw))
+	if err != nil {
+		return ""
+	}
+	return parsed.In(beijingLocation()).Format("2006-01-02")
+}
+
+// selectKeywordCandidates 在调用模型前去掉日期不符、前一天报过和重复的结果，省下模型费用。
+func selectKeywordCandidates(results []backendshare.AIWebSearchResult, day string, previous []KeywordNewsItem) []keywordNewsCandidate {
+	seen := map[string]bool{}
+	for _, item := range previous {
+		if key := normalizeNewsURL(item.URL); key != "" {
+			seen[key] = true
+		}
+	}
+	candidates := make([]keywordNewsCandidate, 0, len(results))
+	for _, result := range results {
+		key := normalizeNewsURL(result.URL)
+		if key == "" || seen[key] || !strings.HasPrefix(result.URL, "http") {
+			continue
+		}
+		published, inWindow := normalizeNewsPublished(publishedInBeijing(result.Date), day)
+		if !inWindow {
+			continue
+		}
+		seen[key] = true
+		candidates = append(candidates, keywordNewsCandidate{AIWebSearchResult: result, Published: published})
+	}
+	return candidates
+}
+
+func buildKeywordNewsPrompt(keyword string, day string, candidates []keywordNewsCandidate, previous []KeywordNewsItem) string {
 	var b strings.Builder
 	fmt.Fprintf(&b, `你是一名资讯编辑，替读者盯着他关注的关键词：有什么风吹草动都要告诉他，宁可多收，不要漏掉。
-请用网络搜索查找「%s」的最新动态，重点是 %s（北京时间）这一天，前后一天内发布的也算。
+下面是「%s」的搜索结果，请挑出 %s（北京时间）这一天的动态，前后一天内发布的也算。
 
 收录范围（kind 字段）：
 - 新闻：产品发布与更新、官方公告、监管与诉讼、行业动态、重要数据。
@@ -93,7 +181,6 @@ func buildKeywordNewsPrompt(keyword string, day string, previous []KeywordNewsIt
 
 要求：
 - 关键词可能是缩写或有歧义，按它最常见的含义理解。
-- 至少分别用中文和英文搜索一次（例如「苹果眼镜」也要搜 Apple smart glasses），没搜到合适结果时换个说法再搜。
 - 同一事件只保留一条，优先官方或更可靠来源的原文。
 - 最多 %d 条；确实没有就返回空数组。
 `, keyword, day, keywordNewsMaxItems)
@@ -105,10 +192,22 @@ func buildKeywordNewsPrompt(keyword string, day string, previous []KeywordNewsIt
 	}
 	b.WriteString(`
 输出字段：
-- summary：用一句中文（不超过 60 字）直接概括这个关键词的最新动态，传闻要写明是传闻；不要描述你的搜索过程；没有收录任何内容时为空字符串。
-- items：每条包含 title（中文标题，非中文原文要翻译）、url（实际搜索到的原文链接，不要编造或改写）、source（媒体或平台名）、published（原文发布日期，YYYY-MM-DD；拿不准就填空字符串，不要因此丢弃）、kind、caution、summary（一句中文概要）。
+- summary：用一句中文（不超过 60 字）直接概括这个关键词的最新动态，传闻要写明是传闻；只写动态本身，不要提筛选过程或没收录什么；没有收录任何内容时为空字符串。
+- items：每条包含 ref（候选编号，只能从下面的候选里选）、title（中文标题，非中文原文要翻译）、source（媒体或平台名）、published（原文发布日期，YYYY-MM-DD；拿不准就填空字符串，不要因此丢弃）、kind、caution、summary（一句中文概要）。
 - 所有文字字段里不要附加链接、网址或引用标记。
+
+候选（编号 | 标题 | 来源 | 发布日期 | 来源权威等级，-1 表示未知 | 摘要）：
 `)
+	for i, candidate := range candidates {
+		summary := candidate.Summary
+		if strings.TrimSpace(summary) == "" {
+			summary = candidate.Snippet
+		}
+		if runes := []rune(summary); len(runes) > keywordNewsCandidateRunes {
+			summary = string(runes[:keywordNewsCandidateRunes])
+		}
+		fmt.Fprintf(&b, "[%d] %s | %s | %s | %d | %s\n", i, candidate.Title, candidate.SiteName, candidate.Published, candidate.Authority, summary)
+	}
 	return b.String()
 }
 
@@ -124,22 +223,6 @@ func cleanNewsText(text string) string {
 	return strings.TrimSpace(text)
 }
 
-// cleanNewsURL 去掉 OpenAI 搜索给链接追加的 utm_source=openai。
-func cleanNewsURL(raw string) string {
-	raw = strings.TrimSpace(raw)
-	parsed, err := url.Parse(raw)
-	if err != nil || parsed.RawQuery == "" {
-		return raw
-	}
-	query := parsed.Query()
-	if query.Get("utm_source") != "openai" {
-		return raw
-	}
-	query.Del("utm_source")
-	parsed.RawQuery = query.Encode()
-	return parsed.String()
-}
-
 // normalizeNewsURL 用于比较链接是否相同：忽略协议、www、查询参数和末尾斜杠。
 func normalizeNewsURL(raw string) string {
 	parsed, err := url.Parse(strings.TrimSpace(raw))
@@ -148,26 +231,6 @@ func normalizeNewsURL(raw string) string {
 	}
 	host := strings.TrimPrefix(strings.ToLower(parsed.Hostname()), "www.")
 	return host + strings.TrimRight(parsed.EscapedPath(), "/")
-}
-
-// searchedURLs 收集模型这次实际看到过的链接（搜索结果来源、打开过的网页、引用）。
-func searchedURLs(resp ai.ChatResponse) map[string]bool {
-	seen := map[string]bool{}
-	add := func(raw string) {
-		if key := normalizeNewsURL(raw); key != "" {
-			seen[key] = true
-		}
-	}
-	for _, search := range resp.WebSearches {
-		add(search.URL)
-		for _, source := range search.Sources {
-			add(source)
-		}
-	}
-	for _, citation := range resp.Citations {
-		add(citation.URL)
-	}
-	return seen
 }
 
 // normalizeNewsPublished 判断发布日期是否可以收录，目标日前后各放宽一天：海外媒体的日期和北京时间常差一天，
@@ -191,9 +254,41 @@ func normalizeNewsPublished(published string, day string) (string, bool) {
 	return published, true
 }
 
-// filterKeywordNews 是模型输出之后的代码兜底，替代原先 RSS 的标题相似度去重：
-// 日期在收录范围内、链接必须真实被搜到过、不和前一天重复、同一链接只留一条。
-func filterKeywordNews(items []KeywordNewsItem, day string, searched map[string]bool, previous []KeywordNewsItem) ([]KeywordNewsItem, int) {
+// buildKeywordNewsItems 把模型的选择还原成新闻条目：链接和已知日期都以搜索结果为准。
+func buildKeywordNewsItems(selections []keywordNewsSelection, candidates []keywordNewsCandidate) ([]KeywordNewsItem, int) {
+	items := make([]KeywordNewsItem, 0, len(selections))
+	dropped := 0
+	for _, selection := range selections {
+		if selection.Ref < 0 || selection.Ref >= len(candidates) {
+			dropped++
+			continue
+		}
+		candidate := candidates[selection.Ref]
+		item := KeywordNewsItem{
+			Title:     selection.Title,
+			URL:       candidate.URL,
+			Source:    selection.Source,
+			Published: candidate.Published,
+			Summary:   selection.Summary,
+			Kind:      selection.Kind,
+			Caution:   selection.Caution,
+		}
+		if strings.TrimSpace(item.Title) == "" {
+			item.Title = candidate.Title
+		}
+		if strings.TrimSpace(item.Source) == "" {
+			item.Source = candidate.SiteName
+		}
+		if item.Published == "" {
+			item.Published = selection.Published
+		}
+		items = append(items, item)
+	}
+	return items, dropped
+}
+
+// filterKeywordNews 是模型输出之后的代码兜底：日期在收录范围内、不和前一天重复、同一链接只留一条。
+func filterKeywordNews(items []KeywordNewsItem, day string, previous []KeywordNewsItem) ([]KeywordNewsItem, int) {
 	excluded := map[string]bool{}
 	for _, item := range previous {
 		if key := normalizeNewsURL(item.URL); key != "" {
@@ -204,7 +299,7 @@ func filterKeywordNews(items []KeywordNewsItem, day string, searched map[string]
 	dropped := 0
 	for _, item := range items {
 		item.Title = cleanNewsText(item.Title)
-		item.URL = cleanNewsURL(item.URL)
+		item.URL = strings.TrimSpace(item.URL)
 		item.Source = cleanNewsText(item.Source)
 		item.Summary = cleanNewsText(item.Summary)
 		item.Caution = cleanNewsText(item.Caution)
@@ -214,7 +309,6 @@ func filterKeywordNews(items []KeywordNewsItem, day string, searched map[string]
 		switch {
 		case item.Title == "" || key == "" || !strings.HasPrefix(item.URL, "http"):
 		case !inWindow:
-		case len(searched) > 0 && !searched[key]:
 		case excluded[key]:
 		case len(result) >= keywordNewsMaxItems:
 		default:
@@ -227,50 +321,57 @@ func filterKeywordNews(items []KeywordNewsItem, day string, searched map[string]
 	return result, dropped
 }
 
-func searchKeywordNews(ctx context.Context, searcher keywordNewsSearcher, keyword string, day string, previous []KeywordNewsItem) KeywordNewsGroup {
+func searchKeywordNews(ctx context.Context, newsAI keywordNewsAI, keyword string, day string, previous []KeywordNewsItem) KeywordNewsGroup {
 	group := KeywordNewsGroup{Keyword: keyword, News: []KeywordNewsItem{}}
-	ret, err := searcher.Request(ctx, backendshare.AITextQueueRequest{
-		Input:            buildKeywordNewsPrompt(keyword, day, previous),
-		JSONSchema:       keywordNewsSchema(),
-		RequireWebSearch: true,
+	results, err := newsAI.SearchWeb(ctx, backendshare.AIWebSearchRequest{
+		Query:    buildKeywordNewsQuery(keyword, day),
+		Count:    keywordNewsSearchCount,
+		Question: keyword + " 的最新新闻、爆料、前瞻和论坛讨论",
 	})
 	if err != nil {
 		group.Error = err.Error()
 		keywordNewsWarn(errors.Join(fmt.Errorf("keyword news search %q failed", keyword), err))
 		return group
 	}
+	candidates := selectKeywordCandidates(results, day, previous)
+	if len(candidates) == 0 {
+		keywordNewsInfo("keyword news %q: results=%d candidates=0", keyword, len(results))
+		return group
+	}
+
+	ret, err := newsAI.Request(ctx, backendshare.AITextQueueRequest{
+		Input:      buildKeywordNewsPrompt(keyword, day, candidates, previous),
+		JSONSchema: keywordNewsSchema(),
+	})
+	if err != nil {
+		group.Error = err.Error()
+		keywordNewsWarn(errors.Join(fmt.Errorf("keyword news filter %q failed", keyword), err))
+		return group
+	}
 	var parsed struct {
-		Summary string            `json:"summary"`
-		Items   []KeywordNewsItem `json:"items"`
+		Summary string                 `json:"summary"`
+		Items   []keywordNewsSelection `json:"items"`
 	}
 	if err := json.Unmarshal([]byte(trimJSONEnvelope(ret.Text)), &parsed); err != nil {
 		group.Error = "模型输出不是合法 JSON"
 		keywordNewsWarn(errors.Join(fmt.Errorf("keyword news %q json error", keyword), err))
 		return group
 	}
-	news, dropped := filterKeywordNews(parsed.Items, day, searchedURLs(ret.Response), previous)
+	items, invalid := buildKeywordNewsItems(parsed.Items, candidates)
+	news, dropped := filterKeywordNews(items, day, previous)
 	group.News = news
 	if len(news) > 0 {
 		group.Summary = cleanNewsText(parsed.Summary)
 	}
 
-	searches := 0
-	for _, search := range ret.Response.WebSearches {
-		if search.Action == "search" {
-			searches++
-		}
-	}
 	usage := ret.Response.Usage
-	if usage.WebSearchRequests > 0 {
-		searches = int(usage.WebSearchRequests)
-	}
-	keywordNewsInfo("keyword news %q: model=%s/%s searches=%d input=%d(cached %d) output=%d items=%d dropped=%d",
-		keyword, ret.ProviderID, ret.ModelID, searches, usage.InputTokens, usage.CachedInputTokens, usage.OutputTokens, len(news), dropped)
+	keywordNewsInfo("keyword news %q: model=%s/%s results=%d candidates=%d input=%d(cached %d) output=%d items=%d dropped=%d",
+		keyword, ret.ProviderID, ret.ModelID, len(results), len(candidates), usage.InputTokens, usage.CachedInputTokens, usage.OutputTokens, len(news), invalid+dropped)
 	return group
 }
 
 // searchAllKeywordNews 并发搜索所有关键词，结果顺序与 keywords 一致；单个失败只影响它自己。
-func searchAllKeywordNews(ctx context.Context, searcher keywordNewsSearcher, keywords []string, day string, previous map[string][]KeywordNewsItem) []KeywordNewsGroup {
+func searchAllKeywordNews(ctx context.Context, newsAI keywordNewsAI, keywords []string, day string, previous map[string][]KeywordNewsItem) []KeywordNewsGroup {
 	groups := make([]KeywordNewsGroup, len(keywords))
 	sem := make(chan struct{}, keywordNewsConcurrency)
 	var wg sync.WaitGroup
@@ -282,7 +383,7 @@ func searchAllKeywordNews(ctx context.Context, searcher keywordNewsSearcher, key
 			defer func() { <-sem }()
 			callCtx, cancel := context.WithTimeout(ctx, keywordNewsTimeout)
 			defer cancel()
-			groups[i] = searchKeywordNews(callCtx, searcher, keyword, day, previous[keyword])
+			groups[i] = searchKeywordNews(callCtx, newsAI, keyword, day, previous[keyword])
 		}(i, keyword)
 	}
 	wg.Wait()

@@ -63,10 +63,11 @@ const SOURCE_OPTIONS = [
 const MODEL_TYPE_OPTIONS = [
     {value: "text", label: "文本生成"},
     {value: "stt", label: "语音转写"},
+    {value: "search", label: "联网搜索"},
 ];
 
 function modelTypeLabel(type: ModelType): string {
-    return type === "stt" ? "语音转写" : "文本生成";
+    return MODEL_TYPE_OPTIONS.find((option) => option.value === type)?.label ?? type;
 }
 
 const MODEL_CALL_PROTOCOL_OPTIONS: Record<ModelType, {value: ModelCallProtocol, label: string}[]> = {
@@ -79,6 +80,9 @@ const MODEL_CALL_PROTOCOL_OPTIONS: Record<ModelType, {value: ModelCallProtocol, 
         {value: "DashScopeQwen3ASR", label: "DashScope 千问3-ASR-Flash（同步，不支持 filetrans）"},
         {value: "DashScopeFunASR", label: "DashScope Fun-ASR-Flash"},
         {value: "DashScopeFunASRRealtime", label: "DashScope Fun-ASR 实时（8 kHz）"},
+    ],
+    search: [
+        {value: "DeepSeekSearch", label: "DeepSeek 搜索"},
     ],
 };
 
@@ -99,8 +103,9 @@ const BUSINESS_DEFINITIONS: {scene: string, label: string, type: ModelType}[] = 
     {scene: "summary", label: "新闻汇总", type: "text"},
     {scene: "translate", label: "翻译", type: "text"},
     {scene: "library_review_digest", label: "阅读笔记整理", type: "text"},
-    {scene: "web_search", label: "联网搜索（日报关键词新闻）", type: "text"},
+    {scene: "keyword_news", label: "日报关键词筛选", type: "text"},
     {scene: "transcribe", label: "语音转写", type: "stt"},
+    {scene: "web_search", label: "联网搜索", type: "search"},
 ];
 
 function Field({label, children}: {label: string, children: ReactNode}) {
@@ -134,11 +139,14 @@ function modelDisplayName(value: AIPlatformConfig, providerID: string, modelID: 
 }
 
 function inheritedCallProtocolLabel(providerProtocol: ProviderProtocol, modelType: ModelType): string {
+    const noDefault = "无默认协议，需手动选择";
     if (providerProtocol === "OpenAI") {
-        return modelType === "text" ? "OpenAI 文字" : "OpenAI STT";
+        if (modelType === "text") return "OpenAI 文字";
+        return modelType === "stt" ? "OpenAI STT" : noDefault;
     }
     if (providerProtocol === "DeepSeek") {
-        return modelType === "text" ? "DeepSeek 文字" : "无默认协议，需手动选择";
+        if (modelType === "text") return "DeepSeek 文字";
+        return modelType === "search" ? "DeepSeek 搜索" : noDefault;
     }
     return "无默认协议";
 }
@@ -146,8 +154,14 @@ function inheritedCallProtocolLabel(providerProtocol: ProviderProtocol, modelTyp
 function resolvedCallProtocol(provider: AIProviderConfig | undefined, model: AIModelConfig | undefined): ModelCallProtocol | undefined {
     if (!provider || !model) return undefined;
     if (model.callProtocol) return model.callProtocol;
-    if (provider.protocol === "OpenAI") return model.type === "text" ? "OpenAIText" : "OpenAISTT";
-    if (provider.protocol === "DeepSeek" && model.type === "text") return "DeepSeekText";
+    if (provider.protocol === "OpenAI") {
+        if (model.type === "text") return "OpenAIText";
+        return model.type === "stt" ? "OpenAISTT" : undefined;
+    }
+    if (provider.protocol === "DeepSeek") {
+        if (model.type === "text") return "DeepSeekText";
+        return model.type === "search" ? "DeepSeekSearch" : undefined;
+    }
     return undefined;
 }
 
@@ -310,7 +324,7 @@ export function AISetting({extraTabs = []}: {extraTabs?: AISettingExtraTab[]}) {
         setQueueTestResult(null);
         try {
             const file = queue.type === "stt" ? (queueTestFile ?? createBuiltInSTTSampleFile()) : undefined;
-            const result = await testAIQueue(value, queue.id, queue.type === "text" ? queueTestInput : undefined, file);
+            const result = await testAIQueue(value, queue.id, queue.type === "stt" ? undefined : queueTestInput, file);
             setQueueTestResult(result);
         } catch (error) {
             message.error(error instanceof Error ? error.message : "Queue 测试失败");
@@ -380,7 +394,7 @@ export function AISetting({extraTabs = []}: {extraTabs?: AISettingExtraTab[]}) {
                 <Col xs={24} lg={8}><Field label="Token">
                     <Input.Password value={provider.token} onChange={(event) => updateProvider(providerIndex, {token: event.target.value})}/>
                 </Field></Col>
-                <Col xs={24} lg={16}><Field label="转发地址（可选，填 ai-proxy Worker 地址后经新加坡转发；留空直连）">
+                <Col xs={24} lg={16}><Field label="转发地址（可选，填 ai-proxy Worker 地址后经海外转发；留空直连）">
                     <Input
                         allowClear
                         placeholder="https://xxx.workers.dev"
@@ -549,7 +563,7 @@ export function AISetting({extraTabs = []}: {extraTabs?: AISettingExtraTab[]}) {
                 extra={<Space>
                     <Button icon={<ExperimentOutlined/>} onClick={() => {
                         setTestQueueIndex(queueIndex);
-                        setQueueTestInput("Hello，请用一句中文介绍你能做什么。");
+                        setQueueTestInput(queue.type === "search" ? "DeepSeek 最新消息" : "Hello，请用一句中文介绍你能做什么。");
                         setQueueTestFile(null);
                         setQueueTestResult(null);
                     }}>测试</Button>
@@ -787,11 +801,11 @@ export function AISetting({extraTabs = []}: {extraTabs?: AISettingExtraTab[]}) {
                     showIcon
                     message={`使用当前未保存的配置，按${modelTypeLabel(activeTestQueue.type)}模型顺序执行并自动回退。`}
                 />
-                {activeTestQueue.type === "text" ? <Field label="测试文字">
+                {activeTestQueue.type !== "stt" ? <Field label={activeTestQueue.type === "search" ? "搜索词" : "测试文字"}>
                     <Input.TextArea
-                        rows={5}
+                        rows={activeTestQueue.type === "search" ? 2 : 5}
                         value={queueTestInput}
-                        placeholder="输入要发送给模型的文字"
+                        placeholder={activeTestQueue.type === "search" ? "输入要搜索的内容" : "输入要发送给模型的文字"}
                         onChange={(event) => setQueueTestInput(event.target.value)}
                     />
                 </Field> : <Flex vertical gap={10}>
@@ -820,8 +834,8 @@ export function AISetting({extraTabs = []}: {extraTabs?: AISettingExtraTab[]}) {
                                 : undefined
                         )}
                     />
-                    {queueTestResult.outputText !== undefined && <Field label={activeTestQueue.type === "stt" ? "转写结果" : "模型输出"}>
-                        <Input.TextArea rows={5} readOnly value={queueTestResult.outputText}/>
+                    {queueTestResult.outputText !== undefined && <Field label={{text: "模型输出", stt: "转写结果", search: "搜索结果"}[activeTestQueue.type]}>
+                        <Input.TextArea rows={activeTestQueue.type === "search" ? 12 : 5} readOnly value={queueTestResult.outputText}/>
                     </Field>}
                     <Field label="调用尝试">
                         <Flex vertical gap={6}>

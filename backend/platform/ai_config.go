@@ -3,6 +3,7 @@ package platform
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strings"
 	"time"
@@ -13,7 +14,11 @@ import (
 	"github.com/intmian/platform/backend/share"
 )
 
-const maxAIQueueTestInputRunes = 100000
+const (
+	maxAIQueueTestInputRunes = 100000
+	maxAIQueueTestQueryRunes = 128
+	aiQueueTestSearchCount   = 5
+)
 
 type aiQueueTestResp struct {
 	Type       aiv2.ModelType `json:"type"`
@@ -164,9 +169,37 @@ func (m *webMgr) aiQueueTest(c *gin.Context) {
 			Duration:       result.Duration,
 			AIQueueRunMeta: meta,
 		}))
+	case aiv2.ModelTypeSearch:
+		query := strings.TrimSpace(c.PostForm("input"))
+		if query == "" {
+			c.JSON(200, makeErrReturn("search query is required"))
+			return
+		}
+		if utf8.RuneCountInString(query) > maxAIQueueTestQueryRunes {
+			c.JSON(200, makeErrReturn("search query is too long"))
+			return
+		}
+		result, _ := config.RunWebSearchQueue(ctx, queueID, share.AIWebSearchRequest{Query: query, Count: aiQueueTestSearchCount})
+		c.JSON(200, makeOkReturn(aiQueueTestResp{
+			Type:           queue.Type,
+			OutputText:     formatAIWebSearchResults(result.Results),
+			AIQueueRunMeta: result.AIQueueRunMeta,
+		}))
 	default:
 		c.JSON(200, makeErrReturn("unsupported ai queue type"))
 	}
+}
+
+// formatAIWebSearchResults 把搜索结果排成队列测试弹窗里能直接看的文字。
+func formatAIWebSearchResults(results []share.AIWebSearchResult) string {
+	if len(results) == 0 {
+		return "没有搜索结果"
+	}
+	var b strings.Builder
+	for i, result := range results {
+		fmt.Fprintf(&b, "%d. %s\n%s\n%s | %s\n\n", i+1, result.Title, result.URL, result.SiteName, result.Date)
+	}
+	return strings.TrimSpace(b.String())
 }
 
 func (m *webMgr) canManageAIConfig(c *gin.Context) bool {

@@ -7,103 +7,143 @@ import (
 	"sync"
 	"testing"
 
-	ai "github.com/intmian/mian_go_lib/tool/ai/v2"
 	backendshare "github.com/intmian/platform/backend/share"
 )
 
-type fakeKeywordSearcher struct {
-	mu      sync.Mutex
-	replies map[string]backendshare.AITextQueueResponse
-	errs    map[string]error
-	prompts []string
+type fakeKeywordAI struct {
+	mu         sync.Mutex
+	results    map[string][]backendshare.AIWebSearchResult
+	searchErrs map[string]error
+	replies    map[string]string
+	modelErrs  map[string]error
+	queries    []string
+	prompts    []string
 }
 
-func (f *fakeKeywordSearcher) Request(_ context.Context, req backendshare.AITextQueueRequest) (backendshare.AITextQueueResponse, error) {
+func (f *fakeKeywordAI) SearchWeb(_ context.Context, req backendshare.AIWebSearchRequest) ([]backendshare.AIWebSearchResult, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.queries = append(f.queries, req.Query)
+	keyword, _, _ := strings.Cut(req.Query, " after:")
+	if err := f.searchErrs[keyword]; err != nil {
+		return nil, err
+	}
+	return f.results[keyword], nil
+}
+
+func (f *fakeKeywordAI) Request(_ context.Context, req backendshare.AITextQueueRequest) (backendshare.AITextQueueResponse, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.prompts = append(f.prompts, req.Input)
-	if !req.RequireWebSearch || req.JSONSchema == nil {
-		return backendshare.AITextQueueResponse{}, errors.New("keyword search must require web search and json schema")
+	var ret backendshare.AITextQueueResponse
+	if req.JSONSchema == nil {
+		return ret, errors.New("keyword filter must use a json schema")
 	}
-	for keyword, err := range f.errs {
+	for keyword, err := range f.modelErrs {
 		if strings.Contains(req.Input, "「"+keyword+"」") {
-			return backendshare.AITextQueueResponse{}, err
+			return ret, err
 		}
 	}
 	for keyword, reply := range f.replies {
 		if strings.Contains(req.Input, "「"+keyword+"」") {
-			return reply, nil
+			ret.Text = reply
+			return ret, nil
 		}
 	}
-	return backendshare.AITextQueueResponse{}, errors.New("unexpected keyword")
-}
-
-func searchReply(text string, sources ...string) backendshare.AITextQueueResponse {
-	var ret backendshare.AITextQueueResponse
-	ret.Text = text
-	ret.Response = ai.ChatResponse{WebSearches: []ai.ChatWebSearch{{Action: "search", Sources: sources}}}
-	return ret
+	return ret, errors.New("unexpected keyword")
 }
 
 func TestFilterKeywordNews(t *testing.T) {
 	day := "2026-11-17"
-	searched := map[string]bool{
-		normalizeNewsURL("https://a.com/1"):   true,
-		normalizeNewsURL("https://b.com/2"):   true,
-		normalizeNewsURL("https://c.com/3"):   true,
-		normalizeNewsURL("https://old.com/x"): true,
-	}
 	items := []KeywordNewsItem{
 		{Title: "正常", URL: "https://www.a.com/1/?utm=x", Published: day},
 		{Title: "重复链接", URL: "https://a.com/1", Published: day},
 		{Title: "日期太旧", URL: "https://b.com/2", Published: "2026-11-15"},
-		{Title: "没被搜到", URL: "https://fake.com/9", Published: day},
 		{Title: "前一天报过", URL: "https://old.com/x", Published: day},
 		{Title: "", URL: "https://c.com/3", Published: day},
 	}
-	got, dropped := filterKeywordNews(items, day, searched, []KeywordNewsItem{{Title: "旧", URL: "https://old.com/x/"}})
-	if len(got) != 1 || got[0].Title != "正常" || dropped != 5 {
+	got, dropped := filterKeywordNews(items, day, []KeywordNewsItem{{Title: "旧", URL: "https://old.com/x/"}})
+	if len(got) != 1 || got[0].Title != "正常" || dropped != 4 {
 		t.Fatalf("unexpected filter result: %+v dropped=%d", got, dropped)
 	}
+}
 
-	// 拿不到搜索来源时（例如中转不返回）不做"是否被搜到"的校验
-	got, _ = filterKeywordNews([]KeywordNewsItem{{Title: "x", URL: "https://fake.com/9", Published: day}}, day, map[string]bool{}, nil)
-	if len(got) != 1 {
-		t.Fatalf("expected item kept without source info, got %+v", got)
+func TestBuildKeywordNewsQuery(t *testing.T) {
+	got := buildKeywordNewsQuery("苹果眼镜", "2026-11-17")
+	if got != "苹果眼镜 after:2026-11-16 before:2026-11-19" {
+		t.Fatalf("unexpected query: %q", got)
+	}
+	long := buildKeywordNewsQuery(strings.Repeat("长", 200), "2026-11-17")
+	if len([]rune(long)) > 128 {
+		t.Fatalf("query is too long: %d", len([]rune(long)))
+	}
+}
+
+func TestSelectKeywordCandidates(t *testing.T) {
+	day := "2026-11-17"
+	results := []backendshare.AIWebSearchResult{
+		{Title: "UTC 前一天，北京时间在范围内", URL: "https://a.com/1", Date: "2026-11-15T17:00:00Z"},
+		{Title: "太旧", URL: "https://a.com/2", Date: "2026-11-15T10:00:00Z"},
+		{Title: "日期未知也保留", URL: "https://a.com/3"},
+		{Title: "重复", URL: "https://www.a.com/1/?from=x", Date: "2026-11-17T00:00:00Z"},
+		{Title: "前一天报过", URL: "https://old.com/x", Date: "2026-11-17T00:00:00Z"},
+		{Title: "没有链接"},
+	}
+	got := selectKeywordCandidates(results, day, []KeywordNewsItem{{URL: "https://old.com/x"}})
+	if len(got) != 2 || got[0].Published != "2026-11-16" || got[1].Title != "日期未知也保留" || got[1].Published != "" {
+		t.Fatalf("unexpected candidates: %+v", got)
 	}
 }
 
 func TestSearchAllKeywordNews(t *testing.T) {
 	day := "2026-11-17"
-	searcher := &fakeKeywordSearcher{
-		replies: map[string]backendshare.AITextQueueResponse{
-			"gta6": searchReply(`{"summary":"GTA6 发售前热度持续。","items":[
-				{"title":"GTA6 预售破纪录","url":"https://a.com/gta","source":"A","published":"2026-11-17","summary":"预售。"},
-				{"title":"编造的","url":"https://fake.com/x","source":"F","published":"2026-11-17","summary":"假。"}
-			]}`, "https://a.com/gta"),
-			"ps6": searchReply(`{"summary":"只有不合格的条目。","items":[
-				{"title":"旧闻","url":"https://a.com/ps6","source":"A","published":"2026-11-10","summary":"旧。"}
-			]}`, "https://a.com/ps6"),
+	newsAI := &fakeKeywordAI{
+		results: map[string][]backendshare.AIWebSearchResult{
+			"gta6": {
+				{Title: "GTA 6 preorders", URL: "https://a.com/gta", SiteName: "A", Date: "2026-11-17T02:00:00Z"},
+				{Title: "no date", URL: "https://a.com/nodate", SiteName: "B"},
+			},
+			"ps6":  {{Title: "太旧", URL: "https://a.com/ps6", Date: "2026-11-10T00:00:00Z"}},
+			"fail": {{Title: "x", URL: "https://a.com/fail", Date: "2026-11-17T00:00:00Z"}},
 		},
-		errs: map[string]error{"fsd": errors.New("quota exceeded")},
+		searchErrs: map[string]error{"fsd": errors.New("quota exceeded")},
+		modelErrs:  map[string]error{"fail": errors.New("model down")},
+		replies: map[string]string{"gta6": `{"summary":"GTA6 发售前热度持续。","items":[
+			{"ref":0,"title":"GTA6 预售破纪录","source":"","published":"2020-01-01","kind":"新闻","caution":"","summary":"预售。"},
+			{"ref":1,"title":"日期由模型补","source":"B 站","published":"2026-11-16","kind":"讨论","caution":"","summary":"讨论。"},
+			{"ref":99,"title":"编造的编号","source":"F","published":"2026-11-17","kind":"新闻","caution":"","summary":"假。"}
+		]}`},
 	}
 	previous := map[string][]KeywordNewsItem{"gta6": {{Title: "GTA6 昨天的新闻", URL: "https://a.com/old"}}}
 
-	groups := searchAllKeywordNews(context.Background(), searcher, []string{"gta6", "ps6", "fsd"}, day, previous)
-	if len(groups) != 3 || groups[0].Keyword != "gta6" || groups[1].Keyword != "ps6" || groups[2].Keyword != "fsd" {
+	groups := searchAllKeywordNews(context.Background(), newsAI, []string{"gta6", "ps6", "fsd", "fail"}, day, previous)
+	if len(groups) != 4 || groups[0].Keyword != "gta6" || groups[3].Keyword != "fail" {
 		t.Fatalf("groups should keep keyword order: %+v", groups)
 	}
-	if len(groups[0].News) != 1 || groups[0].Summary == "" {
-		t.Fatalf("gta6 should keep one real item with summary: %+v", groups[0])
+	news := groups[0].News
+	if len(news) != 2 || groups[0].Summary == "" {
+		t.Fatalf("gta6 should keep two real items: %+v", groups[0])
 	}
-	if len(groups[1].News) != 0 || groups[1].Summary != "" {
-		t.Fatalf("ps6 summary should be cleared when no item survives: %+v", groups[1])
+	if news[0].URL != "https://a.com/gta" || news[0].Published != "2026-11-17" || news[0].Source != "A" {
+		t.Fatalf("url, date and source should come from the search result: %+v", news[0])
 	}
-	if groups[2].Error == "" || groups[2].News == nil {
-		t.Fatalf("fsd failure should be recorded without affecting others: %+v", groups[2])
+	if news[1].Published != "2026-11-16" {
+		t.Fatalf("model date should fill a missing search date: %+v", news[1])
+	}
+	if len(groups[1].News) != 0 || groups[1].Summary != "" || groups[1].Error != "" {
+		t.Fatalf("ps6 should have no news and no error: %+v", groups[1])
+	}
+	if groups[2].Error == "" || groups[2].News == nil || groups[3].Error == "" {
+		t.Fatalf("failures should be recorded per keyword: %+v %+v", groups[2], groups[3])
+	}
+	if len(newsAI.queries) != 4 {
+		t.Fatalf("each keyword should search exactly once: %v", newsAI.queries)
+	}
+	if len(newsAI.prompts) != 2 {
+		t.Fatalf("keywords without candidates should skip the model: %d prompts", len(newsAI.prompts))
 	}
 	foundPrevious := false
-	for _, prompt := range searcher.prompts {
+	for _, prompt := range newsAI.prompts {
 		if strings.Contains(prompt, "「gta6」") && strings.Contains(prompt, "GTA6 昨天的新闻") && strings.Contains(prompt, day) {
 			foundPrevious = true
 		}
@@ -131,16 +171,10 @@ func TestKeywordPushFallback(t *testing.T) {
 	}
 }
 
-func TestCleanNewsTextAndURL(t *testing.T) {
+func TestCleanNewsText(t *testing.T) {
 	got := cleanNewsText("黑客认罪。([ithome.com](https://www.ithome.com/1/028/285.htm?utm_source=openai)) 详见[原文](https://a.com)")
 	if got != "黑客认罪。 详见原文" {
 		t.Fatalf("unexpected cleaned text: %q", got)
-	}
-	if got := cleanNewsURL("https://a.com/x?id=1&utm_source=openai"); got != "https://a.com/x?id=1" {
-		t.Fatalf("unexpected cleaned url: %q", got)
-	}
-	if got := cleanNewsURL("https://a.com/x?utm_source=rss"); got != "https://a.com/x?utm_source=rss" {
-		t.Fatalf("non-openai utm should be kept: %q", got)
 	}
 }
 
