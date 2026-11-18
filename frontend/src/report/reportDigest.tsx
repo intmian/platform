@@ -1,12 +1,8 @@
 import {Card, Collapse, Space, Tag, Typography} from "antd";
-import type {DayDigest, KeywordBrief, RssItem, TopicBrief} from "../common/newSendHttp";
+import type {DayDigest, KeywordBrief, KeywordNewsGroup, RssItem, TopicBrief} from "../common/newSendHttp";
+import {formatPublished} from "./keywordNews";
 
 const {Text, Paragraph, Link} = Typography;
-
-type GoogleNewsGroup = {
-    KeyWord: string;
-    News: RssItem[];
-};
 
 type ResolvedSource = {
     ref: string;
@@ -20,7 +16,7 @@ type DigestConsoleProps = {
     digest: DayDigest;
     bbcNews: RssItem[];
     nytNews: RssItem[];
-    googleNews: GoogleNewsGroup[];
+    keywordNews: KeywordNewsGroup[];
 };
 
 function rssField(item: RssItem | undefined, lower: keyof RssItem, upper: keyof RssItem): string {
@@ -41,7 +37,7 @@ function cleanRssText(value: string): string {
         .trim();
 }
 
-function resolveSourceRef(ref: string, bbcNews: RssItem[], nytNews: RssItem[], googleNews: GoogleNewsGroup[]): ResolvedSource | null {
+function resolveSourceRef(ref: string, bbcNews: RssItem[], nytNews: RssItem[], keywordNews: KeywordNewsGroup[]): ResolvedSource | null {
     const parts = ref.split(":");
     if (parts.length < 2) {
         return null;
@@ -77,20 +73,21 @@ function resolveSourceRef(ref: string, bbcNews: RssItem[], nytNews: RssItem[], g
         };
     }
 
-    if (parts[0] === "google" && parts.length === 3) {
+    // kw:组:条 是新日报的关键词引用；google:组:条 是旧日报的，旧数据已按相同顺序转成 keywordNews
+    if ((parts[0] === "kw" || parts[0] === "google") && parts.length === 3) {
         const groupIndex = Number(parts[1]);
         const itemIndex = Number(parts[2]);
-        const group = googleNews[groupIndex];
-        const item = group?.News?.[itemIndex];
+        const group = keywordNews[groupIndex];
+        const item = group?.news?.[itemIndex];
         if (!Number.isInteger(groupIndex) || !Number.isInteger(itemIndex) || !group || !item) {
             return null;
         }
         return {
             ref,
-            label: `${group.KeyWord} #${itemIndex + 1}`,
-            title: cleanRssText(rssField(item, "title", "Title")),
-            link: rssField(item, "link", "Link"),
-            pubDate: rssField(item, "pubDate", "PubDate"),
+            label: `${group.keyword} #${itemIndex + 1}`,
+            title: cleanRssText(item.title),
+            link: item.url,
+            pubDate: item.published,
         };
     }
 
@@ -101,14 +98,14 @@ function sourceCountText(count: number): string {
     return count > 0 ? `查看来源 ${count} 条` : "暂无来源";
 }
 
-function SourceList({refs, bbcNews, nytNews, googleNews}: {
+function SourceList({refs, bbcNews, nytNews, keywordNews}: {
     refs: string[];
     bbcNews: RssItem[];
     nytNews: RssItem[];
-    googleNews: GoogleNewsGroup[];
+    keywordNews: KeywordNewsGroup[];
 }) {
     const sources = refs
-        .map(ref => resolveSourceRef(ref, bbcNews, nytNews, googleNews))
+        .map(ref => resolveSourceRef(ref, bbcNews, nytNews, keywordNews))
         .filter((source): source is ResolvedSource => source !== null);
 
     if (sources.length === 0) {
@@ -130,7 +127,7 @@ function SourceList({refs, bbcNews, nytNews, googleNews}: {
                                 : <Text>{source.title || source.ref}</Text>}
                         </Space>
                         {source.pubDate && <Text type="secondary" style={{display: "block", fontSize: 12, marginTop: 4}}>
-                            {new Date(source.pubDate).toLocaleString("zh-CN", {timeZone: "Asia/Shanghai"})}
+                            {formatPublished(source.pubDate, false)}
                         </Text>}
                     </div>
                 );
@@ -139,7 +136,7 @@ function SourceList({refs, bbcNews, nytNews, googleNews}: {
     );
 }
 
-function FocusSection({digest, bbcNews, nytNews, googleNews}: DigestConsoleProps) {
+function FocusSection({digest, bbcNews, nytNews, keywordNews}: DigestConsoleProps) {
     const items = digest.pushBrief?.importantNews?.length > 0 ? digest.pushBrief.importantNews : digest.importantNews || [];
     if (!items || items.length === 0) {
         return <Text type="secondary">暂无今日重点</Text>;
@@ -164,7 +161,7 @@ function FocusSection({digest, bbcNews, nytNews, googleNews}: DigestConsoleProps
                         </Space>
                     ),
                     children: (
-                        <SourceList refs={refs} bbcNews={bbcNews} nytNews={nytNews} googleNews={googleNews}/>
+                        <SourceList refs={refs} bbcNews={bbcNews} nytNews={nytNews} keywordNews={keywordNews}/>
                     ),
                     style: {borderBottom: "1px solid #f0f0f0"},
                 };
@@ -173,11 +170,11 @@ function FocusSection({digest, bbcNews, nytNews, googleNews}: DigestConsoleProps
     );
 }
 
-function TopicSection({topics, bbcNews, nytNews, googleNews}: {
+function TopicSection({topics, bbcNews, nytNews, keywordNews}: {
     topics: TopicBrief[];
     bbcNews: RssItem[];
     nytNews: RssItem[];
-    googleNews: GoogleNewsGroup[];
+    keywordNews: KeywordNewsGroup[];
 }) {
     if (!topics || topics.length === 0) {
         return <Text type="secondary">暂无重要主题</Text>;
@@ -200,7 +197,7 @@ function TopicSection({topics, bbcNews, nytNews, googleNews}: {
                     </Space>
                 ),
                 children: (
-                    <SourceList refs={topic.sourceRefs || []} bbcNews={bbcNews} nytNews={nytNews} googleNews={googleNews}/>
+                    <SourceList refs={topic.sourceRefs || []} bbcNews={bbcNews} nytNews={nytNews} keywordNews={keywordNews}/>
                 ),
                 style: {borderBottom: "1px solid #f0f0f0"},
             }))}
@@ -208,11 +205,11 @@ function TopicSection({topics, bbcNews, nytNews, googleNews}: {
     );
 }
 
-function KeywordSection({keywords, bbcNews, nytNews, googleNews}: {
+function KeywordSection({keywords, bbcNews, nytNews, keywordNews}: {
     keywords: KeywordBrief[];
     bbcNews: RssItem[];
     nytNews: RssItem[];
-    googleNews: GoogleNewsGroup[];
+    keywordNews: KeywordNewsGroup[];
 }) {
     if (!keywords || keywords.length === 0) {
         return <Text type="secondary">暂无关键词</Text>;
@@ -235,7 +232,7 @@ function KeywordSection({keywords, bbcNews, nytNews, googleNews}: {
                     </Space>
                 ),
                 children: (
-                    <SourceList refs={keyword.sourceRefs || []} bbcNews={bbcNews} nytNews={nytNews} googleNews={googleNews}/>
+                    <SourceList refs={keyword.sourceRefs || []} bbcNews={bbcNews} nytNews={nytNews} keywordNews={keywordNews}/>
                 ),
                 style: {borderBottom: "1px solid #f0f0f0"},
             }))}
@@ -243,7 +240,7 @@ function KeywordSection({keywords, bbcNews, nytNews, googleNews}: {
     );
 }
 
-export function DigestConsole({digest, bbcNews, nytNews, googleNews}: DigestConsoleProps) {
+export function DigestConsole({digest, bbcNews, nytNews, keywordNews}: DigestConsoleProps) {
     return (
         <Card title="日报导航" style={{
             marginBottom: "16px",
@@ -254,17 +251,17 @@ export function DigestConsole({digest, bbcNews, nytNews, googleNews}: DigestCons
             <Space direction="vertical" size={16} style={{width: "100%"}}>
                 <section>
                     <Text strong>今日重点</Text>
-                    <FocusSection digest={digest} bbcNews={bbcNews} nytNews={nytNews} googleNews={googleNews}/>
+                    <FocusSection digest={digest} bbcNews={bbcNews} nytNews={nytNews} keywordNews={keywordNews}/>
                 </section>
 
                 <section>
                     <Text strong>主题地图</Text>
-                    <TopicSection topics={digest.topicBriefs || []} bbcNews={bbcNews} nytNews={nytNews} googleNews={googleNews}/>
+                    <TopicSection topics={digest.topicBriefs || []} bbcNews={bbcNews} nytNews={nytNews} keywordNews={keywordNews}/>
                 </section>
 
                 <section>
                     <Text strong>关注新闻</Text>
-                    <KeywordSection keywords={digest.keywordBriefs || []} bbcNews={bbcNews} nytNews={nytNews} googleNews={googleNews}/>
+                    <KeywordSection keywords={digest.keywordBriefs || []} bbcNews={bbcNews} nytNews={nytNews} keywordNews={keywordNews}/>
                 </section>
             </Space>
         </Card>

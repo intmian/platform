@@ -5,6 +5,8 @@ import {Button, Card, Col, Collapse, List, Menu, Row, Tag, Typography} from 'ant
 import {CloudOutlined, MenuOutlined, WindowsOutlined} from '@ant-design/icons';
 import {useIsMobile} from "../common/hooksv2";
 import {DigestConsole} from "./reportDigest";
+import type {KeywordNewsGroup, LegacyGoogleNewsGroup} from "../common/newSendHttp";
+import {formatPublished, keywordNewsOf, mergeKeywordNews} from "./keywordNews";
 
 const {Title, Text, Link: TypographyLink} = Typography;
 
@@ -35,7 +37,7 @@ function ReportShow({selected, loginReady, isLoggedIn}: {
             let weatherIndex: any = null;
             let bbcNews: any[] = [];
             let nytNews: any[] = [];
-            let googleNews: any[] = [];
+            const keywordLists: KeywordNewsGroup[][] = [];
             // 并发请求
             days.forEach(day => {
                 sendGetReport({DayString: day}, (ret) => {
@@ -55,17 +57,7 @@ function ReportShow({selected, loginReady, isLoggedIn}: {
                             // if (rep.WeatherIndex && !weatherIndex) weatherIndex = rep.WeatherIndex;
                             if (rep.BbcNews) bbcNews = bbcNews.concat(rep.BbcNews || []);
                             if (rep.NytNews) nytNews = nytNews.concat(rep.NytNews || []);
-                            if (rep.GoogleNews) {
-                                rep.GoogleNews.forEach((group: GoogleNewsGroup) => {
-                                    // 查找是否已存在该关键词的新闻组
-                                    const existing = googleNews.find(g => g.KeyWord === group.KeyWord);
-                                    if (existing) {
-                                        existing.News = existing.News.concat(group.News || []);
-                                    } else {
-                                        googleNews.push({...group, News: group.News || []});
-                                    }
-                                });
-                            }
+                            keywordLists.push(keywordNewsOf(rep));
                             dayI++;
                         }
                         setData({
@@ -74,7 +66,7 @@ function ReportShow({selected, loginReady, isLoggedIn}: {
                             WeatherIndex: weatherIndex,
                             BbcNews: bbcNews,
                             NytNews: nytNews,
-                            GoogleNews: googleNews,
+                            KeywordNews: mergeKeywordNews(keywordLists),
                         });
                     }
                 });
@@ -148,12 +140,6 @@ interface NewsArticle {
     Link?: string;
     Description?: string;
     PubDate?: string;
-}
-
-// 谷歌新闻组
-interface GoogleNewsGroup {
-    KeyWord: string;
-    News: NewsArticle[];
 }
 
 interface WeatherCardProps {
@@ -314,62 +300,59 @@ function NewsCard({title, articles}: { title: string, articles?: NewsArticle[] }
     </Card>
 }
 
-function GoogleNewsCard({title, articles}: { title: string, articles?: NewsArticle[] }) {
-    const isMobile = useIsMobile();
-    const fakeNews = ["- 风闻", "- 观察者网", "- 环球网", "- 环球时报"];
-    const boughtNews = ["- 汽车之家", "- 车家号"];
+const cardStyle: React.CSSProperties = {
+    marginBottom: '16px',
+    borderRadius: '10px',
+    boxShadow: '0 4px 10px rgba(0, 0, 0, 0.15)',
+    backgroundColor: '#fff',
+    padding: '16px',
+};
 
-    if (!articles) {
-        return <Card title={title} style={{
-            marginBottom: '16px',
-            borderRadius: '10px',
-            boxShadow: '0 4px 10px rgba(0, 0, 0, 0.15)',
-            backgroundColor: '#fff',
-            padding: '16px',
-        }}>
-            <Text type="secondary">暂无新闻</Text>
-        </Card>;
-    }
+// "新闻"是默认类型，不显示标签，其余类型用颜色区分
+const keywordKindColors: Record<string, string> = {爆料: "magenta", 前瞻: "blue", 讨论: "default"};
+
+// 一个关注关键词一张卡片：顶部一句话动态，下面是出处列表
+function KeywordNewsCard({group}: { group: KeywordNewsGroup }) {
+    const isMobile = useIsMobile();
+    const hasNews = group.news.length > 0;
+
     return (
-        <Card title={title} style={{
-            marginBottom: '16px',
-            borderRadius: '10px',
-            boxShadow: '0 4px 10px rgba(0, 0, 0, 0.15)',
-            backgroundColor: '#fff',
-            padding: '16px',
-        }}>
-            <List
-                itemLayout="horizontal"
-                dataSource={articles}
-                renderItem={item => {
-                    let tag: React.ReactNode = null;
-                    if (fakeNews.some(domain => item.title.includes(domain))) {
-                        tag = <Tag color="red" style={{marginRight: 4}}>谣媒</Tag>;
-                    } else if (boughtNews.some(domain => item.title.includes(domain))) {
-                        tag = <Tag color="orange" style={{marginRight: 4}}>枪媒</Tag>;
-                    }
-                    return (
-                        <List.Item key={item.title} style={{
-                            display: 'flex',
-                            justifyContent: 'space-between',
-                            alignItems: 'center',
-                        }}>
-                            <div style={{display: 'flex', alignItems: 'center'}}>
-                                {tag}
-                                <TypographyLink href={item.link} target="_blank" rel="noopener noreferrer">{item.title}</TypographyLink>
+        <Card
+            title={group.keyword}
+            extra={group.error && !hasNews
+                ? <Tag color="red">搜索失败</Tag>
+                : hasNews && <Text type="secondary">{group.news.length} 条</Text>}
+            style={cardStyle}
+        >
+            {group.summary && group.summary.split("\n").map((line, index) => (
+                <Typography.Paragraph key={index} style={{marginBottom: 8}}>{line}</Typography.Paragraph>
+            ))}
+            {!hasNews && <Text type="secondary">
+                {group.error ? `搜索失败：${group.error}` : "今日无新动态"}
+            </Text>}
+            {hasNews && <List
+                itemLayout="vertical"
+                size="small"
+                dataSource={group.news}
+                renderItem={(item, index) => (
+                    <List.Item key={`${item.url}-${index}`} style={{paddingInline: 0}}>
+                        <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 12}}>
+                            <div style={{display: 'flex', alignItems: 'baseline', gap: 6, flexWrap: 'wrap', minWidth: 0}}>
+                                {item.kind && keywordKindColors[item.kind] && <Tag color={keywordKindColors[item.kind]} style={{marginInlineEnd: 0}}>{item.kind}</Tag>}
+                                {item.caution && <Tag color="orange" style={{marginInlineEnd: 0}}>{item.caution}</Tag>}
+                                <TypographyLink href={item.url} target="_blank" rel="noopener noreferrer">{item.title}</TypographyLink>
+                                {item.source && <Text type="secondary" style={{fontSize: 12}}>{item.source}</Text>}
                             </div>
-                            <Text type="secondary" style={{
-                                width: "20ch",
-                                textAlign: 'right',
-                            }}>
-                                {isMobile
-                                    ? new Date(item.pubDate).toLocaleDateString('zh-CN', {timeZone: 'Asia/Shanghai'})
-                                    : new Date(item.pubDate).toLocaleString('zh-CN', {timeZone: 'Asia/Shanghai'})}
+                            <Text type="secondary" style={{fontSize: 12, whiteSpace: 'nowrap'}}>
+                                {formatPublished(item.published, isMobile)}
                             </Text>
-                        </List.Item>
-                    );
-                }}
-            />
+                        </div>
+                        {item.summary && <Text type="secondary" style={{display: 'block', fontSize: 13, marginTop: 2}}>
+                            {item.summary}
+                        </Text>}
+                    </List.Item>
+                )}
+            />}
         </Card>
     );
 }
@@ -382,7 +365,8 @@ interface DashboardProps {
         digest?: DayDigest;
         BbcNews: NewsArticle[];
         NytNews: NewsArticle[];
-        GoogleNews: GoogleNewsGroup[];
+        KeywordNews?: KeywordNewsGroup[];
+        GoogleNews?: LegacyGoogleNewsGroup[];
     } | null;
 }
 
@@ -391,7 +375,7 @@ function Dashboard({data}: DashboardProps) {
     const weatherRef = useRef<HTMLDivElement>(null);
     const bbcNewsRef = useRef<HTMLDivElement>(null);
     const nytNewsRef = useRef<HTMLDivElement>(null);
-    const googleNewsRef = useRef<HTMLDivElement>(null);
+    const keywordNewsRef = useRef<HTMLDivElement>(null);
 
     // 管理是否显示导航
     const [showNav, setShowNav] = useState<boolean>(true);
@@ -402,31 +386,21 @@ function Dashboard({data}: DashboardProps) {
     if (!data) {
         return <Card title="Loading..." bordered={false} loading={true}/>;
     }
-    let {Weather, WeatherIndex, BbcNews, NytNews, GoogleNews, digest} = data;
+    let {Weather, WeatherIndex, BbcNews, NytNews, digest} = data;
 
     // 按时间升序排序
     const digestBbcNews = BbcNews || [];
     const digestNytNews = NytNews || [];
-    const digestGoogleNews = GoogleNews || [];
+    const keywordNews = keywordNewsOf(data);
+    // 天气抓取失败时字段是空对象，不显示天气卡片
+    const hasWeather = Boolean(Weather?.daily?.length && WeatherIndex?.daily);
     const sortedBbcNews = [...digestBbcNews].sort((a, b) => new Date(a.pubDate).getTime() - new Date(b.pubDate).getTime());
     const sortedNytNews = [...digestNytNews].sort((a, b) => new Date(a.pubDate).getTime() - new Date(b.pubDate).getTime());
-    const sortedGoogleNews = digestGoogleNews.map(group => ({
-        ...group,
-        News: group.News ? [...group.News].sort((a, b) => new Date(a.pubDate).getTime() - new Date(b.pubDate).getTime()) : group.News,
-    }));
-
-    // 生成谷歌新闻组件，有数据的放在前面，没有数据的放在后面
-    const GoogleNewsCards: React.ReactNode[] = [];
-    for (const group of sortedGoogleNews) {
-        if (group.News && group.News.length > 0) {
-            GoogleNewsCards.push(<GoogleNewsCard key={`google-news-${group.KeyWord}`} title={group.KeyWord} articles={group.News}/>);
-        }
-    }
-    for (const group of sortedGoogleNews) {
-        if (!group.News || group.News.length === 0) {
-            GoogleNewsCards.push(<GoogleNewsCard key={`google-news-${group.KeyWord}`} title={group.KeyWord}/>);
-        }
-    }
+    // 有新闻的关键词放前面，其余保持原顺序
+    const keywordNewsCards = [
+        ...keywordNews.filter(group => group.news.length > 0),
+        ...keywordNews.filter(group => group.news.length === 0),
+    ].map(group => <KeywordNewsCard key={`keyword-news-${group.keyword}`} group={group}/>);
 
 
     const toggleNav = () => {
@@ -443,10 +417,10 @@ function Dashboard({data}: DashboardProps) {
     // 通用导航菜单组件
     const renderNavMenu = () => (
         <Menu mode="vertical" style={{width: isMobile ? '100%' : '200px'}}>
-            {Weather && WeatherIndex && <Menu.Item onClick={() => scrollToRef(weatherRef)}>天气</Menu.Item>}
+            {hasWeather && <Menu.Item onClick={() => scrollToRef(weatherRef)}>天气</Menu.Item>}
             <Menu.Item onClick={() => scrollToRef(bbcNewsRef)}>BBC新闻</Menu.Item>
             <Menu.Item onClick={() => scrollToRef(nytNewsRef)}>纽约时报</Menu.Item>
-            <Menu.Item onClick={() => scrollToRef(googleNewsRef)}>关注新闻</Menu.Item>
+            <Menu.Item onClick={() => scrollToRef(keywordNewsRef)}>关注新闻</Menu.Item>
         </Menu>
     );
 
@@ -521,9 +495,9 @@ function Dashboard({data}: DashboardProps) {
             {/* 左侧内容 */}
             <div style={{flex: 1}}>
                 {digest
-                    ? <DigestConsole digest={digest} bbcNews={digestBbcNews} nytNews={digestNytNews} googleNews={digestGoogleNews}/>
+                    ? <DigestConsole digest={digest} bbcNews={digestBbcNews} nytNews={digestNytNews} keywordNews={keywordNews}/>
                     : data.Summary && <SummaryCard summary={data.Summary}/>}
-                {Weather && WeatherIndex && <div ref={weatherRef}>
+                {hasWeather && Weather && WeatherIndex && <div ref={weatherRef}>
                     <WeatherCard weather={Weather} weatherIndex={WeatherIndex}/>
                 </div>}
                 <div ref={bbcNewsRef} style={{
@@ -536,8 +510,8 @@ function Dashboard({data}: DashboardProps) {
                 }}>
                     <NewsCard title={"纽约时报"} articles={sortedNytNews}/>
                 </div>
-                <div ref={googleNewsRef}>
-                    {GoogleNewsCards}
+                <div ref={keywordNewsRef}>
+                    {keywordNewsCards}
                 </div>
             </div>
             {right}

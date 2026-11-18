@@ -16,6 +16,8 @@ const (
 	AISceneTranslate           AIScene = "translate"
 	AISceneLibraryReviewDigest AIScene = "library_review_digest"
 	AISceneTranscribe          AIScene = "transcribe"
+	// AISceneWebSearch 联网搜索：队列里只有支持 web_search 工具的 OpenAI 文本模型会被使用。
+	AISceneWebSearch AIScene = "web_search"
 )
 
 const DefaultAIAudioModel = "gpt-4o-mini-transcribe"

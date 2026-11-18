@@ -152,9 +152,9 @@ func (m *webMgr) transcribeQueue(ctx context.Context, aiCfg share.AIPlatformConf
 		switch callProtocol {
 		case aiv2.ModelCallProtocolOpenAISTT:
 			if isOpenRouterBaseURL(base) {
-				ret, err = transcribeOpenRouter(ctx, base, token, file, fileName, model, language)
+				ret, err = transcribeOpenRouter(ctx, base, item.Provider.ProxyURL, token, file, fileName, model, language)
 			} else {
-				bot := ai.NewOpenAIWithModels(base, token, false, model)
+				bot := ai.NewOpenAIWithModels(item.Provider.RequestBaseURL(), token, false, model)
 				if bot == nil {
 					err = errors.New("openai init error")
 				} else {

@@ -14,6 +14,7 @@ import (
 	"strings"
 
 	"github.com/intmian/mian_go_lib/tool/ai"
+	"github.com/intmian/platform/backend/share"
 )
 
 const maxOpenRouterTranscriptionResponseBytes = 1 << 20
@@ -60,6 +61,7 @@ func openRouterAudioFormat(fileName string) (string, error) {
 func transcribeOpenRouter(
 	ctx context.Context,
 	baseURL string,
+	proxyURL string,
 	token string,
 	file io.Reader,
 	fileName string,
@@ -73,6 +75,7 @@ func transcribeOpenRouter(
 	if err != nil {
 		return ai.TranscriptionResult{}, err
 	}
+	endpoint = share.RewriteURLForAIProxy(proxyURL, endpoint)
 	model = strings.TrimSpace(model)
 	if model == "" {
 		return ai.TranscriptionResult{}, errors.New("audio model is empty")

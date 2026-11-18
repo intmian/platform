@@ -572,6 +572,30 @@ export interface DayDigest {
     coverage: DigestCoverage[];
 }
 
+// 关注关键词的联网搜索结果（模型 web_search），取代旧的 GoogleNews
+export interface KeywordNewsItem {
+    title: string;
+    url: string;
+    source: string;
+    published: string; // 新数据是 YYYY-MM-DD（拿不准时为空）；从旧 GoogleNews 转换来的是完整时间
+    summary: string;
+    kind?: string; // 新闻、爆料、前瞻、讨论
+    caution?: string; // 来源可靠性提醒，例如"内宣媒体"
+}
+
+export interface KeywordNewsGroup {
+    keyword: string;
+    summary: string; // 空表示当天没有新动态
+    news: KeywordNewsItem[];
+    error?: string; // 非空表示这个关键词搜索失败
+}
+
+// 旧日报里的 Google News RSS 结果，只读兼容
+export interface LegacyGoogleNewsGroup {
+    KeyWord: string;
+    News: RssItem[];
+}
+
 export interface DayReport {
     Weather: WeatherPtl
     WeatherIndex: WeatherIndexPtl;
@@ -579,19 +603,15 @@ export interface DayReport {
     digest?: DayDigest;
     BbcNews: RssItem[]
     NytNews: RssItem[]
-    GoogleNews: {
-        KeyWord: string;
-        News: RssItem[];
-    }[];
+    KeywordNews?: KeywordNewsGroup[];
+    GoogleNews?: LegacyGoogleNewsGroup[];
 }
 
 export interface WholeReport {
     BbcNews: RssItem[]
     NytNews: RssItem[]
-    GoogleNews: {
-        KeyWord: string;
-        News: RssItem[];
-    }[];
+    KeywordNews?: KeywordNewsGroup[];
+    GoogleNews?: LegacyGoogleNewsGroup[];
 }
 
 export interface GetReportReq {

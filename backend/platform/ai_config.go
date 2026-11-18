@@ -54,6 +54,29 @@ func (m *webMgr) aiConfigSet(c *gin.Context) {
 	c.JSON(200, makeOkReturn(nil))
 }
 
+// aiProviderModels 列出某个供应商上游可用的模型。传入的是编辑中的供应商配置（可以还没保存）。
+func (m *webMgr) aiProviderModels(c *gin.Context) {
+	if !m.canManageAIConfig(c) {
+		c.JSON(200, makeErrReturn("no permission"))
+		return
+	}
+	var req struct {
+		Provider share.AIProviderConfig `json:"provider"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(200, makeErrReturn("invalid provider"))
+		return
+	}
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 30*time.Second)
+	defer cancel()
+	models, err := share.ListAIProviderModels(ctx, req.Provider)
+	if err != nil {
+		c.JSON(200, makeErrReturn(err.Error()))
+		return
+	}
+	c.JSON(200, makeOkReturn(models))
+}
+
 func (m *webMgr) aiQueueTest(c *gin.Context) {
 	if !m.canManageAIConfig(c) {
 		c.JSON(200, makeErrReturn("no permission"))

@@ -26,6 +26,7 @@ func (m *webMgr) initSvrRoot(r *gin.Engine) {
 	r.POST("/misc/ai/config/get", m.aiConfigGet)
 	r.POST("/misc/ai/config/set", m.aiConfigSet)
 	r.POST("/misc/ai/config/queue/test", m.aiQueueTest)
+	r.POST("/misc/ai/config/provider/models", m.aiProviderModels)
 	r.POST("/misc/gpt-rewrite", m.gptRewrite)
 	r.POST("/misc/r2-presigned-url", m.getR2PresignedURL)
 	r.POST("/misc/subscription/list", m.subscriptionList)

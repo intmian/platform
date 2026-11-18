@@ -63,6 +63,7 @@ func TestTranscribeOpenRouter(t *testing.T) {
 	result, err := transcribeOpenRouter(
 		context.Background(),
 		server.URL+"/api/v1",
+		"",
 		"test-token",
 		strings.NewReader(string(audio)),
 		"recording.wav",

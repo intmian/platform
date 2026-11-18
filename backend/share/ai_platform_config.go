@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/url"
 	"slices"
 	"strings"
 	"time"
@@ -24,10 +25,13 @@ const (
 )
 
 type AIProviderConfig struct {
-	ID               string                `json:"id"`
-	Name             string                `json:"name"`
-	Protocol         AIProviderProtocol    `json:"protocol"`
-	BaseURL          string                `json:"baseURL"`
+	ID       string             `json:"id"`
+	Name     string             `json:"name"`
+	Protocol AIProviderProtocol `json:"protocol"`
+	BaseURL  string             `json:"baseURL"`
+	// ProxyURL 是 workers/ai-proxy 的地址。填了以后请求改走 Worker：
+	// https://api.openai.com/v1 → <ProxyURL>/api.openai.com/v1（生产服务器在香港，OpenAI 不对香港开放）。
+	ProxyURL         string                `json:"proxyURL,omitempty"`
 	Token            string                `json:"token"`
 	Models           []ai.ModelConfig      `json:"models"`
 	LegacySourceType ai.ProviderSourceType `json:"sourceType,omitempty"`
@@ -59,6 +63,7 @@ var fixedAIBusinesses = [...]AIBusinessConfig{
 	{Scene: AISceneSummary, Type: ai.ModelTypeText},
 	{Scene: AISceneTranslate, Type: ai.ModelTypeText},
 	{Scene: AISceneLibraryReviewDigest, Type: ai.ModelTypeText},
+	{Scene: AISceneWebSearch, Type: ai.ModelTypeText},
 	{Scene: AISceneTranscribe, Type: ai.ModelTypeSTT},
 }
 
@@ -96,6 +101,21 @@ type AIQueueRunMeta struct {
 type AITextQueueRunResult struct {
 	AIQueueRunMeta
 	Text string `json:"text"`
+}
+
+// AITextQueueRequest 是一次文本队列调用的完整参数。
+type AITextQueueRequest struct {
+	Input string
+	// JSONSchema 非空时要求按结构输出 JSON。
+	JSONSchema *ai.ChatJSONSchema
+	// RequireWebSearch 为 true 时强制带上 web_search 工具，并跳过不支持它的模型。
+	RequireWebSearch bool
+}
+
+// AITextQueueResponse 在文本结果之外带上模型原始响应（引用、搜索动作、用量）。
+type AITextQueueResponse struct {
+	AITextQueueRunResult
+	Response ai.ChatResponse
 }
 
 func GetAIPlatformConfig(cfg *xstorage.CfgExt) (AIPlatformConfig, error) {
@@ -177,6 +197,7 @@ func (c *AIPlatformConfig) normalize() {
 		}
 		provider.LegacySourceType = ""
 		provider.BaseURL = strings.TrimSpace(provider.BaseURL)
+		provider.ProxyURL = strings.TrimRight(strings.TrimSpace(provider.ProxyURL), "/")
 		provider.Token = strings.TrimSpace(provider.Token)
 		for j := range provider.Models {
 			provider.Models[j].ID = ai.ModelID(strings.TrimSpace(string(provider.Models[j].ID)))
@@ -299,6 +320,12 @@ func (c AIPlatformConfig) Validate() error {
 		if provider.Protocol == AIProviderProtocolDeepSeek && strings.TrimSpace(provider.BaseURL) == "" {
 			return fmt.Errorf("provider %q base URL is required for DeepSeek", provider.ID)
 		}
+		if proxy := strings.TrimSpace(provider.ProxyURL); proxy != "" {
+			parsed, err := url.Parse(proxy)
+			if err != nil || (parsed.Scheme != "https" && parsed.Scheme != "http") || parsed.Host == "" {
+				return fmt.Errorf("provider %q proxy URL is invalid", provider.ID)
+			}
+		}
 		providerModels := make(map[ai.ModelID]ai.ModelConfig, len(provider.Models))
 		for j, model := range provider.Models {
 			if _, ok := providerModels[model.ID]; ok {
@@ -312,7 +339,7 @@ func (c AIPlatformConfig) Validate() error {
 			if err != nil {
 				return fmt.Errorf("providers[%d].models[%d]: %w", i, j, err)
 			}
-			adapter, err := ai.NewOpenAIProvider(provider.BaseURL, provider.Token, sourceType)
+			adapter, err := ai.NewOpenAIProvider(provider.RequestBaseURL(), provider.Token, sourceType)
 			if err != nil {
 				return fmt.Errorf("provider %q: %w", provider.ID, err)
 			}
@@ -576,19 +603,39 @@ func (c *SceneAI) ChatContext(ctx context.Context, prompt string) (string, error
 	return result.Text, nil
 }
 
+// Request 用场景绑定的队列执行一次完整请求（可带结构化输出、联网搜索）。
+func (c *SceneAI) Request(ctx context.Context, req AITextQueueRequest) (AITextQueueResponse, error) {
+	if c == nil {
+		return AITextQueueResponse{}, errors.New("scene ai is nil")
+	}
+	queueID, err := c.config.QueueIDForScene(c.scene, ai.ModelTypeText)
+	if err != nil {
+		return AITextQueueResponse{}, err
+	}
+	return c.config.RunTextQueueRequest(ctx, queueID, req)
+}
+
 func (c AIPlatformConfig) RunTextQueueContext(ctx context.Context, queueID string, input string) (AITextQueueRunResult, error) {
-	var result AITextQueueRunResult
+	ret, err := c.RunTextQueueRequest(ctx, queueID, AITextQueueRequest{Input: input})
+	return ret.AITextQueueRunResult, err
+}
+
+// RunTextQueueRequest 按队列顺序逐个尝试模型，第一个成功的返回。
+func (c AIPlatformConfig) RunTextQueueRequest(ctx context.Context, queueID string, req AITextQueueRequest) (AITextQueueResponse, error) {
+	var ret AITextQueueResponse
+	result := &ret.AITextQueueRunResult
+	input := req.Input
 	if strings.TrimSpace(input) == "" {
-		return result, errors.New("text queue input is required")
+		return ret, errors.New("text queue input is required")
 	}
 	var err error
 	c, err = NormalizeAIPlatformConfig(c)
 	if err != nil {
-		return result, err
+		return ret, err
 	}
 	items, err := c.ResolveQueue(queueID, ai.ModelTypeText)
 	if err != nil {
-		return result, err
+		return ret, err
 	}
 	var errs []error
 	for _, item := range items {
@@ -612,6 +659,13 @@ func (c AIPlatformConfig) RunTextQueueContext(ctx context.Context, queueID strin
 			errs = append(errs, fmt.Errorf("%s/%s: %w", item.Provider.ID, item.Model.ID, err))
 			continue
 		}
+		if req.RequireWebSearch && (callProtocol != ai.ModelCallProtocolOpenAIText || !slices.Contains(item.Model.Tools, ai.ChatToolWebSearch)) {
+			attempt.Error = "model does not support web_search"
+			attempt.DurationMS = time.Since(startedAt).Milliseconds()
+			result.Attempts = append(result.Attempts, attempt)
+			errs = append(errs, fmt.Errorf("%s/%s: %s", item.Provider.ID, item.Model.ID, attempt.Error))
+			continue
+		}
 		sourceType, sourceErr := sourceTypeForAIModelCallProtocol(callProtocol)
 		if sourceErr != nil {
 			attempt.Error = sourceErr.Error()
@@ -620,7 +674,7 @@ func (c AIPlatformConfig) RunTextQueueContext(ctx context.Context, queueID strin
 			errs = append(errs, fmt.Errorf("%s/%s: %w", item.Provider.ID, item.Model.ID, sourceErr))
 			continue
 		}
-		provider, err := ai.NewOpenAIProvider(item.Provider.BaseURL, item.Provider.Token, sourceType)
+		provider, err := ai.NewOpenAIProvider(item.Provider.RequestBaseURL(), item.Provider.Token, sourceType)
 		if err != nil {
 			attempt.Error = err.Error()
 			attempt.DurationMS = time.Since(startedAt).Milliseconds()
@@ -652,12 +706,17 @@ func (c AIPlatformConfig) RunTextQueueContext(ctx context.Context, queueID strin
 				thinking = ai.ThinkingTypeEnabled
 			}
 		}
+		tools := append([]ai.ChatTool(nil), item.Setting.Tools...)
+		if req.RequireWebSearch && !slices.Contains(tools, ai.ChatToolWebSearch) {
+			tools = append(tools, ai.ChatToolWebSearch)
+		}
 		resp, err := provider.Chat(ctx, ai.ChatRequest{
 			Model:           string(item.Model.ID),
 			Messages:        []ai.ChatMessage{{Role: ai.ChatRoleUser, Content: input}},
 			ReasoningEffort: reasoningEffort,
 			Thinking:        thinking,
-			Tools:           append([]ai.ChatTool(nil), item.Setting.Tools...),
+			Tools:           tools,
+			JSONSchema:      req.JSONSchema,
 		})
 		if err != nil {
 			attempt.Error = err.Error()
@@ -679,16 +738,17 @@ func (c AIPlatformConfig) RunTextQueueContext(ctx context.Context, queueID strin
 		result.ProviderID = item.Provider.ID
 		result.ModelID = item.Model.ID
 		result.Text = resp.Text
-		return result, nil
+		ret.Response = resp
+		return ret, nil
 	}
 	if len(errs) == 0 {
 		err = fmt.Errorf("ai queue %q is empty", queueID)
 		result.Error = err.Error()
-		return result, err
+		return ret, err
 	}
 	err = errors.Join(errs...)
 	result.Error = err.Error()
-	return result, err
+	return ret, err
 }
 
 func migrateLegacyAIConfig(legacy AIConfig) (AIPlatformConfig, error) {
@@ -791,4 +851,58 @@ func defaultReasoning() []ai.ReasoningEffort {
 		ai.ReasoningEffortHigh,
 		ai.ReasoningEffortXHigh,
 	}
+}
+
+const defaultOpenAIBaseURL = "https://api.openai.com/v1"
+
+// RequestBaseURL 是实际发请求用的 baseURL：配置了转发地址时改写成经 Worker 的地址。
+func (p AIProviderConfig) RequestBaseURL() string {
+	base := strings.TrimSpace(p.BaseURL)
+	if strings.TrimSpace(p.ProxyURL) == "" {
+		return base
+	}
+	if base == "" && p.Protocol == AIProviderProtocolOpenAI {
+		base = defaultOpenAIBaseURL
+	}
+	return RewriteURLForAIProxy(p.ProxyURL, base)
+}
+
+// RewriteURLForAIProxy 把完整地址改写成 workers/ai-proxy 的格式：<proxy>/<host><path>?<query>。
+// proxy 为空或地址无法解析时原样返回。
+func RewriteURLForAIProxy(proxyURL, rawURL string) string {
+	proxyURL = strings.TrimRight(strings.TrimSpace(proxyURL), "/")
+	if proxyURL == "" {
+		return rawURL
+	}
+	parsed, err := url.Parse(strings.TrimSpace(rawURL))
+	if err != nil || parsed.Host == "" {
+		return rawURL
+	}
+	rewritten := proxyURL + "/" + parsed.Host + parsed.EscapedPath()
+	if parsed.RawQuery != "" {
+		rewritten += "?" + parsed.RawQuery
+	}
+	return rewritten
+}
+
+// ListAIProviderModels 调用供应商的 /models 接口列出可用模型（经转发地址时同样走 Worker）。
+func ListAIProviderModels(ctx context.Context, provider AIProviderConfig) ([]string, error) {
+	token := strings.TrimSpace(provider.Token)
+	if token == "" || token == "need input" {
+		return nil, errors.New("provider token is empty")
+	}
+	sourceType := ai.ProviderSourceTypeOpenAI
+	if provider.Protocol == AIProviderProtocolDeepSeek {
+		sourceType = ai.ProviderSourceTypeDeepSeek
+	}
+	adapter, err := ai.NewOpenAIProvider(provider.RequestBaseURL(), token, sourceType)
+	if err != nil {
+		return nil, err
+	}
+	models, err := adapter.AvailableModels(ctx)
+	if err != nil {
+		return nil, err
+	}
+	slices.Sort(models)
+	return slices.Compact(models), nil
 }

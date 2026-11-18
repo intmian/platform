@@ -20,6 +20,8 @@ export interface AIProviderConfig {
     name: string;
     protocol: ProviderProtocol;
     baseURL: string;
+    // ai-proxy Worker 地址；填了以后后端经它转发（见 workers/ai-proxy）
+    proxyURL?: string;
     token: string;
     models: AIModelConfig[];
 }
@@ -98,6 +100,11 @@ export function getAIPlatformConfig(): Promise<AIPlatformConfig> {
 
 export async function saveAIPlatformConfig(value: AIPlatformConfig): Promise<void> {
     await postAIConfig<null>("/misc/ai/config/set", value);
+}
+
+// 列出供应商上游可用的模型 ID（传编辑中的配置，不需要先保存）
+export function listAIProviderModels(provider: AIProviderConfig): Promise<string[]> {
+    return postAIConfig<string[]>("/misc/ai/config/provider/models", {provider});
 }
 
 export async function testAIQueue(value: AIPlatformConfig, queueID: string, input?: string, file?: File): Promise<AIQueueTestResult> {

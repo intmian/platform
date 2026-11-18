@@ -15,10 +15,9 @@ type digestChat interface {
 const dayDigestFailureSummary = "今日摘要生成失败，原始日报已保存，请打开完整日报查看。"
 
 type dayDigestPromptInput struct {
-	WeatherLine string                    `json:"weatherLine,omitempty"`
-	BBC         []digestPromptNews        `json:"bbc"`
-	NYT         []digestPromptNews        `json:"nyt"`
-	Google      []digestPromptGoogleGroup `json:"google"`
+	WeatherLine string             `json:"weatherLine,omitempty"`
+	BBC         []digestPromptNews `json:"bbc"`
+	NYT         []digestPromptNews `json:"nyt"`
 }
 
 type dayPublicDigestPromptInput struct {
@@ -32,22 +31,6 @@ type digestPromptNews struct {
 	Title       string `json:"title"`
 	Description string `json:"description,omitempty"`
 	PubDate     string `json:"pubDate,omitempty"`
-}
-
-type digestPromptGoogleGroup struct {
-	GroupIndex int                `json:"groupIndex"`
-	Keyword    string             `json:"keyword"`
-	News       []digestPromptNews `json:"news"`
-}
-
-type dayKeywordDigest struct {
-	PushBrief     dayKeywordPushBrief `json:"pushBrief"`
-	KeywordBriefs []KeywordBrief      `json:"keywordBriefs"`
-	Coverage      []DigestCoverage    `json:"coverage"`
-}
-
-type dayKeywordPushBrief struct {
-	KeywordBriefs []KeywordBrief `json:"keywordBriefs"`
 }
 
 func buildDayDigestPromptInput(report *DayReport) dayDigestPromptInput {
@@ -75,24 +58,6 @@ func buildDayDigestPromptInput(report *DayReport) dayDigestPromptInput {
 			Description: item.Description,
 			PubDate:     formatDigestPromptTime(item.PubDate),
 		})
-	}
-
-	input.Google = make([]digestPromptGoogleGroup, 0, len(report.GoogleNews))
-	for groupIndex, group := range report.GoogleNews {
-		promptGroup := digestPromptGoogleGroup{
-			GroupIndex: groupIndex,
-			Keyword:    group.KeyWord,
-			News:       make([]digestPromptNews, 0, len(group.News)),
-		}
-		for itemIndex, item := range group.News {
-			promptGroup.News = append(promptGroup.News, digestPromptNews{
-				Ref:         fmt.Sprintf("google:%d:%d", groupIndex, itemIndex),
-				Title:       item.Title,
-				Description: item.Description,
-				PubDate:     formatDigestPromptTime(item.PubDate),
-			})
-		}
-		input.Google = append(input.Google, promptGroup)
 	}
 
 	return input
@@ -175,34 +140,6 @@ func buildDayDigestPrompt(input dayPublicDigestPromptInput) string {
 ` + string(payload)
 }
 
-func buildDayKeywordDigestPrompt(input []digestPromptGoogleGroup) string {
-	payload, err := json.MarshalIndent(input, "", "  ")
-	if err != nil {
-		payload = []byte("[]")
-	}
-	return `请作为每日新闻整合器，基于下面 JSON Google 关键词新闻输入生成关键词摘要。
-
-要求：
-1. 只返回一个 JSON 对象，不要 Markdown、代码块、解释文字。
-2. 输入只包含 Google 关键词新闻；只能生成 keywordBriefs 和 pushBrief.keywordBriefs。
-3. 每个有新闻的关键词都应生成一条摘要，summary 简洁说明当天这个关键词下的主要变化。
-4. sourceRefs 和 coverage.ref 只能使用输入里已有的 google:group:item。
-5. coverage 必须列出输入中被识别的来源 ref。
-6. 语言克制、准确，不做评价，不编造输入中没有的事实。
-
-返回 JSON schema：
-{
-  "pushBrief": {
-    "keywordBriefs": [{"keyword":"string","summary":"string","count":1,"sourceRefs":["google:0:0"]}]
-  },
-  "keywordBriefs": [{"keyword":"string","summary":"string","count":1,"sourceRefs":["google:0:0"]}],
-  "coverage": [{"ref":"google:0:0","topic":"string","inPush":true,"importance":1}]
-}
-
-Google 关键词新闻输入：
-` + string(payload)
-}
-
 func buildDayDigestRepairPrompt(originalPrompt, response string, validationErr error) string {
 	return fmt.Sprintf(`请修复上一轮日报 digest 输出，使其成为可解析且满足 schema 的 JSON 对象。
 
@@ -214,25 +151,6 @@ func buildDayDigestRepairPrompt(originalPrompt, response string, validationErr e
 5. keywordBriefs 和 pushBrief.keywordBriefs 必须返回空数组。
 6. importantNews 和 topicBriefs 的 sourceRefs 只能使用 bbc:n 或 nyt:n。
 7. 所有 sourceRefs 和 coverage.ref 必须来自原始输入中的 ref。
-
-校验错误：
-%v
-
-上一轮输出：
-%s
-
-原始任务：
-%s`, validationErr, response, originalPrompt)
-}
-
-func buildDayKeywordDigestRepairPrompt(originalPrompt, response string, validationErr error) string {
-	return fmt.Sprintf(`请修复上一轮关键词 digest 输出，使其成为可解析且满足 schema 的 JSON 对象。
-
-修复要求：
-1. 只返回修复后的 JSON 对象，不要 Markdown、代码块、解释文字。
-2. keywordBriefs、pushBrief.keywordBriefs、coverage 在规范化后都不能为空。
-3. 所有 sourceRefs 和 coverage.ref 必须来自原始输入中的 google:group:item。
-4. 不要生成 overview、importantNews、topicBriefs。
 
 校验错误：
 %v
@@ -273,9 +191,6 @@ func validateDayDigest(report *DayReport, digest *DayDigest) (*DayDigest, error)
 	if err := validatePublicDigestItems(normalized.ImportantNews, "day digest importantNews"); err != nil {
 		return nil, err
 	}
-	if reportHasGoogleNews(report) && len(normalized.KeywordBriefs) == 0 {
-		return nil, errors.New("day digest keywordBriefs is empty")
-	}
 	if err := validateKeywordBriefs(normalized.KeywordBriefs, "day digest keywordBriefs"); err != nil {
 		return nil, err
 	}
@@ -294,9 +209,6 @@ func validateDayDigest(report *DayReport, digest *DayDigest) (*DayDigest, error)
 	if err := validatePublicDigestItems(normalized.PushBrief.ImportantNews, "day digest pushBrief importantNews"); err != nil {
 		return nil, err
 	}
-	if reportHasGoogleNews(report) && len(normalized.PushBrief.KeywordBriefs) == 0 {
-		return nil, errors.New("day digest pushBrief keywordBriefs is empty")
-	}
 	if err := validateKeywordBriefs(normalized.PushBrief.KeywordBriefs, "day digest pushBrief keywordBriefs"); err != nil {
 		return nil, err
 	}
@@ -307,47 +219,11 @@ func validateDayDigest(report *DayReport, digest *DayDigest) (*DayDigest, error)
 	return normalized, nil
 }
 
-func parseAndValidateDayKeywordDigest(report *DayReport, raw string) (*dayKeywordDigest, error) {
-	raw = strings.TrimSpace(raw)
-	if raw == "" {
-		return nil, errors.New("empty keyword digest response")
-	}
-	raw = trimJSONEnvelope(raw)
-
-	var digest dayKeywordDigest
-	if err := json.Unmarshal([]byte(raw), &digest); err != nil {
-		return nil, errors.Join(errors.New("keyword digest json unmarshal error"), err)
-	}
-
-	digest.KeywordBriefs = normalizeKeywordBriefs(report, digest.KeywordBriefs)
-	digest.PushBrief.KeywordBriefs = normalizeKeywordBriefs(report, digest.PushBrief.KeywordBriefs)
-	digest.Coverage = normalizeCoverage(report, digest.Coverage)
-	if len(digest.KeywordBriefs) == 0 {
-		return nil, errors.New("keyword digest keywordBriefs is empty")
-	}
-	if len(digest.PushBrief.KeywordBriefs) == 0 {
-		return nil, errors.New("keyword digest pushBrief keywordBriefs is empty")
-	}
-	if len(digest.Coverage) == 0 {
-		return nil, errors.New("keyword digest coverage is empty")
-	}
-	if err := validateKeywordBriefs(digest.KeywordBriefs, "keyword digest keywordBriefs"); err != nil {
-		return nil, err
-	}
-	if err := validateKeywordBriefs(digest.PushBrief.KeywordBriefs, "keyword digest pushBrief keywordBriefs"); err != nil {
-		return nil, err
-	}
-	if err := validateCoverageRefs(digest.Coverage, "keyword digest coverage", isGoogleSourceRef); err != nil {
-		return nil, err
-	}
-	return &digest, nil
-}
-
 func validatePublicDigestItems(items []DigestItem, field string) error {
 	for _, item := range items {
 		for _, ref := range item.SourceRefs {
-			if isGoogleSourceRef(ref) {
-				return fmt.Errorf("%s contains google source ref %s", field, ref)
+			if isKeywordSourceRef(ref) {
+				return fmt.Errorf("%s contains keyword source ref %s", field, ref)
 			}
 		}
 	}
@@ -357,8 +233,8 @@ func validatePublicDigestItems(items []DigestItem, field string) error {
 func validateTopicBriefs(briefs []TopicBrief, field string) error {
 	for _, brief := range briefs {
 		for _, ref := range brief.SourceRefs {
-			if isGoogleSourceRef(ref) {
-				return fmt.Errorf("%s contains google source ref %s", field, ref)
+			if isKeywordSourceRef(ref) {
+				return fmt.Errorf("%s contains keyword source ref %s", field, ref)
 			}
 		}
 	}
@@ -368,8 +244,8 @@ func validateTopicBriefs(briefs []TopicBrief, field string) error {
 func validateKeywordBriefs(briefs []KeywordBrief, field string) error {
 	for _, brief := range briefs {
 		for _, ref := range brief.SourceRefs {
-			if !isGoogleSourceRef(ref) {
-				return fmt.Errorf("%s contains non-google source ref %s", field, ref)
+			if !isKeywordSourceRef(ref) {
+				return fmt.Errorf("%s contains non-keyword source ref %s", field, ref)
 			}
 		}
 	}
@@ -385,20 +261,8 @@ func validateCoverageRefs(coverage []DigestCoverage, field string, valid func(st
 	return nil
 }
 
-func isGoogleSourceRef(ref string) bool {
-	return strings.HasPrefix(ref, "google:")
-}
-
-func reportHasGoogleNews(report *DayReport) bool {
-	if report == nil {
-		return false
-	}
-	for _, group := range report.GoogleNews {
-		if len(group.News) > 0 {
-			return true
-		}
-	}
-	return false
+func isKeywordSourceRef(ref string) bool {
+	return strings.HasPrefix(ref, "kw:")
 }
 
 func trimJSONEnvelope(raw string) string {
@@ -426,22 +290,15 @@ func generateDayDigest(report *DayReport, chat digestChat) (*DayDigest, error) {
 		return nil, errors.New("digest chat is nil")
 	}
 
-	publicReport := *report
-	publicReport.GoogleNews = nil
-	digest, err := generatePublicDayDigest(&publicReport, chat)
+	digest, err := generatePublicDayDigest(report, chat)
 	if err != nil {
 		return nil, err
 	}
 
-	if reportHasGoogleNews(report) {
-		keywordDigest, err := generateDayKeywordDigest(report, chat)
-		if err != nil {
-			return nil, err
-		}
-		digest.KeywordBriefs = keywordDigest.KeywordBriefs
-		digest.PushBrief.KeywordBriefs = keywordDigest.PushBrief.KeywordBriefs
-		digest.Coverage = append(digest.Coverage, keywordDigest.Coverage...)
-	}
+	// 关键词部分直接来自联网搜索的结果（搜索时模型已经概括过），不再额外调用 AI。
+	keywordBriefs := buildKeywordBriefs(report)
+	digest.KeywordBriefs = keywordBriefs
+	digest.PushBrief.KeywordBriefs = append([]KeywordBrief(nil), keywordBriefs...)
 
 	return validateDayDigest(report, digest)
 }
@@ -465,31 +322,6 @@ func generatePublicDayDigest(report *DayReport, chat digestChat) (*DayDigest, er
 	digest, parseErr := parseAndValidateDayDigest(report, repairedResponse)
 	if parseErr != nil {
 		return nil, errors.Join(errors.New("day digest repair validation error"), err, parseErr)
-	}
-
-	return digest, nil
-}
-
-func generateDayKeywordDigest(report *DayReport, chat digestChat) (*dayKeywordDigest, error) {
-	input := buildDayDigestPromptInput(report)
-	prompt := buildDayKeywordDigestPrompt(input.Google)
-	response, err := chat.Chat(prompt)
-	if err == nil {
-		digest, parseErr := parseAndValidateDayKeywordDigest(report, response)
-		if parseErr == nil {
-			return digest, nil
-		}
-		err = parseErr
-	}
-
-	repairPrompt := buildDayKeywordDigestRepairPrompt(prompt, response, err)
-	repairedResponse, repairErr := chat.Chat(repairPrompt)
-	if repairErr != nil {
-		return nil, errors.Join(errors.New("keyword digest repair chat error"), err, repairErr)
-	}
-	digest, parseErr := parseAndValidateDayKeywordDigest(report, repairedResponse)
-	if parseErr != nil {
-		return nil, errors.Join(errors.New("keyword digest repair validation error"), err, parseErr)
 	}
 
 	return digest, nil

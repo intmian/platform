@@ -334,3 +334,23 @@ func TestRunTextQueueReportsFailedAttempt(t *testing.T) {
 		t.Fatal("expected result error")
 	}
 }
+
+func TestAIProviderRequestBaseURLWithProxy(t *testing.T) {
+	cases := []struct {
+		provider AIProviderConfig
+		want     string
+	}{
+		{AIProviderConfig{Protocol: AIProviderProtocolOpenAI, BaseURL: "https://relay.example/v1"}, "https://relay.example/v1"},
+		{AIProviderConfig{Protocol: AIProviderProtocolOpenAI, ProxyURL: "https://p.workers.dev/"}, "https://p.workers.dev/api.openai.com/v1"},
+		{AIProviderConfig{Protocol: AIProviderProtocolOpenAI, BaseURL: "https://openrouter.ai/api/v1/", ProxyURL: "https://p.workers.dev"}, "https://p.workers.dev/openrouter.ai/api/v1/"},
+		{AIProviderConfig{Protocol: AIProviderProtocolDeepSeek, BaseURL: "https://api.deepseek.com", ProxyURL: "https://p.workers.dev"}, "https://p.workers.dev/api.deepseek.com"},
+	}
+	for _, c := range cases {
+		if got := c.provider.RequestBaseURL(); got != c.want {
+			t.Errorf("RequestBaseURL(%+v) = %q, want %q", c.provider, got, c.want)
+		}
+	}
+	if got := RewriteURLForAIProxy("https://p.workers.dev", "https://openrouter.ai/api/v1/audio/transcriptions?x=1"); got != "https://p.workers.dev/openrouter.ai/api/v1/audio/transcriptions?x=1" {
+		t.Errorf("RewriteURLForAIProxy = %q", got)
+	}
+}

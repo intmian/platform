@@ -74,7 +74,8 @@ func sourceRefExists(report *DayReport, ref string) bool {
 		}
 		idx, err := strconv.Atoi(parts[1])
 		return err == nil && idx >= 0 && idx < len(report.NytNews)
-	case "google":
+	case "kw":
+		// kw:<关键词序号>:<新闻序号>，指向 KeywordNews。旧日报里的 google:x:y 只在前端兼容展示。
 		if len(parts) != 3 {
 			return false
 		}
@@ -83,9 +84,9 @@ func sourceRefExists(report *DayReport, ref string) bool {
 		return groupErr == nil &&
 			itemErr == nil &&
 			groupIdx >= 0 &&
-			groupIdx < len(report.GoogleNews) &&
+			groupIdx < len(report.KeywordNews) &&
 			itemIdx >= 0 &&
-			itemIdx < len(report.GoogleNews[groupIdx].News)
+			itemIdx < len(report.KeywordNews[groupIdx].News)
 	default:
 		return false
 	}
@@ -275,7 +276,7 @@ func buildDailyPushMarkdown(report *DayReport, nowTitle string, reportLink strin
 		keywordBriefsDone = true
 	}
 	if !keywordBriefsDone {
-		md.AddList("关注关键词生成失败，请打开完整日报查看。", 1)
+		md.AddList(keywordPushFallback(report), 1)
 	}
 
 	md.AddTitle(reportLink, 3)
@@ -295,4 +296,21 @@ func formatDigestItemLine(title, summary string) string {
 	default:
 		return fmt.Sprintf("%s：%s", title, summary)
 	}
+}
+
+// keywordPushFallback 区分"搜索失败"和"确实没有新动态"。
+func keywordPushFallback(report *DayReport) string {
+	if report == nil || len(report.KeywordNews) == 0 {
+		return "关注关键词暂无结果，请打开完整日报查看。"
+	}
+	failed := 0
+	for _, group := range report.KeywordNews {
+		if group.Error != "" {
+			failed++
+		}
+	}
+	if failed == len(report.KeywordNews) {
+		return "关注关键词搜索失败，请打开完整日报查看。"
+	}
+	return "关注关键词今日无新动态。"
 }

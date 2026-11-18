@@ -1,0 +1,9 @@
+# 名字沿用第一次测试时部署的 Worker，地址不变。
+name = "platform-openai-proxy"
+main = "worker.js"
+compatibility_date = "2026-11-01"
+workers_dev = true
+
+# 固定在新加坡 AWS 机房附近运行，出口不在香港。
+[placement]
+region = "aws:ap-southeast-1"

@@ -21,12 +21,14 @@ import {
 import {
     ArrowDownOutlined,
     ArrowUpOutlined,
+    CloudDownloadOutlined,
     DeleteOutlined,
     ExperimentOutlined,
     PlusOutlined,
     SaveOutlined,
 } from "@ant-design/icons";
 import {ReactNode, useCallback, useEffect, useMemo, useState} from "react";
+import {AIModelDiscovery} from "./AIModelDiscovery";
 import {
     AIModelConfig,
     AIModelQueue,
@@ -80,7 +82,7 @@ const MODEL_CALL_PROTOCOL_OPTIONS: Record<ModelType, {value: ModelCallProtocol, 
     ],
 };
 
-const REASONING_OPTIONS = ["none", "minimal", "low", "medium", "high", "xhigh"].map((value) => ({
+const REASONING_OPTIONS = ["none", "minimal", "low", "medium", "high", "xhigh", "max"].map((value) => ({
     value: value as ReasoningEffort,
     label: value,
 }));
@@ -97,6 +99,7 @@ const BUSINESS_DEFINITIONS: {scene: string, label: string, type: ModelType}[] = 
     {scene: "summary", label: "新闻汇总", type: "text"},
     {scene: "translate", label: "翻译", type: "text"},
     {scene: "library_review_digest", label: "阅读笔记整理", type: "text"},
+    {scene: "web_search", label: "联网搜索（日报关键词新闻）", type: "text"},
     {scene: "transcribe", label: "语音转写", type: "stt"},
 ];
 
@@ -167,6 +170,8 @@ export function AISetting({extraTabs = []}: {extraTabs?: AISettingExtraTab[]}) {
     const [queueTestResult, setQueueTestResult] = useState<AIQueueTestResult | null>(null);
     const [queueTesting, setQueueTesting] = useState(false);
     const [section, setSection] = useState<string>("providers");
+    // 正在"获取模型"的供应商下标，null 表示弹窗关闭
+    const [discoverProviderIndex, setDiscoverProviderIndex] = useState<number | null>(null);
 
     const load = useCallback(async () => {
         setLoading(true);
@@ -359,7 +364,7 @@ export function AISetting({extraTabs = []}: {extraTabs?: AISettingExtraTab[]}) {
                                     reasoning: (model.reasoning ?? []).filter((effort) => (
                                         callProtocol === "DeepSeekText"
                                             ? effort === "high" || effort === "max"
-                                            : callProtocol === "OpenAIText" && effort !== "max"
+                                            : callProtocol === "OpenAIText"
                                     )),
                                     tools: callProtocol === "OpenAIText" ? model.tools : [],
                                 };
@@ -375,19 +380,30 @@ export function AISetting({extraTabs = []}: {extraTabs?: AISettingExtraTab[]}) {
                 <Col xs={24} lg={8}><Field label="Token">
                     <Input.Password value={provider.token} onChange={(event) => updateProvider(providerIndex, {token: event.target.value})}/>
                 </Field></Col>
+                <Col xs={24} lg={16}><Field label="转发地址（可选，填 ai-proxy Worker 地址后经新加坡转发；留空直连）">
+                    <Input
+                        allowClear
+                        placeholder="https://xxx.workers.dev"
+                        value={provider.proxyURL ?? ""}
+                        onChange={(event) => updateProvider(providerIndex, {proxyURL: event.target.value || undefined})}
+                    />
+                </Field></Col>
             </Row>
 
             <div className="ai-section-title">
                 <span>模型 <Text type="secondary">{provider.models.length}</Text></span>
-                <Button size="small" icon={<PlusOutlined/>} onClick={() => updateProvider(providerIndex, {
-                    models: [...provider.models, {
-                        id: nextID("model"),
-                        name: "",
-                        type: "text",
-                        reasoning: [],
-                        tools: [],
-                    }],
-                })}>添加模型</Button>
+                <Space size={8}>
+                    <Button size="small" icon={<CloudDownloadOutlined/>} onClick={() => setDiscoverProviderIndex(providerIndex)}>获取模型</Button>
+                    <Button size="small" icon={<PlusOutlined/>} onClick={() => updateProvider(providerIndex, {
+                        models: [...provider.models, {
+                            id: nextID("model"),
+                            name: "",
+                            type: "text",
+                            reasoning: [],
+                            tools: [],
+                        }],
+                    })}>添加模型</Button>
+                </Space>
             </div>
             {provider.models.length === 0
                 ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="没有注册模型"/>
@@ -438,7 +454,7 @@ export function AISetting({extraTabs = []}: {extraTabs?: AISettingExtraTab[]}) {
                                             callProtocol: nextCallProtocol,
                                             reasoning: nextIsDeepSeek
                                                 ? (model.reasoning ?? []).filter((effort) => effort === "high" || effort === "max")
-                                                : (model.reasoning ?? []).filter((effort) => effort !== "max"),
+                                                : (model.reasoning ?? []),
                                             tools: nextIsDeepSeek ? [] : model.tools,
                                         });
                                     }}
@@ -731,6 +747,30 @@ export function AISetting({extraTabs = []}: {extraTabs?: AISettingExtraTab[]}) {
         {bar}
         {panels[section]}
         {extraContent}
+        <AIModelDiscovery
+            provider={discoverProviderIndex === null ? null : value.providers[discoverProviderIndex] ?? null}
+            open={discoverProviderIndex !== null}
+            onClose={() => setDiscoverProviderIndex(null)}
+            onAdd={(names) => {
+                if (discoverProviderIndex === null) {
+                    return;
+                }
+                const provider = value.providers[discoverProviderIndex];
+                updateProvider(discoverProviderIndex, {
+                    models: [...provider.models, ...names.map((name) => {
+                        // 名字像语音转写模型的按 stt 加，其余按文本；OpenAI 文本模型默认开 Web Search
+                        const type: ModelType = /transcribe|whisper|asr/i.test(name) ? "stt" : "text";
+                        return {
+                            id: nextID("model"),
+                            name,
+                            type,
+                            reasoning: [],
+                            tools: type === "text" && provider.protocol === "OpenAI" ? ["web_search" as ChatTool] : [],
+                        };
+                    })],
+                });
+            }}
+        />
         <Modal
             open={Boolean(activeTestQueue)}
             title={activeTestQueue ? `测试调用策略：${activeTestQueue.name || "未命名策略"}` : "测试调用策略"}

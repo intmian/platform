@@ -1,6 +1,7 @@
 package mods
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"math/rand"
@@ -37,10 +38,13 @@ type DayReport struct {
 	Digest       *DayDigest `json:"digest,omitempty"`
 	BbcNews      []spider.BBCRssItem
 	NytNews      []spider.NYTimesRssItem
-	GoogleNews   []struct {
+	// KeywordNews 是关注关键词的联网搜索结果（模型 web_search）。
+	KeywordNews []KeywordNewsGroup
+	// GoogleNews 是改用模型搜索之前的 Google News RSS 结果，只在旧日报里有，不再写入。
+	GoogleNews []struct {
 		KeyWord string
 		News    []spider.GoogleRssItem
-	}
+	} `json:",omitempty"`
 }
 
 // WholeReport 用于存储读取的全量日报.
@@ -105,33 +109,14 @@ func getWholeReport(c *http.Client, keywords []string) (*WholeReport, error) {
 	return report, err
 }
 
-func GetDayReport(c *http.Client, keywords []string, city, weatherKey string) (*DayReport, error) {
+// GetDayReport 抓取 BBC、NYT 和天气。关注关键词的联网搜索在 GenerateDayReport 里单独做，不参与这里的整体重试。
+func GetDayReport(c *http.Client, city, weatherKey string) (*DayReport, error) {
 	report := &DayReport{}
 	lastDay := time.Now().AddDate(0, 0, -1)
 	bbcNews, err1 := spider.GetBBCRssWithDay(lastDay, c)
 	report.BbcNews = bbcNews
 	nytNews, err2 := spider.GetNYTimesRssWithDay(lastDay, c)
 	report.NytNews = nytNews
-	var err3 error
-	report.GoogleNews = make([]struct {
-		KeyWord string
-		News    []spider.GoogleRssItem
-	}, 0, len(keywords))
-	for _, key := range keywords {
-		// 如果以#废弃结尾就跳过
-		runes := []rune(key)
-		if len(runes) > 3 && string(runes[len(runes)-3:]) == "#废弃" {
-			continue
-		}
-		newses, err := spider.GetGoogleRssWithDay(key, lastDay, c)
-		if err != nil {
-			err3 = errors.Join(err3, err)
-		}
-		report.GoogleNews = append(report.GoogleNews, struct {
-			KeyWord string
-			News    []spider.GoogleRssItem
-		}{KeyWord: key, News: newses})
-	}
 
 	// 读取天气
 	weather, err4 := spider.QueryTodayWeather(weatherKey, city)
@@ -139,7 +124,7 @@ func GetDayReport(c *http.Client, keywords []string, city, weatherKey string) (*
 	weatherIndex, err5 := spider.QueryTodayIndex(weatherKey, city)
 	report.WeatherIndex = weatherIndex
 
-	err := errors.Join(err1, err2, err3, err4, err5)
+	err := errors.Join(err1, err2, err4, err5)
 	if err != nil {
 		tool.GLog.WarningErr("Day", errors.Join(errors.New("func GetDayReport() GetDayReport error"), err))
 	}
@@ -225,7 +210,7 @@ func (d *Day) GenerateDayReport() (*DayReport, error) {
 
 	var report *DayReport
 	for i := 0; i < 3; i++ {
-		report, err = GetDayReport(client, keys, city, weatherKey)
+		report, err = GetDayReport(client, city, weatherKey)
 		if err == nil {
 			break
 		}
@@ -237,6 +222,9 @@ func (d *Day) GenerateDayReport() (*DayReport, error) {
 	if report == nil {
 		return nil, errors.New("func GenerateDayReport() GetDayReport return nil")
 	}
+
+	// 关注关键词：每个词一次联网搜索，失败只影响该词
+	report.KeywordNews = d.searchKeywordNewsForReport(keys, time.Now())
 
 	// 进行进一步处理
 	// 1. nytime需要移除所有标题中还有Briefing的，并加入破解
@@ -451,6 +439,37 @@ func (d *Day) Do() {
 	if err != nil {
 		tool.GLog.WarningErr("auto.Day", errors.Join(errors.New("func Do() Push error"), err))
 	}
+}
+
+func (d *Day) searchKeywordNewsForReport(keys []string, now time.Time) []KeywordNewsGroup {
+	keywords := activeNewsKeywords(keys)
+	if len(keywords) == 0 {
+		return nil
+	}
+	searcher, err := backendshare.NewSceneAI(setting.GCfg, backendshare.AISceneWebSearch)
+	if err != nil {
+		tool.GLog.WarningErr("auto.Day", errors.Join(errors.New("web search scene unavailable"), err))
+		groups := make([]KeywordNewsGroup, 0, len(keywords))
+		for _, keyword := range keywords {
+			groups = append(groups, KeywordNewsGroup{Keyword: keyword, News: []KeywordNewsItem{}, Error: err.Error()})
+		}
+		return groups
+	}
+	day := now.In(beijingLocation()).AddDate(0, 0, -1).Format("2006-01-02")
+	return searchAllKeywordNews(context.Background(), searcher, keywords, day, d.previousKeywordNews(now))
+}
+
+// previousKeywordNews 读取前一天日报里每个关键词已经报道过的新闻，用于跨天去重。
+func (d *Day) previousKeywordNews(now time.Time) map[string][]KeywordNewsItem {
+	previous := map[string][]KeywordNewsItem{}
+	report, err := d.GetDayReport(now.AddDate(0, 0, -1))
+	if err != nil || report == nil {
+		return previous
+	}
+	for _, group := range report.KeywordNews {
+		previous[group.Keyword] = group.News
+	}
+	return previous
 }
 
 func (d *Day) GetName() string {

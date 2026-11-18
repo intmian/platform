@@ -18,15 +18,13 @@ func sampleDigestReport() *DayReport {
 			{Title: "AI 正在取代科技从业者", Description: "科技行业裁员加速", Link: "https://nyt.example/0", PubDate: pubDate},
 			{Title: "中国瞄准人工智能预测政治风险", Description: "预测性监控技术", Link: "https://nyt.example/1", PubDate: pubDate},
 		},
-		GoogleNews: []struct {
-			KeyWord string
-			News    []spider.GoogleRssItem
-		}{
+		KeywordNews: []KeywordNewsGroup{
 			{
-				KeyWord: "fsd",
-				News: []spider.GoogleRssItem{
-					{Title: "特斯拉 FSD 在中国面临诉讼", Link: "https://google.example/fsd/0", PubDate: pubDate},
-					{Title: "特斯拉继续招聘智驾测试岗位", Link: "https://google.example/fsd/1", PubDate: pubDate},
+				Keyword: "fsd",
+				Summary: "特斯拉 FSD 在中国同时面对诉讼和本地化测试推进。",
+				News: []KeywordNewsItem{
+					{Title: "特斯拉 FSD 在中国面临诉讼", URL: "https://news.example/fsd/0", Published: "2026-06-01"},
+					{Title: "特斯拉继续招聘智驾测试岗位", URL: "https://news.example/fsd/1", Published: "2026-06-01"},
 				},
 			},
 		},
@@ -35,13 +33,13 @@ func sampleDigestReport() *DayReport {
 
 func TestSourceRefExists(t *testing.T) {
 	report := sampleDigestReport()
-	validRefs := []string{"bbc:0", "nyt:1", "google:0:1"}
+	validRefs := []string{"bbc:0", "nyt:1", "kw:0:1"}
 	for _, ref := range validRefs {
 		if !sourceRefExists(report, ref) {
 			t.Fatalf("expected ref %s to exist", ref)
 		}
 	}
-	invalidRefs := []string{"bbc:9", "nyt:x", "google:0:9", "google:9:0", "google:fsd:0", "bad:0"}
+	invalidRefs := []string{"bbc:9", "nyt:x", "kw:0:9", "kw:9:0", "kw:fsd:0", "bad:0"}
 	for _, ref := range invalidRefs {
 		if sourceRefExists(report, ref) {
 			t.Fatalf("expected ref %s to be invalid", ref)
@@ -58,22 +56,22 @@ func TestNormalizeDayDigestDropsInvalidRefsAndCoverage(t *testing.T) {
 			Summary:    "AI、芯片和产业竞争成为重点。",
 			Topic:      "科技",
 			Importance: 5,
-			SourceRefs: []string{"nyt:1", "nyt:99", "google:0:1"},
+			SourceRefs: []string{"nyt:1", "nyt:99", "kw:0:1"},
 		}},
 		KeywordBriefs: []KeywordBrief{{
 			Keyword:    "fsd",
 			Summary:    "FSD 在中国同时面对诉讼和本地化测试推进。",
 			Count:      2,
-			SourceRefs: []string{"google:0:0", "google:0:9"},
+			SourceRefs: []string{"kw:0:0", "kw:0:9"},
 		}},
 		TopicBriefs: []TopicBrief{{
 			Topic:      "科技",
 			Summary:    "科技竞争相关报道集中。",
-			SourceRefs: []string{"nyt:1", "google:0:0", "missing:0"},
+			SourceRefs: []string{"nyt:1", "kw:0:0", "missing:0"},
 		}},
 		Coverage: []DigestCoverage{
 			{Ref: "nyt:1", Topic: "科技", InPush: true, Importance: 5},
-			{Ref: "google:0:99", Topic: "科技", InPush: false, Importance: 1},
+			{Ref: "kw:0:99", Topic: "科技", InPush: false, Importance: 1},
 		},
 	}
 
@@ -81,10 +79,10 @@ func TestNormalizeDayDigestDropsInvalidRefsAndCoverage(t *testing.T) {
 	if got == nil {
 		t.Fatal("expected normalized digest")
 	}
-	if strings.Join(got.ImportantNews[0].SourceRefs, ",") != "nyt:1,google:0:1" {
+	if strings.Join(got.ImportantNews[0].SourceRefs, ",") != "nyt:1,kw:0:1" {
 		t.Fatalf("unexpected important refs: %#v", got.ImportantNews[0].SourceRefs)
 	}
-	if strings.Join(got.KeywordBriefs[0].SourceRefs, ",") != "google:0:0" {
+	if strings.Join(got.KeywordBriefs[0].SourceRefs, ",") != "kw:0:0" {
 		t.Fatalf("unexpected keyword refs: %#v", got.KeywordBriefs[0].SourceRefs)
 	}
 	if len(got.Coverage) != 1 || got.Coverage[0].Ref != "nyt:1" {
