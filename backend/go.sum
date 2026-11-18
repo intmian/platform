@@ -125,6 +125,8 @@ github.com/intmian/gorm-d1-adapter v0.0.0-20260711091525-69f3943ef576 h1:+orMBn2
 github.com/intmian/gorm-d1-adapter v0.0.0-20260711091525-69f3943ef576/go.mod h1:MbYrTd7264xcAH7CjtN4HEGVKoM1DbZcHmsf3rwz2kQ=
 github.com/intmian/gorm-d1-adapter v0.0.0-20261117135530-1bcbea040c4a h1:jaCsGKtPx30Lt39JdMAzWUrInXRxYVd9DqdqYghKTmM=
 github.com/intmian/gorm-d1-adapter v0.0.0-20261117135530-1bcbea040c4a/go.mod h1:MbYrTd7264xcAH7CjtN4HEGVKoM1DbZcHmsf3rwz2kQ=
+github.com/intmian/gorm-d1-adapter v0.0.0-20261118084853-f46d850bc8bc h1:IUiBhOX54q3VN32y8PeRBvRDinGlzI06AnBwRaXlvnI=
+github.com/intmian/gorm-d1-adapter v0.0.0-20261118084853-f46d850bc8bc/go.mod h1:MbYrTd7264xcAH7CjtN4HEGVKoM1DbZcHmsf3rwz2kQ=
 github.com/intmian/mian_go_lib v0.0.0-20260119032423-6cbac09c2b60 h1:sP+S7x34niXvKfax4UeGAAb8BKh2Cce8RpnHvfWBEbg=
 github.com/intmian/mian_go_lib v0.0.0-20260119032423-6cbac09c2b60/go.mod h1:VCHamPZwfFC1kSixijwcZdauciCDtzny6G/Rih1HpFQ=
 github.com/jbenet/go-context v0.0.0-20150711004518-d14ea06fba99 h1:BQSFePA1RWJOlocH6Fxy8MmwDt+yVQYULKfN0RoTN8A=
