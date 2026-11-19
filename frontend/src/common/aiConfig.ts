@@ -9,6 +9,8 @@ export type ChatTool = "web_search";
 export interface AIModelConfig {
     id: string;
     name: string;
+    // 只用于展示，区分同一个上游模型的不同配置
+    alias?: string;
     type: ModelType;
     callProtocol?: ModelCallProtocol;
     reasoning?: ReasoningEffort[];
@@ -51,6 +53,16 @@ export interface AIPlatformConfig {
     providers: AIProviderConfig[];
     queues: AIModelQueue[];
     businesses: AIBusinessConfig[];
+}
+
+export type AIModelCapabilitySource = "upstream" | "rule" | "unknown";
+
+export interface AIDiscoveredModel {
+    name: string;
+    type: ModelType;
+    reasoning: ReasoningEffort[];
+    tools: ChatTool[];
+    source: AIModelCapabilitySource;
 }
 
 export interface AIQueueTestAttempt {
@@ -102,9 +114,9 @@ export async function saveAIPlatformConfig(value: AIPlatformConfig): Promise<voi
     await postAIConfig<null>("/misc/ai/config/set", value);
 }
 
-// 列出供应商上游可用的模型 ID（传编辑中的配置，不需要先保存）
-export function listAIProviderModels(provider: AIProviderConfig): Promise<string[]> {
-    return postAIConfig<string[]>("/misc/ai/config/provider/models", {provider});
+// 列出供应商上游可用的模型和预填能力（传编辑中的配置，不需要先保存）
+export function listAIProviderModels(provider: AIProviderConfig): Promise<AIDiscoveredModel[]> {
+    return postAIConfig<AIDiscoveredModel[]>("/misc/ai/config/provider/models", {provider});
 }
 
 export async function testAIQueue(value: AIPlatformConfig, queueID: string, input?: string, file?: File): Promise<AIQueueTestResult> {

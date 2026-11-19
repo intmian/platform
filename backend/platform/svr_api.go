@@ -179,6 +179,10 @@ func (m *webMgr) cfgServiceSet(c *gin.Context) {
 	}
 
 	err = m.plat.cfg.Set(xstorage.Join(svr, opr.Key), opr.Val)
+	if err != nil {
+		c.JSON(200, makeErrReturn("inner error"))
+		return
+	}
 	c.JSON(200, makeOkReturn(nil))
 	m.plat.log.Info("PLAT", "cfgServiceSet [%s] [%s] [%s]", svr, opr.Key, opr.Val)
 }

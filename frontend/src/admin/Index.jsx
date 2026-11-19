@@ -7,6 +7,7 @@ import {useContext, useRef, useState} from "react";
 import {LoginCtx} from "../common/loginCtx.jsx";
 import {useIsMobile} from "../common/hooksv2";
 import {MenuOutlined} from "@ant-design/icons";
+import {confirmLeaveSettings} from "./settings/settingsGuard";
 
 
 const {Content} = Layout;
@@ -74,9 +75,10 @@ function Index() {
             >
                 {!isMobile && (
                     <IndexSider
+                        selectedKey={contentType}
                         disable={!loginCtr.loginInfo.isValid() || !loginCtr.loginInfo.hasPermission('admin')}
                         onChooseMenuItem={(item) => {
-                            setContentType(item.key);
+                            confirmLeaveSettings(() => setContentType(item.key));
                         }}
                     />
                 )}
@@ -92,10 +94,11 @@ function Index() {
 
                         >
                             <IndexSider
+                                selectedKey={contentType}
                                 disable={!loginCtr.loginInfo.isValid() || !loginCtr.loginInfo.hasPermission('admin')}
                                 onChooseMenuItem={(item) => {
-                                    setContentType(item.key);
                                     setDrawerVisible(false);
+                                    confirmLeaveSettings(() => setContentType(item.key));
                                 }}
                             />
                         </Drawer>

@@ -201,6 +201,7 @@ func (c *AIPlatformConfig) normalize() {
 		for j := range provider.Models {
 			provider.Models[j].ID = ai.ModelID(strings.TrimSpace(string(provider.Models[j].ID)))
 			provider.Models[j].Name = strings.TrimSpace(provider.Models[j].Name)
+			provider.Models[j].Alias = strings.TrimSpace(provider.Models[j].Alias)
 			provider.Models[j].CallProtocol = ai.ModelCallProtocol(strings.TrimSpace(string(provider.Models[j].CallProtocol)))
 			if provider.Models[j].Type == ai.ModelType("chat") {
 				provider.Models[j].Type = ai.ModelTypeText
@@ -876,8 +877,8 @@ func RewriteURLForAIProxy(proxyURL, rawURL string) string {
 	return rewritten
 }
 
-// ListAIProviderModels 调用供应商的 /models 接口列出可用模型（经转发地址时同样走 Worker）。
-func ListAIProviderModels(ctx context.Context, provider AIProviderConfig) ([]string, error) {
+// ListAIProviderModels 调用供应商的 /models 接口列出可用模型及预填能力（经转发地址时同样走 Worker）。
+func ListAIProviderModels(ctx context.Context, provider AIProviderConfig) ([]AIDiscoveredModel, error) {
 	token := strings.TrimSpace(provider.Token)
 	if token == "" || token == "need input" {
 		return nil, errors.New("provider token is empty")
@@ -890,10 +891,9 @@ func ListAIProviderModels(ctx context.Context, provider AIProviderConfig) ([]str
 	if err != nil {
 		return nil, err
 	}
-	models, err := adapter.AvailableModels(ctx)
+	models, err := adapter.AvailableModelInfos(ctx)
 	if err != nil {
 		return nil, err
 	}
-	slices.Sort(models)
-	return slices.Compact(models), nil
+	return discoverAIModels(provider.Protocol, adapter.AvailableReasoning(), adapter.AvailableTools(), models), nil
 }

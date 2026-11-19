@@ -154,7 +154,7 @@ func TestSearchAllKeywordNews(t *testing.T) {
 }
 
 func TestActiveNewsKeywords(t *testing.T) {
-	got := activeNewsKeywords([]string{"gta6", " ", "iphone16#废弃", "need input", " ps6 "})
+	got := activeNewsKeywords([]string{"gta6", " ", "iphone16#废弃", "xbox #已废弃", "need input", " ps6 "})
 	if strings.Join(got, ",") != "gta6,ps6" {
 		t.Fatalf("unexpected keywords: %v", got)
 	}

@@ -69,9 +69,7 @@ func getWholeReport(c *http.Client, keywords []string) (*WholeReport, error) {
 		News    []spider.GoogleRssItem
 	}, 0, len(keywords))
 	for _, key := range keywords {
-		// 如果以#废弃结尾就跳过
-		runes := []rune(key)
-		if len(runes) > 3 && string(runes[len(runes)-3:]) == "#废弃" {
+		if isPausedNewsKeyword(key) {
 			continue
 		}
 		newses, err := spider.GetGoogleRss(key, c)

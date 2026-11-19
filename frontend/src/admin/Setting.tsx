@@ -1,33 +1,71 @@
-import {Card} from "antd";
-import {ConfigsCtr, UniConfig} from "../common/UniConfig";
-import {ConfigsType, ConfigType} from "../common/UniConfigDef";
-import {TodoneSetting} from "../todone/Main";
-import {AISetting} from "./AISetting";
-
-const AutoConfigs = new ConfigsCtr(ConfigsType.Server, 'auto')
-AutoConfigs.addBaseConfig('news.keys', '新闻关键词', ConfigType.SliceString, '不用的后面标注#已废弃')
-// 不能提前初始化，不然会出现第一次打开界面没有登陆，重新登陆不会刷新的问题。
-const MiscConfigs = new ConfigsCtr(ConfigsType.Plat)
-MiscConfigs.addBaseConfig('r2.endpoint', 'R2 Endpoint', ConfigType.String, 'https://example.com')
-MiscConfigs.addBaseConfig('r2.accessKey', 'R2 Access Key', ConfigType.String, 'example', {secret: true})
-MiscConfigs.addBaseConfig('r2.secretKey', 'R2 Secret Key', ConfigType.String, 'example', {secret: true})
-MiscConfigs.addBaseConfig('r2.bucket', 'R2 Bucket', ConfigType.String, 'example')
-MiscConfigs.addBaseConfig('r2.web', 'R2 外部展示网址', ConfigType.String, 'https://example.com')
+import {useCallback, useEffect, useState} from "react";
+import {Tabs, theme} from "antd";
+import {useBlocker} from "react-router-dom";
+import {AISettings} from "./settings/AISettings";
+import {BasicSettings} from "./settings/BasicSettings";
+import {clearSettingsDirty, confirmLeaveSettings, hasUnsavedSettings, setSettingsDirty} from "./settings/settingsGuard";
+import "./settings/settings.css";
 
 function Setting() {
-    return <AISetting extraTabs={[{
-        key: 'service',
-        label: '服务配置',
-        children: <>
-            <Card title="Auto 设置" style={{marginBottom: 16}}>
-                <UniConfig configCtr={AutoConfigs}/>
-            </Card>
-            <TodoneSetting/>
-            <Card title="R2 配置" style={{marginBottom: 16}}>
-                <UniConfig configCtr={MiscConfigs}/>
-            </Card>
-        </>,
-    }]}/>
+    const [section, setSection] = useState("basic");
+    const [dirty, setDirty] = useState({basic: false, ai: false});
+    const {token} = theme.useToken();
+
+    const onBasicDirty = useCallback((value: boolean) => {
+        setSettingsDirty("basic", value);
+        setDirty((current) => ({...current, basic: value}));
+    }, []);
+
+    const onAIDirty = useCallback((value: boolean) => {
+        setSettingsDirty("ai", value);
+        setDirty((current) => ({...current, ai: value}));
+    }, []);
+
+    // 关闭或刷新页面时提醒
+    useEffect(() => {
+        const onBeforeUnload = (event: BeforeUnloadEvent) => {
+            if (hasUnsavedSettings()) {
+                event.preventDefault();
+            }
+        };
+        window.addEventListener("beforeunload", onBeforeUnload);
+        return () => {
+            window.removeEventListener("beforeunload", onBeforeUnload);
+            clearSettingsDirty();
+        };
+    }, []);
+
+    // 点顶部导航跳到其他页面时提醒
+    const blocker = useBlocker(dirty.basic || dirty.ai);
+    useEffect(() => {
+        if (blocker.state === "blocked") {
+            confirmLeaveSettings(() => blocker.proceed(), () => blocker.reset());
+        }
+    }, [blocker]);
+
+    const label = (text: string, changed: boolean) => <span>
+        {text}
+        {changed && <span
+            aria-label="有未保存的修改"
+            style={{display: "inline-block", width: 6, height: 6, marginLeft: 6, borderRadius: "50%", background: token.colorWarning, verticalAlign: "middle"}}
+        />}
+    </span>;
+
+    return <div>
+        <Tabs
+            className="settings-tabs"
+            activeKey={section}
+            onChange={setSection}
+            tabBarStyle={{background: token.colorBgContainer}}
+            items={[
+                {key: "basic", label: label("基础设置", dirty.basic)},
+                {key: "ai", label: label("AI", dirty.ai)},
+            ]}
+        />
+        {/* 两个分类都保持挂载，切换时不丢未保存的修改 */}
+        <div style={{display: section === "basic" ? undefined : "none"}}><BasicSettings onDirtyChange={onBasicDirty}/></div>
+        <div style={{display: section === "ai" ? undefined : "none"}}><AISettings onDirtyChange={onAIDirty}/></div>
+    </div>;
 }
 
 export default Setting;

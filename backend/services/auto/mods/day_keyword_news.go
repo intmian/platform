@@ -390,12 +390,18 @@ func searchAllKeywordNews(ctx context.Context, newsAI keywordNewsAI, keywords []
 	return groups
 }
 
-// activeNewsKeywords 去掉空白和以 #废弃 结尾的关键词。
+// isPausedNewsKeyword 判断关键词是否已暂停。设置页写 #废弃，#已废弃 是旧输入提示留下的写法。
+func isPausedNewsKeyword(keyword string) bool {
+	keyword = strings.TrimSpace(keyword)
+	return strings.HasSuffix(keyword, "#废弃") || strings.HasSuffix(keyword, "#已废弃")
+}
+
+// activeNewsKeywords 去掉空白和已暂停的关键词。
 func activeNewsKeywords(keywords []string) []string {
 	result := make([]string, 0, len(keywords))
 	for _, keyword := range keywords {
 		keyword = strings.TrimSpace(keyword)
-		if keyword == "" || keyword == "need input" || strings.HasSuffix(keyword, "#废弃") {
+		if keyword == "" || keyword == "need input" || isPausedNewsKeyword(keyword) {
 			continue
 		}
 		result = append(result, keyword)

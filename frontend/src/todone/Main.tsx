@@ -1,9 +1,7 @@
 import {useContext, useEffect, useRef, useState} from "react";
 import {LoginCtr, LoginCtx} from "../common/loginCtx";
 import {Dir} from "./Dir";
-import {ConfigsCtr, UniConfig} from "../common/UniConfig";
-import {ConfigsType, ConfigType} from "../common/UniConfigDef";
-import {Card, Drawer, FloatButton, message, theme} from "antd";
+import {Drawer, FloatButton, theme} from "antd";
 import {Addr} from "./addr";
 import Group from "./Group";
 import {TaskDetail} from "./TaskDetail";
@@ -19,21 +17,6 @@ import {useLoginGate} from "../common/useLoginGate";
 import Overview from "./Overview";
 import {OverviewGroup} from "./net/send_back";
 import {locateInPage, LocateTarget} from "./locate";
-
-const TodoneConfigs = new ConfigsCtr(ConfigsType.Server, 'todone')
-TodoneConfigs.addBaseConfig('db.worker_endpoint', 'Worker Endpoint', ConfigType.String, 'https://worker.example.com')
-TodoneConfigs.addBaseConfig('db.worker_token', 'Worker Token', ConfigType.String, '', {secret: true})
-TodoneConfigs.addCallback((isInit: boolean) => {
-    if (!isInit) {
-        message.warning('配置已经更新，需要重启服务').then()
-    }
-})
-
-export function TodoneSetting() {
-    return <Card title="Todone Worker 配置" style={{marginBottom: 16}}>
-        <UniConfig configCtr={TodoneConfigs}/>
-    </Card>
-}
 
 function groupPageTitle(groupType: number, title: string, overview = false) {
     if (overview) {

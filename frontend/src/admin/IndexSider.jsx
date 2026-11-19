@@ -4,7 +4,7 @@ import {useIsMobile} from "../common/hooksv2";
 
 const {Sider} = Layout;
 
-function IndexSider({onChooseMenuItem, disable}) {
+function IndexSider({selectedKey, onChooseMenuItem, disable}) {
     const isMobile = useIsMobile();
     return (
         <Sider
@@ -21,7 +21,7 @@ function IndexSider({onChooseMenuItem, disable}) {
             <Menu
                 disabled={disable}
                 mode="inline"
-                defaultSelectedKeys={['monitor']}
+                selectedKeys={[selectedKey]}
                 style={{
                     borderInlineEnd: 'none',
                 }}
