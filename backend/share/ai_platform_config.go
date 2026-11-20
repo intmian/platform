@@ -640,8 +640,14 @@ func (c AIPlatformConfig) RunTextQueueRequest(ctx context.Context, queueID strin
 	if err != nil {
 		return ret, err
 	}
+	ctx, cancelQueue := withAIQueueDeadline(ctx)
+	defer cancelQueue()
 	var errs []error
-	for _, item := range items {
+	for index, item := range items {
+		if ctxErr := ctx.Err(); ctxErr != nil {
+			errs = append(errs, fmt.Errorf("queue stopped before %s/%s: %w", item.Provider.ID, item.Model.ID, ctxErr))
+			break
+		}
 		startedAt := time.Now()
 		attempt := AIQueueAttempt{ProviderID: item.Provider.ID, ModelID: item.Model.ID}
 		if item.Provider.Token == "" || item.Provider.Token == "need input" {
@@ -670,7 +676,7 @@ func (c AIPlatformConfig) RunTextQueueRequest(ctx context.Context, queueID strin
 			errs = append(errs, fmt.Errorf("%s/%s: %w", item.Provider.ID, item.Model.ID, sourceErr))
 			continue
 		}
-		provider, err := ai.NewOpenAIProvider(item.Provider.RequestBaseURL(), item.Provider.Token, sourceType)
+		provider, err := ai.NewOpenAIProvider(item.Provider.RequestBaseURL(), item.Provider.Token, sourceType, aiProviderOptions()...)
 		if err != nil {
 			attempt.Error = err.Error()
 			attempt.DurationMS = time.Since(startedAt).Milliseconds()
@@ -702,7 +708,8 @@ func (c AIPlatformConfig) RunTextQueueRequest(ctx context.Context, queueID strin
 				thinking = ai.ThinkingTypeEnabled
 			}
 		}
-		resp, err := provider.Chat(ctx, ai.ChatRequest{
+		attemptCtx, cancelAttempt := aiAttemptContext(ctx, index == len(items)-1)
+		resp, err := chatWithRetry(attemptCtx, provider, ai.ChatRequest{
 			Model:           string(item.Model.ID),
 			Messages:        []ai.ChatMessage{{Role: ai.ChatRoleUser, Content: input}},
 			ReasoningEffort: reasoningEffort,
@@ -710,6 +717,7 @@ func (c AIPlatformConfig) RunTextQueueRequest(ctx context.Context, queueID strin
 			Tools:           item.Setting.Tools,
 			JSONSchema:      req.JSONSchema,
 		})
+		cancelAttempt()
 		if err != nil {
 			attempt.Error = err.Error()
 			attempt.DurationMS = time.Since(startedAt).Milliseconds()
@@ -887,7 +895,7 @@ func ListAIProviderModels(ctx context.Context, provider AIProviderConfig) ([]AID
 	if provider.Protocol == AIProviderProtocolDeepSeek {
 		sourceType = ai.ProviderSourceTypeDeepSeek
 	}
-	adapter, err := ai.NewOpenAIProvider(provider.RequestBaseURL(), token, sourceType)
+	adapter, err := ai.NewOpenAIProvider(provider.RequestBaseURL(), token, sourceType, aiProviderOptions()...)
 	if err != nil {
 		return nil, err
 	}
