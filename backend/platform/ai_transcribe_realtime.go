@@ -96,6 +96,7 @@ func (m *webMgr) aiTranscribeRealtime(c *gin.Context) {
 
 	items, err := m.resolveRealtimeTranscriptionItems()
 	if err != nil {
+		m.logRealtimeTranscription("config error: %s", err.Error())
 		_ = writeRealtimeClientEvent(client, realtimeTranscriptionServerEvent{
 			Type:    "error",
 			Code:    "config_error",
@@ -106,6 +107,7 @@ func (m *webMgr) aiTranscribeRealtime(c *gin.Context) {
 
 	upstream, selected, taskID, err := connectDashScopeRealtimeQueue(ctx, items)
 	if err != nil {
+		m.logRealtimeTranscription("upstream connect failed: %s", err.Error())
 		_ = writeRealtimeClientEvent(client, realtimeTranscriptionServerEvent{
 			Type:    "error",
 			Code:    "upstream_connect_failed",
@@ -126,7 +128,29 @@ func (m *webMgr) aiTranscribeRealtime(c *gin.Context) {
 		return
 	}
 
-	_ = m.bridgeDashScopeRealtime(client, upstream, taskID)
+	if err := m.bridgeDashScopeRealtime(client, upstream, taskID); err != nil && !isRealtimeClientGone(err) {
+		m.logRealtimeTranscription("session failed [%s/%s]: %s", selected.Provider.ID, selected.Model.ID, err.Error())
+	}
+}
+
+// logRealtimeTranscription 记下实时转写的失败。错误原本只发给前端，
+// 服务器上看不到，排查上游故障时无从下手。
+func (m *webMgr) logRealtimeTranscription(format string, args ...any) {
+	if m.plat == nil || m.plat.log == nil {
+		return
+	}
+	m.plat.log.Warning("PLAT", "ai realtime transcribe "+format, args...)
+}
+
+// isRealtimeClientGone 区分用户自己结束（关页面、取消）和真正的上游故障，前者不记日志。
+func isRealtimeClientGone(err error) bool {
+	if err == nil {
+		return true
+	}
+	if websocket.IsCloseError(err, websocket.CloseNormalClosure, websocket.CloseGoingAway, websocket.CloseNoStatusReceived, websocket.CloseAbnormalClosure) {
+		return true
+	}
+	return err.Error() == "realtime transcription canceled"
 }
 
 func (m *webMgr) aiTranscribeCapability(c *gin.Context) {
@@ -196,7 +220,7 @@ func connectDashScopeRealtimeQueue(
 			errs = append(errs, fmt.Errorf("%s: stt model is empty", label))
 			continue
 		}
-		conn, taskID, err := connectDashScopeRealtime(ctx, baseURL, token, model)
+		conn, taskID, err := connectDashScopeRealtime(ctx, baseURL, token, model, defaultDashScopeRealtimeAudio)
 		if err != nil {
 			errs = append(errs, fmt.Errorf("%s: %w", label, err))
 			continue
@@ -209,11 +233,21 @@ func connectDashScopeRealtimeQueue(
 	return nil, share.AIResolvedQueueItem{}, "", errors.Join(errs...)
 }
 
+// dashScopeRealtimeAudio 是 run-task 里描述音频的参数：浏览器麦克风推的是 8k PCM，
+// 上传的文件则按文件本身的格式和采样率。
+type dashScopeRealtimeAudio struct {
+	Format     string
+	SampleRate int
+}
+
+var defaultDashScopeRealtimeAudio = dashScopeRealtimeAudio{Format: "pcm", SampleRate: dashScopeRealtimeSampleRate}
+
 func connectDashScopeRealtime(
 	ctx context.Context,
 	baseURL string,
 	token string,
 	model string,
+	audio dashScopeRealtimeAudio,
 ) (*websocket.Conn, string, error) {
 	endpoint, err := dashScopeRealtimeEndpoint(baseURL)
 	if err != nil {
@@ -247,8 +281,8 @@ func connectDashScopeRealtime(
 			"function":   "recognition",
 			"model":      model,
 			"parameters": map[string]any{
-				"format":         "pcm",
-				"sample_rate":    dashScopeRealtimeSampleRate,
+				"format":         audio.Format,
+				"sample_rate":    audio.SampleRate,
 				"language_hints": []string{"zh"},
 			},
 			"input": map[string]any{},

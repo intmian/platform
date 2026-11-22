@@ -136,6 +136,7 @@ func TestConnectDashScopeRealtimeStartsTask(t *testing.T) {
 		server.URL,
 		"test-token",
 		"fun-asr-flash-8k-realtime",
+		defaultDashScopeRealtimeAudio,
 	)
 	if err != nil {
 		t.Fatalf("connectDashScopeRealtime: %v", err)
