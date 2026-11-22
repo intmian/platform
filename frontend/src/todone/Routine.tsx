@@ -996,6 +996,7 @@ function Row(props: { v: VNode, ctx: RowCtx }) {
         drag.setNodeRef(el);
         dropZone.setNodeRef(el);
     };
+    const lineRef = useRef<HTMLDivElement>(null);
     const dropPos = ctx.drop?.kind === 'row' && ctx.drop.id === v.task.ID ? ctx.drop.pos : null;
     const isSource = ctx.dragID === v.task.ID;
     // 拖到收起的分组中间停一会儿自动展开
@@ -1028,8 +1029,15 @@ function Row(props: { v: VNode, ctx: RowCtx }) {
     return <Collapse open={!hidden || isSource}>
         <div className={`rt-node${isSource ? ' rt-drag-src' : ''}`}>
             <div ref={rowRef} className={cls} data-todone-task={v.task.ID}
-                 onClick={() => v.paused ? (v.folder && v.children.length ? setOpen(!open) : ctx.onEdit(v.task.ID))
-                     : container ? setOpen(!open) : scope.length ? ctx.onToggle(scope) : ctx.onEdit(v.task.ID)}>
+                 onClick={(e) => {
+                     // 只有标题那一条能勾：点在标题行下面（备注两侧、行底的空白）不响应。备注文字自己会拦下点击用来展开
+                     const line = lineRef.current?.getBoundingClientRect();
+                     if (line && e.clientY > line.bottom + 4) return;
+                     if (v.paused) v.folder && v.children.length ? setOpen(!open) : ctx.onEdit(v.task.ID);
+                     else if (container) setOpen(!open);
+                     else if (scope.length) ctx.onToggle(scope);
+                     else ctx.onEdit(v.task.ID);
+                 }}>
                 {/* 把手和右侧按钮都占满整行高度，点偏也不会误勾 */}
                 <span className="rt-zone rt-handle" {...drag.attributes} {...drag.listeners} onClick={(e) => e.stopPropagation()}
                       title="拖动排序，拖到分组中间可放进分组">
@@ -1039,7 +1047,7 @@ function Row(props: { v: VNode, ctx: RowCtx }) {
                     ? <span className="rt-check-spacer" style={{width: 22}}/>
                     : <RoutineCheck value={cv} optional={v.optional} disabled={waiting || v.paused}/>}
                 <div className="rt-row-main">
-                    <div className="rt-row-line">
+                    <div className="rt-row-line" ref={lineRef}>
                         <span className="rt-row-title"><Highlight text={v.task.Title} kw={kw}/></span>
                         <span className="rt-row-tags">
                             {v.node.Temp && <span className="rt-tag rt-tag-temp">本次</span>}

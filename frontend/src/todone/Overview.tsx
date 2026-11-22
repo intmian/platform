@@ -530,14 +530,6 @@ function itemDone(it: FocusItem): boolean {
 
 // ---------------- 上半部分 ----------------
 
-/** 包一层点击处理：不让点击冒泡到整行（整行点击是勾选）。 */
-function stop(fn: () => void) {
-    return (e: React.MouseEvent) => {
-        e.stopPropagation();
-        fn();
-    };
-}
-
 function TimingTag(props: { timing: Timing }) {
     if (!props.timing.label) return null;
     return <span className={`ov-tag ov-tag-${props.timing.tone}`}>{props.timing.label}</span>;
@@ -551,30 +543,33 @@ function JumpBtn(props: { onClick: () => void }) {
     }}><AimOutlined/></span>;
 }
 
+// 关注页上半部分的行：只有上面“圆圈 + 标题 + 右侧标签”这一条（ov-row-head）能点来勾选；
+// 下面的来源文字只跳转，胶囊各勾各的，其余空白不响应（和例行清单页同一个规矩）。
 function TaskRow(props: { item: TaskItem, onDone: (ot: OverviewTask, done: boolean) => void, onJump: () => void }) {
     const {ot, group, timing} = props.item;
     const t = ot.Task;
     const flagged = !!t.Tags?.includes(FLAG_TAG);
-    // 和清单页一样，整行都能点来勾选，不用对准圆圈
-    return <div className={`ov-row ${t.Done ? 'ov-row-done' : ''}`} onClick={() => props.onDone(ot, !t.Done)}>
-        <span className="ov-row-check">
-            <RoutineCheck value={t.Done ? 'on' : 'off'} size={20}/>
-        </span>
-        <div className="ov-row-main">
+    return <div className={`ov-row ${t.Done ? 'ov-row-done' : ''}`}>
+        <div className="ov-row-head" onClick={() => props.onDone(ot, !t.Done)}>
+            <span className="ov-row-check">
+                <RoutineCheck value={t.Done ? 'on' : 'off'} size={20}/>
+            </span>
             <div className="ov-row-title">
                 {flagged && <FlagFilled className="ov-flag"/>}
                 {ot.ParentTitle && <span className="ov-row-parent">{ot.ParentTitle} ›</span>}
                 {t.Title}
             </div>
-            <a className="ov-row-src" onClick={stop(props.onJump)}>{groupPath(group)}</a>
+            <TimingTag timing={timing}/>
         </div>
-        <TimingTag timing={timing}/>
+        <div className="ov-row-below">
+            <a className="ov-row-src" onClick={props.onJump}>{groupPath(group)}</a>
+        </div>
     </div>;
 }
 
 /**
  * 例行清单的一个节奏层：一行标题带进度，下面把这一层的事项排成小胶囊，点一下勾一项。
- * 只有一个事项的层就是普通的一行。
+ * 只有一个事项的层就是普通的一行。点标题这一条勾整层。
  */
 function RoutineRow(props: { item: RoutineItem, onToggle: (leaves: VNode[]) => void, onJump: () => void }) {
     const {owner, timing, title, subTitle, group} = props.item;
@@ -583,12 +578,11 @@ function RoutineRow(props: { item: RoutineItem, onToggle: (leaves: VNode[]) => v
     const done = act.filter((l) => l.checked).length;
     const multi = leaves.length > 1;
     const value = owner.complete ? 'on' : done > 0 ? 'mixed' : 'off';
-    // 点行勾整层，点胶囊只勾那一项
-    return <div className={`ov-row ${owner.complete ? 'ov-row-done' : ''}`} onClick={() => act.length > 0 && props.onToggle(leaves)}>
-        <span className="ov-row-check">
-            <RoutineCheck value={value} size={20} disabled={act.length === 0}/>
-        </span>
-        <div className="ov-row-main">
+    return <div className={`ov-row ${owner.complete ? 'ov-row-done' : ''}`}>
+        <div className="ov-row-head" onClick={() => act.length > 0 && props.onToggle(leaves)}>
+            <span className="ov-row-check">
+                <RoutineCheck value={value} size={20} disabled={act.length === 0}/>
+            </span>
             <div className="ov-row-title">
                 {subTitle && <span className="ov-row-parent">{subTitle} ›</span>}
                 {title}
@@ -597,17 +591,19 @@ function RoutineRow(props: { item: RoutineItem, onToggle: (leaves: VNode[]) => v
                 </span>}
                 {multi && <span className="ov-row-progress">{done}/{act.length}</span>}
             </div>
-            <a className="ov-row-src" onClick={stop(props.onJump)}>{groupPath(group)}</a>
+            <TimingTag timing={timing}/>
+        </div>
+        <div className="ov-row-below">
+            <a className="ov-row-src" onClick={props.onJump}>{groupPath(group)}</a>
             {multi && <div className="ov-chips">
                 {act.map((l) => <span key={l.task.ID} title={l.task.Title}
                                       className={`ov-chip ${l.checked ? 'ov-chip-on' : ''}`}
-                                      onClick={stop(() => props.onToggle([l]))}>
+                                      onClick={() => props.onToggle([l])}>
                     <RoutineCheck value={l.checked ? 'on' : 'off'} size={15} optional={l.optional}/>
                     <span className="ov-chip-text">{l.task.Title}</span>
                 </span>)}
             </div>}
         </div>
-        <TimingTag timing={timing}/>
     </div>;
 }
 

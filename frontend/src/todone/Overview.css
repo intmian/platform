@@ -157,22 +157,34 @@
 }
 
 /* ---------- 行 ---------- */
-/* 整行可点（勾选），和清单页一致 */
-.ov-row, .ov-subrow {
+/* 只有标题这一条（ov-row-head：圆圈到右侧标签）能点来勾选；下面的来源、胶囊区不勾这一行。
+   收藏卡片里的行只有一条标题，整行就是标题带。 */
+.ov-row-head, .ov-subrow {
     cursor: pointer;
     -webkit-tap-highlight-color: transparent;
 }
 
 .ov-row {
+    --ov-px: 16px; /* 左右内边距，窄屏改小；标题带用它把底色铺满整行宽度 */
+    padding: 0 var(--ov-px) 8px;
+}
+
+.ov-row-head {
     display: flex;
     align-items: flex-start;
     gap: 10px;
-    padding: 8px 16px;
+    margin: 0 calc(-1 * var(--ov-px));
+    padding: 8px var(--ov-px) 2px;
     transition: background .2s;
 }
 
-.ov-row:hover {
+.ov-row-head:hover {
     background: var(--rt-fill);
+}
+
+/* 来源和胶囊跟标题文字左对齐（圆圈 20 + 间距 10） */
+.ov-row-below {
+    padding-left: 30px;
 }
 
 .ov-row-check {
@@ -180,12 +192,9 @@
     padding-top: 1px;
 }
 
-.ov-row-main {
+.ov-row-title {
     flex: 1;
     min-width: 0;
-}
-
-.ov-row-title {
     font-size: 14px;
     line-height: 22px;
     word-break: break-word;
@@ -423,9 +432,13 @@
         width: 100%;
     }
 
-    .ov-row, .ov-band-title, .ov-panel-title, .ov-day {
+    .ov-band-title, .ov-panel-title, .ov-day {
         padding-left: 12px;
         padding-right: 12px;
+    }
+
+    .ov-row {
+        --ov-px: 12px;
     }
 }
 
@@ -647,7 +660,6 @@
     transition: opacity .15s, color .15s, background .15s;
 }
 
-.ov-row:hover .ov-jump,
 .ov-subrow:hover .ov-jump {
     opacity: 1;
 }
