@@ -4,22 +4,8 @@
     {
       "name": "frontend",
       "runtimeExecutable": "npm",
-      "runtimeArgs": [
-        "--prefix",
-        "frontend",
-        "run",
-        "dev"
-      ],
+      "runtimeArgs": ["--prefix", "frontend", "run", "dev"],
       "port": 5173
-    },
-    {
-      "name": "frontend-8091",
-      "runtimeExecutable": "sh",
-      "runtimeArgs": [
-        "-c",
-        "cd frontend && PLATFORM_BACKEND=http://127.0.0.1:8091 npx vite --port 5174 --strictPort"
-      ],
-      "port": 5174
     }
   ]
 }

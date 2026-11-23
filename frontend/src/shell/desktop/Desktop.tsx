@@ -160,12 +160,11 @@ export function Desktop({onSearch}: { onSearch: () => void }) {
             </SortableContext>
         </DndContext>
 
-        {(dock.length > 0 || editing) && <DndContext sensors={sensors} collisionDetection={closestCenter}
+        {dock.length > 0 && <DndContext sensors={sensors} collisionDetection={closestCenter}
                                                      onDragEnd={onDragEnd("dock")}>
             <SortableContext items={dock.map((i) => i.id)} strategy={horizontalListSortingStrategy}>
                 <nav className="pf-dock">
                     {dock.map((i) => renderTile(i, true))}
-                    {dock.length === 0 && <span className="pf-dock-hint">点图标选“放进 Dock”</span>}
                 </nav>
             </SortableContext>
         </DndContext>}

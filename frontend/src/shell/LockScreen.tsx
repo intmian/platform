@@ -43,7 +43,6 @@ export function LockScreen({overlay = false}: { overlay?: boolean }) {
         <form className="pf-lock-card" onSubmit={submit}>
             <img className="pf-lock-logo" src="/icons/plat-192.png" alt=""/>
             <div className="pf-lock-title">{overlay ? "登录已过期" : "Platform"}</div>
-            {overlay && <div className="pf-lock-sub">重新登录后会回到刚才的页面</div>}
             <Input ref={userRef} size="large" prefix={<UserOutlined/>} placeholder="用户名" autoComplete="username"
                    value={username} onChange={(e) => setUsername(e.target.value)}/>
             <Input.Password ref={pwdRef} size="large" prefix={<LockOutlined/>} placeholder="密码" autoComplete="current-password"

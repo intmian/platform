@@ -129,9 +129,9 @@ function SwitchPanel({current, currentPath, currentTitle, onClose, onSearch}: {
             <button onClick={onSearch}><SearchOutlined/>搜索</button>
             <button disabled={pinned} onClick={() => {
                 addLink(currentTitle || current?.name || "页面", currentPath);
-                message.success("已加到桌面");
+                message.success("已添加到桌面");
                 onClose();
-            }}>{pinned ? <><CheckOutlined/>已在桌面</> : <><PlusOutlined/>加到桌面</>}</button>
+            }}>{pinned ? <><CheckOutlined/>已在桌面</> : <><PlusOutlined/>添加到桌面</>}</button>
         </div>
     </div>;
 }

@@ -148,7 +148,7 @@ async function save() {
     } else if (ret.code === 2 && ret.data && isLayout(ret.data.Layout)) {
         set({layout: reconcile(ret.data.Layout), version: ret.data.Version});
         writeCache();
-        message.info("桌面在另一台设备上改过，已换成那边的版本");
+        message.info("桌面在别的设备上改过，已同步");
     }
     // 其他失败（断网等）：本地缓存还在，下次改动或下次打开时再传
 }
