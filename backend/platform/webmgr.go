@@ -7,8 +7,12 @@ import (
 	"github.com/intmian/mian_go_lib/tool/token"
 	"github.com/intmian/mian_go_lib/xstorage"
 	"io"
+	"net/http"
 	"os"
+	"path"
+	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -16,9 +20,14 @@ import (
 type webMgr struct {
 	platStoWebPack xstorage.WebPack
 	// 使用jwt进行签名。这里有一个缺陷，因为密码修改后jwt依然有效，所以不太安全。jwt也可能会被盗用。也不太好做续签，后面会改成使用session。目前版本先做一个第二个盐随机化的安全处理，防止爆破出秘钥。
-	jwt       token.JwtMgr
-	webEngine *gin.Engine
-	plat      *PlatForm
+	jwt token.JwtMgr
+	// jwtPrev 用上个月的 salt2 签名，只用来校验跨月重启前签发的 token，见 setJwtSalt
+	jwtPrev    token.JwtMgr
+	hasJwtPrev bool
+	webEngine  *gin.Engine
+	// homeLayoutMu 保护桌面布局的读改写
+	homeLayoutMu sync.Mutex
+	plat         *PlatForm
 }
 
 func (m *webMgr) Init(plat *PlatForm) error {
@@ -41,35 +50,9 @@ func (m *webMgr) Init(plat *PlatForm) error {
 		后续会不再支持从后端接入前端，因为前端路由会导致后端路由冲突(问题已解决)
 		xstorage.ToBaseF[bool](global.m.plat.storage.Get("UseFront"))
 	*/
-	if misc.PathExist("./front") && m.plat.baseSetting.Copy().UseFront {
+	if misc.PathExist(frontDir) && m.plat.baseSetting.Copy().UseFront {
 		m.plat.log.Info("web", "接入前端")
-		m.webEngine.Use(func(c *gin.Context) {
-			contentType := c.Request.Header.Get("Content-Type")
-			if strings.EqualFold(c.Request.Header.Get("Upgrade"), "websocket") {
-				c.Next()
-				return
-			}
-			if c.Request.Method != "POST" && contentType != "application/json" {
-				// 如果是GET但是是SSE
-				if c.Request.Method == "GET" && c.Request.Header.Get("Accept") == "text/event-stream" {
-					c.Next()
-					return
-				}
-				// 如果以assets开头的请求转发
-				if len(c.Request.URL.Path) > 7 && c.Request.URL.Path[:7] == "/assets" {
-					c.File("./front/assets" + c.Request.URL.Path[7:])
-					return
-				}
-				if c.Request.URL.Path == "/config.json" {
-					c.File("./front/config.json")
-					return
-				}
-				c.File("./front/index.html")
-				c.Abort()
-			} else {
-				c.Next()
-			}
-		})
+		m.webEngine.Use(frontMiddleware(frontDir))
 	}
 	m.initAdminRoot(engine)
 	m.initSvrRoot(engine)
@@ -81,10 +64,10 @@ func (m *webMgr) Init(plat *PlatForm) error {
 			panic("salt1 is empty")
 		}
 		_ = m.plat.storage.Set("WebSalt1", xstorage.ToUnit[string](s1, xstorage.ValueTypeString))
+	} else {
+		s1 = xstorage.ToBase[string](s1v)
 	}
-	// 为了权衡安全和方便性，重启时如果跨月就重置一下token，如果每次都重置那会导致每次都需要重新登录，不重置会导致可能的破解？
-	token2 := time.Now().Format("2006-01")
-	m.jwt.SetSalt(xstorage.ToBase[string](s1v), token2)
+	m.setJwtSalt(s1, time.Now())
 	var err error
 	go func() {
 		err = engine.Run(":" + m.plat.baseSetting.Copy().WebPort)
@@ -95,11 +78,121 @@ func (m *webMgr) Init(plat *PlatForm) error {
 	return nil
 }
 
+// setJwtSalt 设置签名盐。salt2 取启动时的年月，同时保留上个月的盐用于校验：
+// 跨月后的第一次重启（每次发布都会重启）不再让所有人掉登录，旧 token 在 /check 时换成本月盐。
+// 盐只在启动时确定，不按请求时间计算：服务不重启就一直用启动月的盐，token 有效期只有 7 天，两个盐足够覆盖。
+func (m *webMgr) setJwtSalt(salt1 string, now time.Time) {
+	cur := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, now.Location())
+	m.jwt.SetSalt(salt1, cur.Format("2006-01"))
+	m.jwtPrev.SetSalt(salt1, cur.AddDate(0, -1, 0).Format("2006-01"))
+	m.hasJwtPrev = true
+}
+
+// verifyTokenSign 校验签名（不看有效期）。ok 表示签名有效，prevOnly 表示只有上个月的盐能验过，需要重签
+func (m *webMgr) verifyTokenSign(data *token.Data) (ok bool, prevOnly bool) {
+	if data == nil {
+		return false, false
+	}
+	if m.jwt.CheckToken(data) {
+		return true, false
+	}
+	// 没设置过上月盐时 jwtPrev 的盐是空串，绝不能用它校验
+	if m.hasJwtPrev && m.jwtPrev.CheckToken(data) {
+		return true, true
+	}
+	return false, false
+}
+
+const frontDir = "./front"
+
+// frontMiddleware 由后端直接托管前端时使用：非 POST 请求返回静态文件，找不到就返回 index.html 交给前端路由。
+// websocket、SSE 放行。注意 GET /share-link/... 也会被这里吞掉（历史行为，未改）。
+func frontMiddleware(dir string) gin.HandlerFunc {
+	indexFile := filepath.Join(dir, "index.html")
+	return func(c *gin.Context) {
+		contentType := c.Request.Header.Get("Content-Type")
+		if strings.EqualFold(c.Request.Header.Get("Upgrade"), "websocket") {
+			c.Next()
+			return
+		}
+		if c.Request.Method == "POST" || contentType == "application/json" {
+			c.Next()
+			return
+		}
+		// 如果是GET但是是SSE
+		if c.Request.Method == "GET" && c.Request.Header.Get("Accept") == "text/event-stream" {
+			c.Next()
+			return
+		}
+		// 如果以assets开头的请求转发。文件名带哈希，可以长期缓存；不存在就 404（不缓存，也不列目录）
+		if len(c.Request.URL.Path) > 7 && c.Request.URL.Path[:7] == "/assets" {
+			f := filepath.Join(dir, "assets", filepath.FromSlash(path.Clean("/"+c.Request.URL.Path[7:])))
+			if info, err := os.Stat(f); err != nil || !info.Mode().IsRegular() {
+				c.AbortWithStatus(http.StatusNotFound)
+				return
+			}
+			c.Header("Cache-Control", "public, max-age=31536000, immutable")
+			c.File(f)
+			c.Abort()
+			return
+		}
+		if c.Request.URL.Path == "/config.json" {
+			c.File(filepath.Join(dir, "config.json"))
+			return
+		}
+		// public 目录里的文件（manifest、sw.js、图标等）直接返回，其余都交给前端路由
+		if c.Request.Method == "GET" || c.Request.Method == "HEAD" {
+			if f, ok := frontStaticFile(dir, c.Request.URL.Path); ok {
+				if filepath.Base(f) == "sw.js" {
+					c.Header("Cache-Control", "no-cache")
+				}
+				c.File(f)
+				c.Abort()
+				return
+			}
+		}
+		c.Header("Cache-Control", "no-cache")
+		c.File(indexFile)
+		c.Abort()
+	}
+}
+
+// frontStaticFile 把请求路径映射到 dir 下已存在的普通文件（public 目录里的 manifest、sw.js、icons/ 等）。
+// path.Clean 加前导 / 会消掉所有 ..，结果一定在 dir 内；隐藏文件、目录、软链都不返回，也就不会列目录。
+func frontStaticFile(dir string, urlPath string) (string, bool) {
+	name := strings.TrimPrefix(path.Clean("/"+urlPath), "/")
+	if name == "" || name == "index.html" {
+		return "", false
+	}
+	for _, seg := range strings.Split(name, "/") {
+		if strings.HasPrefix(seg, ".") {
+			return "", false
+		}
+	}
+	full := filepath.Join(dir, filepath.FromSlash(name))
+	info, err := os.Lstat(full) // 不跟随软链
+	if err != nil || !info.Mode().IsRegular() {
+		return "", false
+	}
+	return full, true
+}
+
 func (m *webMgr) CheckTokenPermission(data *token.Data, wantPermission string) bool {
-	n := time.Now()
-	return m.jwt.CheckPermission(data, n, wantPermission)
+	if data == nil || data.ValidTime < time.Now().Unix() {
+		return false
+	}
+	if ok, _ := m.verifyTokenSign(data); !ok {
+		return false
+	}
+	for _, p := range data.Permission {
+		if p == wantPermission {
+			return true
+		}
+	}
+	return false
 }
 
 func (m *webMgr) CheckToken(data *token.Data) bool {
-	return m.jwt.CheckToken(data)
+	ok, _ := m.verifyTokenSign(data)
+	return ok
 }

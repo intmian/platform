@@ -35,6 +35,8 @@ func (m *webMgr) initSvrRoot(r *gin.Engine) {
 	r.POST("/misc/subscription/delete", m.subscriptionDelete)
 	r.POST("/misc/subscription/rotate", m.subscriptionRotate)
 	r.POST("/misc/subscription/check", m.subscriptionCheck)
+	r.POST("/misc/home/get", m.homeLayoutGet)
+	r.POST("/misc/home/set", m.homeLayoutSet)
 	r.POST("/misc/money/book/list", m.moneyBookList)
 	r.POST("/misc/money/book/create", m.moneyBookCreate)
 	r.POST("/misc/money/book/update", m.moneyBookUpdate)

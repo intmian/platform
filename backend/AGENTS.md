@@ -9,7 +9,7 @@
   - 两者都可以用环境变量 `PLATFORM_D1_LOG_WORKER_*` / `PLATFORM_TODONE_WORKER_*` 覆盖，代码里没有默认的生产地址。
 - **启动时会对 Todone 库自动迁移（AutoMigrate）**，所以本地运行绝不能指向生产 Worker。
 - 服务出错时网关默认只回 `svr error`；`base_setting.toml` 里设 `debug = true` 才会返回真实错误。
-- 登录 cookie 的签名盐带着年月，跨月会被要求重新登录，属正常现象。
+- 登录 cookie 的签名盐带着服务启动时的年月，同时接受上个月的盐；`/check` 遇到旧盐或剩余不足 3 天的 token 会续签。连续两个月不登录、或 7 天没打开页面才会掉登录。
 - 首次用 `admin` 登录时，如果账号还不存在，会用 `base_setting.toml` 的 `admin_pwd` 自动创建。
 
 ## 坑
