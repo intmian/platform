@@ -4,7 +4,7 @@ import IndexSider from "./IndexSider.jsx";
 import IndexFooter from "./IndexFooter.jsx";
 import IndexContent from "./IndexContent.jsx";
 import {useContext, useRef, useState} from "react";
-import {LoginCtx} from "../common/loginCtx.jsx";
+import {LoginCtx} from "../common/loginCtx";
 import {useIsMobile} from "../common/hooksv2";
 import {MenuOutlined} from "@ant-design/icons";
 import {confirmLeaveSettings} from "./settings/settingsGuard";

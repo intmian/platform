@@ -1,6 +1,7 @@
 import {EnvData, TaskIO, TaskStatus, ToolData} from "./backHttpDefine";
 import config from "../config.json";
 import {message} from "antd";
+import {request} from "./api";
 
 export interface UniReturn {
     code: number
@@ -13,45 +14,12 @@ export interface UniResult {
     ok: boolean
 }
 
-// 通用的异步POST请求，只适配platform的通用后端返回格式，如果code不为0，或者没有code字段，返回null或者不为200的状态码，返回null
-export async function UniPost(url: string, req: object) {
-    const result: UniResult = {
-        data: {},
-        ok: false
-    }
-    try {
-        const response: Response = await fetch(url, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(req),
-        });
-
-        if (!response.ok || (response.status !== undefined && response.status !== 200)) {
-            console.debug('UniPost failed:', response)
-            result.ok = false
-            return result
-        }
-        const data: UniReturn = await response.json()
-        if (data.code !== 0) {
-            console.debug('UniPost failed:', data.msg)
-            return result
-        } else {
-            result.ok = true
-        }
-        if (data.data !== undefined) {
-            result.data = data.data
-        } else {
-            result.data = {}
-            result.ok = false
-        }
-        return result
-    } catch (error) {
-        result.ok = false
-        console.debug('UniPost failed:', error)
-        return result
-    }
+// 旧调用方用的返回形状；底层走 common/api.ts 的统一请求内核
+export async function UniPost(url: string, req: object): Promise<UniResult> {
+    const ret = await request<object>(url, req);
+    // 历史行为：成功但没有 data 字段也算失败
+    const ok = ret.ok && ret.data !== undefined;
+    return {ok, data: ret.data ?? {}};
 }
 
 export interface DebugParam {

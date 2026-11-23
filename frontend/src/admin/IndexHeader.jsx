@@ -4,7 +4,7 @@ import LoginPanel from "../common/loginPanel.jsx";
 import {useContext, useState} from "react";
 import biglogo from "/plat-logo.png";
 import {UserOutlined} from "@ant-design/icons";
-import {LoginCtx} from "../common/loginCtx.jsx";
+import {LoginCtx} from "../common/loginCtx";
 import {useIsMobile} from "../common/hooksv2";
 import {useNavigate} from "react-router-dom";
 

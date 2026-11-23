@@ -2,7 +2,7 @@ import {Empty, Layout, theme} from "antd";
 import {Monitor} from "./Monitor.jsx";
 import {Log} from "./Log.jsx";
 import {Config} from "./Config.jsx";
-import {LoginCtx} from "../common/loginCtx.jsx";
+import {LoginCtx} from "../common/loginCtx";
 import {useContext} from "react";
 import {AccountAdmin} from "./AccountAdmin.jsx";
 import Performance from "./Performance.tsx";
