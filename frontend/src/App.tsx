@@ -17,7 +17,7 @@ const router = createBrowserRouter([
 ]);
 
 export default function App() {
-    return <ConfigProvider locale={zhCN} theme={appTheme}>
+    return <ConfigProvider locale={zhCN} theme={appTheme} button={{autoInsertSpace: false}}>
         <ThemeVars/>
         <LoginProvider>
             <RouterProvider router={router}/>

@@ -50,7 +50,7 @@ import {
     isLibraryAutoRoundStartComment,
     isWaitExpired,
 } from './libraryUtil';
-import {useIsMobile} from '../common/hooksv2';
+import {useIsMobile} from '../common/breakpoints';
 import LibraryLoadingImage from './LibraryLoadingImage';
 
 const {Text} = Typography;
@@ -1370,7 +1370,7 @@ export default function LibraryTimeline({visible, items, onClose, onItemClick}: 
                         </Button>
                     ) : null}
                 </Flex>
-                <div style={{maxHeight: '70vh', overflowY: 'auto', background: '#fff', paddingBottom: 8}}>
+                <div style={{maxHeight: '70vh', overflowY: 'auto', background: 'var(--pf-bg)', paddingBottom: 8}}>
                     <div ref={exportPreviewRef} style={{padding: '0 12px'}}>
                         {renderGroupedTimeline(orderedEntries, {
                             exportPreview: true,

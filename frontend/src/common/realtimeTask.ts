@@ -1,4 +1,4 @@
-import config from "../config.json";
+import {API_BASE} from "./api";
 
 // One WebSocket connection to /misc/ai/transcribe/realtime, i.e. one upstream
 // DashScope task. A voice session chains several of these when the network or
@@ -41,7 +41,7 @@ interface ServerEvent {
 }
 
 function realtimeTranscriptionURL(): string {
-    const base = config.api_base_url.replace(/\/$/, "");
+    const base = API_BASE.replace(/\/$/, "");
     const url = new URL(`${base}/misc/ai/transcribe/realtime`, window.location.href);
     url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
     return url.toString();

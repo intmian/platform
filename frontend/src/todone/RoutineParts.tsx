@@ -2,7 +2,7 @@ import {useEffect, useMemo, useRef, useState} from "react";
 import {Button, DatePicker, InputNumber, Segmented, Select} from "antd";
 import {RedoOutlined, ScheduleOutlined} from "@ant-design/icons";
 import dayjs from "dayjs";
-import {useIsMobile} from "../common/hooksv2";
+import {useIsMobile} from "../common/breakpoints";
 import {
     DATE_FMT,
     DaySpec,

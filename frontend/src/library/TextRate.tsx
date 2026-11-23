@@ -113,7 +113,7 @@ const TextRate: React.FC<TextRateProps> = ({
                         }
                         style={{
                             fontSize: isActive ? fontSize : fontSize2,
-                            color: isActive ? "#333" : "#aaa",
+                            color: isActive ? "var(--pf-text)" : "var(--pf-text-4)",
                             cursor: editable ? "pointer" : "default",
                             transition: "font-size 0.2s ease, color 0.2s ease, font-weight 0.2s ease",
                             fontWeight: isActive ? 600 : 400,

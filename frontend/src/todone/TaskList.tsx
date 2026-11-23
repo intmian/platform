@@ -6,7 +6,8 @@ import {Checkbox, Flex, Input, InputRef, List, message, Select, Tooltip} from "a
 import {CreateTaskReq, sendCreateTask} from "./net/send_back";
 import {LoadingOutlined} from "@ant-design/icons";
 import {Task} from "./Task";
-import {useIsMobile, useStateWithLocal} from "../common/hooksv2";
+import {useStateWithLocal} from "../common/hooksv2";
+import {useIsMobile} from "../common/breakpoints";
 import "./custom.css"
 
 import {

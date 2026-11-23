@@ -14,6 +14,6 @@
 mark.todone-hl {
     padding: 0 1px;
     border-radius: 2px;
-    background: #ffe58f;
+    background: var(--pf-warning-bg);
     color: inherit;
 }

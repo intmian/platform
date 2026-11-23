@@ -1,7 +1,7 @@
-import {useIsMobile} from "./hooksv2";
 import React, {useState} from "react";
 import {Button} from "antd";
-import {MenuOutlined, UserOutlined} from "@ant-design/icons";
+import {CalendarOutlined, MenuOutlined} from "@ant-design/icons";
+import {useIsMobile} from "./breakpoints";
 
 function MobileAdapter({children, position, width}: {
     children: React.ReactNode,
@@ -31,7 +31,7 @@ function MobileAdapter({children, position, width}: {
             c = <Button
                 type="primary"
                 shape="circle"
-                icon={position === "left" ? <UserOutlined/> : <MenuOutlined/>}
+                icon={position === "left" ? <CalendarOutlined/> : <MenuOutlined/>}
                 onClick={() => setIsOpen(true)}
                 style={{
                     position: 'fixed',
@@ -47,8 +47,8 @@ function MobileAdapter({children, position, width}: {
                     position: 'fixed',
                     top: '10px',
                     ...css,
-                    backgroundColor: 'white',
-                    boxShadow: '0 2px 5px rgba(0, 0, 0, 0.1)',
+                    backgroundColor: 'var(--pf-bg-elevated)',
+                    boxShadow: 'var(--pf-shadow)',
                     zIndex: 1000,
                     padding: '10px',
                     width: '150px',
@@ -63,7 +63,7 @@ function MobileAdapter({children, position, width}: {
                         position: 'absolute',
                         top: '5px',
                         ...css2,
-                        color: '#333',
+                        color: 'var(--pf-text)',
                         fontSize: '16px',
                     }}
                 >

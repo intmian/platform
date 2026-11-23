@@ -97,7 +97,7 @@ import {
     touchLibraryUpdatedAt,
     updateLibraryRoundStartTime,
 } from './libraryUtil';
-import {useIsMobile} from '../common/hooksv2';
+import {useIsMobile} from '../common/breakpoints';
 import TextRate from '../library/TextRate';
 import LibraryShareCard from './LibraryShareCard';
 import LibraryScorePopover from './LibraryScorePopover';
@@ -1660,7 +1660,7 @@ export default function LibraryDetail({visible, item, noteContext, categories = 
     const renderNoteItem = (note: LibraryNote) => {
         const noteText = note.Content.trim();
         return (
-            <Timeline.Item key={`note-${note.ID}`} color="#1890ff">
+            <Timeline.Item key={`note-${note.ID}`} color="var(--pf-primary)">
                 <Flex justify="space-between" align="flex-start">
                     <div style={{flex: 1, minWidth: 0}}>
                         <Space direction="vertical" size={0} style={{width: '100%'}}>
@@ -1716,7 +1716,7 @@ export default function LibraryDetail({visible, item, noteContext, categories = 
             : formatDateTime(firstNote.EventTime);
 
         return (
-            <Timeline.Item key={`${roundIndex}-note-group-${displayIndex}`} color="#1890ff">
+            <Timeline.Item key={`${roundIndex}-note-group-${displayIndex}`} color="var(--pf-primary)">
                 <Space direction="vertical" size={0} style={{width: '100%'}}>
                     <Text strong>{entry.notes.length}条备注</Text>
                     <Text type="secondary" style={{fontSize: 12}}>
@@ -1999,8 +1999,8 @@ export default function LibraryDetail({visible, item, noteContext, categories = 
                             aspectRatio: '2 / 3',
                             borderRadius: 8,
                             overflow: 'hidden',
-                            background: '#f5f5f5',
-                            border: '1px solid #d9d9d9',
+                            background: 'var(--pf-fill-3)',
+                            border: '1px solid var(--pf-border)',
                         }}
                     >
                         <LibraryLoadingImage
@@ -2602,7 +2602,7 @@ export default function LibraryDetail({visible, item, noteContext, categories = 
                                 style={{
                                     overflowX: 'auto',
                                     borderRadius: 6,
-                                    border: '1px solid #f0f0f0',
+                                    border: '1px solid var(--pf-border-2)',
                                     padding: 6,
                                 }}
                             >
@@ -2627,8 +2627,8 @@ export default function LibraryDetail({visible, item, noteContext, categories = 
                                                 display: 'flex',
                                                 alignItems: 'center',
                                                 justifyContent: 'center',
-                                                background: '#fafafa',
-                                                color: '#999',
+                                                background: 'var(--pf-fill-4)',
+                                                color: 'var(--pf-text-3)',
                                                 fontSize: 12,
                                             }}
                                         >
@@ -2669,7 +2669,7 @@ export default function LibraryDetail({visible, item, noteContext, categories = 
                 }
                 styles={{
                     footer: {
-                        borderTop: '1px solid #f0f0f0',
+                        borderTop: '1px solid var(--pf-border-2)',
                         paddingTop: 12,
                         marginTop: 0,
                     },
@@ -2677,7 +2677,7 @@ export default function LibraryDetail({visible, item, noteContext, categories = 
                 width={isMobile ? '100%' : 650}
                 style={{top: 20}}
             >
-                <div style={{maxHeight: '70vh', overflowY: 'auto', background: '#fff', paddingBottom: 8}}>
+                <div style={{maxHeight: '70vh', overflowY: 'auto', background: 'var(--pf-bg)', paddingBottom: 8}}>
                     <div ref={shareCardRef}>
                         <LibraryShareCard
                             title={localItem.title}

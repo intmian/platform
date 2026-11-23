@@ -1,4 +1,5 @@
 import {useEffect, useRef, useState} from "react";
+import {useReloadGroup} from "./reloadCtx";
 import {Button, Divider, Dropdown, Flex, Form, Input, message, Modal, Space, Tooltip} from "antd";
 import {
     ChangeSubGroupReq,
@@ -178,6 +179,7 @@ export function SubGroup(props: SubGroupProps) {
 
     const [selectMode, setSelectMode] = useState(false); // 是否选择模式
     const [selectModeMove, setSelectModeMove] = useState(false); // 是否选择模式移动
+    const reloadGroup = useReloadGroup();
     const selectedRef = useRef<Set<number>>(new Set()); // 选中的任务ID集合
 
     // 目前先采用每个分组一个任务树的方式，方便移动等逻辑处理，一般来说加载出来的数据任务数量不会太多（不考虑已完成的情况下）,子任务也一起加载，跨分组移动可能会出现刷新问题，但是问题不大，不再采用懒加载。
@@ -249,7 +251,7 @@ export function SubGroup(props: SubGroupProps) {
         )}
         <Divider orientation="left" style={{
             margin: 0,
-            borderBottom: '1px solid #ccc',
+            borderBottom: '1px solid var(--pf-border)',
         }}>
             <Space>
                 <Tooltip title={props.subGroup.Note} key={props.subGroup.ID}>
@@ -304,7 +306,7 @@ export function SubGroup(props: SubGroupProps) {
                             }}
                             onFinish={() => {
                                 setSelectModeMove(false)
-                                document.location.reload()
+                                reloadGroup()
                             }}
                         /> : null
                     }
@@ -394,7 +396,7 @@ export function SubGroup(props: SubGroupProps) {
             ref={setSubGroupDropRef}
             style={{
                 borderRadius: 6,
-                outline: isSubGroupOver ? '2px dashed #1677ff' : undefined,
+                outline: isSubGroupOver ? '2px dashed var(--pf-primary)' : undefined,
                 outlineOffset: isSubGroupOver ? 2 : undefined,
                 transition: 'outline 120ms ease',
             }}

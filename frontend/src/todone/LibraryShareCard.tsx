@@ -3,7 +3,7 @@ import {Card, Col, Divider, Row, Space, Tag, Typography} from 'antd';
 import {LibraryExtra, LibraryItemStatus, LibraryScoreDetail, LibraryScoreDetailDimension} from './net/protocal';
 import TextRate from '../library/TextRate';
 import Paragraphs from '../common/Paragraphs';
-import {useIsMobile} from '../common/hooksv2';
+import {useIsMobile} from '../common/breakpoints';
 import {formatDate, getCurrentStatus, getLibraryCoverDisplayUrl, getMainScore} from './libraryUtil';
 import LibraryLoadingImage from './LibraryLoadingImage';
 

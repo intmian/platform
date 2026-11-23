@@ -1,12 +1,10 @@
 import {Route, Routes} from "react-router-dom";
-import {
-    MoneyBookList,
-    MoneyConfigPage,
-    MoneyDashboardPage,
-    MoneyHistoryPage,
-    MoneyImportPage,
-    MoneyReconcilePage,
-} from "./MoneyPages";
+import {MoneyBookList} from "./BookListPage";
+import {MoneyConfigPage} from "./ConfigPage";
+import {MoneyReconcilePage} from "./ReconcilePage";
+import {MoneyHistoryPage} from "./HistoryPage";
+import {MoneyDashboardPage} from "./DashboardPage";
+import {MoneyImportPage} from "./ImportPage";
 
 export default function MoneyApp() {
     return <Routes>

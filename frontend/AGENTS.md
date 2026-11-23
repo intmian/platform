@@ -5,10 +5,11 @@
 - 登录是 cookie，前端不碰 token。页面级登录门禁用 `useLoginGate`；页面已经用了它时，局部的 `User` 组件要传 `autoOpenLoginPanel={false}`，否则会重复弹登录框。
 - 先复用再造轮子：
   - `common/UniConfig` + `ConfigsCtr`：通用配置表单；
+  - `common/MenuPlus`：应用内分区导航（桌面左侧列表、手机顶部横条），每个分区是一个子路由，方便固定到桌面（管理、脚本、试验场在用）；
   - `common/aiGateway.ts`（`sendAiAction`、`transcribeAudio`）：AI 调用一律走它，后端按 action 白名单处理；
   - `common/WhisperButton` + `useAudioRecorder`：语音输入；
 - 语音输入（实时模式）拍过板的行为：点下立即开录，连接在后台建；断线自动重连并把最后一句定稿之后的音频补发，不丢不重；30 秒没出新字（离线时看音量）自动结束，硬上限默认 5 分钟；到最后仍转不出的录音存进 IndexedDB（`common/voicePending.ts`），按钮角标手动重试，文字插到当前光标。预览直接显示在输入框里，不用气泡。
   - `appendNoCacheParam`（`todone/Library.tsx`）：给远程图片加 `__cf_bust`，绕开 CDN 旧缓存的 CORS 问题。
 - 颜色用 antd theme token，不写死色值。新页面在不破坏现有风格的前提下可以有自己的设计。
-- `src/debug/debug.jsx` 是开发用的组件试验场，可以在里面挂一个组件单独调交互，不需要登录和真实数据。
+- `src/debug/debug.tsx`（`/debug`，只在本地开发出现）是组件试验场：改文件里的 `TARGET`/`TARGET_PROPS` 挂一个组件单独调交互。
 - Note Mini 已经迁到独立项目 `memos-mian`，这里不再有入口。`FlagNote = 2` 保留不复用；R2 上传、AI、语音这些共享能力和历史文件链接都要保留。

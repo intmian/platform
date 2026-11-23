@@ -9,17 +9,11 @@ import {HomeBar} from "./HomeBar";
 import {CommandPalette} from "./CommandPalette";
 import {Desktop} from "./desktop/Desktop";
 import {bindRecentsUser, recordRecent} from "./recents";
+import {nextSlots, Slot} from "./slots";
 
-// 最多保留几个后台应用（不含当前应用和桌面）
-const MAX_BACKGROUND = 3;
 const DEFAULT_TITLE = "Platform";
 const DEFAULT_FAVICON = "/plat-logo-mini.png";
 const DEFAULT_TOUCH_ICON = "/icons/plat-180.png";
-
-interface Slot {
-    appId: string;
-    location: Location;
-}
 
 // 外壳入口：先确认登录，再交给 AppHost。公开应用不登录也能看，但没有底部横条。
 export function Shell() {
@@ -67,15 +61,13 @@ function AppHost() {
     const [paletteOpen, setPaletteOpen] = useState(false);
     const [desktopMounted, setDesktopMounted] = useState(atDesktop);
     const [titles, setTitles] = useState<Record<string, string | null>>({});
-    const slotsRef = useRef<Slot[]>([]);
+    const slotsRef = useRef<Slot<Location>[]>([]);
 
     bindRecentsUser(user);
 
     // 根据当前地址算出要挂哪些应用。这里在渲染时改 ref：输入相同结果就相同，重复执行没有副作用。
     const slots = useMemo(() => {
-        let list = slotsRef.current.filter((s) => s.appId !== current?.id && appById(s.appId)?.keepAlive);
-        list = list.slice(0, MAX_BACKGROUND);
-        if (current) list = [{appId: current.id, location}, ...list];
+        const list = nextSlots(slotsRef.current, current?.id, location, (id) => !!appById(id)?.keepAlive);
         slotsRef.current = list;
         return list;
     }, [current, location]);
@@ -160,7 +152,9 @@ function AppSlot({app, location, active, allowed, setTitle}: {
 // 网页标题、favicon、添加到主屏幕时的图标跟着当前应用走
 function useHeadFor(app: AppDef | undefined, title: string | null) {
     useEffect(() => {
-        document.title = app ? (title && title !== app.name ? `${title} · ${app.name}` : app.name) : DEFAULT_TITLE;
+        if (!app) document.title = DEFAULT_TITLE;
+        else if (!title || title.includes(app.name)) document.title = title || app.name;
+        else document.title = `${title} · ${app.name}`;
     }, [app, title]);
     useEffect(() => {
         setLink("icon", app?.favicon ?? DEFAULT_FAVICON);

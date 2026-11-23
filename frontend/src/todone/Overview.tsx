@@ -2,7 +2,7 @@ import {useCallback, useEffect, useMemo, useRef, useState} from "react";
 import {Button, Dropdown, Empty, Input, message, Popover, Spin, theme, Tooltip} from "antd";
 import {AimOutlined, DownOutlined, FlagFilled, MoreOutlined, PlusOutlined, ReloadOutlined, RightOutlined} from "@ant-design/icons";
 import dayjs, {Dayjs} from "dayjs";
-import {GroupType, PRoutineNode, PSubGroup, PTask, TaskType} from "./net/protocal";
+import {GroupType} from "./net/protocal";
 import {
     GetOverviewRet,
     OverviewGroup,
@@ -13,11 +13,27 @@ import {
     sendSetGroupFavorite,
     sendSetTaskDone,
 } from "./net/send_back";
-import {aggregate, buildModel, Model, nodeKey, Owner, toggleLeaves, VNode, withOwnerSync} from "./routineModel";
-import {DATE_FMT, roundView, shortDate, todayStr} from "./routineRule";
+import {aggregate, Model, nodeKey, toggleLeaves, VNode, withOwnerSync} from "./routineModel";
+import {shortDate, todayStr} from "./routineRule";
 import {RoutineCheck} from "./RoutineParts";
-import {IsDateEmptyFromGoEmpty} from "../common/tool";
 import {LocateTarget} from "./locate";
+import {
+    Bucket,
+    buildFocus,
+    buildModels,
+    favScopeOf,
+    FocusItem,
+    itemDone,
+    NodesByGroup,
+    overviewNodes,
+    routineDataOf,
+    SOON_DAYS,
+    TaskItem,
+    RoutineItem,
+    Timing,
+    taskTiming,
+} from "./focusModel";
+import {useAppActive} from "../shell/runtime";
 import "./Routine.css";
 import "./Overview.css";
 
@@ -32,10 +48,6 @@ import "./Overview.css";
  */
 
 const FLAG_TAG = "[system]flag";
-const SOON_DAYS = 7;
-
-type Bucket = 'overdue' | 'today' | 'doing' | 'soon';
-type Tone = 'error' | 'warning' | 'primary' | 'plain';
 
 // 主栏里的三段，按这个顺序排；“接下来”单独放在旁边的日程里
 const BANDS: { key: Bucket, title: string }[] = [
@@ -43,101 +55,6 @@ const BANDS: { key: Bucket, title: string }[] = [
     {key: 'today', title: '今天'},
     {key: 'doing', title: '进行中'},
 ];
-
-interface Timing {
-    bucket: Bucket
-    label: string
-    tone: Tone
-    sort: number // 同一组里越小越靠前
-}
-
-interface TaskItem {
-    kind: 'task'
-    key: string
-    timing: Timing
-    ot: OverviewTask
-    group: OverviewGroup
-}
-
-interface RoutineItem {
-    kind: 'routine'
-    key: string
-    timing: Timing
-    title: string
-    owner: Owner
-    group: OverviewGroup
-    subTitle: string // 节奏层所在的子分组（如果不是清单本身）
-    target: LocateTarget // 跳到清单里的哪个位置
-}
-
-type FocusItem = TaskItem | RoutineItem;
-
-// ---------------- 时间判断 ----------------
-
-function dateOf(s: string): Dayjs | null {
-    if (!s || IsDateEmptyFromGoEmpty(s)) return null;
-    const d = dayjs(s);
-    return d.isValid() && d.year() > 1 ? d.startOf('day') : null;
-}
-
-/** 明天、后天、周四；一周以外写日期。 */
-function dayWord(d: Dayjs, today: Dayjs): string {
-    const n = d.diff(today, 'day');
-    if (n === 1) return '明天';
-    if (n === 2) return '后天';
-    if (n < SOON_DAYS) return '周' + '日一二三四五六'[d.day()];
-    return shortDate(d);
-}
-
-/**
- * 普通任务进哪一栏。只看日期：开始和截止都没设的返回 null（不进上半部分）。
- * - 开始日期还没到：7 天内的进“接下来”，更远的先不显示；
- * - 过了截止日期，或者标成“未开始”却过了开始日期：逾期；
- * - 其余（已经开始、还没过期）：进行中。
- */
-function taskTiming(t: PTask, today: Dayjs): Timing | null {
-    const begin = dateOf(t.BeginTime);
-    const end = dateOf(t.EndTime);
-    if (!begin && !end) return null;
-
-    if (begin && begin.isAfter(today)) {
-        const n = begin.diff(today, 'day');
-        return n <= SOON_DAYS ? {bucket: 'soon', label: `${dayWord(begin, today)}开始`, tone: 'plain', sort: n} : null;
-    }
-    if (begin && !t.Started && begin.isBefore(today)) {
-        const n = today.diff(begin, 'day');
-        return {bucket: 'overdue', label: `晚开始 ${n} 天`, tone: 'error', sort: -n};
-    }
-    if (end) {
-        const n = end.diff(today, 'day');
-        if (n < 0) return {bucket: 'overdue', label: `逾期 ${-n} 天`, tone: 'error', sort: n};
-        if (n === 0) return {bucket: 'today', label: '今天截止', tone: 'warning', sort: 0};
-        if (n <= SOON_DAYS) return {bucket: 'doing', label: `${dayWord(end, today)}截止`, tone: 'plain', sort: n};
-        return {bucket: 'doing', label: `还剩 ${n} 天`, tone: 'plain', sort: n};
-    }
-    // 只设了开始日期、没有截止：排在有截止日期的后面
-    if (begin!.isSame(today)) return {bucket: 'today', label: '今天开始', tone: 'warning', sort: 1};
-    return {bucket: 'doing', label: `${shortDate(begin!)} 起`, tone: 'plain', sort: 1e5 + today.diff(begin!, 'day')};
-}
-
-/** 例行清单的节奏层进哪一栏。手动节奏没有日期，只在收藏卡片里出现。 */
-function ownerTiming(o: Owner, today: Dayjs): Timing | null {
-    if (o.round.manual || o.ownLeaves.length === 0) return null;
-    if (o.round.waiting) {
-        if (!o.round.start) return null;
-        const n = dayjs(o.round.start).diff(today, 'day');
-        return n > 0 && n <= SOON_DAYS ? {bucket: 'soon', label: `${dayWord(dayjs(o.round.start), today)}开始`, tone: 'plain', sort: n} : null;
-    }
-    // 这次勾完的层按“没做完”时的状态归栏，免得一勾就跳到别的栏里
-    const v = o.complete ? roundView(o.round, false, today.format(DATE_FMT)) : o.view;
-    if (v.phase === 'overdue') return {bucket: 'overdue', label: v.label, tone: 'error', sort: -1};
-    if (v.phase === 'today') return {bucket: 'today', label: v.label, tone: 'warning', sort: 0};
-    if (v.phase === 'grace') {
-        const left = o.round.deadline ? dayjs(o.round.deadline).diff(today, 'day') : 99;
-        return {bucket: 'doing', label: v.label, tone: 'plain', sort: left};
-    }
-    return null;
-}
 
 function groupPath(g: OverviewGroup): string {
     return [...(g.Path ?? []), g.Title].join(' / ');
@@ -165,12 +82,6 @@ interface OverviewProps {
     onOpenGroup: (group: OverviewGroup, target?: LocateTarget) => void
 }
 
-interface RoutineData {
-    group: OverviewGroup
-    subGroups: PSubGroup[]
-    tasks: Record<number, PTask[]>
-}
-
 export default function Overview(props: OverviewProps) {
     const {token} = theme.useToken();
     const {userID} = props;
@@ -179,7 +90,7 @@ export default function Overview(props: OverviewProps) {
     const [today, setToday] = useState(todayStr());
     // 这次页面里勾过的项：做完了也先留在原处（划掉），方便手滑撤销，下次加载才消失
     const [touched, setTouched] = useState<Set<string>>(new Set());
-    const [nodes, setNodes] = useState<Record<number, Record<string, PRoutineNode>>>({});
+    const [nodes, setNodes] = useState<NodesByGroup>({});
     const nodesRef = useRef(nodes);
     nodesRef.current = nodes;
 
@@ -192,13 +103,8 @@ export default function Overview(props: OverviewProps) {
             if (!quiet) message.error('加载总视图失败');
             return;
         }
-        const nextNodes: Record<number, Record<string, PRoutineNode>> = {};
-        (ret.data.RoutineNodes ?? []).forEach((n) => {
-            nextNodes[n.GroupID] = nextNodes[n.GroupID] ?? {};
-            nextNodes[n.GroupID][nodeKey(n.Node.Kind, n.Node.NodeID)] = n.Node;
-        });
         setData(ret.data);
-        setNodes(nextNodes);
+        setNodes(overviewNodes(ret.data));
         setTouched(new Set());
     }, [userID]);
 
@@ -206,7 +112,12 @@ export default function Overview(props: OverviewProps) {
         load().then();
     }, [load]);
 
-    // 切回页面时静默刷新；跨过零点时更新“今天”
+    // 切回页面（或从别的应用切回 Todone）时静默刷新；跨过零点时更新“今天”
+    const refreshQuietly = () => {
+        setToday(todayStr());
+        load(true).then();
+    };
+    useAppActive(refreshQuietly);
     useEffect(() => {
         const onFocus = () => {
             setToday(todayStr());
@@ -224,97 +135,16 @@ export default function Overview(props: OverviewProps) {
     const groupByID = useMemo(() => new Map(groups.map((g) => [g.GroupID, g])), [groups]);
 
     // 例行清单的原始数据（按清单分好），模型随 nodes / today 重算
-    const routineData = useMemo(() => {
-        const out = new Map<number, RoutineData>();
-        groups.filter((g) => g.Type === GroupType.Routine).forEach((g) => out.set(g.GroupID, {group: g, subGroups: [], tasks: {}}));
-        (data?.SubGroups ?? []).forEach((sg) => {
-            const rd = out.get(sg.GroupID);
-            if (rd) rd.subGroups.push({ID: sg.ID, Title: sg.Title, Note: '', Index: sg.Index});
-        });
-        (data?.Tasks ?? []).forEach((ot) => {
-            const rd = out.get(ot.GroupID);
-            if (rd) (rd.tasks[ot.SubGroupID] = rd.tasks[ot.SubGroupID] ?? []).push(ot.Task);
-        });
-        out.forEach((rd) => rd.subGroups.sort((a, b) => a.Index - b.Index));
-        return out;
-    }, [groups, data]);
-
-    const models = useMemo(() => {
-        const out = new Map<number, Model>();
-        routineData.forEach((rd, id) => out.set(id, buildModel(id, rd.subGroups, rd.tasks, nodes[id] ?? {}, today)));
-        return out;
-    }, [routineData, nodes, today]);
+    const routineData = useMemo(() => routineDataOf(data), [data]);
+    const models = useMemo(() => buildModels(routineData, nodes, today), [routineData, nodes, today]);
 
     // ---------- 上半部分 ----------
 
     // 收藏范围：整个收藏的分组，和单独收藏的栏（子分组）
-    const favScope = useMemo(() => {
-        const favs = data?.Favorites ?? [];
-        return {
-            groups: new Set(favs.filter((f) => f.SubGroupID === 0).map((f) => f.GroupID)),
-            subGroups: new Set(favs.filter((f) => f.SubGroupID !== 0).map((f) => f.SubGroupID)),
-        };
-    }, [data]);
+    const favScope = useMemo(() => favScopeOf(data), [data]);
 
-    const focus = useMemo(() => {
-        const t0 = dayjs(today).startOf('day');
-        const items: FocusItem[] = [];
-        (data?.Tasks ?? []).forEach((ot) => {
-            const g = groupByID.get(ot.GroupID);
-            if (!g || g.Type !== GroupType.Normal) return;
-            if (!favScope.groups.has(ot.GroupID) && !favScope.subGroups.has(ot.SubGroupID)) return;
-            const key = `t${ot.Task.ID}`;
-            if (ot.Task.Done && !touched.has(key)) return;
-            const timing = taskTiming(ot.Task, t0);
-            if (timing) items.push({kind: 'task', key, timing, ot, group: g});
-        });
-        models.forEach((model, gid) => {
-            const g = groupByID.get(gid)!;
-            const rd = routineData.get(gid)!;
-            const whole = favScope.groups.has(gid);
-            model.owners.forEach((full) => {
-                // 只收藏了清单里的几栏：节奏层只算这几栏里的事项
-                let o = full;
-                if (!whole) {
-                    const leaves = full.ownLeaves.filter((l) => favScope.subGroups.has(l.sgID));
-                    if (leaves.length === 0) return;
-                    if (leaves.length !== full.ownLeaves.length) {
-                        const need = leaves.filter((l) => l.active && !l.optional);
-                        o = {...full, ownLeaves: leaves, complete: need.length > 0 ? need.every((l) => l.checked) : full.complete};
-                    }
-                }
-                const key = `r${gid}:${o.key}`;
-                if (o.complete && !touched.has(key)) return;
-                const timing = ownerTiming(o, t0);
-                if (!timing) return;
-                let title = g.Title;
-                let subTitle = '';
-                let target: LocateTarget = {};
-                // 清单级的节奏、但只收藏了一栏：显示成那一栏的名字
-                const sgIDs = new Set(o.ownLeaves.map((l) => l.sgID));
-                if (!whole && sgIDs.size === 1) {
-                    const sg = rd.subGroups.find((s) => sgIDs.has(s.ID));
-                    title = sg?.Title || title;
-                    target = {subGroupID: sg?.ID};
-                }
-                if (o.key.startsWith('s')) {
-                    const sg = rd.subGroups.find((s) => `s${s.ID}` === o.key);
-                    title = sg?.Title ?? title;
-                    target = {subGroupID: sg?.ID};
-                } else if (o.key.startsWith('t')) {
-                    const v = model.byTask.get(o.node.NodeID);
-                    title = v?.task.Title ?? title;
-                    subTitle = rd.subGroups.find((s) => s.ID === v?.sgID)?.Title ?? '';
-                    target = {taskID: o.node.NodeID, subGroupID: v?.sgID};
-                }
-                items.push({kind: 'routine', key, timing, title, owner: o, group: g, subTitle, target});
-            });
-        });
-        const by: Record<Bucket, FocusItem[]> = {overdue: [], today: [], doing: [], soon: []};
-        items.forEach((it) => by[it.timing.bucket].push(it));
-        Object.values(by).forEach((list) => list.sort((a, b) => a.timing.sort - b.timing.sort));
-        return by;
-    }, [data, groupByID, models, routineData, favScope, touched, today]);
+    const focus = useMemo(() => buildFocus({data, routineData, models, favScope, touched, today}),
+        [data, routineData, models, favScope, touched, today]);
 
     // ---------- 写入 ----------
 
@@ -522,10 +352,6 @@ export default function Overview(props: OverviewProps) {
                 </div>}
         </section>
     </div>;
-}
-
-function itemDone(it: FocusItem): boolean {
-    return it.kind === 'task' ? it.ot.Task.Done : it.owner.complete;
 }
 
 // ---------------- 上半部分 ----------------

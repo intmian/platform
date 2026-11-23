@@ -1,120 +1,87 @@
-import {Button, message, Row, Table, Tooltip} from "antd";
 import {useEffect, useState} from "react";
-import {GetEnvReq, sendGetEnvs, sendSetEnv, SetEnvReq} from "../common/newSendHttp";
+import {Button, Input, message, Space, Table, Tooltip, Typography} from "antd";
+import type {ColumnsType} from "antd/es/table";
+import {CopyOutlined, EditOutlined} from "@ant-design/icons";
 import {EnvData} from "../common/backHttpDefine";
-import {EditOutlined} from "@ant-design/icons";
+import {getEnvs, setEnvNote} from "./cmdApi";
+
+function EnvNote({env, onSaved}: { env: EnvData; onSaved: (note: string) => void }) {
+    const [editing, setEditing] = useState(false);
+    const [draft, setDraft] = useState(env.Note);
+    const [saving, setSaving] = useState(false);
+
+    const save = async () => {
+        if (draft === env.Note) {
+            setEditing(false);
+            return;
+        }
+        setSaving(true);
+        try {
+            await setEnvNote(env, draft);
+            onSaved(draft);
+            setEditing(false);
+        } catch (e) {
+            message.error(e instanceof Error ? `修改失败：${e.message}` : "修改失败");
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    if (editing) {
+        return <Input
+            size="small"
+            value={draft}
+            autoFocus
+            disabled={saving}
+            onChange={(e) => setDraft(e.target.value)}
+            onPressEnter={() => void save()}
+            onBlur={() => void save()}
+            style={{maxWidth: 240}}
+        />;
+    }
+    return <Space size={4}>
+        <span>{env.Note || <Typography.Text type="secondary">无备注</Typography.Text>}</span>
+        <Button type="text" size="small" icon={<EditOutlined/>} onClick={() => {
+            setDraft(env.Note);
+            setEditing(true);
+        }}/>
+    </Space>;
+}
 
 export function EnvPanel() {
-    const [envs, setEnvs] = useState<EnvData[]>([]);
+    const [envs, setEnvs] = useState<EnvData[] | null>(null);
+
     useEffect(() => {
-        const req = {}
-        sendGetEnvs(req as GetEnvReq, (resp) => {
-            setEnvs(resp.data.EnvData);
-        })
+        let cancelled = false;
+        getEnvs()
+            .then((list) => !cancelled && setEnvs(list))
+            .catch((e: Error) => {
+                if (cancelled) return;
+                message.error(`获取运行环境失败：${e.message}`);
+                setEnvs([]);
+            });
+        return () => {
+            cancelled = true;
+        };
     }, []);
-    return <>
-        <Row>
-            <Button type={"primary"}>test</Button>
-        </Row>
-        <EnvTable envsIni={envs}/>
-    </>
-}
 
-function EnvName({name, id, onFinish}: { name: string, id: number, onFinish: (id, name) => void }) {
-    const [isEditing, setIsEditing] = useState(false);
-    const [newName, setNewName] = useState(name);
-
-    const handleCopy = () => {
-        navigator.clipboard.writeText(id.toString());
-    };
-
-    const handleEdit = () => {
-        setIsEditing(true);
-    };
-
-    const handleBlur = () => {
-        const req: SetEnvReq = {EnvID: 0, bindToolID: "", note: "", params: []};
-        req.EnvID = id;
-        req.note = newName;
-        sendSetEnv(req, (ret) => {
-            if (!ret.ok) {
-                message.error("修改失败");
-            } else {
-                message.success("修改成功");
-            }
-            setIsEditing(false);
-        });
-    };
-
-    return (
-        <div>
-            <Tooltip title={`点击复制ID: ${id}`}>
-                <span onClick={handleCopy}>
-                    {isEditing ? (
-                        <input
-                            value={newName}
-                            onChange={(e) => setNewName(e.target.value)}
-                            onBlur={handleBlur}
-                            autoFocus
-                        />
-                    ) : (
-                        <span>{newName}</span>
-                    )}
-                </span>
-            </Tooltip>
-            <Button icon={<EditOutlined/>} onClick={handleEdit}/>
-        </div>
-    );
-}
-
-function EnvTable({envsIni}: { envsIni: EnvData[] }) {
-    // 为envs生成key
-    interface EnvDataWithKey extends EnvData {
-        key: string
-    }
-
-    const envs = envsIni.map((env) => {
-        return {...env, key: env.ID.toString()}
-    }) as EnvDataWithKey[];
-    const [envCache, setEnvCache] = useState(envs);
-
-    const columns = [
+    const columns: ColumnsType<EnvData> = [
         {
-            title: '名称',
-            dataIndex: 'name',
-            key: 'name',
-            render: (text: string, record: EnvDataWithKey) => {
-                return <EnvName name={text} id={record.ID} onFinish={(id, name) => {
-                    // 修改缓存中的数据
-                    const newEnvs = envCache.map((env) => {
-                        if (env.ID === id) {
-                            return {...env, name: name};
-                        }
-                        return env;
-                    });
-                    setEnvCache(newEnvs);
-                }}/>
-            }
+            title: "ID", dataIndex: "ID", key: "ID", width: 90,
+            render: (id: number) => <Tooltip title="复制 ID">
+                <Button type="text" size="small" icon={<CopyOutlined/>} onClick={() => {
+                    void navigator.clipboard.writeText(String(id));
+                    message.success("已复制");
+                }}>{id}</Button>
+            </Tooltip>,
         },
         {
-            title: 'Param',
-            dataIndex: 'Param',
-            key: 'Param',
-            render: (text: string[], record: EnvDataWithKey) => {
-                return text.join(", ");
-            }
+            title: "备注", key: "Note",
+            render: (_, env) => <EnvNote env={env} onSaved={(note) => setEnvs((list) => (list ?? []).map((e) => e.ID === env.ID ? {...e, Note: note} : e))}/>,
         },
-        {
-            title: 'DefaultToolID',
-            dataIndex: 'DefaultToolID',
-            key: 'DefaultToolID',
-        },
-        {
-            title: 'Note',
-            dataIndex: 'Note',
-            key: 'Note',
-        },
+        {title: "参数", dataIndex: "Param", key: "Param", render: (param: string[] | null) => (param ?? []).join(", ")},
+        {title: "默认工具", dataIndex: "DefaultToolID", key: "DefaultToolID"},
     ];
 
-    return <Table columns={columns} dataSource={envCache}/>
+    return <Table<EnvData> rowKey="ID" loading={envs === null} columns={columns} dataSource={envs ?? []} scroll={{x: "max-content"}}/>;
 }

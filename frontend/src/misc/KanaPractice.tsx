@@ -1,7 +1,8 @@
 import {useState, useCallback, useEffect, useMemo, useRef} from 'react';
-import {Button, Card, Checkbox, Col, Modal, Row, Segmented, Slider, Space, Tag, Typography, message, InputNumber} from 'antd';
+import {Button, Card, Checkbox, Col, Modal, Row, Segmented, Slider, Space, Tag, Typography, message, InputNumber, theme} from 'antd';
 import {ReloadOutlined, EyeOutlined, RightOutlined, SettingOutlined} from '@ant-design/icons';
-import {useIsMobile} from "../common/hooksv2";
+import {useIsMobile} from "../common/breakpoints";
+import {useAppTitle} from "../shell/runtime";
 
 const {Title, Text} = Typography;
 
@@ -101,9 +102,8 @@ const getKanaItemKey = (item: KanaItem) => `${item.r}|${item.h}|${item.k}`;
 const KanaPractice = () => {
     const isMobile = useIsMobile();
     
-    useEffect(() => {
-        document.title = '日语-假名练习';
-    }, []);
+    useAppTitle('假名练习');
+    const {token} = theme.useToken();
 
     // ============ 设置与持久化 ============
     const [settings, setSettings] = useState<PracticeSettings>(() => {
@@ -342,7 +342,7 @@ const KanaPractice = () => {
         };
 
         if (isCorrect) {
-            message.success('正解！');
+            message.success('正确');
             // 延迟切换下一题
             setTimeout(() => {
                  if (currentQuestionIdx < questions.length - 1) {
@@ -398,9 +398,9 @@ const KanaPractice = () => {
                 minHeight: 0,
                 overflowY: 'auto',
                 padding: '12px',
-                background: '#fff',
+                background: 'var(--pf-bg)',
                 borderRadius: 8,
-                border: '1px solid #f0f0f0',
+                border: '1px solid var(--pf-border-2)',
                 boxSizing: 'border-box'
             }}>
                 <div style={{
@@ -449,9 +449,9 @@ const KanaPractice = () => {
                                             height: '100%',
                                             textAlign: 'center',
                                             cursor: 'pointer',
-                                            borderColor: isMarkedWrong ? '#ff4d4f' : undefined,
+                                            borderColor: isMarkedWrong ? 'var(--pf-error)' : undefined,
                                             borderWidth: isMarkedWrong ? 2 : undefined,
-                                            background: isRetryItem ? '#fffbe6' : undefined
+                                            background: isRetryItem ? 'var(--pf-warning-bg)' : undefined
                                         }}
                                         bodyStyle={{ padding: isMobile ? 12 : 24 }}
                                     >
@@ -462,9 +462,9 @@ const KanaPractice = () => {
                                         <div style={{ fontSize: 32, fontWeight: 'bold', margin: '16px 0' }}>
                                             {q.questionText}
                                         </div>
-                                        <div style={{ minHeight: 40, borderTop: '1px solid #f0f0f0', paddingTop: 12 }}>
+                                        <div style={{ minHeight: 40, borderTop: '1px solid var(--pf-border-2)', paddingTop: 12 }}>
                                             {isRevealed ? (
-                                                <Text strong style={{ fontSize: 24, color: '#1890ff' }}>{q.answerText}</Text>
+                                                <Text strong style={{ fontSize: 24, color: 'var(--pf-primary)' }}>{q.answerText}</Text>
                                             ) : (
                                                 <Text type="secondary">?</Text>
                                             )}
@@ -479,7 +479,7 @@ const KanaPractice = () => {
         } else {
             // Keyboard Mode
             const q = questions[currentQuestionIdx];
-            if (!q) return <div style={{textAlign: 'center', padding: 20}}>Loading...</div>;
+            if (!q) return <div style={{textAlign: 'center', padding: 20}}>加载中</div>;
             
             return (
                 <div style={{ 
@@ -499,8 +499,8 @@ const KanaPractice = () => {
                                 {q.questionText}
                             </div>
                             {q.isAnswered && (
-                                <div style={{color: q.isCorrect ? '#52c41a' : '#ff4d4f', fontSize: 20, fontWeight: 'bold'}}>
-                                    {q.isCorrect ? '正解!' : `错啦! 答案: ${q.answerText}`}
+                                <div style={{color: q.isCorrect ? 'var(--pf-success)' : 'var(--pf-error)', fontSize: 20, fontWeight: 'bold'}}>
+                                    {q.isCorrect ? '正确' : `错误，答案：${q.answerText}`}
                                 </div>
                             )}
                         </Card>
@@ -518,12 +518,12 @@ const KanaPractice = () => {
             maxWidth: 1000,
             margin: '0 auto',
             minHeight: '100vh',
-            background: '#f0f2f5' 
+            background: 'var(--pf-bg-layout)'
         }}>
             {/* 顶部栏 */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
                 <Title level={4} style={{ margin: 0, whiteSpace: 'nowrap', fontSize: isMobile ? 18 : undefined }}>
-                    {isMobile ? '假名练习' : '🇯🇵 假名练习'}
+                    假名练习
                 </Title>
                 <Space size={isMobile ? 'small' : 'middle'}>
                     {settings.inputMode === 'memory' && (
@@ -546,10 +546,10 @@ const KanaPractice = () => {
                     textAlign: 'center', 
                     marginBottom: 16, 
                     padding: '8px', 
-                    background: '#e6f7ff', 
-                    borderRadius: 8, 
-                    border: '1px solid #91d5ff',
-                    color: '#0050b3'
+                    background: 'var(--pf-primary-bg)',
+                    borderRadius: 8,
+                    border: `1px solid ${token.colorPrimaryBorder}`,
+                    color: 'var(--pf-primary)'
                 }}>
                     <Text strong style={{fontSize: 16}}>{batchInstruction}</Text>
                     {settings.inputMode === 'memory' && (

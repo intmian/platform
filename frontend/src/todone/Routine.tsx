@@ -33,9 +33,10 @@ import {
 } from "./net/send_back";
 import {describeRule, MANUAL_RULE, parseRule, RoundView, RoutineRule, shortDate, stringifyRule, todayStr} from "./routineRule";
 import {CheckValue, ProgressRing, RhythmChip, RoutineCheck, RuleEditor, RuleIcon} from "./RoutineParts";
-import {useIsMobile} from "../common/hooksv2";
+import {useIsMobile} from "../common/breakpoints";
 import {aggregate, Agg, buildModel, defaultNode, leafState, Model, nodeKey, Owner, restDate, resumeNodes, SgModel, toggleLeaves, VNode, withOwnerSync} from "./routineModel";
 import "./Routine.css";
+import {useAppActive} from "../shell/runtime";
 import {Highlight, normKeyword, SearchBox, textMatch} from "./search";
 
 // ---------------- 工具 ----------------
@@ -343,16 +344,20 @@ export default function Routine(props: RoutineProps) {
 
     // 回到前台（切回标签、解锁手机）时重新拉数据，别的设备上的改动也能同步过来；
     // 跨了一天就按刚打开页面那样重新整理。还有没存完的改动时先不拉，免得被旧数据盖掉。
+    // 从别的应用切回 Todone 也算回到前台（这时页面一直可见，没有 visibilitychange）。
+    const refreshOnReturn = useCallback(() => {
+        setToday(todayStr());
+        if (pendingRef.current > 0) return;
+        loadAll(todayStr() !== arrangedDay.current).then();
+    }, [loadAll]);
+    useAppActive(refreshOnReturn);
     useEffect(() => {
         const onVisible = () => {
-            if (document.visibilityState !== 'visible') return;
-            setToday(todayStr());
-            if (pendingRef.current > 0) return;
-            loadAll(todayStr() !== arrangedDay.current).then();
+            if (document.visibilityState === 'visible') refreshOnReturn();
         };
         document.addEventListener('visibilitychange', onVisible);
         return () => document.removeEventListener('visibilitychange', onVisible);
-    }, [loadAll]);
+    }, [refreshOnReturn]);
 
     const commit = useCallback(async (changed: PRoutineNode[], delTasks: RoutineDelTasks[] = []) => {
         const before = nodesRef.current;

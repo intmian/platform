@@ -4,9 +4,9 @@
     min-height: 0;
     width: 100%;
     overflow: hidden;
-    border: 1px solid #d9d9d9;
+    border: 1px solid var(--pf-border);
     border-radius: 6px;
-    background: #fff;
+    background: var(--pf-bg);
 }
 
 .task-detail-editor-shell--display {

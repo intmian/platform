@@ -1,6 +1,7 @@
 import {useEffect, useState} from 'react';
 import {Button, Col, Form, InputNumber, message, Row, Space, Table, Tooltip, Typography} from 'antd';
-import {useIsMobile} from "../common/hooksv2";
+import {useIsMobile} from "../common/breakpoints";
+import {useAppTitle} from "../shell/runtime";
 import {ClearOutlined, DeleteOutlined, PlusOutlined, QuestionCircleOutlined} from '@ant-design/icons';
 
 const {Title} = Typography;
@@ -43,6 +44,7 @@ interface DailyIntakeItem {
 }
 
 const NutritionCalculator = () => {
+    useAppTitle('食品热量计算');
     const isMobile = useIsMobile();
     const [formData, setFormData] = useState({
         unitTotal: 0,
@@ -494,7 +496,7 @@ const NutritionCalculator = () => {
                                 style={{marginBottom: 16}}
                             />
                             <div style={{
-                                background: '#f7f7f7',
+                                background: 'var(--pf-fill-3)',
                                 padding: '12px 16px',
                                 borderRadius: 4,
                                 marginTop: 16

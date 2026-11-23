@@ -22,16 +22,27 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 18
-          cache: yarn
-          cache-dependency-path: frontend/yarn.lock
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
 
-      # 3. 前端构建
+      # 3. 安装依赖
+      - name: Install dependencies
+        working-directory: frontend
+        run: npm ci
+
+      # 类型检查：有错误就不构建
+      - name: Typecheck
+        working-directory: frontend
+        run: npm run typecheck
+
+      - name: Test
+        working-directory: frontend
+        run: npm test
+
       - name: Build frontend
         working-directory: frontend
-        run: |
-          yarn install --frozen-lockfile
-          yarn build
+        run: npm run build
 
       # 4. 上传前端构建产物
       - name: Upload frontend dist
@@ -57,7 +68,7 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
-          go-version: "1.22"
+          go-version: "1.23"
           cache: true
           cache-dependency-path: |
             backend/go.mod

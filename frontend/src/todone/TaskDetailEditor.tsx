@@ -10,7 +10,7 @@ import {
 import MarkdownIt from "markdown-it";
 import MdEditor from "react-markdown-editor-lite";
 import 'react-markdown-editor-lite/lib/index.css';
-import {useIsMobile} from "../common/hooksv2";
+import {useIsMobile} from "../common/breakpoints";
 import {useImageUpload} from "../common/useImageUpload";
 import {sendGptRewrite} from "../common/newSendHttp";
 import {WhisperButton} from "../common/WhisperButton";

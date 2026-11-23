@@ -62,7 +62,9 @@ function getAudioContextCtor(): typeof AudioContext | undefined {
     if (typeof window === "undefined") {
         return undefined;
     }
-    const audioWindow = window as Window & {
+    // 老 Safari 只有带前缀的 webkitAudioContext
+    const audioWindow = window as unknown as {
+        AudioContext?: typeof AudioContext;
         webkitAudioContext?: typeof AudioContext;
     };
     return audioWindow.AudioContext || audioWindow.webkitAudioContext;

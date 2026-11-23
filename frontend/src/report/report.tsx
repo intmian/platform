@@ -1,88 +1,52 @@
-import {useEffect, useRef, useState} from "react";
+import {useEffect} from "react";
 import {useNavigate, useParams} from "react-router-dom";
+import {Col, Row} from "antd";
+import dayjs from "dayjs";
 import ReportSelector from "./reportSelector";
 import ReportShow from "./reportShow";
-import {Col, Row} from "antd";
-import {useIsMobile} from "../common/hooksv2";
+import {useIsMobile} from "../common/breakpoints";
 import MobileAdapter from "../common/MobileAdapter";
-import {useLoginGate} from "../common/useLoginGate";
+import {useAppTitle} from "../shell/runtime";
+
+// 合法的地址：单天 2024-01-02、多天 2024-01-02_2024-01-03、新闻汇总 whole
+function isValidSelection(date: string | undefined): date is string {
+    return !!date && (date === "whole" || /^(\d{4}-\d{2}-\d{2})(_\d{4}-\d{2}-\d{2})*$/.test(date));
+}
+
+function titleOf(selected: string) {
+    if (selected === "whole") return "新闻汇总";
+    return "日报：" + selected.replace(/_/g, " ~ ");
+}
 
 function ReportPanel() {
-    const {loginReady, isLoggedIn, loginPanel} = useLoginGate();
-    // 更换Favicon为/newslogo.webp
-    useEffect(() => {
-        const existingFavicon = document.querySelector('link[rel="icon"], link[rel="shortcut icon"]');
-        if (existingFavicon) {
-            existingFavicon.remove();
-        }
-
-        const link = document.createElement('link');
-        link.type = 'image/x-icon';
-        link.rel = 'shortcut icon';
-        link.href = '/news-logo-mini.png';
-        document.getElementsByTagName('head')[0].appendChild(link);
-    }, []);
-
-    // 读取路由
+    // 选中的日期就是地址里的 :date；空的、last 或不合法的都换成今天
     const {date} = useParams();
-    const [selected, setSelected] = useState<string>(date || "");
+    const navigate = useNavigate();
+    const selected = isValidSelection(date) ? date : "";
     const isMobile = useIsMobile();
+
     useEffect(() => {
-        if (selected === "whole") {
-            document.title = "新闻汇总";
-            return;
+        if (!isValidSelection(date)) {
+            navigate(`/day-report/${dayjs().format("YYYY-MM-DD")}`, {replace: true});
         }
-        document.title = "日报：" + selected;
-    }, [selected]);
+    }, [date, navigate]);
 
-    // 不合法的日期，自动导入今日日期
-    if (date && date !== "" && date != "last" && date !== "whole" && !/^(\d{4}-\d{2}-\d{2})(_\d{4}-\d{2}-\d{2})*$/.test(date)) {
-        // 获取今日日期
-        const today = new Date();
-        setSelected(`${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`);
-    }
-    // 如果是空的，也自动导入今天的日期
-    if (selected === "" || selected === "last") {
-        // 获取今日日期
-        const today = new Date();
-        setSelected(`${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`);
-    }
+    useAppTitle(selected ? titleOf(selected) : null);
 
-    //同步路由
-    const navigate = useRef(useNavigate());
-    useEffect(() => {
-        if (selected && date !== "last") {
-            navigate.current(`/day-report/${selected}`, {replace: true});
-        }
-    }, [selected]);
+    const select = (next: string) => {
+        if (next && next !== selected) navigate(`/day-report/${next}`, {replace: true});
+    };
 
-    return <>
-        <Row>
-            <Col
-                span={isMobile ? 4 : 4}
-            >
-                <MobileAdapter position={"left"} width={"15%"}>
-                    <ReportSelector
-                        onSelect={setSelected}
-                        loginReady={loginReady}
-                        isLoggedIn={isLoggedIn}
-                    />
-                </MobileAdapter>
-            </Col>
-            <Col
-                span={isMobile ? 24 : 16}
-            >
-                <div>
-                    <ReportShow
-                        selected={selected}
-                        loginReady={loginReady}
-                        isLoggedIn={isLoggedIn}
-                    />
-                </div>
-            </Col>
-        </Row>
-        {loginPanel}
-    </>
+    return <Row>
+        <Col span={4}>
+            <MobileAdapter position={"left"} width={"15%"}>
+                <ReportSelector onSelect={select}/>
+            </MobileAdapter>
+        </Col>
+        <Col span={isMobile ? 24 : 16}>
+            <ReportShow selected={selected}/>
+        </Col>
+    </Row>;
 }
 
 export default ReportPanel;

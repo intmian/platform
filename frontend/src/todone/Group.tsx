@@ -6,6 +6,7 @@ import {Button, Flex, message} from "antd";
 import {AppstoreAddOutlined, LoadingOutlined} from "@ant-design/icons";
 import {SubGroup, SubGroupAddPanel} from "./SubGroups";
 import {normKeyword, SearchBox} from "./search";
+import TaskTree from "./TaskTree";
 import {
     CollisionDetection,
     closestCenter,
@@ -17,15 +18,6 @@ import {
     useSensor,
     useSensors,
 } from "@dnd-kit/core";
-
-class TaskTree {
-    public data: PTask;
-    public subTasks: TaskTree[] = [];
-
-    constructor(data: PTask) {
-        this.data = data;
-    }
-}
 
 interface GroupProps {
     addr: Addr | null
@@ -188,6 +180,9 @@ export default function Group(props: GroupProps) {
         sendGetSubGroup(req, (ret) => {
             if (ret.ok && ret.data.SubGroups) {
                 setSubGroups(ret.data.SubGroups);
+            } else if (!ret.ok) {
+                // 以前失败时不提示，看起来就是一个空清单
+                message.error("加载清单失败").then();
             }
             setLoading(false);
         })
@@ -238,7 +233,7 @@ export default function Group(props: GroupProps) {
             </div>
         </Flex>
         {keyword && subGroups.length > 0 && subGroups.every((sg) => matched[sg.ID] === false) &&
-            <div style={{textAlign: "center", color: "#999", padding: "24px 0"}}>
+            <div style={{textAlign: "center", color: "var(--pf-text-3)", padding: "24px 0"}}>
                 没有找到包含「{search.trim()}」的未完成任务
             </div>}
 

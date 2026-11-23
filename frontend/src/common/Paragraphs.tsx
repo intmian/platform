@@ -1,9 +1,10 @@
-import React from 'react';
+import type {ComponentProps} from 'react';
 import {Typography} from 'antd';
 
 const {Paragraph} = Typography;
 
-function Paragraphs(props) {
+// 字符串按换行拆成多段 Paragraph，其余内容原样包一层 Paragraph
+function Paragraphs(props: ComponentProps<typeof Paragraph>) {
     const {children, ...restProps} = props;
 
     // children可能是字符串，也可能是React节点

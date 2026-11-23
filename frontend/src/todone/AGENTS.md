@@ -1,6 +1,15 @@
 # Todone（含 Library 娱乐库、例行清单）
 
-同一套层级 `目录 → 分组 → 子分组 → 任务`，分组类型决定页面：`0` 普通任务板、`1` Library、`2` 例行清单（`Main.tsx` 按类型分发）。后端都在 `backend/services/todone`，权限 `admin|todone`，请求里的 `UserID` 必须等于登录用户。路由 `/todone/:group`，`:group` 是编码后的 `addr|title|type`。
+同一套层级 `目录 → 分组 → 子分组 → 任务`，分组类型决定页面：`0` 普通任务板、`1` Library、`2` 例行清单（`Main.tsx` 按类型分发）。后端都在 `backend/services/todone`，权限 `admin|todone`，请求里的 `UserID` 必须等于登录用户。
+
+## 地址与外壳
+
+- 已定：`/todone` 是关注页，`/todone/g/<groupId>` 是分组页（`route.ts`）。地址里只有分组 ID，所在目录链、标题、类型都从 `getDirTree` 查；目录树加载完才渲染分组页，查不到就显示“清单不存在或已删除”。
+- 旧地址 `/todone/<encodeURIComponent("dir-1/dir-5/grp-12|标题|2")>` 还在 iOS 主屏幕图标里，取最后一个 `grp-N` 替换成新地址，不能删。
+- 以前“直接打开分组偶尔是空列表”：旧地址带着目录链，分组移到别的目录后，后端按 `(ParentDirID, GroupID)` 找不到就报错，前端不提示，看着像空清单。现在目录链只从目录树取，加载失败会提示。
+- Todone 在外壳里保活：切走后 DOM 还在、路由冻结在离开时那一页。不能直接读写 `window.location`/`window.history`（Library 的筛选参数用 `useSearchParams`，在后台时不写）；回到前台刷新的逻辑要同时挂 `useAppActive`；标题用 `useAppTitle`；挂在 body 上的抽屉在后台要关掉（`open && useIsAppActive()`）。
+- 请求都走 `net/send_back.ts`（底层是 `common/api.ts`），导出的函数签名不要改，调用方很多。
+- 目录里分组的 `⋯` 菜单有“添加到桌面”，桌面链接就是 `/todone/g/<id>`。
 
 ## 关注页（`Overview.tsx`，`/todone` 不带分组时显示；菜单里叫“关注”）
 
@@ -20,6 +29,7 @@
 - 一个请求 `getOverview` 拿全部数据：分组和子分组全给，任务只给收藏范围内的（例行清单只要被收藏到一栏就整张返回，否则清单级的节奏算不对）。后端持锁只做目录树快照，D1 查询在锁外并发执行。任务从活着的分组往下查，再丢掉父链断掉的子任务（删分组是软删、删子分组是硬删、父任务完成后子任务在库里仍未完成，都不会处理下面的任务）。
 - 返回的任务不带 `Note`，所以总视图勾选走 `setTaskDone`（只改完成状态），绝不能拿这些任务调 `changeTask`，否则会清空备注。
 - 例行清单的模型（`routineModel.ts`）由清单页和总视图共用，判断规则只改这一处。
+- 上半部分的归类（逾期、今天、进行中、接下来）在 `focusModel.ts`，桌面“今天”卡片（`shellApi.ts` 的 `loadTodayDigest`）也用它，规则只改这一处。
 
 ## 搜索（`search.tsx`）
 
@@ -47,7 +57,6 @@
 - `updatedAt` 只在手动"刷新"或最新一条非备注、非时间线截止的记录变化时更新。
 - 封面上传三份：原图 `pictureAddress`、2:3 详情图 `pictureAddressDetail`、480 宽预览图 `picturePreview`。列表读取顺序是预览图优先，详情和分享读取顺序是详情图优先，缺了就逐级回退；旧数据缺图时由前端后台补生成。
 - 打分时的 AI 助手（`library.reviewNotesDigest`）只读当前周目的备注，只输出优点、缺点、值得记录的点，不自动填任何字段。
-- 已知问题：直接打开 `/todone/:group` 偶尔会显示空列表，从左侧目录重新选一次就好。
 
 ## 例行清单（`Routine*.tsx`、`routineRule.ts`）
 

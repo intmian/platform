@@ -7,7 +7,7 @@ const {Text, Link, Title} = Typography;
 const errStr = '或者确实有问题：可能是有bug，可能是有人搞事情，也可能是我单纯没想到'
 
 const texts = [
-    <Text key={1}>{errStr}</Text>,
+    <Text key={0}>{errStr}</Text>,
     <Text type="secondary" key={1}>{errStr}</Text>,
     <Text type="success" key={2}>{errStr}</Text>,
     <Text type="warning" key={3}>{errStr}</Text>,

@@ -58,7 +58,7 @@ export function newLinkId() {
     return `link:${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
 }
 
-function defaultLayout(): DesktopLayout {
+export function defaultLayout(): DesktopLayout {
     const dockIds = ["todone", "money", "report"];
     const visible = APPS.filter((a) => !a.hiddenByDefault);
     return {
@@ -78,7 +78,7 @@ function isLayout(x: unknown): x is DesktopLayout {
 }
 
 // 清单里新加的应用补到桌面末尾；已经不存在的应用去掉
-function reconcile(layout: DesktopLayout): DesktopLayout {
+export function reconcile(layout: DesktopLayout): DesktopLayout {
     const known = new Set(APPS.map((a) => a.id));
     const keep = (i: DesktopItem) => i.kind === "link" || known.has(i.appId);
     const grid = layout.grid.filter(keep);
