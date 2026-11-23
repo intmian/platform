@@ -125,7 +125,7 @@ export function AISettings({onDirtyChange}: {onDirtyChange: (dirty: boolean) => 
             activeKey={view}
             onChange={(key) => setView(key as AIView)}
             items={[
-                {key: "overview", label: <Flex align="center" gap={6}>业务总览<Badge count={unbound} color="orange" size="small"/></Flex>},
+                {key: "overview", label: <Flex align="center" gap={6}>业务总览{unbound > 0 && <Badge count={unbound} color="orange" size="small"/>}</Flex>},
                 {key: "queues", label: "调用策略"},
                 {key: "providers", label: "供应商与模型"},
             ]}
