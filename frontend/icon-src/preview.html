@@ -92,7 +92,7 @@
     const tab = id === 'plat' ? '../public/favicon-32.png' : '../public/icons/' + id + '-32.png';
     document.querySelector('#tabs').append(sample(tab, 32, name, false));
   }
-  for (const [key, label] of [['a','A · 窗台猫'], ['b','B · 书灯'], ['c','C · 纸燕']]) {
+  for (const [key, label] of [['a','A · 窗台猫（选用）'], ['b','B · 书灯'], ['c','C · 纸燕']]) {
     const card = document.createElement('div');
     card.className = 'candidate';
     const heading = document.createElement('h3');
