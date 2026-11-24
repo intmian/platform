@@ -124,7 +124,8 @@
 
 .rp-weather-index li {
     display: grid;
-    grid-template-columns: 4.5em auto 1fr;
+    /* 三列都定宽：标签长短不一（"适宜""较少开启"），用 auto 会让每行的说明文字起点不同 */
+    grid-template-columns: 4.5em 5.5em 1fr;
     gap: 10px;
     align-items: baseline;
     padding: 6px 0;
@@ -145,6 +146,7 @@
 }
 
 .rp-level {
+    justify-self: start;
     padding: 0 6px;
     border-radius: 4px;
     font-size: 12px;
@@ -163,7 +165,22 @@
     color: var(--pf-text-2);
     font-size: 15px;
     line-height: 1.75;
+}
+
+.rp-overview-toggle {
     cursor: pointer;
+}
+
+.rp-overview-more {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    color: var(--pf-primary);
+    font-size: 13px;
+}
+
+.rp-overview-more .rp-chevron {
+    color: inherit;
 }
 
 .rp-overview p {

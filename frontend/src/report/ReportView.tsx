@@ -1,4 +1,4 @@
-import {ReactNode, useState} from "react";
+import {ReactNode, useLayoutEffect, useRef, useState} from "react";
 import {Tag} from "antd";
 import {DownOutlined} from "@ant-design/icons";
 import type {DayReport, DigestItem, KeywordNewsGroup, KeywordNewsItem, RssItem} from "../common/newSendHttp";
@@ -73,14 +73,33 @@ function WeatherStrip({report}: { report: ReportData }) {
 
 // ---------- 概览 ----------
 
-// 收起时把所有段落连成一段、只露三行；点一下展开成原来的分段
+// 收起时把所有段落连成一段、只露三行；点一下展开成原来的分段。
+// 只有文字真的被截断时才显示"展开"按钮：渲染后比较内容总高度和可见高度，前者更高就是被截掉了。
 function Overview({text}: { text: string }) {
     const [open, setOpen] = useState(false);
+    const [clamped, setClamped] = useState(false);
+    const ref = useRef<HTMLParagraphElement>(null);
     const paragraphs = text.split("\n").map(p => p.trim()).filter(Boolean);
-    return <div className={`rp-overview ${open ? "rp-overview-open" : ""}`} onClick={() => setOpen(!open)}>
+
+    useLayoutEffect(() => {
+        const measure = () => {
+            const el = ref.current;
+            if (el) setClamped(el.scrollHeight > el.clientHeight + 1);
+        };
+        measure();
+        window.addEventListener("resize", measure);
+        return () => window.removeEventListener("resize", measure);
+    }, [text, open]);
+
+    const canToggle = open || clamped;
+    return <div className={`rp-overview ${open ? "rp-overview-open" : ""} ${canToggle ? "rp-overview-toggle" : ""}`}
+                onClick={() => canToggle && setOpen(!open)}>
         {open
             ? paragraphs.map((p, i) => <p key={i}>{p}</p>)
-            : <p>{paragraphs.join(" ")}</p>}
+            : <p ref={ref}>{paragraphs.join(" ")}</p>}
+        {canToggle && <span className="rp-overview-more">
+            {open ? "收起" : "展开"}<DownOutlined className={`rp-chevron ${open ? "rp-chevron-open" : ""}`}/>
+        </span>}
     </div>;
 }
 
