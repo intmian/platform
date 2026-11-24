@@ -429,11 +429,11 @@ func (d *Day) Do() {
 		return
 	}
 
-	// 推送：日期放进卡片标题，正文直接从天气开始
+	// 推送：问候和日期放进卡片标题，正文从天气开始
 	now := time.Now()
 	link := fmt.Sprintf("[查看完整日报 →](%s)", reportLink(now.Format("2006-01-02")))
 	pushContent := buildDailyPushMarkdown(report, link)
-	err = tool.GPush.Push(dailyPushTitle(now), pushContent, true)
+	err = tool.GPush.Push(dailyPushTitle(report, now), pushContent, true)
 	if err != nil {
 		tool.GLog.WarningErr("auto.Day", errors.Join(errors.New("func Do() Push error"), err))
 	}

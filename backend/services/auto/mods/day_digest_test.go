@@ -179,9 +179,26 @@ func TestBuildDailyPushMarkdownMissingDigestUsesFallback(t *testing.T) {
 }
 
 func TestDailyPushTitle(t *testing.T) {
-	got := dailyPushTitle(time.Date(2026, 11, 24, 6, 0, 0, 0, time.Local))
-	if got != "日报 · 11月24日 周二" {
+	got := dailyPushTitle(&DayReport{}, time.Date(2026, 11, 24, 6, 0, 0, 0, time.Local))
+	if got != "日安～ 11月24日 周二" {
 		t.Fatalf("unexpected title: %s", got)
+	}
+}
+
+func TestGreetingTip(t *testing.T) {
+	tue := time.Date(2026, 11, 24, 6, 0, 0, 0, time.Local)
+	sat := time.Date(2026, 11, 28, 6, 0, 0, 0, time.Local)
+	if got := greetingTip(nil, sat); got != "周末愉快～" {
+		t.Fatalf("weekend tip: %s", got)
+	}
+	if got := greetingTip(nil, tue); got != "今天也要元气满满" {
+		t.Fatalf("weekday tip: %s", got)
+	}
+	if got := weatherEmoji("小雨"); got != "🌧️" {
+		t.Fatalf("rain emoji: %s", got)
+	}
+	if got := weatherEmoji("晴"); got != "☀️" {
+		t.Fatalf("sunny emoji: %s", got)
 	}
 }
 

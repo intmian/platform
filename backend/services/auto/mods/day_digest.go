@@ -229,13 +229,6 @@ func buildSummaryFromDigest(digest *DayDigest) string {
 	return strings.Join(parts, "\n")
 }
 
-var weekdayNames = []string{"周日", "周一", "周二", "周三", "周四", "周五", "周六"}
-
-// dailyPushTitle 是飞书卡片的标题，例如"日报 · 11月24日 周一"。
-func dailyPushTitle(now time.Time) string {
-	return fmt.Sprintf("日报 · %s %s", now.Format("01月02日"), weekdayNames[now.Weekday()])
-}
-
 func buildDailyPushMarkdown(report *DayReport, reportLink string) string {
 	md := misc.MarkdownTool{}
 
@@ -246,9 +239,7 @@ func buildDailyPushMarkdown(report *DayReport, reportLink string) string {
 	}
 
 	pushBrief := report.Digest.PushBrief
-	if weatherLine := strings.TrimSpace(pushBrief.WeatherLine); weatherLine != "" {
-		md.AddContent(weatherLine)
-	}
+	md.AddContent(pushWeatherLine(report, pushBrief.WeatherLine, greetingTip(report, time.Now())))
 
 	md.AddTitle("今日概览", 3)
 	if overview := strings.TrimSpace(pushBrief.Overview); overview != "" {
@@ -321,4 +312,20 @@ func keywordPushFallback(report *DayReport) string {
 		return "关注关键词搜索失败，请打开完整日报查看。"
 	}
 	return "关注关键词今日无新动态。"
+}
+
+// pushWeatherLine 是推送正文第一行：天气图标 + 天气 + 问候，例如"☀️ 晴，4-14℃ · 早晚温差大，带件外套"。
+func pushWeatherLine(report *DayReport, weatherLine, tip string) string {
+	weatherLine = strings.TrimSpace(weatherLine)
+	if weatherLine == "" {
+		return tip
+	}
+	line := weatherLine
+	if len(report.Weather.Daily) > 0 {
+		line = weatherEmoji(report.Weather.Daily[0].TextDay) + " " + line
+	}
+	if tip != "" {
+		line += " · " + tip
+	}
+	return line
 }
