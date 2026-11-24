@@ -56,6 +56,18 @@ const DOCK_PREFIX = "dock:";
 const dockSortId = (id: string) => DOCK_PREFIX + id;
 const itemIdOf = (sortId: string) => sortId.startsWith(DOCK_PREFIX) ? sortId.slice(DOCK_PREFIX.length) : sortId;
 
+// 按时段换壁纸的光线和问候语
+type DayPart = "morning" | "day" | "dusk" | "night";
+const GREETING: Record<DayPart, string> = {morning: "早上好", day: "下午好", dusk: "傍晚好", night: "晚上好"};
+
+function dayPart(d: Date): DayPart {
+    const h = d.getHours();
+    if (h >= 5 && h < 11) return "morning";
+    if (h >= 11 && h < 17) return "day";
+    if (h >= 17 && h < 20) return "dusk";
+    return "night";
+}
+
 function useToday() {
     const [now, setNow] = useState(() => new Date());
     useEffect(() => {
@@ -239,16 +251,19 @@ export function Desktop({onSearch}: { onSearch: () => void }) {
     const stopEditing = () => setEditing(false);
     const blankPress = useBlankLongPress(editing, () => setEditing(true));
 
-    return <div className={`pf-desktop${editing ? " is-editing" : ""}${entering ? " is-entering" : ""}`}
+    const part = dayPart(new Date());
+
+    return <div className={`pf-desktop is-${part}${editing ? " is-editing" : ""}${entering ? " is-entering" : ""}`}
                 {...blankPress}
                 onClick={(e) => {
                     // 编辑时点空白处结束编辑
                     if (editing && e.target === e.currentTarget) stopEditing();
                 }}>
+        <div className="pf-desk-art" aria-hidden/>
         <header className="pf-desk-top">
             <div className="pf-desk-date">
-                <span className="pf-desk-day">{today.getMonth() + 1}月{today.getDate()}日</span>
-                <span className="pf-desk-week">星期{WEEK[today.getDay()]}</span>
+                <span className="pf-desk-greet">{GREETING[part]}</span>
+                <span className="pf-desk-day">{today.getMonth() + 1}月{today.getDate()}日<span className="pf-desk-week">星期{WEEK[today.getDay()]}</span></span>
             </div>
             <div className="pf-desk-tools">
                 {editing ? <>

@@ -105,15 +105,19 @@ function WidgetSlot({id, index, data, editing}: { id: string; index: number; dat
     </div>;
 }
 
+// 标题用所属应用的颜色（苹果小组件的做法：卡片本身保持干净，只有标题带一点颜色）
+const WIDGET_TONE: Record<string, string> = {今天: "teal", 账本: "amber"};
+
 function WidgetFrame({title, onOpen, quiet, children}: {
     title: string;
     onOpen?: () => void;
     quiet?: boolean;
     children: ReactNode;
 }) {
-    return <div className="pf-widget" role={onOpen ? "button" : undefined} onClick={onOpen}>
+    const tone = WIDGET_TONE[title];
+    return <div className={`pf-widget${tone ? ` is-${tone}` : ""}`} role={onOpen ? "button" : undefined} onClick={onOpen}>
         <div className="pf-widget-head">
-            <span>{title}</span>
+            <span className="pf-widget-title">{title}</span>
             {onOpen && <RightOutlined/>}
         </div>
         {quiet ? <div className="pf-widget-quiet">{children}</div> : children}

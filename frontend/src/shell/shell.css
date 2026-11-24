@@ -1270,3 +1270,178 @@ html.pf-gray-page body {
         transition: none !important;
     }
 }
+
+/* ---------- 桌面美术 ----------
+   思路照苹果主屏：颜色和画面都交给壁纸，卡片、Dock 只做干净的玻璃，不再加花样。
+   壁纸画在固定在屏幕上的 ::before 和 .pf-desk-art 里，滚动时不动：
+   1) 底色渐变 + 几团按时段变色的柔光（右上角是“太阳”）；
+   2) 一层很淡的纸纹噪点，让大片底色不发“塑料”；
+   3) 右下角看板娘的剪影（public/desk/girl.png，从设定稿的四分之三侧面抠的，头发眼镜领结实、脸和衣服淡）。
+      图片只当形状用（mask），颜色由 --girl-ink 决定，所以能跟着时段换色。 */
+.pf-desktop {
+    --glow-sun: #f7d394;
+    --glow-a: #cde8dc;
+    --glow-b: #f4d2c2;
+    --wall-top: #f6f1ea;
+    --wall-bottom: #ece4d9;
+    --girl-ink: #5a4632;
+    position: relative;
+    isolation: isolate;
+    background: none;
+}
+
+.pf-desktop.is-morning {
+    --glow-sun: #ffe0a6;
+    --glow-a: #d6eee2;
+    --glow-b: #f9e3cf;
+    --wall-top: #f8f4ec;
+    --wall-bottom: #efe8dc;
+}
+
+.pf-desktop.is-dusk {
+    --glow-sun: #f6b896;
+    --glow-a: #e0d5ef;
+    --glow-b: #f3c6c0;
+    --wall-top: #f5ece4;
+    --wall-bottom: #eadfd6;
+    --girl-ink: #6a3f36;
+}
+
+.pf-desktop.is-night {
+    --glow-sun: #e6e3fa;
+    --glow-a: #c9d0ec;
+    --glow-b: #ddd2ea;
+    --wall-top: #eeebf2;
+    --wall-bottom: #e2dfea;
+    --girl-ink: #3c3f66;
+}
+
+.pf-desktop::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: -2;
+    pointer-events: none;
+    background:
+        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .35 0 0 0 0 .28 0 0 0 0 .2 0 0 0 .55 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.22'/%3E%3C/svg%3E"),
+        radial-gradient(38% 32% at 86% 6%, var(--glow-sun) 0%, transparent 72%),
+        radial-gradient(50% 42% at -4% 96%, var(--glow-a) 0%, transparent 70%),
+        radial-gradient(36% 30% at 62% 64%, var(--glow-b) 0%, transparent 72%),
+        linear-gradient(180deg, var(--wall-top) 0%, var(--wall-bottom) 100%);
+}
+
+/* 看板娘剪影：贴着屏幕右下角站着，下半身往下淡出，不出现生硬的截断边 */
+.pf-desk-art {
+    position: fixed;
+    right: max(8px, calc(50vw - 700px));
+    bottom: 0;
+    height: min(62vh, 560px);
+    aspect-ratio: 468 / 744;
+    z-index: -1;
+    pointer-events: none;
+    background: var(--girl-ink);
+    /* 两层遮罩取交集：剪影的形状 × 从上到下的渐隐 */
+    -webkit-mask: url(/desk/girl.png) center top / contain no-repeat, linear-gradient(180deg, #000 55%, transparent 96%);
+    -webkit-mask-composite: source-in;
+    mask: url(/desk/girl.png) center top / contain no-repeat, linear-gradient(180deg, #000 55%, transparent 96%);
+    mask-composite: intersect;
+    opacity: .085;
+}
+
+.pf-desktop > .pf-desk-art {
+    max-width: none;
+    margin: 0;
+}
+
+/* 顶部：问候语在上，日期放大 */
+.pf-desk-top {
+    align-items: flex-end;
+}
+
+.pf-desk-date {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+}
+
+.pf-desk-greet {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--desk-ink-2);
+    letter-spacing: 1px;
+}
+
+.pf-desk-day {
+    font-size: 34px;
+    font-weight: 650;
+    letter-spacing: .5px;
+    line-height: 1.15;
+}
+
+.pf-desk-day .pf-desk-week {
+    margin-left: 12px;
+    font-size: 15px;
+    font-weight: 400;
+    letter-spacing: 0;
+}
+
+/* 小组件：苹果式的干净卡片——接近不透明的白玻璃、大圆角、几乎看不出的阴影；
+   层次只靠字：标题小而带应用色，数字大而用圆体（苹果设备上是 SF Pro Rounded） */
+.pf-widget {
+    background: rgba(255, 255, 255, .74);
+    border: 0;
+    box-shadow: 0 1px 2px rgba(60, 40, 20, .04), 0 8px 28px -6px rgba(60, 40, 20, .12);
+    border-radius: 22px;
+    padding: 14px 18px 16px;
+    -webkit-backdrop-filter: blur(30px) saturate(1.8);
+    backdrop-filter: blur(30px) saturate(1.8);
+}
+
+.pf-widget-title {
+    font-weight: 600;
+    color: var(--desk-ink);
+}
+
+.pf-widget.is-teal .pf-widget-title { color: #1a8a6b; }
+.pf-widget.is-amber .pf-widget-title { color: #c2861a; }
+
+.pf-widget-stats b,
+.pf-book-value {
+    font-family: ui-rounded, "SF Pro Rounded", -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+.pf-widget-stats b {
+    font-size: 30px;
+    font-weight: 650;
+}
+
+/* 图标：加一层落在“地面”上的柔影，比原来浮起来一点 */
+.pf-tile {
+    box-shadow: 0 1px 2px rgba(40, 30, 20, .1), 0 8px 16px -6px rgba(60, 40, 20, .3), inset 0 0 0 1px rgba(0, 0, 0, .04);
+}
+
+.pf-icon-label {
+    font-weight: 500;
+}
+
+/* Dock：底下有颜色了，玻璃可以更透 */
+.pf-dock {
+    background: rgba(255, 255, 255, .42);
+    border-color: rgba(255, 255, 255, .8);
+    box-shadow: 0 16px 44px -10px rgba(60, 40, 20, .25), inset 0 1px 0 rgba(255, 255, 255, .9);
+    -webkit-backdrop-filter: blur(26px) saturate(1.6);
+    backdrop-filter: blur(26px) saturate(1.6);
+}
+
+@media (max-width: 767px) {
+    .pf-desk-day {
+        font-size: 28px;
+    }
+
+    /* 手机上图标铺满整屏，剪影更淡、往右下角躲一点 */
+    .pf-desk-art {
+        height: 58vh;
+        right: -14vw;
+        opacity: .08;
+    }
+}
