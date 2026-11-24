@@ -36,7 +36,7 @@ import {
 } from "./store";
 import {Tile} from "./Tile";
 import {useDesktopData, Widgets} from "./Widgets";
-import {AddSheet, ItemSheet} from "./Sheets";
+import {AddSheet, ItemSheet, WallpaperSheet} from "./Sheets";
 
 const WEEK = ["日", "一", "二", "三", "四", "五", "六"];
 
@@ -105,6 +105,7 @@ export function Desktop({onSearch}: { onSearch: () => void }) {
     const [editing, setEditing] = useState(false);
     const [editItem, setEditItem] = useState<DesktopItem | null>(null);
     const [adding, setAdding] = useState(false);
+    const [pickingWall, setPickingWall] = useState(false);
     const [refreshKey, setRefreshKey] = useState(0);
     // 第一次显示桌面时图标依次浮现，之后从应用切回来不再播
     const [entering, setEntering] = useState(true);
@@ -253,7 +254,7 @@ export function Desktop({onSearch}: { onSearch: () => void }) {
 
     const part = dayPart(new Date());
 
-    return <div className={`pf-desktop is-${part}${editing ? " is-editing" : ""}${entering ? " is-entering" : ""}`}
+    return <div className={`pf-desktop is-${part} wall-${layout?.wallpaper ?? "girl"}${editing ? " is-editing" : ""}${entering ? " is-entering" : ""}`}
                 {...blankPress}
                 onClick={(e) => {
                     // 编辑时点空白处结束编辑
@@ -279,6 +280,7 @@ export function Desktop({onSearch}: { onSearch: () => void }) {
                             {type: "divider"},
                             {key: "edit", label: "编辑桌面", onClick: () => setEditing(true)},
                             {key: "add", label: "添加到桌面", onClick: () => setAdding(true)},
+                            {key: "wall", label: "壁纸", onClick: () => setPickingWall(true)},
                             {type: "divider"},
                             {key: "logout", label: "退出登录", icon: <LogoutOutlined/>, danger: true, onClick: () => void auth.onLogout()},
                         ],
@@ -322,6 +324,7 @@ export function Desktop({onSearch}: { onSearch: () => void }) {
 
         {layout && <ItemSheet item={editItem} layout={layout} onClose={() => setEditItem(null)}/>}
         {layout && <AddSheet open={adding} layout={layout} onClose={() => setAdding(false)}/>}
+        {layout && <WallpaperSheet open={pickingWall} layout={layout} onClose={() => setPickingWall(false)}/>}
     </div>;
 }
 

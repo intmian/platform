@@ -22,12 +22,21 @@ export interface LinkItem {
 
 export type DesktopItem = AppItem | LinkItem;
 
+// 壁纸右下角的插画：看板娘剪影、窗台猫线稿，或者不放
+export type Wallpaper = "girl" | "cat" | "none";
+export const WALLPAPERS: { id: Wallpaper; name: string }[] = [
+    {id: "girl", name: "看板娘"},
+    {id: "cat", name: "窗台猫"},
+    {id: "none", name: "不放插画"},
+];
+
 export interface DesktopLayout {
     v: 1;
     grid: DesktopItem[];  // 桌面上的全部图标
     dock: DesktopItem[];  // 额外钉在 Dock 里的，图标在 grid 里也有一份（同一个 id），不是从桌面挪过去
     hiddenApps: string[]; // 被移出桌面的应用；新加的应用不在这里，会自动出现
     widgets: string[];    // 桌面上的小组件，按显示顺序；旧数据没有这个字段时用默认
+    wallpaper?: Wallpaper; // 没有这个字段就是看板娘
 }
 
 export const DOCK_MAX = 5;
@@ -284,6 +293,9 @@ export function reorderWidgets(fromId: string, toId: string) {
     });
 }
 
+export function setWallpaper(w: Wallpaper) {
+    updateDesktop((l) => ({...l, wallpaper: w}));
+}
 
 export function takeJustAdded(id: string): boolean {
     if (justAdded !== id) return false;

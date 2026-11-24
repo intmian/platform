@@ -16,7 +16,9 @@ import {
     patchLink,
     removeItem,
     restoreApp,
+    setWallpaper,
     toggleDock,
+    WALLPAPERS,
 } from "./store";
 import {ItemGlyph, itemTitle} from "./Tile";
 
@@ -184,5 +186,19 @@ export function AddSheet({open, layout, onClose}: { open: boolean; layout: Deskt
                 <Button type="primary" onClick={addUrl} disabled={!url.trim()}>添加</Button>
             </div>
         </section>
+    </Modal>;
+}
+
+// 选壁纸：点一下立刻换，弹窗不关，方便来回比较
+export function WallpaperSheet({open, layout, onClose}: { open: boolean; layout: DesktopLayout; onClose: () => void }) {
+    const current = layout.wallpaper ?? "girl";
+    return <Modal open={open} onCancel={onClose} title="壁纸" footer={null} width={440} className="pf-sheet">
+        <div className="pf-wall-options">
+            {WALLPAPERS.map((w) => <button key={w.id} className={`pf-wall-option${w.id === current ? " is-on" : ""}`}
+                                           onClick={() => setWallpaper(w.id)}>
+                <span className={`pf-wall-preview wall-${w.id}`}><i/></span>
+                <span className="pf-wall-name">{w.name}</span>
+            </button>)}
+        </div>
     </Modal>;
 }
