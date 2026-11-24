@@ -313,7 +313,12 @@ const Performance = () => {
         return remove
     }, []);
 
+    // 断线后点“重新连接”时加一，触发下面的 effect 重新建连
+    const [connection, setConnection] = useState(0);
+
     useEffect(() => {
+        setError(false);
+        setLoading(true);
         const eventSource = new EventSource('/api/admin/system/usage/sse');
         eventSource.onmessage = (event) => {
             try {
@@ -333,7 +338,7 @@ const Performance = () => {
         return () => {
             eventSource.close();
         };
-    }, []);
+    }, [connection]);
 
     const columns = [
         {
@@ -378,7 +383,8 @@ const Performance = () => {
     }
 
     if (error || !data) {
-        return <Result status="warning" title="连接已断开" subTitle="刷新页面重新连接"/>;
+        return <Result status="warning" title="连接已断开"
+                       extra={<Button onClick={() => setConnection((c) => c + 1)}>重新连接</Button>}/>;
     }
 
     return (
