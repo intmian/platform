@@ -342,7 +342,7 @@ const KanaPractice = () => {
         };
 
         if (isCorrect) {
-            message.success('正确');
+            message.success('正解！');
             // 延迟切换下一题
             setTimeout(() => {
                  if (currentQuestionIdx < questions.length - 1) {
@@ -500,7 +500,7 @@ const KanaPractice = () => {
                             </div>
                             {q.isAnswered && (
                                 <div style={{color: q.isCorrect ? 'var(--pf-success)' : 'var(--pf-error)', fontSize: 20, fontWeight: 'bold'}}>
-                                    {q.isCorrect ? '正确' : `错误，答案：${q.answerText}`}
+                                    {q.isCorrect ? '正解!' : `错啦! 答案: ${q.answerText}`}
                                 </div>
                             )}
                         </Card>
@@ -523,7 +523,7 @@ const KanaPractice = () => {
             {/* 顶部栏 */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
                 <Title level={4} style={{ margin: 0, whiteSpace: 'nowrap', fontSize: isMobile ? 18 : undefined }}>
-                    假名练习
+                    {isMobile ? '假名练习' : '🇯🇵 假名练习'}
                 </Title>
                 <Space size={isMobile ? 'small' : 'middle'}>
                     {settings.inputMode === 'memory' && (
