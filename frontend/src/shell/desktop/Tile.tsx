@@ -17,7 +17,7 @@ export function ItemGlyph({item, size}: { item: DesktopItem; size: number }) {
         const app = appById(item.appId);
         return app ? <AppGlyph app={app} size={size}/> : null;
     }
-    return <LinkGlyph title={item.title} url={item.url} size={size}/>;
+    return <LinkGlyph title={item.title} url={item.url} icon={item.icon} size={size}/>;
 }
 
 // 桌面上的一个图标。平时：点击打开，长按（或右键）进入编辑。编辑时：拖动排序，点击打开设置，左上角减号移除。

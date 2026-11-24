@@ -204,7 +204,8 @@ export function Todone() {
                 minHeight: '100%',
             }}
         >
-            {isMobile && <div style={{paddingTop: 'calc(var(--safe-top, 0px) + 6px)', marginLeft: -8}}>
+            {/* 离顶部留够距离：iPhone 的 Safari 收起工具栏后，状态栏下面一小条会被系统模糊掉 */}
+            {isMobile && <div style={{paddingTop: 'calc(var(--safe-top, 0px) + 22px)', marginLeft: -8}}>
                 <Button type="text" icon={<MenuOutlined/>} onClick={() => setShowDir(true)}>目录</Button>
             </div>}
             {page}

@@ -17,6 +17,7 @@ export interface LinkItem {
     kind: "link";
     title: string;
     url: string;         // 站内页面写路径（/todone/...），站外写完整网址
+    icon?: string;       // 站外网址自己指定的图标地址；不填自动取对方网站的图标
 }
 
 export type DesktopItem = AppItem | LinkItem;
@@ -211,7 +212,7 @@ export function restoreApp(appId: string) {
     }));
 }
 
-export function patchLink(id: string, patch: Partial<Pick<LinkItem, "title" | "url">>) {
+export function patchLink(id: string, patch: Partial<Pick<LinkItem, "title" | "url" | "icon">>) {
     const fix = (i: DesktopItem) => (i.id === id && i.kind === "link" ? {...i, ...patch} : i);
     updateDesktop((l) => ({...l, grid: l.grid.map(fix), dock: l.dock.map(fix)}));
 }

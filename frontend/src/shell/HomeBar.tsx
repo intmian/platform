@@ -145,7 +145,7 @@ function SwitchPanel({current, currentPath, currentTitle, onClose, onSearch}: {
                 addLink(currentTitle || current?.name || "页面", currentPath);
                 message.success("已添加到桌面");
                 onClose();
-            }}>{pinned ? <><CheckOutlined/>已在桌面</> : <><PlusOutlined/>添加到桌面</>}</button>
+            }}>{pinned ? <><CheckOutlined/>这页已在桌面</> : <><PlusOutlined/>添加到桌面</>}</button>
         </div>
     </div>;
 }

@@ -1,7 +1,7 @@
-import {ReactNode, useEffect, useMemo, useState} from "react";
+import React, {ReactNode, useEffect, useMemo, useRef, useState} from "react";
 import {useNavigate} from "react-router-dom";
 import {Dropdown, message} from "antd";
-import {LogoutOutlined, PlusOutlined, SearchOutlined} from "@ant-design/icons";
+import {LogoutOutlined, MinusOutlined, PlusOutlined, SearchOutlined} from "@ant-design/icons";
 import {
     closestCenter,
     DndContext,
@@ -19,10 +19,10 @@ import {
 import {horizontalListSortingStrategy, rectSortingStrategy, SortableContext} from "@dnd-kit/sortable";
 import {useAuth} from "../../common/loginCtx";
 import {useIsMobile} from "../../common/breakpoints";
-import {useAppActive, useIsAppActive} from "../runtime";
+import {useAppActive} from "../runtime";
 import {AppDef, appById, canUseApp} from "../apps";
 import {AppGlyph} from "../AppTile";
-import {useRecents} from "../recents";
+import {closeRecent, useRecents} from "../recents";
 import {
     DesktopItem,
     DOCK_MAX,
@@ -112,14 +112,6 @@ export function Desktop({onSearch}: { onSearch: () => void }) {
     useEffect(() => {
         if (user) void loadDesktop(user);
     }, [user]);
-
-    // 手机上把页面拉过头时露出的是整个网页的底色（默认白色），桌面显示时换成桌面的颜色
-    const active = useIsAppActive();
-    useEffect(() => {
-        if (!active) return;
-        document.documentElement.classList.add("pf-on-desktop");
-        return () => document.documentElement.classList.remove("pf-on-desktop");
-    }, [active]);
 
     useEffect(() => {
         const t = window.setTimeout(() => setEntering(false), 900);
@@ -245,8 +237,10 @@ export function Desktop({onSearch}: { onSearch: () => void }) {
     />;
 
     const stopEditing = () => setEditing(false);
+    const blankPress = useBlankLongPress(editing, () => setEditing(true));
 
     return <div className={`pf-desktop${editing ? " is-editing" : ""}${entering ? " is-entering" : ""}`}
+                {...blankPress}
                 onClick={(e) => {
                     // 编辑时点空白处结束编辑
                     if (editing && e.target === e.currentTarget) stopEditing();
@@ -300,15 +294,12 @@ export function Desktop({onSearch}: { onSearch: () => void }) {
                 <SortableContext items={dock.map((i) => dockSortId(i.id))} strategy={horizontalListSortingStrategy}>
                     <DropArea id="dock" className={`pf-dock${dock.length === 0 ? " is-empty" : ""}`} highlight={dropTarget === "dock"}>
                         {dock.map((i, n) => renderTile(i, "dock", n))}
-                        {!editing && dockRecents.length > 0 && <>
+                        {dockRecents.length > 0 && <>
                             {dock.length > 0 && <span className="pf-dock-sep"/>}
-                            {dockRecents.map((r) => {
-                                const app = appById(r.appId)!;
-                                return <button key={r.appId} className="pf-dock-recent" title={r.title || app.name}
-                                               aria-label={`打开${app.name}`} onClick={() => navigate(r.path)}>
-                                    <AppGlyph app={app} size={dockTileSize}/>
-                                </button>;
-                            })}
+                            {dockRecents.map((r) => <RecentTile key={r.appId} appId={r.appId} title={r.title}
+                                                                size={dockTileSize} editing={editing}
+                                                                onOpen={() => navigate(r.path)}
+                                                                onStartEditing={() => setEditing(true)}/>)}
                         </>}
                     </DropArea>
                 </SortableContext>}
@@ -317,4 +308,97 @@ export function Desktop({onSearch}: { onSearch: () => void }) {
         {layout && <ItemSheet item={editItem} layout={layout} onClose={() => setEditItem(null)}/>}
         {layout && <AddSheet open={adding} layout={layout} onClose={() => setAdding(false)}/>}
     </div>;
+}
+
+// Dock 右边的最近应用。点一下回到上次那一页；长按或右键进入编辑，编辑时左上角的减号把它从最近里关掉
+function RecentTile({appId, title, size, editing, onOpen, onStartEditing}: {
+    appId: string;
+    title: string;
+    size: number;
+    editing: boolean;
+    onOpen: () => void;
+    onStartEditing: () => void;
+}) {
+    const app = appById(appId)!;
+    const timer = useRef<number>();
+    const longPressed = useRef(false);
+    return <div className={`pf-icon pf-dock-recent${editing ? " is-editing" : ""}`}>
+        <button className="pf-icon-btn" title={title || app.name} aria-label={`打开${app.name}`}
+                onContextMenu={(e) => {
+                    e.preventDefault();
+                    if (!editing) onStartEditing();
+                }}
+                onPointerDown={(e) => {
+                    if (editing || e.pointerType === "mouse") return;
+                    longPressed.current = false;
+                    timer.current = window.setTimeout(() => {
+                        longPressed.current = true;
+                        navigator.vibrate?.(8);
+                        onStartEditing();
+                    }, 500);
+                }}
+                onPointerUp={() => window.clearTimeout(timer.current)}
+                onPointerCancel={() => window.clearTimeout(timer.current)}
+                onClick={() => {
+                    if (longPressed.current) {
+                        longPressed.current = false;
+                        return;
+                    }
+                    if (!editing) onOpen();
+                }}>
+            <AppGlyph app={app} size={size}/>
+        </button>
+        {editing && <button className="pf-icon-remove" aria-label={`关闭${app.name}`}
+                            onPointerDown={(e) => e.stopPropagation()}
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                closeRecent(appId);
+                            }}><MinusOutlined/></button>}
+    </div>;
+}
+
+// 在桌面空白处、Dock 空白处、小组件上长按（电脑上右键）进入编辑。图标自己处理长按，这里跳过按钮和输入框。
+function useBlankLongPress(editing: boolean, onStart: () => void) {
+    const timer = useRef<number>();
+    const start = useRef<{ x: number; y: number } | null>(null);
+    const fired = useRef(false);
+    // 弹窗、下拉菜单挂在 body 上，但 React 事件照样会冒泡到这里，用 DOM 位置排除掉
+    const skip = (e: React.SyntheticEvent) => {
+        const t = e.target;
+        return !(t instanceof Element) || !e.currentTarget.contains(t) || !!t.closest("button, a, input, textarea");
+    };
+    const cancel = () => {
+        window.clearTimeout(timer.current);
+        start.current = null;
+    };
+    return {
+        onContextMenu: (e: React.MouseEvent) => {
+            if (editing || skip(e)) return;
+            e.preventDefault();
+            onStart();
+        },
+        onPointerDown: (e: React.PointerEvent) => {
+            fired.current = false;
+            if (editing || e.pointerType === "mouse" || skip(e)) return;
+            start.current = {x: e.clientX, y: e.clientY};
+            timer.current = window.setTimeout(() => {
+                fired.current = true;
+                navigator.vibrate?.(8);
+                onStart();
+            }, 500);
+        },
+        onPointerMove: (e: React.PointerEvent) => {
+            // 手指在滑动页面就不算长按
+            if (start.current && Math.hypot(e.clientX - start.current.x, e.clientY - start.current.y) > 8) cancel();
+        },
+        onPointerUp: cancel,
+        onPointerCancel: cancel,
+        // 长按小组件进入编辑后，松手的那一下不要再当成点击打开应用
+        onClickCapture: (e: React.MouseEvent) => {
+            if (fired.current) {
+                fired.current = false;
+                e.stopPropagation();
+            }
+        },
+    };
 }

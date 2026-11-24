@@ -41,12 +41,14 @@ export function ItemSheet({item, layout, onClose}: {
 }) {
     const [title, setTitle] = useState("");
     const [url, setUrl] = useState("");
+    const [icon, setIcon] = useState("");
     const [error, setError] = useState("");
 
     useEffect(() => {
         if (item?.kind === "link") {
             setTitle(item.title);
             setUrl(item.url);
+            setIcon(item.icon ?? "");
         }
         setError("");
     }, [item]);
@@ -60,20 +62,25 @@ export function ItemSheet({item, layout, onClose}: {
             const u = normalizeUrl(url);
             if (!title.trim()) return setError("名字不能为空");
             if (!u) return setError("网址格式不对");
-            patchLink(item.id, {title: title.trim(), url: u});
+            const iconUrl = icon.trim();
+            if (iconUrl && !/^https?:\/\//i.test(iconUrl)) return setError("图标地址要以 http:// 或 https:// 开头");
+            patchLink(item.id, {title: title.trim(), url: u, icon: u.startsWith("/") ? undefined : iconUrl || undefined});
         }
         onClose();
     };
 
     return <Modal open onCancel={onClose} title={null} footer={null} width={380} className="pf-sheet" centered>
         <div className="pf-sheet-head">
-            <ItemGlyph item={item.kind === "link" ? {...item, title: title || item.title, url: url || item.url} : item}
+            <ItemGlyph item={item.kind === "link" ? {...item, title: title || item.title, url: url || item.url, icon: icon.trim() || undefined} : item}
                        size={56}/>
             <div className="pf-sheet-name">{item.kind === "app" ? itemTitle(item) : (title || item.title)}</div>
         </div>
         {item.kind === "link" && <div className="pf-sheet-form">
             <label>名字<Input value={title} onChange={(e) => setTitle(e.target.value)} onPressEnter={save}/></label>
             <label>地址<Input value={url} onChange={(e) => setUrl(e.target.value)} onPressEnter={save}/></label>
+            {!url.trim().startsWith("/") &&
+                <label>图标<Input value={icon} placeholder="不填自动用网站自己的图标" onChange={(e) => setIcon(e.target.value)}
+                                  onPressEnter={save}/></label>}
             {error && <div className="pf-sheet-error">{error}</div>}
         </div>}
         <div className="pf-sheet-actions">
