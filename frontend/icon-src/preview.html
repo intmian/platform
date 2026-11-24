@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Platform · 图标预览</title>
+  <link rel="icon" href="../public/favicon.svg">
+  <style>
+    :root { color-scheme: light; font: 14px/1.5 -apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif; color: #2b2722; background: #faf8f4; }
+    * { box-sizing: border-box; }
+    body { margin: 0; }
+    main { max-width: 1256px; margin: auto; padding: 44px 36px 36px; }
+    header { display: flex; align-items: center; justify-content: space-between; gap: 12px; border-bottom: 2px solid #2b2722; padding-bottom: 16px; }
+    header img { display: block; }
+    h1,h2,p,figure { margin: 0; }
+    h1 { font-size: clamp(24px,4vw,40px); line-height: 1.2; letter-spacing: -.045em; font-weight: 650; }
+    h2 { font-size: 18px; font-weight: 600; }
+    .surfaces { display: grid; grid-template-columns: 1.48fr 1fr; gap: 18px; margin: 22px 0 30px; }
+    .surface { border-radius: 20px; padding: 24px; }
+    .paper { background: #f2ede6; }
+    .phone { background: radial-gradient(ellipse at 100% 0%,#364556,transparent 75%),linear-gradient(155deg,#292e38,#181922); color: #fff; }
+    .section-head { display: flex; align-items: baseline; justify-content: space-between; gap: 14px; }
+    .size { font: 12px/1.5 ui-monospace,monospace; opacity: .75; white-space: nowrap; }
+    .grid { display: grid; grid-template-columns: repeat(6,minmax(0,1fr)); gap: 18px 4px; margin: 24px 0 4px; }
+    .phone .grid { grid-template-columns: repeat(4,minmax(0,1fr)); }
+    figure { display: flex; flex-direction: column; align-items: center; gap: 7px; }
+    .tile { display: block; flex: none; border-radius: 23%; }
+    figcaption { font-size: 12px; text-align: center; }
+    .candidates { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); margin-top: 12px; border-top: 1px solid #cfc8bd; }
+    .candidate { padding: 16px 0 12px; }
+    .candidate h3 { font-size: 15px; font-weight: 560; margin: 0 0 14px; }
+    .samples { display: flex; gap: clamp(8px,1.1vw,16px); align-items: end; }
+    .samples figcaption { color: #665f56; font: 11px/1.5 ui-monospace,monospace; }
+    .tabs { margin-top: 24px; padding-top: 16px; border-top: 1px solid #cfc8bd; }
+    .strip { display: flex; gap: 24px; padding: 16px 0 8px; overflow-x: auto; }
+    .strip figure { flex: none; }
+    @media (max-width: 1050px) {
+      .surfaces { grid-template-columns: 1.2fr 1fr; }
+      .paper .grid { grid-template-columns: repeat(4,minmax(0,1fr)); }
+      .candidates { grid-template-columns: repeat(3,minmax(304px,1fr)); overflow-x: auto; }
+    }
+    @media (max-width: 760px) {
+      main { padding: 22px 14px; }
+      .surfaces { grid-template-columns: 1fr; gap: 12px; }
+      .surface { padding: 18px 10px; }
+      .surface .section-head { margin-inline: 6px; }
+      .strip { gap: 16px; }
+    }
+  </style>
+</head>
+<body>
+<main>
+  <header><h1>Platform 图标预览</h1><img src="../public/favicon.svg" alt="" width="36" height="36"></header>
+  <div class="surfaces">
+    <section class="surface paper">
+      <div class="section-head"><h2>桌面</h2><span class="size">64 px</span></div>
+      <div class="grid" id="desktop"></div>
+    </section>
+    <section class="surface phone">
+      <div class="section-head"><h2>iPhone 主屏</h2><span class="size">64 px</span></div>
+      <div class="grid" id="phone"></div>
+    </section>
+  </div>
+  <section><h2>主图标候选</h2><div class="candidates" id="candidates"></div></section>
+  <section class="tabs">
+    <div class="section-head"><h2>浏览器标签页</h2><span class="size">32 px</span></div>
+    <div class="strip" id="tabs"></div>
+  </section>
+</main>
+<script>
+  const apps = [
+    ['plat','个人桌面'], ['todone','任务清单'], ['money','家庭记账'],
+    ['report','新闻日报'], ['subscription','网络订阅'], ['cmd','脚本运行'],
+    ['admin','后台管理'], ['kana','日语假名'], ['loss-fat','减脂营养'],
+    ['jianxing','游戏评分'], ['love47','纪念日']
+  ];
+  function sample(src, size, label, rounded) {
+    const figure = document.createElement('figure');
+    const image = new Image(size, size);
+    image.src = src;
+    image.alt = '';
+    if (rounded) image.className = 'tile';
+    const caption = document.createElement('figcaption');
+    caption.textContent = label;
+    figure.append(image, caption);
+    return figure;
+  }
+  for (const [id, name] of apps) {
+    const preview = sample('../public/icons/' + id + '-64.png', 64, name, true);
+    document.querySelector('#desktop').append(preview);
+    document.querySelector('#phone').append(preview.cloneNode(true));
+    const tab = id === 'plat' ? '../public/favicon-32.png' : '../public/icons/' + id + '-32.png';
+    document.querySelector('#tabs').append(sample(tab, 32, name, false));
+  }
+  for (const [key, label] of [['a','A · 窗台猫'], ['b','B · 书灯（选用）'], ['c','C · 纸燕']]) {
+    const card = document.createElement('div');
+    card.className = 'candidate';
+    const heading = document.createElement('h3');
+    heading.textContent = label;
+    const samples = document.createElement('div');
+    samples.className = 'samples';
+    for (const size of [180, 64, 32]) {
+      samples.append(sample('plat-' + key + '-1024.png', size, size + ' px', true));
+    }
+    card.append(heading, samples);
+    document.querySelector('#candidates').append(card);
+  }
+</script>
+</body>
+</html>

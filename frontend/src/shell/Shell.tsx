@@ -12,7 +12,7 @@ import {bindRecentsUser, recordRecent} from "./recents";
 import {nextSlots, Slot} from "./slots";
 
 const DEFAULT_TITLE = "Platform";
-const DEFAULT_FAVICON = "/plat-logo-mini.png";
+const DEFAULT_FAVICON = "/favicon-32.png";
 const DEFAULT_TOUCH_ICON = "/icons/plat-180.png";
 
 // 外壳入口：先确认登录，再交给 AppHost。公开应用不登录也能看，但没有底部横条。

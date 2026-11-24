@@ -1,15 +1,5 @@
 import {ComponentType, ReactNode} from "react";
-import {
-    AccountBookOutlined,
-    ApiOutlined,
-    BugOutlined,
-    CalculatorOutlined,
-    CodeOutlined,
-    HeartOutlined,
-    SettingOutlined,
-    StarOutlined,
-    TranslationOutlined,
-} from "@ant-design/icons";
+import {BugOutlined} from "@ant-design/icons";
 import {lazyWithReload} from "./lazy";
 
 // 应用清单：桌面图标、⌘K 搜索、路由、网页标题、favicon、权限、保活，全部从这里读。
@@ -18,9 +8,9 @@ import {lazyWithReload} from "./lazy";
 export type IconTone = "teal" | "amber" | "blue" | "coral" | "purple" | "pink" | "gray" | "green";
 
 export interface AppIcon {
-    image?: string;      // 有插画 logo 的应用用图片
-    glyph?: ReactNode;   // 否则用色块 + 图标
-    tone: IconTone;
+    image?: string;      // 插画图标（public/icons/<id>-192.png）
+    glyph?: ReactNode;   // 没有插画时用色块 + 图标
+    tone: IconTone;      // 站内快捷方式的色块用这个颜色
 }
 
 export interface AppDef {
@@ -39,26 +29,33 @@ export interface AppDef {
     hiddenByDefault?: boolean;
     // 只在本地开发时存在
     devOnly?: boolean;
-    favicon?: string;
-    touchIcon?: string;
+    favicon?: string;    // 标签页图标
+    touchIcon?: string;  // 从这个应用添加到 iPhone 主屏时的图标
+}
+
+// 插画图标按 id 放在 public/icons/ 下：<id>-192.png 桌面、<id>-32.png 标签页、<id>-180.png iPhone 主屏
+function art(id: string, tone: IconTone) {
+    return {
+        icon: {image: `/icons/${id}-192.png`, tone},
+        favicon: `/icons/${id}-32.png`,
+        touchIcon: `/icons/${id}-180.png`,
+    };
 }
 
 export const APPS: AppDef[] = [
     {
         id: "todone",
         name: "Todone",
-        icon: {image: "/icons/todone-192.png", tone: "teal"},
+        ...art("todone", "teal"),
         basePath: "/todone",
         component: lazyWithReload(() => import("../todone/TodoneApp")),
         permissions: ["admin", "todone"],
         keepAlive: true,
-        favicon: "/todone-mini.png",
-        touchIcon: "/icons/todone-180.png",
     },
     {
         id: "money",
         name: "记账",
-        icon: {glyph: <AccountBookOutlined/>, tone: "amber"},
+        ...art("money", "amber"),
         basePath: "/money",
         component: lazyWithReload(() => import("../money/MoneyApp")),
         keepAlive: true,
@@ -66,18 +63,16 @@ export const APPS: AppDef[] = [
     {
         id: "report",
         name: "日报",
-        icon: {image: "/icons/report-192.png", tone: "blue"},
+        ...art("report", "blue"),
         basePath: "/day-report",
         component: lazyWithReload(() => import("../report/ReportApp")),
         permissions: ["admin", "auto", "auto.report"],
         keepAlive: true,
-        favicon: "/news-logo-mini.png",
-        touchIcon: "/icons/report-180.png",
     },
     {
         id: "subscription",
         name: "订阅",
-        icon: {glyph: <ApiOutlined/>, tone: "coral"},
+        ...art("subscription", "coral"),
         basePath: "/subscription",
         component: lazyWithReload(() => import("../subscription/SubscriptionPage")),
         keepAlive: true,
@@ -85,7 +80,7 @@ export const APPS: AppDef[] = [
     {
         id: "cmd",
         name: "脚本",
-        icon: {glyph: <CodeOutlined/>, tone: "gray"},
+        ...art("cmd", "gray"),
         basePath: "/cmd",
         component: lazyWithReload(() => import("../tool/CmdApp")),
         permissions: ["admin", "cmd"],
@@ -93,7 +88,7 @@ export const APPS: AppDef[] = [
     {
         id: "admin",
         name: "管理",
-        icon: {glyph: <SettingOutlined/>, tone: "gray"},
+        ...art("admin", "gray"),
         basePath: "/admin",
         component: lazyWithReload(() => import("../admin/AdminApp")),
         permissions: ["admin"],
@@ -101,7 +96,7 @@ export const APPS: AppDef[] = [
     {
         id: "kana",
         name: "假名",
-        icon: {glyph: <TranslationOutlined/>, tone: "pink"},
+        ...art("kana", "pink"),
         basePath: "/kana",
         component: lazyWithReload(() => import("../misc/KanaPractice")),
         public: true,
@@ -110,7 +105,7 @@ export const APPS: AppDef[] = [
     {
         id: "loss-fat",
         name: "减脂",
-        icon: {glyph: <CalculatorOutlined/>, tone: "green"},
+        ...art("loss-fat", "green"),
         basePath: "/loss-fat",
         component: lazyWithReload(() => import("../misc/NutritionCalculator")),
         public: true,
@@ -118,7 +113,7 @@ export const APPS: AppDef[] = [
     {
         id: "jianxing",
         name: "剑星评分",
-        icon: {glyph: <StarOutlined/>, tone: "purple"},
+        ...art("jianxing", "purple"),
         basePath: "/rate/jianxing",
         component: lazyWithReload(() => import("../library/JianXingTemp").then((m) => ({default: m.JianXing}))),
         public: true,
@@ -127,7 +122,7 @@ export const APPS: AppDef[] = [
     {
         id: "love47",
         name: "纪念日",
-        icon: {glyph: <HeartOutlined/>, tone: "pink"},
+        ...art("love47", "pink"),
         basePath: "/love47",
         component: lazyWithReload(() => import("../misc/love")),
         public: true,

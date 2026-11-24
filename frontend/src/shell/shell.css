@@ -108,14 +108,15 @@ body {
     font-size: 22px;
 }
 
-.tone-teal { background: #d6efe4; color: #0f6e56; }
-.tone-amber { background: #fbe6c2; color: #8a560b; }
-.tone-blue { background: #d9e8fa; color: #1d5ea8; }
-.tone-coral { background: #fadcd0; color: #a3401c; }
-.tone-purple { background: #e4e1fa; color: #4a41a6; }
-.tone-pink { background: #f9dbe6; color: #993457; }
-.tone-gray { background: #e8e4dd; color: #57534d; }
-.tone-green { background: #e0efcd; color: #3b6d11; }
+/* 和插画图标的底色一致：站内快捷方式的色块跟所属应用同色 */
+.tone-teal { background: #1F9E7A; color: #fff; }
+.tone-amber { background: #E0A12E; color: #fff; }
+.tone-blue { background: #3B7DD8; color: #fff; }
+.tone-coral { background: #E06A45; color: #fff; }
+.tone-purple { background: #6A5FD1; color: #fff; }
+.tone-pink { background: #D9578A; color: #fff; }
+.tone-gray { background: #4A4640; color: #fff; }
+.tone-green { background: #5E9E2C; color: #fff; }
 
 /* ---------- 桌面 ---------- */
 .pf-desktop {
