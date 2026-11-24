@@ -86,8 +86,12 @@ function WidgetSlot({id, index, data, editing}: { id: string; index: number; dat
     const {attributes, listeners, setNodeRef, transform, transition, isDragging} = useSortable({id, disabled: !editing});
     const def = WIDGETS.find((w) => w.id === id);
     if (!def) return null;
-    const body = id === "today" ? <TodayWidget data={data.today} editing={editing}/>
-        : id === "books" ? <BooksWidget data={data.books} editing={editing}/> : null;
+    // 是否有内容要看数据：组件自己 return null 时，JSX 元素本身仍然不是 null，没法靠它判断
+    const empty = id === "today" ? data.today === null
+        : id === "books" ? data.books === null || data.books?.length === 0 : true;
+    const body = empty ? null
+        : id === "today" ? <TodayWidget data={data.today} editing={editing}/>
+        : <BooksWidget data={data.books} editing={editing}/>;
     // 平时没内容的组件不占位置；编辑时留一个框，方便拖动和移除
     if (!body && !editing) return null;
     return <div ref={setNodeRef}
