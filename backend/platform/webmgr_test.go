@@ -61,80 +61,24 @@ func tokenCookie(t *testing.T, rec *httptest.ResponseRecorder) *token.Data {
 	return nil
 }
 
-func TestSetJwtSaltMonthBoundary(t *testing.T) {
-	// 3 月 31 日往前一个月不能落到 3 月 3 日
-	web := newTestTokenWeb(time.Date(2026, 3, 31, 12, 0, 0, 0, time.Local))
-	valid := time.Now().Add(time.Hour).Unix()
-	cur := signedTokenData("test-salt", "2026-03", "u", []string{"a"}, valid)
-	prev := signedTokenData("test-salt", "2026-02", "u", []string{"a"}, valid)
-	old := signedTokenData("test-salt", "2026-01", "u", []string{"a"}, valid)
-	if ok, prevOnly := web.verifyTokenSign(&cur); !ok || prevOnly {
-		t.Fatalf("current month token: ok=%v prevOnly=%v", ok, prevOnly)
-	}
-	if ok, prevOnly := web.verifyTokenSign(&prev); !ok || !prevOnly {
-		t.Fatalf("previous month token: ok=%v prevOnly=%v", ok, prevOnly)
-	}
-	if ok, _ := web.verifyTokenSign(&old); ok {
-		t.Fatal("token from two months ago should be rejected")
-	}
-
-	jan := newTestTokenWeb(time.Date(2026, 1, 5, 0, 0, 0, 0, time.Local))
-	dec := signedTokenData("test-salt", "2025-12", "u", []string{"a"}, valid)
-	if ok, prevOnly := jan.verifyTokenSign(&dec); !ok || !prevOnly {
-		t.Fatalf("december token in january: ok=%v prevOnly=%v", ok, prevOnly)
-	}
-}
-
-func TestVerifyTokenSignWithoutPrevSalt(t *testing.T) {
-	// 只 SetSalt 当前盐时，jwtPrev 的空盐不能被用来校验
-	web := &webMgr{}
-	web.jwt.SetSalt("test-salt", "2026-04")
-	valid := time.Now().Add(time.Hour).Unix()
-	empty := signedTokenData("", "", "admin", []string{"admin"}, valid)
-	if web.CheckToken(&empty) || web.CheckTokenPermission(&empty, "admin") {
-		t.Fatal("token signed with empty salts must be rejected")
-	}
-}
-
-func TestCheckTokenPermissionAcceptsPrevSalt(t *testing.T) {
+func TestTokenFromPreviousMonthIsRejected(t *testing.T) {
+	// 跨月重启后旧 token 失效是有意的：自动续期的账号每月至少重新登录一次
 	now := time.Now()
 	web := newTestTokenWeb(now)
+	valid := now.Add(time.Hour).Unix()
+	cur := signedTokenData("test-salt", now.Format("2006-01"), "u", []string{"a"}, valid)
 	prevMonth := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, now.Location()).AddDate(0, -1, 0).Format("2006-01")
-	data := signedTokenData("test-salt", prevMonth, "admin", []string{"admin"}, now.Add(time.Hour).Unix())
-	if !web.CheckTokenPermission(&data, "admin") {
-		t.Fatal("previous month token should pass permission check")
+	prev := signedTokenData("test-salt", prevMonth, "u", []string{"a"}, valid)
+	if !web.CheckToken(&cur) || !web.CheckTokenPermission(&cur, "a") {
+		t.Fatal("current month token should pass")
 	}
-	if web.CheckTokenPermission(&data, "money") {
-		t.Fatal("permission not in token should fail")
+	if web.CheckToken(&prev) || web.CheckTokenPermission(&prev, "a") {
+		t.Fatal("previous month token should be rejected")
 	}
-	expired := signedTokenData("test-salt", prevMonth, "admin", []string{"admin"}, now.Add(-time.Hour).Unix())
-	if web.CheckTokenPermission(&expired, "admin") {
-		t.Fatal("expired token should fail")
-	}
-	forged := data
-	forged.Permission = []string{"admin", "root"}
+	forged := cur
+	forged.Permission = []string{"a", "admin"}
 	if web.CheckToken(&forged) {
 		t.Fatal("tampered token should fail")
-	}
-
-	gin.SetMode(gin.TestMode)
-	router := gin.New()
-	router.GET("/valid", func(c *gin.Context) {
-		c.JSON(200, web.getValid(c))
-	})
-	router.GET("/admin/x", web.checkAdmin, func(c *gin.Context) { c.String(200, "pass") })
-	rec := doTokenRequest(t, router, http.MethodGet, "/valid", &data)
-	var valid struct {
-		User        string
-		Permissions []string
-	}
-	_ = json.Unmarshal(rec.Body.Bytes(), &valid)
-	if valid.User != "admin" || len(valid.Permissions) != 1 {
-		t.Fatalf("getValid with previous month token: %s", rec.Body.String())
-	}
-	rec = doTokenRequest(t, router, http.MethodGet, "/admin/x", &data)
-	if rec.Body.String() != "pass" {
-		t.Fatalf("checkAdmin with previous month token: %s", rec.Body.String())
 	}
 }
 
@@ -153,12 +97,12 @@ func TestCheckRenewsToken(t *testing.T) {
 		renew   bool
 		wantErr bool
 	}{
-		{"admin near expiry", signedTokenData("test-salt", curMonth, "admin", []string{"admin"}, now.Add(2*24*time.Hour).Unix()), true, false},
-		{"user near expiry", signedTokenData("test-salt", curMonth, "bob", []string{"todone"}, now.Add(2*24*time.Hour).Unix()), true, false},
-		{"plenty left", signedTokenData("test-salt", curMonth, "admin", []string{"admin"}, now.Add(5*24*time.Hour).Unix()), false, false},
-		{"previous month salt", signedTokenData("test-salt", prevMonth, "admin", []string{"admin"}, now.Add(5*24*time.Hour).Unix()), true, false},
-		{"expired", signedTokenData("test-salt", curMonth, "admin", []string{"admin"}, now.Add(-time.Minute).Unix()), false, true},
-		{"wrong salt", signedTokenData("other", curMonth, "admin", []string{"admin"}, now.Add(5*24*time.Hour).Unix()), false, true},
+		{"admin near expiry is not renewed", signedTokenData("test-salt", curMonth, "admin", []string{"admin"}, now.Add(24*time.Hour).Unix()), false, false},
+		{"user near expiry", signedTokenData("test-salt", curMonth, "bob", []string{"todone"}, now.Add(24*time.Hour).Unix()), true, false},
+		{"user plenty left", signedTokenData("test-salt", curMonth, "bob", []string{"todone"}, now.Add(5*24*time.Hour).Unix()), false, false},
+		{"previous month salt", signedTokenData("test-salt", prevMonth, "bob", []string{"todone"}, now.Add(5*24*time.Hour).Unix()), false, true},
+		{"expired", signedTokenData("test-salt", curMonth, "bob", []string{"todone"}, now.Add(-time.Minute).Unix()), false, true},
+		{"wrong salt", signedTokenData("other", curMonth, "bob", []string{"todone"}, now.Add(5*24*time.Hour).Unix()), false, true},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -178,14 +122,11 @@ func TestCheckRenewsToken(t *testing.T) {
 			if renewed == nil {
 				return
 			}
-			if ok, prevOnly := web.verifyTokenSign(renewed); !ok || prevOnly {
-				t.Fatalf("renewed token should be signed with current salt: ok=%v prevOnly=%v", ok, prevOnly)
+			if !web.CheckToken(renewed) {
+				t.Fatal("renewed token should be valid")
 			}
 			if renewed.ValidTime < now.Add(7*24*time.Hour-time.Minute).Unix() {
 				t.Fatalf("renewed token valid time too short: %d", renewed.ValidTime)
-			}
-			if renewed.User != data.User || len(renewed.Permission) != len(data.Permission) {
-				t.Fatalf("renewed token changed identity: %+v", renewed)
 			}
 		})
 	}

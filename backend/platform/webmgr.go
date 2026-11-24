@@ -20,11 +20,8 @@ import (
 type webMgr struct {
 	platStoWebPack xstorage.WebPack
 	// 使用jwt进行签名。这里有一个缺陷，因为密码修改后jwt依然有效，所以不太安全。jwt也可能会被盗用。也不太好做续签，后面会改成使用session。目前版本先做一个第二个盐随机化的安全处理，防止爆破出秘钥。
-	jwt token.JwtMgr
-	// jwtPrev 用上个月的 salt2 签名，只用来校验跨月重启前签发的 token，见 setJwtSalt
-	jwtPrev    token.JwtMgr
-	hasJwtPrev bool
-	webEngine  *gin.Engine
+	jwt       token.JwtMgr
+	webEngine *gin.Engine
 	// homeLayoutMu 保护桌面布局的读改写
 	homeLayoutMu sync.Mutex
 	plat         *PlatForm
@@ -78,29 +75,10 @@ func (m *webMgr) Init(plat *PlatForm) error {
 	return nil
 }
 
-// setJwtSalt 设置签名盐。salt2 取启动时的年月，同时保留上个月的盐用于校验：
-// 跨月后的第一次重启（每次发布都会重启）不再让所有人掉登录，旧 token 在 /check 时换成本月盐。
-// 盐只在启动时确定，不按请求时间计算：服务不重启就一直用启动月的盐，token 有效期只有 7 天，两个盐足够覆盖。
+// setJwtSalt 设置签名盐。salt2 取启动时的年月：跨月后的第一次重启（每次发布都会重启）会让所有 token 失效，
+// 这是有意的，保证自动续期的账号每个月至少重新登录一次。
 func (m *webMgr) setJwtSalt(salt1 string, now time.Time) {
-	cur := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, now.Location())
-	m.jwt.SetSalt(salt1, cur.Format("2006-01"))
-	m.jwtPrev.SetSalt(salt1, cur.AddDate(0, -1, 0).Format("2006-01"))
-	m.hasJwtPrev = true
-}
-
-// verifyTokenSign 校验签名（不看有效期）。ok 表示签名有效，prevOnly 表示只有上个月的盐能验过，需要重签
-func (m *webMgr) verifyTokenSign(data *token.Data) (ok bool, prevOnly bool) {
-	if data == nil {
-		return false, false
-	}
-	if m.jwt.CheckToken(data) {
-		return true, false
-	}
-	// 没设置过上月盐时 jwtPrev 的盐是空串，绝不能用它校验
-	if m.hasJwtPrev && m.jwtPrev.CheckToken(data) {
-		return true, true
-	}
-	return false, false
+	m.jwt.SetSalt(salt1, now.Format("2006-01"))
 }
 
 const frontDir = "./front"
@@ -178,21 +156,12 @@ func frontStaticFile(dir string, urlPath string) (string, bool) {
 }
 
 func (m *webMgr) CheckTokenPermission(data *token.Data, wantPermission string) bool {
-	if data == nil || data.ValidTime < time.Now().Unix() {
+	if data == nil {
 		return false
 	}
-	if ok, _ := m.verifyTokenSign(data); !ok {
-		return false
-	}
-	for _, p := range data.Permission {
-		if p == wantPermission {
-			return true
-		}
-	}
-	return false
+	return m.jwt.CheckPermission(data, time.Now(), wantPermission)
 }
 
 func (m *webMgr) CheckToken(data *token.Data) bool {
-	ok, _ := m.verifyTokenSign(data)
-	return ok
+	return data != nil && m.jwt.CheckToken(data)
 }

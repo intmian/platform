@@ -119,7 +119,7 @@ func (m *webMgr) onLogin(c *gin.Context, userName string, permission []string, r
 
 const (
 	tokenValidSeconds = 60 * 60 * 24 * 7
-	tokenRenewBefore  = 60 * 60 * 24 * 3
+	tokenRenewBefore  = 60 * 60 * 24 * 2
 )
 
 func (m *webMgr) setTokenCookie(c *gin.Context, data token.Data) {
@@ -186,9 +186,8 @@ func (m *webMgr) check(c *gin.Context) {
 		return
 	}
 
-	// 有效期不足三天，或者只有上月盐能验过，就续签成本月盐的新 token（admin 也续签）
-	_, prevOnly := m.verifyTokenSign(&data)
-	if prevOnly || data.ValidTime-time.Now().Unix() < tokenRenewBefore {
+	// 非 admin 且有效期不足两天时续签。admin 有意不续签：token 被盗用时最多再用 7 天
+	if !m.CheckTokenPermission(&data, "admin") && data.ValidTime-time.Now().Unix() < tokenRenewBefore {
 		data.ValidTime = time.Now().Unix() + tokenValidSeconds
 		data.Token = m.jwt.GenToken(data.User, data.Permission, data.ValidTime)
 		m.setTokenCookie(c, data)
