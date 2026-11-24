@@ -9,7 +9,8 @@
     --desk-shadow: 0 1px 2px rgba(60, 40, 20, .05), 0 10px 30px rgba(60, 40, 20, .07);
     --safe-top: env(safe-area-inset-top, 0px);
     --safe-bottom: env(safe-area-inset-bottom, 0px);
-    --homebar-h: 26px;
+    /* 底部胶囊占的高度（含上下留白）；应用里固定在底部的元素按它让开 */
+    --homebar-h: 64px;
 }
 
 body {
@@ -496,40 +497,87 @@ body {
     }
 }
 
-/* ---------- 底部横条 ---------- */
+/* ---------- 底部胶囊 ---------- */
 .pf-homebar {
     position: fixed;
     left: 50%;
-    bottom: 0;
+    bottom: calc(var(--safe-bottom) + 12px);
     transform: translateX(-50%);
-    width: 160px;
-    height: calc(var(--homebar-h) + var(--safe-bottom));
-    padding-bottom: var(--safe-bottom);
-    box-sizing: border-box;
     display: flex;
     align-items: center;
-    justify-content: center;
-    cursor: pointer;
+    gap: 4px;
+    padding: 5px;
+    border-radius: 26px;
+    background: rgba(250, 248, 245, .82);
+    border: 1px solid rgba(255, 255, 255, .8);
+    box-shadow: 0 6px 24px rgba(40, 30, 20, .16), 0 1px 2px rgba(40, 30, 20, .08);
+    -webkit-backdrop-filter: blur(20px) saturate(1.4);
+    backdrop-filter: blur(20px) saturate(1.4);
     z-index: 900; /* 低于 antd 弹窗（1000），弹窗开着时不能切走 */
+    transition: transform .22s ease, opacity .22s ease;
     -webkit-tap-highlight-color: transparent;
-    -webkit-touch-callout: none;
     user-select: none;
-    touch-action: manipulation;
 }
 
-.pf-homebar-pill {
-    width: 108px;
-    height: 5px;
-    border-radius: 3px;
-    background: rgba(30, 25, 20, .3);
-    box-shadow: 0 0 0 1px rgba(255, 255, 255, .6);
-    transition: width .2s ease, background .2s ease;
+.pf-homebar.is-hidden {
+    transform: translate(-50%, calc(100% + 24px));
+    opacity: 0;
+    pointer-events: none;
 }
 
-.pf-homebar:hover .pf-homebar-pill,
-.pf-homebar.is-open .pf-homebar-pill {
-    width: 128px;
-    background: rgba(30, 25, 20, .55);
+.pf-homebar button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 0;
+    padding: 0;
+    background: none;
+    cursor: pointer;
+    color: var(--desk-ink);
+    -webkit-tap-highlight-color: transparent;
+}
+
+.pf-homebar-home {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    font-size: 18px;
+    background: var(--desk-ink) !important;
+    color: #fff !important;
+}
+
+.pf-homebar-app {
+    width: 36px;
+    height: 38px;
+    border-radius: 10px;
+}
+
+.pf-homebar-app:active .pf-tile,
+.pf-homebar-home:active {
+    transform: scale(.92);
+}
+
+.pf-homebar-more {
+    width: 30px;
+    height: 38px;
+    border-radius: 15px;
+    font-size: 12px;
+    color: var(--desk-ink-2) !important;
+}
+
+.pf-homebar-more .anticon {
+    transition: transform .2s ease;
+}
+
+.pf-homebar-more.is-open .anticon {
+    transform: rotate(180deg);
+}
+
+.pf-homebar-sep {
+    width: 1px;
+    height: 22px;
+    margin: 0 2px;
+    background: rgba(0, 0, 0, .1);
 }
 
 .pf-switch-mask {
@@ -543,7 +591,7 @@ body {
 .pf-switch {
     position: fixed;
     left: 50%;
-    bottom: calc(var(--homebar-h) + var(--safe-bottom) + 6px);
+    bottom: calc(var(--homebar-h) + var(--safe-bottom));
     transform: translateX(-50%);
     width: 360px;
     max-width: calc(100vw - 20px);

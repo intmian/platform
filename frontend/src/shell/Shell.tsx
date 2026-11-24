@@ -1,4 +1,4 @@
-import {Component, ReactNode, Suspense, useCallback, useEffect, useMemo, useRef, useState} from "react";
+import {Component, ReactNode, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState} from "react";
 import {Location, Route, Routes, useLocation, useNavigate} from "react-router-dom";
 import {Button, Spin} from "antd";
 import {useAuth} from "../common/loginCtx";
@@ -87,6 +87,7 @@ function AppHost() {
 
     const currentTitle = current ? titles[current.id] || current.name : DEFAULT_TITLE;
     useHeadFor(current, current ? titles[current.id] ?? null : null);
+    useScrollPerApp(atDesktop ? "desktop" : current?.id ?? "none");
 
     useEffect(() => {
         if (current) recordRecent({appId: current.id, path: location.pathname + location.search, title: currentTitle});
@@ -147,6 +148,25 @@ function AppSlot({app, location, active, allowed, setTitle}: {
             </AppErrorBoundary> : <NoPermission app={app}/>}
         </AppRuntimeCtx.Provider>
     </div>;
+}
+
+// 所有应用共用一个窗口滚动条。切走时记下这个应用滚到哪里，切回来时恢复；第一次打开的应用从顶部开始。
+function useScrollPerApp(key: string) {
+    const saved = useRef<Record<string, number>>({});
+    const activeKey = useRef(key);
+    useEffect(() => {
+        const onScroll = () => {
+            saved.current[activeKey.current] = window.scrollY;
+        };
+        window.addEventListener("scroll", onScroll, {passive: true});
+        return () => window.removeEventListener("scroll", onScroll);
+    }, []);
+    // 在浏览器绘制前恢复，避免先闪一下错误的位置
+    useLayoutEffect(() => {
+        if (activeKey.current === key) return;
+        activeKey.current = key;
+        window.scrollTo(0, saved.current[key] ?? 0);
+    }, [key]);
 }
 
 // 网页标题、favicon、添加到主屏幕时的图标跟着当前应用走
