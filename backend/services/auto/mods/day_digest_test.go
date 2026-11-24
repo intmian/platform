@@ -134,9 +134,9 @@ func TestBuildDailyPushMarkdownUsesDigestPushBrief(t *testing.T) {
 		Overview: "完整 digest 概览不应进入推送。",
 	}
 
-	got := buildDailyPushMarkdown(report, "06月02日", "[点击查看日报](https://plat.intmian.com/day-report/2026-06-02)")
-	if !strings.Contains(got, "日安，06月02日的播报") {
-		t.Fatalf("push markdown should include title: %s", got)
+	got := buildDailyPushMarkdown(report, "[查看完整日报 →](https://plat.intmian.com/day-report/2026-06-02?t=x)")
+	if !strings.HasSuffix(got, "\n\n[查看完整日报 →](https://plat.intmian.com/day-report/2026-06-02?t=x)\n") {
+		t.Fatalf("push markdown should end with the report link after a blank line: %q", got)
 	}
 	if !strings.Contains(got, "多云，23-33℃") {
 		t.Fatalf("push markdown should include push weather line: %s", got)
@@ -166,7 +166,7 @@ func TestBuildDailyPushMarkdownMissingDigestUsesFallback(t *testing.T) {
 	report.Summary = "旧版长摘要不能作为缺失 digest 时的推送内容。"
 	reportLink := "[点击查看日报](https://plat.intmian.com/day-report/2026-06-02)"
 
-	got := buildDailyPushMarkdown(report, "06月02日", reportLink)
+	got := buildDailyPushMarkdown(report, reportLink)
 	if !strings.Contains(got, dayDigestFailureSummary) {
 		t.Fatalf("push markdown should include deterministic digest failure text: %s", got)
 	}
@@ -175,5 +175,22 @@ func TestBuildDailyPushMarkdownMissingDigestUsesFallback(t *testing.T) {
 	}
 	if strings.Contains(got, report.Summary) {
 		t.Fatalf("push markdown should not include legacy summary fallback: %s", got)
+	}
+}
+
+func TestDailyPushTitle(t *testing.T) {
+	got := dailyPushTitle(time.Date(2026, 11, 24, 6, 0, 0, 0, time.Local))
+	if got != "日报 · 11月24日 周二" {
+		t.Fatalf("unexpected title: %s", got)
+	}
+}
+
+func TestReportShareToken(t *testing.T) {
+	a := signReportDay("secret", "2026-11-24")
+	if len(a) != reportShareTokenLen {
+		t.Fatalf("token length %d", len(a))
+	}
+	if a == signReportDay("secret", "2026-11-25") || a == signReportDay("other", "2026-11-24") {
+		t.Fatal("token should depend on day and secret")
 	}
 }

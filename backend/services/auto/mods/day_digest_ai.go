@@ -120,6 +120,7 @@ func buildDayDigestPrompt(input dayPublicDigestPromptInput) string {
 7. coverage 必须列出输入中被识别的来源 ref，ref 只能使用输入里已有的 bbc:n 或 nyt:n。
 8. pushBrief.weatherLine 必须复用输入 weatherLine；输入没有 weatherLine 时留空，不要编造天气。
 9. 语言克制、准确，不做评价，不编造输入中没有的事实。
+10. 字数上限（手机上阅读，宁短勿长）：importantNews 的 title 不超过 18 字、summary 不超过 60 字；overview 不超过 150 字，pushBrief.overview 不超过 100 字；topicBriefs 的 topic 不超过 8 字、summary 不超过 40 字。title 直接说事实，不加"重磅""突发"之类的修饰。
 
 返回 JSON schema：
 {

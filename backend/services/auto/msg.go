@@ -44,3 +44,16 @@ type GenerateReportReq struct {
 type GenerateReportRet struct {
 	Suc bool
 }
+
+// CmdGetSharedReport 是飞书链接免登录查看某一天日报用的，靠按日期签名的 token 鉴权，不看登录态。
+const CmdGetSharedReport share.Cmd = "getSharedReport"
+
+type GetSharedReportReq struct {
+	DayString string
+	Token     string
+}
+
+type GetSharedReportRet struct {
+	Suc    bool
+	Report mods.DayReport
+}

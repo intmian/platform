@@ -24,7 +24,8 @@ export function Shell() {
 
     if (!auth.loginInfo.init) return <div className="pf-boot"/>;
     if (!auth.loginInfo.isValid()) {
-        if (app?.public) return <PublicApp app={app}/>;
+        const shared = !!app?.shareParam && new URLSearchParams(location.search).has(app.shareParam);
+        if (app?.public || shared) return <PublicApp app={app!}/>;
         return <LockScreen/>;
     }
     return <>

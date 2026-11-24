@@ -26,6 +26,10 @@ func (s *Service) GetProp() backendshare.ServiceProp {
 }
 
 func (s *Service) HandleRpc(msg backendshare.Msg, valid backendshare.Valid) (interface{}, error) {
+	// 分享链接不需要登录，token 只能看它签名的那一天
+	if msg.Cmd() == CmdGetSharedReport {
+		return backendshare.HandleRpcTool("getSharedReport", msg, valid, s.OnGetSharedReport)
+	}
 	if !(valid.HasOnePermission(backendshare.PermissionAdmin, backendshare.PermissionAuto, backendshare.PermissionAutoReport)) {
 		return nil, errors.New("no permission")
 	}
@@ -119,6 +123,24 @@ func (s *Service) OnGetReport(valid backendshare.Valid, req GetReportReq) (ret G
 		return
 	}
 	// 获取当天的报告
+	rep, err := mods.GDay.GetDayReport(day)
+	if err != nil {
+		return
+	}
+	ret.Suc = true
+	ret.Report = *rep
+	return
+}
+
+func (s *Service) OnGetSharedReport(valid backendshare.Valid, req GetSharedReportReq) (ret GetSharedReportRet, err error) {
+	if !mods.VerifyReportShareToken(req.DayString, req.Token) {
+		err = errors.New("invalid share token")
+		return
+	}
+	day, err := time.Parse("2006-01-02", req.DayString)
+	if err != nil {
+		return
+	}
 	rep, err := mods.GDay.GetDayReport(day)
 	if err != nil {
 		return

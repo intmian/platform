@@ -1,0 +1,403 @@
+/* 日报：手机优先的单列阅读页，电脑上居中限宽。颜色全部用 --pf-* 变量，深色模式自动跟随。 */
+
+.rp-page {
+    max-width: 720px;
+    margin: 0 auto;
+    /* 顶部至少留 22px：iPhone Safari 收起工具栏后状态栏下面一条会被模糊 */
+    padding: 28px 16px 120px;
+}
+
+/* ---------- 顶栏 ---------- */
+
+.rp-header {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    margin-bottom: 16px;
+}
+
+.rp-date {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    padding: 4px 0;
+    color: var(--pf-text);
+}
+
+.rp-date-btn {
+    background: none;
+    border: 0;
+    cursor: pointer;
+    font: inherit;
+    text-align: left;
+}
+
+.rp-date-btn:disabled {
+    cursor: default;
+}
+
+.rp-date-main {
+    font-size: 26px;
+    font-weight: 650;
+    line-height: 1.2;
+    letter-spacing: -0.01em;
+}
+
+.rp-date-sub {
+    font-size: 14px;
+    color: var(--pf-text-3);
+}
+
+.rp-date-caret {
+    font-size: 10px;
+    color: var(--pf-text-4);
+    align-self: center;
+}
+
+.rp-hidden-picker.ant-picker {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 0;
+    padding: 0;
+    border: 0;
+    opacity: 0;
+    overflow: hidden;
+    pointer-events: none;
+}
+
+.rp-skeleton {
+    margin-top: 12px;
+}
+
+.rp-empty {
+    margin-top: 64px;
+}
+
+/* ---------- 天气 ---------- */
+
+.rp-weather-line {
+    width: 100%;
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    column-gap: 10px;
+    row-gap: 2px;
+    padding: 10px 14px;
+    border: 0;
+    border-radius: 12px;
+    background: var(--pf-fill-4);
+    color: var(--pf-text);
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+
+.rp-weather-line:disabled {
+    cursor: default;
+}
+
+.rp-weather-main {
+    font-size: 15px;
+    font-weight: 600;
+}
+
+.rp-weather-sub {
+    font-size: 13px;
+    color: var(--pf-text-2);
+}
+
+.rp-weather-line .rp-chevron {
+    margin-left: auto;
+    align-self: center;
+}
+
+.rp-weather-index {
+    list-style: none;
+    margin: 6px 0 0;
+    padding: 4px 14px;
+}
+
+.rp-weather-index li {
+    display: grid;
+    grid-template-columns: 4.5em auto 1fr;
+    gap: 10px;
+    align-items: baseline;
+    padding: 6px 0;
+    font-size: 13px;
+    border-bottom: 1px solid var(--pf-border-2);
+}
+
+.rp-weather-index li:last-child {
+    border-bottom: 0;
+}
+
+.rp-weather-index-name {
+    color: var(--pf-text-2);
+}
+
+.rp-weather-index-text {
+    color: var(--pf-text-3);
+}
+
+.rp-level {
+    padding: 0 6px;
+    border-radius: 4px;
+    font-size: 12px;
+    white-space: nowrap;
+}
+
+.rp-level-1 { color: var(--pf-success); background: var(--pf-success-bg); }
+.rp-level-2 { color: var(--pf-info); background: var(--pf-info-bg); }
+.rp-level-3 { color: var(--pf-warning); background: var(--pf-warning-bg); }
+.rp-level-4 { color: var(--pf-error); background: var(--pf-error-bg); }
+
+/* ---------- 概览 ---------- */
+
+.rp-overview {
+    margin-top: 16px;
+    color: var(--pf-text-2);
+    font-size: 15px;
+    line-height: 1.75;
+    cursor: pointer;
+}
+
+.rp-overview p {
+    margin: 0 0 8px;
+}
+
+.rp-overview:not(.rp-overview-open) p {
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+/* ---------- 分区 ---------- */
+
+.rp-section {
+    margin-top: 28px;
+}
+
+.rp-section-title {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin: 0 0 4px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--pf-text-3);
+    letter-spacing: 0.04em;
+}
+
+.rp-section-count {
+    min-width: 18px;
+    padding: 0 6px;
+    border-radius: 9px;
+    background: var(--pf-fill-3);
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 18px;
+    text-align: center;
+    letter-spacing: 0;
+}
+
+.rp-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.rp-item {
+    border-bottom: 1px solid var(--pf-border-2);
+}
+
+.rp-item:last-child {
+    border-bottom: 0;
+}
+
+.rp-item-head {
+    width: 100%;
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 12px 0;
+    border: 0;
+    background: none;
+    color: inherit;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+
+.rp-item-head:disabled {
+    cursor: default;
+}
+
+.rp-item-index {
+    flex: 0 0 18px;
+    padding-top: 1px;
+    color: var(--pf-primary);
+    font-size: 15px;
+    font-weight: 650;
+    font-variant-numeric: tabular-nums;
+}
+
+.rp-item-body {
+    flex: 1;
+    min-width: 0;
+}
+
+.rp-item-title {
+    display: block;
+    color: var(--pf-text);
+    font-size: 16px;
+    font-weight: 600;
+    line-height: 1.45;
+}
+
+.rp-item-summary {
+    display: block;
+    margin-top: 3px;
+    color: var(--pf-text-2);
+    font-size: 14px;
+    line-height: 1.65;
+}
+
+.rp-item-meta {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding-top: 3px;
+    color: var(--pf-text-4);
+    font-size: 12px;
+    white-space: nowrap;
+}
+
+.rp-chevron {
+    font-size: 10px;
+    color: var(--pf-text-4);
+    transition: transform 0.2s ease;
+}
+
+.rp-chevron-open {
+    transform: rotate(180deg);
+}
+
+/* 展开的来源，和标题左对齐 */
+.rp-sources {
+    list-style: none;
+    margin: -4px 0 0;
+    padding: 0 0 12px 30px;
+}
+
+.rp-sources li {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    padding: 4px 0;
+    font-size: 13.5px;
+    line-height: 1.5;
+}
+
+.rp-source-label {
+    flex-shrink: 0;
+    padding: 0 6px;
+    border-radius: 4px;
+    background: var(--pf-fill-3);
+    color: var(--pf-text-2);
+    font-size: 12px;
+}
+
+.rp-sources a,
+.rp-news a {
+    color: var(--pf-text);
+    text-decoration: none;
+}
+
+.rp-sources a:hover,
+.rp-news a:hover {
+    color: var(--pf-primary);
+}
+
+/* 关键词展开后的新闻 / 原始新闻 */
+.rp-news {
+    list-style: none;
+    margin: -2px 0 12px;
+    padding: 0 0 0 12px;
+    border-left: 2px solid var(--pf-border-2);
+}
+
+.rp-news li {
+    padding: 7px 0;
+}
+
+.rp-news-title {
+    font-size: 14px;
+    line-height: 1.55;
+}
+
+.rp-news-title .ant-tag {
+    margin-inline-end: 6px;
+    font-size: 11px;
+    line-height: 18px;
+    padding-inline: 5px;
+}
+
+.rp-news-summary {
+    margin-top: 2px;
+    color: var(--pf-text-2);
+    font-size: 13px;
+    line-height: 1.6;
+}
+
+.rp-news-meta {
+    margin-top: 2px;
+    color: var(--pf-text-4);
+    font-size: 12px;
+}
+
+.rp-muted-line {
+    margin: 10px 0 0;
+    color: var(--pf-text-3);
+    font-size: 13px;
+    line-height: 1.6;
+}
+
+.rp-error-line {
+    color: var(--pf-error);
+}
+
+/* ---------- 原始新闻 ---------- */
+
+.rp-raw-group {
+    border-bottom: 1px solid var(--pf-border-2);
+}
+
+.rp-raw-group:last-child {
+    border-bottom: 0;
+}
+
+.rp-raw-head {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 0;
+    border: 0;
+    background: none;
+    color: var(--pf-text);
+    font: inherit;
+    font-size: 15px;
+    font-weight: 500;
+    text-align: left;
+    cursor: pointer;
+}
+
+.rp-raw-head .rp-item-meta {
+    padding-top: 0;
+}

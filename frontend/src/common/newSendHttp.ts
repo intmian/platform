@@ -271,6 +271,16 @@ export function sendGetReport(req: GetReportReq, callback: (ret: { data: GetRepo
     uniCallback<GetReportRet>(auto_api_base_url + 'getReport', req, callback);
 }
 
+// 飞书链接免登录看某一天：Token 是推送时按日期签的名
+export interface GetSharedReportReq {
+    DayString: string
+    Token: string
+}
+
+export function sendGetSharedReport(req: GetSharedReportReq, callback: (ret: { data: GetReportRet, ok: boolean }) => void) {
+    uniCallback<GetReportRet>(auto_api_base_url + 'getSharedReport', req, callback);
+}
+
 export function sendGetWholeReport(req: GetWholeReportReq, callback: (ret: {
     data: GetWholeReportRet,
     ok: boolean

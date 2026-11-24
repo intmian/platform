@@ -23,6 +23,8 @@ export interface AppDef {
     permissions?: string[];
     // 不登录也能打开（不显示底部横条）
     public?: boolean;
+    // 地址里带这个查询参数时不登录也能打开（分享链接），由应用自己和后端校验参数
+    shareParam?: string;
     // 切走后留在后台，切回来不重新加载
     keepAlive?: boolean;
     // 默认不出现在桌面（仍可在“添加”里找回、用 ⌘K 打开）
@@ -71,6 +73,8 @@ export const APPS: AppDef[] = [
         basePath: "/day-report",
         component: lazyWithReload(() => import("../report/ReportApp")),
         permissions: ["admin", "auto", "auto.report"],
+        // 飞书推送里的链接带 ?t=签名，不登录也能看那一天
+        shareParam: "t",
         keepAlive: true,
     },
     {

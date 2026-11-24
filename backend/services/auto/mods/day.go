@@ -141,7 +141,8 @@ func (d *Day) Init() {
 	err1 := setting.GSetting.SetDefault(xstorage.Join("auto", "news", "keys"), xstorage.ToUnit([]string{"need input"}, xstorage.ValueTypeSliceString))
 	err2 := setting.GSetting.SetDefault(xstorage.Join("qweather", "key"), xstorage.ToUnit[string]("need input", xstorage.ValueTypeString))
 	err3 := setting.GSetting.SetDefault(xstorage.Join("auto", "weather", "city"), xstorage.ToUnit[string]("杭州", xstorage.ValueTypeString))
-	err := misc.JoinErr(err1, err2, err3)
+	err4 := initReportShareSecret()
+	err := misc.JoinErr(err1, err2, err3, err4)
 	if err != nil {
 		tool.GLog.WarningErr("auto.Day", errors.Join(errors.New("func Init() GetAndSetDefault error"), err))
 	}
@@ -428,12 +429,11 @@ func (d *Day) Do() {
 		return
 	}
 
-	// 推送
-	todayStr := time.Now().Format("01月02日")
-	// TODO: 日后可以做成配置的基础url方便别人用
-	reportLink := fmt.Sprintf("[点击查看日报](https://plat.intmian.com/day-report/%s)", time.Now().Format("2006-01-02"))
-	pushContent := buildDailyPushMarkdown(report, todayStr, reportLink)
-	err = tool.GPush.Push("日报", pushContent, true)
+	// 推送：日期放进卡片标题，正文直接从天气开始
+	now := time.Now()
+	link := fmt.Sprintf("[查看完整日报 →](%s)", reportLink(now.Format("2006-01-02")))
+	pushContent := buildDailyPushMarkdown(report, link)
+	err = tool.GPush.Push(dailyPushTitle(now), pushContent, true)
 	if err != nil {
 		tool.GLog.WarningErr("auto.Day", errors.Join(errors.New("func Do() Push error"), err))
 	}

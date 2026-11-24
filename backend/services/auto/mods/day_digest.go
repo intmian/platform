@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/intmian/mian_go_lib/tool/misc"
 )
@@ -228,13 +229,19 @@ func buildSummaryFromDigest(digest *DayDigest) string {
 	return strings.Join(parts, "\n")
 }
 
-func buildDailyPushMarkdown(report *DayReport, nowTitle string, reportLink string) string {
+var weekdayNames = []string{"周日", "周一", "周二", "周三", "周四", "周五", "周六"}
+
+// dailyPushTitle 是飞书卡片的标题，例如"日报 · 11月24日 周一"。
+func dailyPushTitle(now time.Time) string {
+	return fmt.Sprintf("日报 · %s %s", now.Format("01月02日"), weekdayNames[now.Weekday()])
+}
+
+func buildDailyPushMarkdown(report *DayReport, reportLink string) string {
 	md := misc.MarkdownTool{}
-	md.AddTitle(fmt.Sprintf("日安，%s的播报", nowTitle), 2)
 
 	if report == nil || report.Digest == nil {
 		md.AddContent(dayDigestFailureSummary)
-		md.AddTitle(reportLink, 3)
+		md.AddContent(reportLink)
 		return md.ToStr()
 	}
 
@@ -279,7 +286,8 @@ func buildDailyPushMarkdown(report *DayReport, nowTitle string, reportLink strin
 		md.AddList(keywordPushFallback(report), 1)
 	}
 
-	md.AddTitle(reportLink, 3)
+	// 空一行把链接和上面的列表隔开（列表后面直接跟文字会被当成列表的延续）
+	md.AddMd("\n" + reportLink + "\n")
 	return md.ToStr()
 }
 
