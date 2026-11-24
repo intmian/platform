@@ -20,6 +20,8 @@ body {
 html.pf-on-desktop,
 html.pf-on-desktop body {
     background: var(--desk-bg);
+    /* 桌面滚到头就停住，不要 iOS 那种整页被拽走再弹回的回弹；应用里保留默认手感 */
+    overscroll-behavior: none;
 }
 
 html.pf-gray-page,
