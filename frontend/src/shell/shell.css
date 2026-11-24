@@ -451,10 +451,13 @@ html.pf-on-desktop body {
 }
 
 /* Dock */
+/* 居中不用 translateX(-50%)：宽度是奇数时会落在半个像素上，1 倍屏（多数 Windows 显示器）上整块发糊 */
 .pf-dock {
     position: fixed;
-    left: 50%;
-    transform: translateX(-50%);
+    left: 0;
+    right: 0;
+    margin-inline: auto;
+    width: fit-content;
     bottom: calc(var(--safe-bottom) + 14px);
     display: flex;
     align-items: center;
@@ -516,9 +519,11 @@ html.pf-on-desktop body {
 /* ---------- 底部胶囊 ---------- */
 .pf-homebar {
     position: fixed;
-    left: 50%;
+    left: 0;
+    right: 0;
+    margin-inline: auto;
+    width: fit-content;
     bottom: calc(var(--safe-bottom) + 12px);
-    transform: translateX(-50%);
     display: flex;
     align-items: center;
     gap: 4px;
@@ -536,7 +541,7 @@ html.pf-on-desktop body {
 }
 
 .pf-homebar.is-hidden {
-    transform: translate(-50%, calc(100% + 24px));
+    transform: translateY(calc(100% + 24px));
     opacity: 0;
     pointer-events: none;
 }
@@ -606,9 +611,10 @@ html.pf-on-desktop body {
 
 .pf-switch {
     position: fixed;
-    left: 50%;
+    left: 0;
+    right: 0;
+    margin-inline: auto;
     bottom: calc(var(--homebar-h) + var(--safe-bottom));
-    transform: translateX(-50%);
     width: 360px;
     max-width: calc(100vw - 20px);
     max-height: 70vh;
@@ -626,7 +632,7 @@ html.pf-on-desktop body {
 }
 
 @keyframes pf-rise {
-    from { opacity: 0; transform: translate(-50%, 10px); }
+    from { opacity: 0; transform: translateY(10px); }
 }
 
 @keyframes pf-fade {
@@ -1191,7 +1197,7 @@ html.pf-on-desktop body {
 }
 
 @keyframes pf-dock-in {
-    from { opacity: 0; transform: translate(-50%, 24px); }
+    from { opacity: 0; transform: translateY(24px); }
 }
 
 /* 刚加到桌面的图标“跳”一下 */
@@ -1210,7 +1216,7 @@ html.pf-on-desktop body {
 }
 
 @keyframes pf-bar-in {
-    from { opacity: 0; transform: translate(-50%, 16px); }
+    from { opacity: 0; transform: translateY(16px); }
 }
 
 .pf-homebar-app .pf-tile {
