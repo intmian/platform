@@ -1,28 +1,12 @@
-import {useCallback, useEffect, useRef, useState} from 'react';
-import {
-    Button,
-    Card,
-    Col,
-    Flex,
-    List,
-    Progress,
-    Result,
-    Row,
-    Space,
-    Spin,
-    Statistic,
-    Table,
-    Tabs,
-    Tooltip,
-    Typography,
-    theme
-} from 'antd';
+import {ReactNode, useCallback, useEffect, useRef, useState} from 'react';
+import {Button, List, Result, Table, Tabs, Tooltip} from 'antd';
 import {ConfigsCtr, UniConfigModal} from "../common/UniConfig";
 import {ConfigsType, ConfigType} from "../common/UniConfigDef";
 import {getWebPing} from "../common/newSendHttp";
 import {SettingOutlined} from "@ant-design/icons";
+import {PageCard, PageHeader} from "../common/PageHeader";
+import "./admin.css";
 
-const {Text} = Typography
 
 function formatBytes(bytes: number): string {
     if (bytes === 0) return '0 B';
@@ -93,199 +77,74 @@ PerformanceConfigs.addBaseConfig('outUrl', 'CDN地址', ConfigType.String, '')
 PerformanceConfigs.addBaseConfig('baseUrl', '对比地址', ConfigType.String, '')
 
 
-export function Ping({setting}: { setting: PerformanceSettingData }) {
-    const [pingData, setPingData] = useState({
-        base: {ping: 0, lost: 0, loading: true},
-        real: {ping: 0, lost: 0, loading: true},
-        out: {ping: 0, lost: 0, loading: true}
-    })
-
-    const aliveRef = useRef(true)
-    const fetchPingData = useCallback(async (url: string, key: keyof typeof pingData) => {
-        try {
-            const ret = await getWebPing(url)
-            if (!aliveRef.current) return
-            const averagePing = ret.delays.length > 0 ? ret.delays.reduce((sum, delay) => sum + delay, 0) / ret.delays.length : 0
-            setPingData(prevState => ({
-                ...prevState,
-                [key]: {
-                    ping: averagePing,
-                    lost: ret.lossRate,
-                    loading: false
-                }
-            }))
-        } catch (error) {
-            console.error(`Error fetching ping data from ${url}:`, error)
-            if (!aliveRef.current) return
-            setPingData(prevState => ({
-                ...prevState,
-                [key]: {
-                    ...prevState[key],
-                    loading: false
-                }
-            }))
-        }
-    }, [])
-
-    useEffect(() => {
-        aliveRef.current = true
-        if (setting.baseUrl) fetchPingData(setting.baseUrl, 'base').then()
-        if (setting.realUrl) fetchPingData(setting.realUrl, 'real').then()
-        if (setting.outUrl) fetchPingData(setting.outUrl, 'out').then()
-        // 离开页面后测速请求可能还没回来，回来了也不再更新
-        return () => {
-            aliveRef.current = false
-        }
-    }, [setting.baseUrl, setting.realUrl, setting.outUrl, fetchPingData])
-
-    // 计算延迟对比
-    const calculatePingDifference = (ping1: number, ping2: number) => {
-        if (ping1 === 0 || ping2 === 0) return 0
-        return ((ping2 - ping1) / ping1) * 100
-    }
-
-    // 是否完全加载完成
-    const isLoaded = !pingData.base.loading && !pingData.real.loading && !pingData.out.loading
-    const isSettingEnough = setting.hasInit && setting.baseUrl && setting.realUrl && setting.outUrl
-
-    return <Flex justify={
-        'space-between'
-    } wrap={
-        'wrap'
-    }>
-        {!isLoaded && isSettingEnough ? <div style={{
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                right: 0,
-                bottom: 0,
-                backgroundColor: 'var(--pf-bg)',
-                opacity: 0.85,
-                zIndex: 1,
-                display: 'flex',
-                justifyContent: 'center',
-                alignItems: 'center'
-            }}>
-                <Spin/>
-            </div>
-            : null}
-        {!isSettingEnough ? <div style={{
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                right: 0,
-                bottom: 0,
-                backgroundColor: 'var(--pf-bg)',
-                opacity: 0.85,
-                zIndex: 1,
-                display: 'flex',
-                justifyContent: 'center',
-                alignItems: 'center'
-            }}>
-                <div style={{fontSize: '18px'}}>需要先进行配置</div>
-            </div>
-            : null}
-        <Card
-            style={{
-                width: 320,
-                height: 120,
-                margin: '8px'
-            }}
-        >
-            <Flex justify="space-between">
-                <Statistic
-                    title={"CDN GET"}
-                    value={pingData.out.ping}
-                    suffix="ms"
-                    precision={2}
-                />
-                <Statistic
-                    title={"CDN 丢包率"}
-                    value={pingData.out.lost}
-                    suffix="%"
-                    precision={2}
-                />
-            </Flex>
-            <Space
-                style={{
-                    // 靠右
-                    float: 'right'
-                }}
-            >
-                vs直连：
-                <Text type={calculatePingDifference(pingData.real.ping, pingData.out.ping) > 0 ? 'danger' : 'success'}>
-                    {`${calculatePingDifference(pingData.real.ping, pingData.out.ping).toFixed(2)}%`}
-                </Text>
-                vs基础：
-                <Text type={calculatePingDifference(pingData.base.ping, pingData.out.ping) > 0 ? 'danger' : 'success'}>
-                    {`${calculatePingDifference(pingData.base.ping, pingData.out.ping).toFixed(2)}%`}
-                </Text>
-            </Space>
-        </Card>
-        <Card
-            style={{
-                width: 320,
-                height: 120,
-                margin: '8px'
-            }}
-        >
-            <Flex justify="space-between">
-                <Statistic
-                    title={"后端 GET"}
-                    value={pingData.real.ping}
-                    suffix="ms"
-                    precision={2}
-                />
-                <Statistic
-                    title={"后端 丢包率"}
-                    value={pingData.real.lost}
-                    suffix="%"
-                    precision={2}
-                />
-            </Flex>
-            <Space
-                style={{
-                    // 靠右
-                    float: 'right'
-                }}
-            >
-                vs基础：
-                <Text type={calculatePingDifference(pingData.base.ping, pingData.real.ping) > 0 ? 'danger' : 'success'}
-                      style={{
-                          // 靠右
-                          float: 'right'
-                      }}
-                >
-                    {`${calculatePingDifference(pingData.base.ping, pingData.real.ping).toFixed(2)}%`}
-                </Text>
-            </Space>
-        </Card>
-        <Card
-            style={{
-                width: 320,
-                height: 120,
-                margin: '8px'
-            }}
-        >
-            <Flex justify="space-between">
-                <Statistic
-                    title={"基础 GET"}
-                    value={pingData.base.ping}
-                    suffix="ms"
-                    precision={2}
-                />
-                <Statistic
-                    title={"基础 丢包率"}
-                    value={pingData.base.lost}
-                    suffix="%"
-                    precision={2}
-                />
-            </Flex>
-        </Card>
-
-    </Flex>
+interface PingResult {
+    ping: number;
+    lost: number;
+    loading: boolean;
 }
 
+// 三个地址各测一次：CDN、后端直连、对比用的基础地址
+function usePing(setting: PerformanceSettingData) {
+    const empty: PingResult = {ping: 0, lost: 0, loading: true};
+    const [ping, setPing] = useState({base: empty, real: empty, out: empty});
+    const aliveRef = useRef(true);
+    const run = useCallback(async (url: string, key: "base" | "real" | "out") => {
+        try {
+            const ret = await getWebPing(url);
+            if (!aliveRef.current) return;
+            const avg = ret.delays.length > 0 ? ret.delays.reduce((sum, d) => sum + d, 0) / ret.delays.length : 0;
+            setPing((prev) => ({...prev, [key]: {ping: avg, lost: ret.lossRate, loading: false}}));
+        } catch {
+            if (!aliveRef.current) return;
+            setPing((prev) => ({...prev, [key]: {...prev[key], loading: false}}));
+        }
+    }, []);
+    useEffect(() => {
+        aliveRef.current = true;
+        if (setting.baseUrl) void run(setting.baseUrl, "base");
+        if (setting.realUrl) void run(setting.realUrl, "real");
+        if (setting.outUrl) void run(setting.outUrl, "out");
+        // 离开页面后测速请求可能还没回来，回来了也不再更新
+        return () => {
+            aliveRef.current = false;
+        };
+    }, [setting.baseUrl, setting.realUrl, setting.outUrl, run]);
+    return ping;
+}
+
+// 比基础地址慢/快多少
+function diffText(base: PingResult, cur: PingResult) {
+    if (base.loading || cur.loading || base.ping === 0 || cur.ping === 0) return null;
+    const pct = ((cur.ping - base.ping) / base.ping) * 100;
+    return <span className={pct > 0 ? "is-bad" : "is-good"}>比基础{pct > 0 ? "慢" : "快"} {Math.abs(pct).toFixed(0)}%</span>;
+}
+
+function Stat({label, value, sub, bar, onClick}: {
+    label: string;
+    value: string;
+    sub?: ReactNode;
+    bar?: { percent: number; color: string };
+    onClick?: () => void;
+}) {
+    const Tag = onClick ? "button" : "div";
+    return <Tag className={`adm-stat${onClick ? " is-link" : ""}`} onClick={onClick}>
+        <div className="adm-stat-label">{label}</div>
+        <div className="adm-stat-value">{value}</div>
+        {bar && <div className="adm-bar"><span style={{width: `${Math.min(100, bar.percent)}%`, background: bar.color}}/></div>}
+        {sub && <div className="adm-stat-sub">{sub}</div>}
+    </Tag>;
+}
+
+function KV({items}: { items: { label: string; value: string; meaning: string }[] }) {
+    return <div className="adm-kv">
+        {items.map((it) => <Tooltip key={it.label} title={it.meaning}>
+            <div className="adm-kv-item">
+                <span>{it.label}</span>
+                <b>{it.value}</b>
+            </div>
+        </Tooltip>)}
+    </div>;
+}
 
 const Performance = () => {
     const [data, setData] = useState<PerformanceData | null>(null);
@@ -298,7 +157,6 @@ const Performance = () => {
         realUrl: '',
         baseUrl: ''
     })
-    const {token} = theme.useToken();
 
     useEffect(() => {
         const read = (hasInit: boolean) => setSetting({
@@ -378,206 +236,90 @@ const Performance = () => {
             render: (text: number) => text.toFixed(2),
         },
     ];
-    if (loading) {
-        return <Flex justify="center" style={{padding: 48}}><Spin/></Flex>;
+    const ping = usePing(setting);
+    const pingReady = setting.hasInit && !!setting.baseUrl && !!setting.realUrl && !!setting.outUrl;
+    const pingValue = (r: PingResult) => !pingReady ? "未配置" : r.loading ? "测速中" : r.ping ? `${r.ping.toFixed(0)} ms` : "失败";
+    const memColor = (p: number) => p > 85 ? "var(--pf-error)" : p > 70 ? "var(--pf-warning)" : "var(--pf-success)";
+
+    const header = <PageHeader
+        title="性能"
+        meta={error ? "连接已断开" : loading ? "连接中…" : "实时更新"}
+        actions={[{key: "setting", label: "测速设置", icon: <SettingOutlined/>, onClick: () => setShowSetting(true)}]}
+    />;
+
+    if (error) {
+        return <>
+            {header}
+            <PageCard><Result status="warning" title="连接已断开"
+                              extra={<Button onClick={() => setConnection((c) => c + 1)}>重新连接</Button>}/></PageCard>
+        </>;
     }
 
-    if (error || !data) {
-        return <Result status="warning" title="连接已断开"
-                       extra={<Button onClick={() => setConnection((c) => c + 1)}>重新连接</Button>}/>;
-    }
-
-    return (
-        <div>
-            <div style={{
-                textAlign: 'right',
-            }}>
-                <Button
-                    style={{
-                        marginBottom: 16,
-                    }}
-                    onClick={() => setShowSetting(true)}
-                    type={"primary"}
-                    icon={<SettingOutlined/>}
-                />
-            </div>
-            <UniConfigModal name={"ping配置"} ctr={PerformanceConfigs} show={showSetting}
-                            onExit={() => setShowSetting(false)}/>
-            <Card>
-                <Row gutter={16}>
-                    <Col span={12}>
-                        <p>内存使用率</p>
-                        <Progress
-                            type="dashboard"
-                            percent={data.memory.usedPercent}
-                            format={percent => `${percent?.toFixed(2)}%`}
-                            strokeColor={token.colorSuccess}
-                        />
-                    </Col>
-                    <Col span={12}>
-                        <p>CPU 使用率</p>
-                        <Progress
-                            type="dashboard"
-                            percent={data.cpu.percent}
-                            format={percent => `${percent?.toFixed(2)}%`}
-                            strokeColor={token.colorError}
-                        />
-                    </Col>
-                </Row>
-            </Card>
-
-            <Card
-                style={{marginTop: 16}}
-            >
-                <Ping setting={setting}/>
-            </Card>
-
-            <Card
-                style={{marginTop: 16}}
-            >
-                <Tabs defaultActiveKey="1"
-                      items={[
-                          {
-                              label: '内存 top10',
-                              key: '1',
-                              children: <Table
-                                  dataSource={data.top10Mem}
-                                  columns={columns}
-                                  rowKey="pid"
-                                  pagination={false}
-                                  scroll={{x: 'max-content'}}
-                              />
-                          },
-                          {
-                              label: 'CPU top10',
-                              key: '2',
-                              children: <Table
-                                  dataSource={data.top10Cpu}
-                                  columns={columns}
-                                  rowKey="pid"
-                                  pagination={false}
-                                  scroll={{x: 'max-content'}}
-                              />
-                          }
-                      ]}
-                >
-                </Tabs>
-            </Card>
-
-
-            <Card style={{marginTop: 16}}>
-                <Tabs defaultActiveKey="1"
-                      items={[
-                          {
-                              label: '内存详情',
-                              key: '1',
-                              children: <Flex wrap gap={"small"}>
-                                  {[
-                                      {
-                                          label: '总内存',
-                                          value: formatBytes(data.memory.total),
-                                          meaning: "总内存是指系统中所有内存的总和"
-                                      },
-                                      {
-                                          label: '已用内存',
-                                          value: formatBytes(data.memory.used),
-                                          meaning: "已用内存是指系统中已经被使用的内存"
-                                      },
-                                      {
-                                          label: '空闲内存',
-                                          value: formatBytes(data.memory.free),
-                                          meaning: "空闲内存是指系统中未被使用的内存"
-                                      },
-                                      {
-                                          label: '共享内存',
-                                          value: formatBytes(data.memory.shared),
-                                          meaning: "共享内存是指系统中被多个进程共享的内存"
-                                      },
-                                      {
-                                          label: '缓冲区',
-                                          value: formatBytes(data.memory.buffers),
-                                          meaning: "缓冲区是指系统中用于缓冲的内存"
-                                      },
-                                      {
-                                          label: '缓存',
-                                          value: formatBytes(data.memory.cached),
-                                          meaning: "缓存是指系统中用于文件缓存的内存"
-                                      },
-                                      {
-                                          label: '可用内存',
-                                          value: formatBytes(data.memory.available),
-                                          meaning: "可用内存是指系统中可以被使用的内存"
-                                      },
-                                  ].map((item, index) => (
-                                      <Card key={index} style={{
-
-
-                                          width: 130,
-                                          marginBottom: 4,
-                                      }}>
-                                          <Card.Meta
-                                              title={<Tooltip title={item.meaning}>{item.label}</Tooltip>}
-                                              description={item.value}
-                                          />
-                                      </Card>
-                                  ))}
-                              </Flex>
-                          },
-                          {
-                              label: 'Swap详情',
-                              key: '2',
-                              children: <Flex wrap gap={"small"}>
-                                  {[
-                                      {
-                                          label: '总Swap',
-                                          value: formatBytes(data.swap.total),
-                                          meaning: "总Swap是指系统中所有Swap的总和"
-                                      },
-                                      {
-                                          label: '已用Swap',
-                                          value: formatBytes(data.swap.used),
-                                          meaning: "已用Swap是指系统中已经被使用的Swap"
-                                      },
-                                      {
-                                          label: '空闲Swap',
-                                          value: formatBytes(data.swap.free),
-                                          meaning: "空闲Swap是指系统中未被使用的Swap"
-                                      },
-                                      {
-                                          label: 'Swap使用率',
-                                          value: `${data.swap.usedPercent.toFixed(2)}%`,
-                                          meaning: "Swap使用率是指系统中Swap的使用率"
-                                      },
-                                  ].map((item, index) => (
-                                      <Card key={index} style={{
-                                          width: 150,
-                                          marginBottom: 16,
-                                      }}>
-                                          <Card.Meta
-                                              title={<Tooltip title={item.meaning}>{item.label}</Tooltip>}
-                                              description={item.value}
-                                          />
-                                      </Card>
-                                  ))}
-                              </Flex>
-                          },
-                          {
-                              label: 'CPU详情',
-                              key: '3',
-                              children: <List
-                                  dataSource={data.cpu.info}
-                                  renderItem={(info, index) => (
-                                      <List.Item key={index}>
-                                          {info.modelName} - {info.cores} 核心
-                                      </List.Item>
-                                  )}
-                              />
-                          },
-                      ]}
-                />
-            </Card>
+    // 没收到第一份数据前也先把卡片画出来，数字用“-”占位
+    const mem = data?.memory;
+    const cpu = data?.cpu;
+    return <div>
+        {header}
+        <UniConfigModal name={"测速设置"} ctr={PerformanceConfigs} show={showSetting} onExit={() => setShowSetting(false)}/>
+        <div className="adm-stats is-four">
+            <Stat label="内存" value={mem ? `${mem.usedPercent.toFixed(1)}%` : "-"}
+                  bar={mem && {percent: mem.usedPercent, color: memColor(mem.usedPercent)}}
+                  sub={mem && `${formatBytes(mem.used)} / ${formatBytes(mem.total)}`}/>
+            <Stat label="CPU" value={cpu ? `${cpu.percent.toFixed(1)}%` : "-"}
+                  bar={cpu && {percent: cpu.percent, color: memColor(cpu.percent)}}
+                  sub={cpu?.info?.length ? `${cpu.info.reduce((n, i) => n + i.cores, 0)} 核` : undefined}/>
+            <Stat label="CDN 延迟" value={pingValue(ping.out)} onClick={pingReady ? undefined : () => setShowSetting(true)}
+                  sub={pingReady && !ping.out.loading && <>丢包 {ping.out.lost.toFixed(1)}% {diffText(ping.base, ping.out)}</>}/>
+            <Stat label="后端延迟" value={pingValue(ping.real)} onClick={pingReady ? undefined : () => setShowSetting(true)}
+                  sub={pingReady && !ping.real.loading && <>丢包 {ping.real.lost.toFixed(1)}% {diffText(ping.base, ping.real)}</>}/>
         </div>
-    );
+
+        <PageCard flush>
+            <Tabs className="adm-card-tabs" defaultActiveKey="mem" items={[
+                {
+                    label: '内存占用前 10', key: 'mem',
+                    children: <Table dataSource={data?.top10Mem ?? []} loading={loading} columns={columns} rowKey="pid"
+                                     pagination={false} scroll={{x: 'max-content'}} size="middle"/>,
+                },
+                {
+                    label: 'CPU 占用前 10', key: 'cpu',
+                    children: <Table dataSource={data?.top10Cpu ?? []} loading={loading} columns={columns} rowKey="pid"
+                                     pagination={false} scroll={{x: 'max-content'}} size="middle"/>,
+                },
+            ]}/>
+        </PageCard>
+
+        {data && <PageCard title="详情">
+            <Tabs size="small" items={[
+                {
+                    label: '内存', key: 'mem',
+                    children: <KV items={[
+                        {label: '总内存', value: formatBytes(data.memory.total), meaning: "系统中所有内存的总和"},
+                        {label: '已用', value: formatBytes(data.memory.used), meaning: "已经被使用的内存"},
+                        {label: '空闲', value: formatBytes(data.memory.free), meaning: "完全没被使用的内存"},
+                        {label: '可用', value: formatBytes(data.memory.available), meaning: "可以分配给程序的内存（含可回收的缓存）"},
+                        {label: '共享', value: formatBytes(data.memory.shared), meaning: "被多个进程共享的内存"},
+                        {label: '缓冲区', value: formatBytes(data.memory.buffers), meaning: "用于块设备缓冲的内存"},
+                        {label: '缓存', value: formatBytes(data.memory.cached), meaning: "用于文件缓存的内存"},
+                    ]}/>,
+                },
+                {
+                    label: 'Swap', key: 'swap',
+                    children: <KV items={[
+                        {label: '总量', value: formatBytes(data.swap.total), meaning: "Swap 总大小"},
+                        {label: '已用', value: formatBytes(data.swap.used), meaning: "已经被使用的 Swap"},
+                        {label: '空闲', value: formatBytes(data.swap.free), meaning: "没被使用的 Swap"},
+                        {label: '使用率', value: `${data.swap.usedPercent.toFixed(1)}%`, meaning: "Swap 使用比例"},
+                    ]}/>,
+                },
+                {
+                    label: 'CPU', key: 'cpu',
+                    children: <List size="small" dataSource={data.cpu.info ?? []}
+                                    renderItem={(info, index) => <List.Item key={index}>{info.modelName} · {info.cores} 核</List.Item>}/>,
+                },
+            ]}/>
+        </PageCard>}
+    </div>;
 };
 export default Performance;
 

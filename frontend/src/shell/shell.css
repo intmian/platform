@@ -22,6 +22,11 @@ html.pf-on-desktop body {
     background: var(--desk-bg);
 }
 
+html.pf-gray-page,
+html.pf-gray-page body {
+    background: var(--pf-bg-layout);
+}
+
 .pf-slot[hidden] {
     display: none !important;
 }

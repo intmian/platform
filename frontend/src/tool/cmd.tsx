@@ -2,6 +2,8 @@ import {Navigate, Outlet, Route, Routes, useNavigate, useParams, useResolvedPath
 import {AppstoreOutlined, CloudServerOutlined} from "@ant-design/icons";
 import {MenuPlus, MenuPlusItem, useSectionKey} from "../common/MenuPlus";
 import {useAppTitle} from "../shell/runtime";
+import {appById} from "../shell/apps";
+import {AppGlyph} from "../shell/AppTile";
 import {ToolPanel} from "./tool";
 import {EnvPanel} from "./env";
 
@@ -13,7 +15,8 @@ const SECTIONS: (MenuPlusItem & { label: string })[] = [
 function CmdLayout() {
     const key = useSectionKey();
     useAppTitle(SECTIONS.find((s) => s.key === key)?.label);
-    return <MenuPlus items={SECTIONS} activeKey={key}><Outlet/></MenuPlus>;
+    const app = appById("cmd");
+    return <MenuPlus title="脚本" logo={app && <AppGlyph app={app} size={28}/>} items={SECTIONS} activeKey={key}><Outlet/></MenuPlus>;
 }
 
 function Tools() {

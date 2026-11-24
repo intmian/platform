@@ -1,14 +1,4 @@
 /* 这里只放布局，颜色都在组件里取 antd theme token */
-.settings-tabs .ant-tabs-nav {
-    margin-bottom: 12px;
-    padding: 0 16px;
-    border-radius: 8px;
-}
-
-.settings-tabs .ant-tabs-nav::before {
-    display: none;
-}
-
 .settings-subtabs .ant-tabs-nav {
     margin-bottom: 0;
 }

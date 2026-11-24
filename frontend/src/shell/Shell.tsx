@@ -95,10 +95,13 @@ function AppHost() {
 
     // 手机上把页面拉过头时露出的是整个网页的底色（默认白色），在桌面时换成桌面的颜色。
     // 跟着地址在绘制前切换，不等桌面组件自己的 effect，免得偶尔慢一拍露白
+    // 灰底的应用同理
+    const grayPage = !!current?.grayPage;
     useLayoutEffect(() => {
         document.documentElement.classList.toggle("pf-on-desktop", atDesktop);
-    }, [atDesktop]);
-    useLayoutEffect(() => () => document.documentElement.classList.remove("pf-on-desktop"), []);
+        document.documentElement.classList.toggle("pf-gray-page", grayPage);
+    }, [atDesktop, grayPage]);
+    useLayoutEffect(() => () => document.documentElement.classList.remove("pf-on-desktop", "pf-gray-page"), []);
 
     useEffect(() => {
         if (current) recordRecent({appId: current.id, path: location.pathname + location.search, title: currentTitle});

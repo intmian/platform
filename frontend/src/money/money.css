@@ -1,6 +1,5 @@
+/* 灰底由外壳整页铺（apps.tsx 里的 grayPage） */
 .money-page {
-    min-height: 100vh;
-    background: var(--pf-bg-layout);
     color: var(--pf-text);
 }
 

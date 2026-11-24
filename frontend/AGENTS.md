@@ -20,6 +20,8 @@
 - 不要直接改 `document.title`、favicon，不要用 `window.history` / `popstate` / `window.location.pathname`：标题用 `shell/runtime` 的 `useAppTitle`，导航用 react-router。
 - “回到前台就刷新”的逻辑要同时挂 `useAppActive`（应用之间切换不会触发 `visibilitychange`）。挂在 body 上的抽屉、全局键盘监听要看 `useIsAppActive()`，否则会盖到别的应用上或在后台响应。
 - 固定在底部的元素要让开横条：`bottom: calc(var(--homebar-h) + var(--safe-bottom) + 12px)`。
+- 页面底色不是白色的应用（灰底）在 `apps.tsx` 里标 `grayPage`，由外壳给整页铺底色；应用自己不要写 `min-height: 100vh` 加背景，否则胶囊下面留的空白会露白、页面还会多出一截能滚。
+- 手机上不要把按钮固定在屏幕顶部或贴着页面最上沿：iPhone 的 Safari 收起工具栏后，状态栏下面一条会被系统模糊掉（Todone 目录、日报日历都踩过）。浮动按钮放到下方角落、让开胶囊；页面顶部的内容至少留 22px。
 - 应用里不要放网站 logo、页头或“回首页”链接，回桌面交给外壳。
 - 屏幕尺寸只用 `common/breakpoints.ts`（只看宽度，不看 UA）。
 
@@ -27,7 +29,8 @@
 
 - 先复用再造轮子：
   - `common/UniConfig` + `ConfigsCtr`：通用配置表单（读写走 `common/cfgApi.ts`）；
-  - `common/MenuPlus`：应用内分区导航（桌面左侧列表、手机顶部横条），每个分区是一个子路由，方便固定到桌面（管理、脚本、试验场在用）；
+  - `common/MenuPlus`：应用内分区导航（桌面是左右对开：左边整列导航贴边、右边内容；手机是顶部标题 + 横条），每个分区是一个子路由，方便固定到桌面（管理、脚本、试验场在用）；
+  - `common/PageHeader`（`PageHeader` + `PageCard`）：分区页面统一的标题行（标题、一句关键信息、右边操作按钮，手机上按钮收进“更多”）和内容卡片。管理后台每一页都用它，新页面照着用，不要各自在内容里放标题和按钮；
   - `common/aiGateway.ts`（`sendAiAction`、`transcribeAudio`）：AI 调用一律走它，后端按 action 白名单处理；
   - `common/WhisperButton` + `useAudioRecorder`：语音输入；
   - `appendNoCacheParam`（`todone/Library.tsx`）：给远程图片加 `__cf_bust`，绕开 CDN 旧缓存的 CORS 问题。

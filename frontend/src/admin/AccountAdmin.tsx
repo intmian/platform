@@ -1,9 +1,10 @@
 import {useEffect, useState} from "react";
-import {Button, Card, Empty, Flex, Input, message, Modal, Popconfirm, Space, Spin, Tooltip, Typography} from "antd";
+import {Button, Empty, Flex, Input, message, Modal, Popconfirm, Space, Spin, Tooltip, Typography} from "antd";
+import {PageCard, PageHeader} from "../common/PageHeader";
 import {CloseOutlined, DeleteOutlined, PlusOutlined, SaveOutlined} from "@ant-design/icons";
 import TagInput from "../common/TagInput";
+import "./admin.css";
 import {AllPermission} from "../common/def";
-import {useIsMobile} from "../common/breakpoints";
 import {
     AccountTokens,
     changeToken,
@@ -141,7 +142,6 @@ function AccountCard({account, onDeleted}: { account: AccountData; onDeleted: ()
     const [tokens, setTokens] = useState(account.tokens);
     const [adding, setAdding] = useState(false);
     const [deleting, setDeleting] = useState(false);
-    const isMobile = useIsMobile();
 
     const remove = async () => {
         setDeleting(true);
@@ -155,10 +155,13 @@ function AccountCard({account, onDeleted}: { account: AccountData; onDeleted: ()
         }
     };
 
-    return <Card
-        size="small"
-        title={account.name}
-        style={{width: isMobile ? "100%" : 440}}
+    return <PageCard
+        className="adm-account"
+        title={<span className="adm-account-name">
+            <span className="adm-avatar">{Array.from(account.name)[0]?.toUpperCase()}</span>
+            {account.name}
+            <span className="adm-account-count">{tokens.length} 个密码</span>
+        </span>}
         extra={<Space size={0}>
             <Tooltip title="添加密码">
                 <Button type="text" icon={<PlusOutlined/>} onClick={() => setAdding(true)}/>
@@ -187,7 +190,7 @@ function AccountCard({account, onDeleted}: { account: AccountData; onDeleted: ()
             }}
             onCancel={() => setAdding(false)}
         />}
-    </Card>;
+    </PageCard>;
 }
 
 function AddAccountModal({onAdd, onCancel}: { onAdd: (name: string) => void; onCancel: () => void }) {
@@ -241,22 +244,23 @@ export function AccountAdmin() {
         };
     }, []);
 
-    if (accounts === null) {
-        return <Flex justify="center" style={{padding: 48}}><Spin/></Flex>;
-    }
+    const header = <PageHeader
+        title="账号"
+        meta={accounts && `${accounts.length} 个账号`}
+        actions={[{key: "add", label: "新增账号", icon: <PlusOutlined/>, primary: true, onClick: () => setAdding(true)}]}
+    />;
 
-    return <Flex vertical gap={12}>
-        <div>
-            <Button icon={<PlusOutlined/>} onClick={() => setAdding(true)}>新增账号</Button>
-        </div>
-        {accounts.length === 0 && <Empty description="没有账号"/>}
-        <Flex wrap="wrap" gap={12} align="flex-start">
-            {accounts.map((a) => <AccountCard
+    return <>
+        {header}
+        {accounts === null && <Flex justify="center" style={{padding: 48}}><Spin/></Flex>}
+        {accounts?.length === 0 && <PageCard><Empty description="没有账号"/></PageCard>}
+        <div className="adm-accounts">
+            {accounts?.map((a) => <AccountCard
                 key={a.name}
                 account={a}
                 onDeleted={() => setAccounts((list) => list && list.filter((x) => x.name !== a.name))}
             />)}
-        </Flex>
+        </div>
         {adding && <AddAccountModal
             onAdd={(name) => {
                 setAdding(false);
@@ -264,5 +268,5 @@ export function AccountAdmin() {
             }}
             onCancel={() => setAdding(false)}
         />}
-    </Flex>;
+    </>;
 }

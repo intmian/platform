@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { Table, Card, Form, Input, Button, message, Select, Space, Divider, Switch, Row, Col } from 'antd';
-import { MinusCircleOutlined, PlusOutlined } from '@ant-design/icons';
+import { Table, Form, Input, Button, message, Select, Space, Switch, Row, Col } from 'antd';
+import { PageCard, PageHeader } from '../common/PageHeader';
+import { MinusCircleOutlined, PlusOutlined, SearchOutlined, UndoOutlined } from '@ant-design/icons';
 import { sendSearchBiLog, TodoneDbLog, DbLogData } from '../common/newSendHttp';
 
 // === 配置区域 ===
@@ -149,14 +150,30 @@ const BiLog = () => {
 
     const currentColumns = TABLE_CONFIGS[selectedTable]?.columns || [];
 
+    const reset = () => {
+        form.resetFields();
+        form.setFieldsValue({ table: selectedTable }); // 重置时不清除表选择
+        setLastQueryParams(null);
+        setData([]);
+    };
+
     return (
         <div>
-            <Card title="通用日志查询 (BiLog)" bordered={false} style={{ width: '100%' }}>
-                <Form 
-                    form={form} 
-                    onFinish={onFinish} 
-                    layout="vertical" 
+            <PageHeader
+                title="BI 日志"
+                meta={lastQueryParams ? `共 ${total} 条` : undefined}
+                actions={[
+                    { key: 'query', label: '查询', icon: <SearchOutlined />, primary: true, loading, onClick: () => form.submit() },
+                    { key: 'reset', label: '重置条件', icon: <UndoOutlined />, onClick: reset },
+                ]}
+            />
+            <PageCard title="查询条件">
+                <Form
+                    form={form}
+                    onFinish={onFinish}
+                    layout="vertical"
                     disabled={loading}
+                    className="adm-bi-form"
                     initialValues={{
                         table: 'todone_db_log',
                         orderBy: DEFAULT_ORDER_BY,
@@ -164,83 +181,55 @@ const BiLog = () => {
                         filters: []
                     }}
                 >
-                    {/* 第一行：表选择 与 基础操作 */}
-                    <Row gutter={24}>
-                        <Col span={8}>
-                            <Form.Item label="选择数据表" name="table" rules={[{ required: true }]}>
-                                <Select 
-                                    options={tableOptions} 
+                    <Row gutter={16}>
+                        <Col xs={24} md={10}>
+                            <Form.Item label="数据表" name="table" rules={[{ required: true }]}>
+                                <Select
+                                    options={tableOptions}
                                     onChange={(val) => {
                                         setSelectedTable(val);
                                         setData([]); // 切换表清空数据
                                         setLastQueryParams(null);
-                                    }} 
+                                    }}
                                 />
                             </Form.Item>
                         </Col>
-                        <Col span={8}>
-                             <Form.Item label="排序字段" name="orderBy">
-                                <Input placeholder="默认 RecordTime" />
+                        <Col xs={14} md={8}>
+                            <Form.Item label="排序字段" name="orderBy">
+                                <Input placeholder="record_time" />
                             </Form.Item>
                         </Col>
-                        <Col span={8}>
-                            <Form.Item label="排序方式" name="desc" valuePropName="checked">
-                                <Switch checkedChildren="倒序 (DESC)" unCheckedChildren="正序 (ASC)" defaultChecked />
+                        <Col xs={10} md={6}>
+                            <Form.Item label="排序" name="desc" valuePropName="checked">
+                                <Switch checkedChildren="倒序" unCheckedChildren="正序" />
                             </Form.Item>
                         </Col>
                     </Row>
 
-                    {/* 第二行：动态筛选条件 */}
                     <Form.List name="filters">
                         {(fields, { add, remove }) => (
                             <>
                                 {fields.map(({ key, name, ...restField }) => (
-                                    <Space key={key} style={{ display: 'flex', marginBottom: 8 }} align="baseline">
-                                        <Form.Item
-                                            {...restField}
-                                            name={[name, 'key']}
-                                            rules={[{ required: true, message: '请输入条件' }]}
-                                        >
-                                            <Input placeholder="条件 (如 Duration > ?)" />
+                                    <Space key={key} style={{ display: 'flex', marginBottom: 8 }} align="baseline" wrap>
+                                        <Form.Item {...restField} name={[name, 'key']} rules={[{ required: true, message: '请输入条件' }]}>
+                                            <Input placeholder="Duration > ?" />
                                         </Form.Item>
-                                        <Form.Item
-                                            {...restField}
-                                            name={[name, 'value']}
-                                            rules={[{ required: true, message: '请输入值' }]}
-                                        >
-                                            <Input placeholder="比较值 (如 100)" />
+                                        <Form.Item {...restField} name={[name, 'value']} rules={[{ required: true, message: '请输入值' }]}>
+                                            <Input placeholder="100" />
                                         </Form.Item>
                                         <MinusCircleOutlined onClick={() => remove(name)} />
                                     </Space>
                                 ))}
-                                <Form.Item>
-                                    <Button type="dashed" onClick={() => add()} block icon={<PlusOutlined />}>
-                                        添加筛选条件
-                                    </Button>
-                                </Form.Item>
+                                <Button type="dashed" onClick={() => add()} icon={<PlusOutlined />}>添加筛选条件</Button>
                             </>
                         )}
                     </Form.List>
-
-                    <Divider />
-
-                    <Form.Item>
-                        <Space>
-                            <Button type="primary" htmlType="submit" loading={loading} disabled={!selectedTable}>
-                                查询
-                            </Button>
-                            <Button onClick={() => {
-                                form.resetFields();
-                                form.setFieldsValue({ table: selectedTable }); // 重置时不清除表选择
-                                setLastQueryParams(null);
-                                setData([]);
-                            }}>
-                                重置条件
-                            </Button>
-                        </Space>
-                    </Form.Item>
+                    {/* 回车提交 */}
+                    <button type="submit" hidden />
                 </Form>
+            </PageCard>
 
+            <PageCard flush>
                 <Table
                     columns={currentColumns}
                     dataSource={data}
@@ -249,14 +238,14 @@ const BiLog = () => {
                         ...pagination,
                         total: total,
                         showSizeChanger: true,
-                        showQuickJumper: true
+                        hideOnSinglePage: true,
                     }}
                     loading={loading}
                     onChange={handleTableChange}
                     scroll={{ x: 1000 }}
-                    locale={{ emptyText: lastQueryParams ? '暂无数据' : '请选择数据表并点击查询' }}
+                    locale={{ emptyText: lastQueryParams ? '没有符合条件的记录' : '还没查询' }}
                 />
-            </Card>
+            </PageCard>
         </div>
     );
 };

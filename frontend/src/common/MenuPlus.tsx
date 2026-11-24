@@ -13,6 +13,8 @@ export interface MenuPlusItem {
     key: string;
     label: ReactNode;
     icon?: ReactNode;
+    // 分组名。桌面侧栏里相同分组的排在一起、上面写组名；手机上不显示组名
+    group?: string;
 }
 
 // 当前处在哪个分区：地址里布局路由之后的第一段
@@ -24,7 +26,10 @@ export function useSectionKey(): string | undefined {
     return first === undefined ? undefined : decodeURIComponent(first);
 }
 
-export function MenuPlus({items, activeKey, children}: {
+export function MenuPlus({title, logo, footer, items, activeKey, children}: {
+    title: string;
+    logo?: ReactNode;
+    footer?: ReactNode;  // 桌面侧栏最底下（比如当前账号）
     items: MenuPlusItem[];
     activeKey?: string;
     children: ReactNode;
@@ -41,7 +46,7 @@ export function MenuPlus({items, activeKey, children}: {
         nav.scrollTo({left: Math.max(0, left), behavior: "smooth"});
     }, [activeKey, isMobile]);
 
-    const links = items.map((item) => <Link
+    const link = (item: MenuPlusItem) => <Link
         key={item.key}
         to={item.key}
         className={(isMobile ? "pf-section-tab" : "pf-section-link") + (item.key === activeKey ? " active" : "")}
@@ -49,16 +54,39 @@ export function MenuPlus({items, activeKey, children}: {
     >
         {!isMobile && item.icon}
         <span>{item.label}</span>
-    </Link>);
+    </Link>;
+
+    const head = <div className="pf-section-head">
+        {logo}
+        <span className="pf-section-title">{title}</span>
+    </div>;
 
     if (isMobile) {
         return <div className="pf-section is-mobile">
-            <nav className="pf-section-tabs" ref={tabsRef}>{links}</nav>
+            <div className="pf-section-top">
+                {head}
+                <nav className="pf-section-tabs" ref={tabsRef}>{items.map(link)}</nav>
+            </div>
             <main className="pf-section-main">{children}</main>
         </div>;
     }
+
+    // 按分组排：分组按第一次出现的顺序，组内保持原顺序
+    const groups: { name?: string; items: MenuPlusItem[] }[] = [];
+    items.forEach((item) => {
+        const g = groups.find((x) => x.name === item.group);
+        if (g) g.items.push(item);
+        else groups.push({name: item.group, items: [item]});
+    });
     return <div className="pf-section">
-        <nav className="pf-section-nav">{links}</nav>
+        <nav className="pf-section-nav">
+            {head}
+            {groups.map((g, i) => <div key={g.name ?? i} className="pf-section-group">
+                {g.name && <div className="pf-section-group-name">{g.name}</div>}
+                {g.items.map(link)}
+            </div>)}
+            {footer && <div className="pf-section-foot">{footer}</div>}
+        </nav>
         <main className="pf-section-main">{children}</main>
     </div>;
 }

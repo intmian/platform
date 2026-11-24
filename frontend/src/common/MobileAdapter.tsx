@@ -1,6 +1,6 @@
 import React, {useState} from "react";
 import {Button} from "antd";
-import {CalendarOutlined, MenuOutlined} from "@ant-design/icons";
+import {CalendarOutlined, CloseOutlined, MenuOutlined} from "@ant-design/icons";
 import {useIsMobile} from "./breakpoints";
 
 function MobileAdapter({children, position, width}: {
@@ -13,7 +13,9 @@ function MobileAdapter({children, position, width}: {
     * 如果是电脑端就原样放置
     * 无论是手机端还是电脑端都要浮动
     * */
+    // 手机上按钮放在屏幕下方的角落（底部胶囊上面）：放顶上会被 iPhone 状态栏下的模糊区盖住，也不好按
     const isMobile = useIsMobile();
+    const bottom = 'calc(var(--homebar-h, 64px) + var(--safe-bottom, 0px) + 12px)';
     const [isOpen, setIsOpen] = useState(false);
     let css;
     let css2;
@@ -35,7 +37,7 @@ function MobileAdapter({children, position, width}: {
                 onClick={() => setIsOpen(true)}
                 style={{
                     position: 'fixed',
-                    top: '10px',
+                    bottom,
                     ...css,
                     backgroundColor: 'rgba(0, 0, 0, 0.5)',
                     color: 'white',
@@ -45,13 +47,14 @@ function MobileAdapter({children, position, width}: {
             c = <div
                 style={{
                     position: 'fixed',
-                    top: '10px',
+                    bottom,
                     ...css,
                     backgroundColor: 'var(--pf-bg-elevated)',
                     boxShadow: 'var(--pf-shadow)',
                     zIndex: 1000,
-                    padding: '10px',
-                    width: '150px',
+                    padding: '36px 10px 10px',
+                    borderRadius: 12,
+                    width: '170px',
                 }}
             >
                 {children}
@@ -61,14 +64,13 @@ function MobileAdapter({children, position, width}: {
                     size={'small'}
                     style={{
                         position: 'absolute',
-                        top: '5px',
+                        top: '6px',
                         ...css2,
-                        color: 'var(--pf-text)',
-                        fontSize: '16px',
+                        color: 'var(--pf-text-2)',
                     }}
-                >
-                    X
-                </Button>
+                    aria-label="收起"
+                    icon={<CloseOutlined/>}
+                />
             </div>
         }
     } else {

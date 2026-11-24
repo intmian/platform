@@ -4,6 +4,8 @@ import {DesktopOutlined, ExpandOutlined, MobileOutlined} from "@ant-design/icons
 import {Outlet, Route, Routes, Navigate} from "react-router-dom";
 import {MenuPlus, useSectionKey} from "../common/MenuPlus";
 import {useAppTitle} from "../shell/runtime";
+import {appById} from "../shell/apps";
+import {AppGlyph} from "../shell/AppTile";
 import {CustomDeviceSimulator, DeviceSimulator} from "./DeviceSim";
 import {EditableProps, Props} from "./EditableProps";
 
@@ -83,7 +85,8 @@ const SECTIONS = [
 function DebugLayout({tool}: { tool: ReactNode }) {
     const key = useSectionKey();
     useAppTitle(SECTIONS.find((s) => s.key === key)?.label);
-    return <MenuPlus items={SECTIONS} activeKey={key}>
+    const app = appById("debug");
+    return <MenuPlus title="组件试验场" logo={app && <AppGlyph app={app} size={28}/>} items={SECTIONS} activeKey={key}>
         {tool}
         <Outlet/>
     </MenuPlus>;

@@ -29,6 +29,9 @@ export interface AppDef {
     hiddenByDefault?: boolean;
     // 只在本地开发时存在
     devOnly?: boolean;
+    // 页面底色是灰色（antd 的 layout 底色）。外壳会把整页底色一起换掉，
+    // 否则胶囊下面留的空白、手机上拉过头的地方会露出白色
+    grayPage?: boolean;
     favicon?: string;    // 标签页图标
     touchIcon?: string;  // 从这个应用添加到 iPhone 主屏时的图标
 }
@@ -59,6 +62,7 @@ export const APPS: AppDef[] = [
         basePath: "/money",
         component: lazyWithReload(() => import("../money/MoneyApp")),
         keepAlive: true,
+        grayPage: true,
     },
     {
         id: "report",
@@ -85,6 +89,7 @@ export const APPS: AppDef[] = [
         basePath: "/cmd",
         component: lazyWithReload(() => import("../tool/CmdApp")),
         permissions: ["admin", "cmd"],
+        grayPage: true,
     },
     {
         id: "admin",
@@ -93,6 +98,7 @@ export const APPS: AppDef[] = [
         basePath: "/admin",
         component: lazyWithReload(() => import("../admin/AdminApp")),
         permissions: ["admin"],
+        grayPage: true,
     },
     {
         id: "kana",
@@ -138,6 +144,7 @@ export const APPS: AppDef[] = [
         permissions: ["admin"],
         hiddenByDefault: true,
         devOnly: true,
+        grayPage: true,
     },
 ].filter((a) => !a.devOnly || import.meta.env.DEV) as AppDef[];
 

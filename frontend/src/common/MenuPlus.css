@@ -1,22 +1,68 @@
-/* 分区布局：桌面左侧竖排导航，手机顶部横向滑动的标签条。颜色只用 --pf-* 变量 */
+/* 分区布局：桌面左侧白色侧栏（标题 + 分组导航），手机顶部标题 + 横向滑动的标签条。颜色只用 --pf-* 变量。
+   页面灰底由外壳整页铺（apps.tsx 里的 grayPage），这里不再自己铺底色 */
+/* 桌面是左右对开：左边一整列白色导航贴着屏幕左边、从顶到底，右边灰底内容区 */
 .pf-section {
     display: flex;
     align-items: flex-start;
-    gap: 20px;
-    padding: 20px 24px;
     box-sizing: border-box;
-    min-height: calc(100dvh - var(--homebar-h, 0px) - var(--safe-bottom, 0px));
-    background: var(--pf-bg-layout);
+    /* 外壳在页面底部给胶囊留了一段空；左栏本身就是整屏高，把这段空吃掉，否则页面会多出一截能滚 */
+    margin-bottom: calc(-1 * (var(--homebar-h, 0px) + var(--safe-bottom, 0px)));
 }
 
 .pf-section-nav {
     position: sticky;
-    top: 20px;
+    top: 0;
     flex: none;
-    width: 168px;
+    width: 208px;
+    height: 100dvh;
+    overflow-y: auto;
     display: flex;
     flex-direction: column;
     gap: 2px;
+    padding: calc(var(--safe-top, 0px) + 18px) 12px 16px;
+    box-sizing: border-box;
+    background: var(--pf-bg);
+    box-shadow: 1px 0 0 var(--pf-border-2);
+}
+
+.pf-section-foot {
+    margin-top: auto;
+    padding: 12px 8px 0;
+    border-top: 1px solid var(--pf-border-2);
+    font-size: 13px;
+    color: var(--pf-text-3);
+}
+
+.pf-section-head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 2px 6px 12px;
+    margin-bottom: 4px;
+    border-bottom: 1px solid var(--pf-border-2);
+}
+
+.pf-section-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--pf-text);
+    white-space: nowrap;
+}
+
+.pf-section-group {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.pf-section-group + .pf-section-group {
+    margin-top: 6px;
+}
+
+.pf-section-group-name {
+    padding: 8px 10px 4px;
+    font-size: 12px;
+    color: var(--pf-text-3);
 }
 
 .pf-section-link {
@@ -24,7 +70,7 @@
     align-items: center;
     gap: 10px;
     height: 36px;
-    padding: 0 12px;
+    padding: 0 10px;
     border-radius: var(--pf-radius, 6px);
     color: var(--pf-text-2);
     font-size: 14px;
@@ -34,15 +80,14 @@
 }
 
 .pf-section-link:hover {
-    background: var(--pf-fill-3);
+    background: var(--pf-fill-4);
     color: var(--pf-text);
 }
 
 .pf-section-link.active {
-    background: var(--pf-bg);
+    background: var(--pf-primary-bg);
     color: var(--pf-primary);
     font-weight: 500;
-    box-shadow: 0 0 0 1px var(--pf-border-2);
 }
 
 .pf-section-link .anticon {
@@ -52,23 +97,39 @@
 .pf-section-main {
     flex: 1;
     min-width: 0;
+    padding: calc(var(--safe-top, 0px) + 20px) 24px calc(var(--homebar-h, 0px) + var(--safe-bottom, 0px) + 20px);
 }
 
 /* 手机 */
 .pf-section.is-mobile {
     display: block;
     padding: 0;
+    margin-bottom: 0;
 }
 
-.pf-section-tabs {
+.pf-section-top {
     position: sticky;
     top: 0;
     z-index: 10;
+    padding-top: calc(var(--safe-top, 0px) + 18px);
+    background: var(--pf-bg-layout);
+}
+
+.pf-section.is-mobile .pf-section-head {
+    padding: 0 16px 8px;
+    margin: 0;
+    border: 0;
+}
+
+.pf-section.is-mobile .pf-section-title {
+    font-size: 18px;
+}
+
+.pf-section-tabs {
     display: flex;
     gap: 6px;
     overflow-x: auto;
-    padding: calc(var(--safe-top, 0px) + 10px) 12px 10px;
-    background: var(--pf-bg-layout);
+    padding: 2px 12px 10px;
     scrollbar-width: none;
     -webkit-overflow-scrolling: touch;
 }
@@ -105,8 +166,9 @@
 /* 表格这类本身没有底色的页面放进白色面板 */
 .pf-section-panel {
     background: var(--pf-bg);
-    border-radius: var(--pf-radius-lg, 8px);
+    border-radius: 14px;
     padding: 20px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, .04), 0 0 0 1px var(--pf-border-2);
 }
 
 .pf-section.is-mobile .pf-section-panel {

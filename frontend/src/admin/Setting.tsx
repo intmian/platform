@@ -1,5 +1,6 @@
 import {useCallback, useEffect, useRef, useState} from "react";
-import {Tabs, theme} from "antd";
+import {Segmented, theme} from "antd";
+import {PageHeader} from "../common/PageHeader";
 import {Navigate, useBlocker, useNavigate, useParams, useResolvedPath} from "react-router-dom";
 import {AISettings} from "./settings/AISettings";
 import {BasicSettings} from "./settings/BasicSettings";
@@ -75,15 +76,17 @@ function Setting() {
     </span>;
 
     return <div>
-        <Tabs
-            className="settings-tabs"
-            activeKey={section}
-            onChange={(key) => navigate(key === "ai" ? aiPath(lastAIView.current) : `${base}/${key}`)}
-            tabBarStyle={{background: token.colorBgContainer}}
-            items={[
-                {key: "basic", label: label("基础设置", dirty.basic)},
-                {key: "ai", label: label("AI", dirty.ai)},
-            ]}
+        <PageHeader
+            title="设置"
+            meta={(dirty.basic || dirty.ai) ? "有未保存的修改" : undefined}
+            extra={<Segmented<Section>
+                value={section}
+                onChange={(key) => navigate(key === "ai" ? aiPath(lastAIView.current) : `${base}/${key}`)}
+                options={[
+                    {value: "basic", label: label("基础设置", dirty.basic)},
+                    {value: "ai", label: label("AI", dirty.ai)},
+                ]}
+            />}
         />
         {/* 两个分类都保持挂载，切换时不丢未保存的修改 */}
         <div style={{display: section === "basic" ? undefined : "none"}}><BasicSettings onDirtyChange={onBasicDirty}/></div>

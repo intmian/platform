@@ -1,0 +1,128 @@
+/* 分区页面的标题行和内容卡片。颜色只用 --pf-* 变量 */
+.pf-page-head {
+    margin-bottom: 16px;
+}
+
+.pf-page-head-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    min-height: 36px;
+}
+
+.pf-page-head-text {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    min-width: 0;
+}
+
+.pf-page-title {
+    margin: 0;
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--pf-text);
+    white-space: nowrap;
+}
+
+.pf-page-meta {
+    font-size: 13px;
+    color: var(--pf-text-3);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.pf-page-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: none;
+}
+
+.pf-page-extra {
+    margin-top: 10px;
+    overflow-x: auto;
+}
+
+.pf-card {
+    background: var(--pf-bg);
+    border-radius: 14px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, .04), 0 0 0 1px var(--pf-border-2);
+    padding: 16px 18px;
+    min-width: 0;
+}
+
+.pf-card.is-flush {
+    padding: 0;
+    overflow: hidden;
+}
+
+.pf-card + .pf-card {
+    margin-top: 14px;
+}
+
+.pf-card-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+.pf-card.is-flush .pf-card-head {
+    padding: 14px 18px 0;
+}
+
+.pf-card-title {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--pf-text);
+}
+
+/* 卡片里的 antd 表格：表头去掉灰底的硬边，翻页条留出内边距 */
+.pf-card.is-flush .ant-table-wrapper .ant-table-pagination {
+    padding: 0 16px;
+}
+
+@media (max-width: 767px) {
+    .pf-page-head {
+        margin-bottom: 12px;
+    }
+
+    .pf-page-title {
+        font-size: 18px;
+    }
+
+    .pf-card {
+        padding: 12px 14px;
+        border-radius: 12px;
+    }
+
+    .pf-card + .pf-card {
+        margin-top: 10px;
+    }
+}
+
+/* 分区页面里还在用的 antd 卡片（设置页等）和 PageCard 长得一样 */
+.pf-section-main .ant-card {
+    border: 0;
+    border-radius: 14px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, .04), 0 0 0 1px var(--pf-border-2);
+}
+
+.pf-section-main .ant-card .ant-card-head {
+    border-bottom-color: var(--pf-border-2);
+}
+
+/* 卡片里的卡片（比如设置页的列表项）不要再套阴影 */
+.pf-section-main .ant-card .ant-card {
+    box-shadow: 0 0 0 1px var(--pf-border-2);
+    border-radius: 10px;
+}
+
+/* 标题行里的分段切换放在灰底上，默认底色太淡看不出是个控件 */
+.pf-page-head .ant-segmented {
+    background: rgba(0, 0, 0, .06);
+}

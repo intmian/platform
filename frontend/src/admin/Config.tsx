@@ -1,7 +1,8 @@
 import {useCallback, useEffect, useMemo, useState} from "react";
 import {Button, Checkbox, Flex, Form, Input, message, Modal, Popconfirm, Select, Space, Table} from "antd";
+import {PageCard, PageHeader} from "../common/PageHeader";
 import type {ColumnsType} from "antd/es/table";
-import {DeleteOutlined, FormOutlined, ReloadOutlined} from "@ant-design/icons";
+import {DeleteOutlined, FormOutlined, PlusOutlined, ReloadOutlined} from "@ant-design/icons";
 import {IsSliceType, Str2Unit, ValueType, ValueTypeStr} from "../common/def";
 import {FormItemArray} from "../common/misc";
 import {useIsMobile} from "../common/breakpoints";
@@ -134,29 +135,37 @@ export function Config() {
         },
     ];
 
+    const total = Object.keys(data ?? {}).length;
     return <>
-        <Flex gap={8} wrap="wrap" align="center" style={{marginBottom: 12}}>
-            <Input
-                placeholder="搜索键"
-                allowClear
-                value={search}
-                status={badRe ? "error" : undefined}
-                onChange={(e) => setSearch(e.target.value)}
-                style={{width: isMobile ? "100%" : 240}}
-            />
-            <Checkbox checked={useRe} onChange={(e) => setUseRe(e.target.checked)}>使用正则</Checkbox>
-            <Flex gap={8} style={{marginLeft: "auto"}}>
-                <Button onClick={() => setEditing({key: ""})}>新增</Button>
-                <Button icon={<ReloadOutlined/>} onClick={() => void load()}>刷新</Button>
-            </Flex>
-        </Flex>
-        <Table<Row>
-            rowKey="key"
-            loading={data === null}
-            dataSource={rows.map((key) => ({key, unit: data![key]}))}
-            columns={columns}
-            scroll={{x: "max-content"}}
+        <PageHeader
+            title="后台数据"
+            meta={data && (search ? `找到 ${rows.length} 项，共 ${total} 项` : `共 ${total} 项`)}
+            extra={<Flex gap={8} align="center">
+                <Input
+                    placeholder="搜索键"
+                    allowClear
+                    value={search}
+                    status={badRe ? "error" : undefined}
+                    onChange={(e) => setSearch(e.target.value)}
+                    style={{width: isMobile ? 200 : 220}}
+                />
+                <Checkbox checked={useRe} onChange={(e) => setUseRe(e.target.checked)} style={{whiteSpace: "nowrap"}}>正则</Checkbox>
+            </Flex>}
+            actions={[
+                {key: "add", label: "新增", icon: <PlusOutlined/>, primary: true, onClick: () => setEditing({key: ""})},
+                {key: "reload", label: "刷新", icon: <ReloadOutlined/>, onClick: () => void load()},
+            ]}
         />
+        <PageCard flush>
+            <Table<Row>
+                rowKey="key"
+                loading={data === null}
+                dataSource={rows.map((key) => ({key, unit: data![key]}))}
+                columns={columns}
+                scroll={{x: "max-content"}}
+                pagination={{pageSize: 20, hideOnSinglePage: true, showSizeChanger: false}}
+            />
+        </PageCard>
         {editing && <ChangeModal target={editing} onClose={(changed) => {
             setEditing(null);
             if (changed) void load();

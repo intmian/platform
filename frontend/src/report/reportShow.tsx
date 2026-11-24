@@ -1,7 +1,7 @@
 import {DayReport, sendGetReport, sendGetWholeReport} from "../common/newSendHttp";
 import React, {useEffect, useRef, useState} from "react";
 import {Button, Card, Col, Collapse, Empty, List, Menu, Row, Tag, Typography} from 'antd';
-import {CloudOutlined, MenuOutlined, WindowsOutlined} from '@ant-design/icons';
+import {CloseOutlined, CloudOutlined, MenuOutlined, WindowsOutlined} from '@ant-design/icons';
 import {useIsMobile} from "../common/breakpoints";
 import {DigestConsole} from "./reportDigest";
 import type {KeywordNewsGroup, RssItem} from "../common/newSendHttp";
@@ -412,16 +412,18 @@ function Dashboard({data}: DashboardProps) {
         </div>;
     } else {
         if (showNav) {
+            // 手机上放在屏幕右下角（底部胶囊上面），放顶上会被 iPhone 状态栏下的模糊区盖住
             right = <div
                 style={{
                     position: 'fixed',
-                    top: '10px',
+                    bottom: 'calc(var(--homebar-h, 64px) + var(--safe-bottom, 0px) + 12px)',
                     right: '10px',
                     backgroundColor: 'var(--pf-bg-elevated)',
                     boxShadow: 'var(--pf-shadow)',
                     zIndex: 1000,
-                    padding: '10px',
-                    width: '150px',
+                    padding: '36px 10px 10px',
+                    borderRadius: 12,
+                    width: '170px',
                 }}
             >
                 {renderNavMenu()}
@@ -431,14 +433,13 @@ function Dashboard({data}: DashboardProps) {
                     size={'small'}
                     style={{
                         position: 'absolute',
-                        top: '5px',
+                        top: '6px',
                         right: '5px',
-                        color: 'var(--pf-text)',
-                        fontSize: '16px',
+                        color: 'var(--pf-text-2)',
                     }}
-                >
-                    X
-                </Button>
+                    aria-label="收起"
+                    icon={<CloseOutlined/>}
+                />
             </div>
         } else {
             right = <Button
@@ -448,7 +449,7 @@ function Dashboard({data}: DashboardProps) {
                 onClick={toggleNav}
                 style={{
                     position: 'fixed',
-                    top: '10px',
+                    bottom: 'calc(var(--homebar-h, 64px) + var(--safe-bottom, 0px) + 12px)',
                     right: '10px',
                     backgroundColor: 'rgba(0, 0, 0, 0.5)',
                     color: 'white',
