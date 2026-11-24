@@ -670,38 +670,7 @@ html.pf-gray-page body {
     text-align: left;
     font: inherit;
     color: var(--desk-ink);
-}
-
-.pf-switch-row {
-    position: relative;
-    display: flex;
-    align-items: center;
     animation: pf-fade .2s ease both;
-}
-
-.pf-switch-close {
-    position: absolute;
-    right: 6px;
-    width: 30px;
-    height: 30px;
-    display: grid;
-    place-items: center;
-    border: 0;
-    border-radius: 50%;
-    background: none;
-    color: var(--desk-ink-2);
-    font-size: 12px;
-    cursor: pointer;
-    -webkit-tap-highlight-color: transparent;
-}
-
-.pf-switch-row .pf-switch-item {
-    padding-right: 40px;
-}
-
-.pf-switch-close:hover {
-    background: rgba(0, 0, 0, .07);
-    color: var(--desk-ink);
 }
 
 .pf-switch-item:hover {

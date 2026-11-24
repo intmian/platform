@@ -1,7 +1,7 @@
 import React, {ReactNode, useEffect, useMemo, useRef, useState} from "react";
 import {useNavigate} from "react-router-dom";
 import {Dropdown, message} from "antd";
-import {LogoutOutlined, MinusOutlined, PlusOutlined, SearchOutlined} from "@ant-design/icons";
+import {LogoutOutlined, PlusOutlined, SearchOutlined} from "@ant-design/icons";
 import {
     closestCenter,
     DndContext,
@@ -22,7 +22,7 @@ import {useIsMobile} from "../../common/breakpoints";
 import {useAppActive} from "../runtime";
 import {AppDef, appById, canUseApp} from "../apps";
 import {AppGlyph} from "../AppTile";
-import {closeRecent, useRecents} from "../recents";
+import {useRecents} from "../recents";
 import {
     DesktopItem,
     DOCK_MAX,
@@ -328,7 +328,7 @@ export function Desktop({onSearch}: { onSearch: () => void }) {
     </div>;
 }
 
-// Dock 右边的最近应用。点一下回到上次那一页；长按或右键进入编辑，编辑时左上角的减号把它从最近里关掉
+// Dock 右边的最近应用。点一下回到上次那一页；长按或右键和别的图标一样进入编辑（编辑时它不能拖、也不能删，会自己滚动）
 function RecentTile({appId, title, size, editing, onOpen, onStartEditing}: {
     appId: string;
     title: string;
@@ -366,12 +366,6 @@ function RecentTile({appId, title, size, editing, onOpen, onStartEditing}: {
                 }}>
             <AppGlyph app={app} size={size}/>
         </button>
-        {editing && <button className="pf-icon-remove" aria-label={`关闭${app.name}`}
-                            onPointerDown={(e) => e.stopPropagation()}
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                closeRecent(appId);
-                            }}><MinusOutlined/></button>}
     </div>;
 }
 

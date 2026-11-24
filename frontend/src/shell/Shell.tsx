@@ -8,7 +8,7 @@ import {LockScreen} from "./LockScreen";
 import {HomeBar} from "./HomeBar";
 import {CommandPalette} from "./CommandPalette";
 import {Desktop} from "./desktop/Desktop";
-import {bindRecentsUser, recordRecent, useRecents} from "./recents";
+import {bindRecentsUser, recordRecent} from "./recents";
 import {nextSlots, Slot} from "./slots";
 import {ErrorPage} from "../misc/ErrorPage";
 
@@ -51,7 +51,7 @@ function AppRoutes({app, location}: { app: AppDef; location: Location }) {
     </Routes>;
 }
 
-// 同时挂着桌面、当前应用和最多 MAX_BACKGROUND 个后台应用。
+// 同时挂着桌面、当前应用和最多 MAX_BACKGROUND 个后台应用，刷新网页全部销毁。
 // 后台应用的 DOM 还在，只是用 hidden 藏起来；它们拿到的 location 冻结在离开时那一页，
 // 所以 useParams/useLocation 在后台不会变。切回来时外壳会把地址栏恢复成那一页。
 function AppHost() {
@@ -66,16 +66,13 @@ function AppHost() {
     const slotsRef = useRef<Slot<Location>[]>([]);
 
     bindRecentsUser(user);
-    const recents = useRecents();
 
     // 根据当前地址算出要挂哪些应用。这里在渲染时改 ref：输入相同结果就相同，重复执行没有副作用。
-    // 在切换面板里被关掉（不在最近里了）的后台应用一起卸掉
     const slots = useMemo(() => {
-        const list = nextSlots(slotsRef.current, current?.id, location, (id) => !!appById(id)?.keepAlive)
-            .filter((s) => s.appId === current?.id || recents.some((r) => r.appId === s.appId));
+        const list = nextSlots(slotsRef.current, current?.id, location, (id) => !!appById(id)?.keepAlive);
         slotsRef.current = list;
         return list;
-    }, [current, location, recents]);
+    }, [current, location]);
 
     useEffect(() => {
         if (atDesktop) setDesktopMounted(true);

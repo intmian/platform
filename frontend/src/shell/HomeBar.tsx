@@ -1,10 +1,10 @@
 import {useEffect, useState} from "react";
 import {useNavigate} from "react-router-dom";
 import {message} from "antd";
-import {CheckOutlined, CloseOutlined, HomeOutlined, PlusOutlined, SearchOutlined, UpOutlined} from "@ant-design/icons";
+import {CheckOutlined, HomeOutlined, PlusOutlined, SearchOutlined, UpOutlined} from "@ant-design/icons";
 import {appById, AppDef} from "./apps";
 import {AppGlyph} from "./AppTile";
-import {closeRecent, useRecents} from "./recents";
+import {useRecents} from "./recents";
 import {addLink, isOnDesktop, useDesktopLayout} from "./desktop/store";
 
 const RECENT_IN_BAR = 3;
@@ -116,22 +116,18 @@ function SwitchPanel({current, currentPath, currentTitle, onClose, onSearch}: {
             {items.map((r) => {
                 const app = appById(r.appId)!;
                 const isCurrent = r.appId === current?.id;
-                return <div key={r.appId} className="pf-switch-row">
-                    <button className={`pf-switch-item${isCurrent ? " is-current" : ""}`}
-                            onClick={() => {
-                                onClose();
-                                if (!isCurrent) navigate(r.path);
-                            }}>
-                        <AppGlyph app={app} size={36}/>
-                        <span className="pf-switch-text">
-                            <span className="pf-switch-name">{app.name}</span>
-                            {r.title && r.title !== app.name && <span className="pf-switch-sub">{r.title}</span>}
-                        </span>
-                        {isCurrent && <span className="pf-switch-tag">当前</span>}
-                    </button>
-                    {!isCurrent && <button className="pf-switch-close" title="关闭" aria-label={`关闭${app.name}`}
-                                           onClick={() => closeRecent(r.appId)}><CloseOutlined/></button>}
-                </div>;
+                return <button key={r.appId} className={`pf-switch-item${isCurrent ? " is-current" : ""}`}
+                               onClick={() => {
+                                   onClose();
+                                   if (!isCurrent) navigate(r.path);
+                               }}>
+                    <AppGlyph app={app} size={36}/>
+                    <span className="pf-switch-text">
+                        <span className="pf-switch-name">{app.name}</span>
+                        {r.title && r.title !== app.name && <span className="pf-switch-sub">{r.title}</span>}
+                    </span>
+                    {isCurrent && <span className="pf-switch-tag">当前</span>}
+                </button>;
             })}
         </div>
         <div className="pf-switch-actions">
