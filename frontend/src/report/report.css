@@ -167,31 +167,8 @@
     line-height: 1.75;
 }
 
-.rp-overview-toggle {
-    cursor: pointer;
-}
-
-.rp-overview-more {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    color: var(--pf-primary);
-    font-size: 13px;
-}
-
-.rp-overview-more .rp-chevron {
-    color: inherit;
-}
-
 .rp-overview p {
     margin: 0 0 8px;
-}
-
-.rp-overview:not(.rp-overview-open) p {
-    display: -webkit-box;
-    -webkit-line-clamp: 3;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
 }
 
 /* ---------- 分区 ---------- */
