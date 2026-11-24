@@ -19,11 +19,21 @@ import {
 import {horizontalListSortingStrategy, rectSortingStrategy, SortableContext} from "@dnd-kit/sortable";
 import {useAuth} from "../../common/loginCtx";
 import {useIsMobile} from "../../common/breakpoints";
-import {useAppActive} from "../runtime";
+import {useAppActive, useIsAppActive} from "../runtime";
 import {AppDef, appById, canUseApp} from "../apps";
 import {AppGlyph} from "../AppTile";
 import {useRecents} from "../recents";
-import {DesktopItem, DOCK_MAX, loadDesktop, moveItem, removeItem, reorder, useDesktopLayout, visibleItems} from "./store";
+import {
+    DesktopItem,
+    DOCK_MAX,
+    loadDesktop,
+    pinToDock,
+    removeItem,
+    reorder,
+    unpinFromDock,
+    useDesktopLayout,
+    visibleItems,
+} from "./store";
 import {Tile} from "./Tile";
 import {useDesktopData, Widgets} from "./Widgets";
 import {AddSheet, ItemSheet} from "./Sheets";
@@ -36,6 +46,15 @@ const pointerFirst: CollisionDetection = (args) => {
     return hits.length > 0 ? hits : closestCenter(args);
 };
 type Area = "grid" | "dock";
+
+// 搜索快捷键的提示：苹果设备是 ⌘K，其他（Windows 等）是 Ctrl K
+const IS_APPLE = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
+const SEARCH_KEY = IS_APPLE ? "⌘K" : "Ctrl K";
+
+// 同一个图标可以同时在桌面和 Dock 里，拖动时要区分是哪一个，所以 Dock 里的加个前缀
+const DOCK_PREFIX = "dock:";
+const dockSortId = (id: string) => DOCK_PREFIX + id;
+const itemIdOf = (sortId: string) => sortId.startsWith(DOCK_PREFIX) ? sortId.slice(DOCK_PREFIX.length) : sortId;
 
 function useToday() {
     const [now, setNow] = useState(() => new Date());
@@ -94,6 +113,14 @@ export function Desktop({onSearch}: { onSearch: () => void }) {
         if (user) void loadDesktop(user);
     }, [user]);
 
+    // 手机上把页面拉过头时露出的是整个网页的底色（默认白色），桌面显示时换成桌面的颜色
+    const active = useIsAppActive();
+    useEffect(() => {
+        if (!active) return;
+        document.documentElement.classList.add("pf-on-desktop");
+        return () => document.documentElement.classList.remove("pf-on-desktop");
+    }, [active]);
+
     useEffect(() => {
         const t = window.setTimeout(() => setEntering(false), 900);
         return () => window.clearTimeout(t);
@@ -123,7 +150,10 @@ export function Desktop({onSearch}: { onSearch: () => void }) {
         useSensor(KeyboardSensor),
     );
 
-    const grid = layout ? visibleItems(layout.grid, canUse) : [];
+    // 应用在前，快捷方式和网址在后面另起一行（两组各自保持用户排的顺序）
+    const gridAll = layout ? visibleItems(layout.grid, canUse) : [];
+    const grid = [...gridAll.filter((i) => i.kind === "app"), ...gridAll.filter((i) => i.kind === "link")];
+    const firstLinkId = grid.find((i) => i.kind === "link")?.id;
     const dock = layout ? visibleItems(layout.dock, canUse) : [];
     const widgetIds = (layout?.widgets ?? []).filter((id) => {
         const app = id === "today" ? appById("todone") : id === "books" ? appById("money") : undefined;
@@ -153,13 +183,12 @@ export function Desktop({onSearch}: { onSearch: () => void }) {
         else window.open(item.url, "_blank", "noopener");
     };
 
-    // 拖动：拖的过程中图标跟着手指走、目标栏高亮；松手时再决定放到哪一栏的哪个位置。
-    // （拖动途中就把图标挪到另一栏，碰撞判断会在两栏之间来回跳，造成死循环）
-    const areaOf = (id: string): Area | undefined => {
-        if (id === "grid" || id === "dock") return id;
-        if (layout?.dock.some((i) => i.id === id)) return "dock";
-        if (layout?.grid.some((i) => i.id === id)) return "grid";
-        return undefined;
+    // 拖动：拖的过程中图标跟着手指走、目标栏高亮；松手时再决定。
+    // 桌面图标拖进 Dock = 钉一份到 Dock（桌面上的还在）；Dock 里的拖回桌面 = 从 Dock 取下。
+    // （拖动途中就改布局，碰撞判断会在两栏之间来回跳，造成死循环）
+    const areaOf = (sortId: string): Area | undefined => {
+        if (sortId === "grid" || sortId === "dock") return sortId;
+        return sortId.startsWith(DOCK_PREFIX) ? "dock" : "grid";
     };
     const onDragOver = ({active, over}: DragOverEvent) => {
         const from = areaOf(String(active.id));
@@ -169,21 +198,30 @@ export function Desktop({onSearch}: { onSearch: () => void }) {
     const onDragEnd = ({active, over}: DragEndEvent) => {
         setDropTarget(null);
         if (!over || !layout) return;
-        const id = String(active.id);
-        const from = areaOf(id);
+        const from = areaOf(String(active.id));
         const to = areaOf(String(over.id));
+        const id = itemIdOf(String(active.id));
+        const overId = itemIdOf(String(over.id));
         if (!from || !to) return;
         if (from === to) {
-            if (over.id !== to && active.id !== over.id) reorder(to, id, String(over.id));
+            if (over.id === to || active.id === over.id) return;
+            // 桌面上应用和链接分两组显示，只在组内排序
+            const kind = (x: string) => layout.grid.find((i) => i.id === x)?.kind;
+            if (to === "grid" && kind(id) !== kind(overId)) return;
+            reorder(to, id, overId);
             return;
         }
-        if (to === "dock" && layout.dock.length >= DOCK_MAX) {
+        if (to === "grid") {
+            unpinFromDock(id);
+            return;
+        }
+        const already = layout.dock.some((i) => i.id === id);
+        if (!already && layout.dock.length >= DOCK_MAX) {
             message.info(`Dock 最多放 ${DOCK_MAX} 个`);
             return;
         }
-        const list = layout[to];
-        const index = over.id === to ? list.length : list.findIndex((i) => i.id === over.id);
-        moveItem(id, to, index < 0 ? list.length : index);
+        const index = over.id === "dock" ? layout.dock.length : layout.dock.findIndex((i) => i.id === overId);
+        pinToDock(id, index < 0 ? layout.dock.length : index);
     };
 
     const tileSize = isMobile ? 58 : 64;
@@ -191,6 +229,8 @@ export function Desktop({onSearch}: { onSearch: () => void }) {
     const dockTileSize = isMobile ? 50 : 64;
     const renderTile = (item: DesktopItem, area: Area, index: number) => <Tile
         key={item.id}
+        sortId={area === "dock" ? dockSortId(item.id) : item.id}
+        rowStart={area === "grid" && item.id === firstLinkId && grid[0]?.id !== firstLinkId}
         item={item}
         area={area}
         index={index}
@@ -201,7 +241,7 @@ export function Desktop({onSearch}: { onSearch: () => void }) {
         onOpen={() => open(item)}
         onEdit={() => setEditItem(item)}
         onStartEditing={() => setEditing(true)}
-        onRemove={() => removeItem(item.id)}
+        onRemove={() => area === "dock" ? unpinFromDock(item.id) : removeItem(item.id)}
     />;
 
     const stopEditing = () => setEditing(false);
@@ -222,7 +262,7 @@ export function Desktop({onSearch}: { onSearch: () => void }) {
                     <button className="pf-chip is-primary" onClick={stopEditing}>完成</button>
                 </> : <>
                     <button className="pf-chip pf-search-chip" onClick={onSearch}>
-                        <SearchOutlined/>{!isMobile && <>搜索<kbd>⌘K</kbd></>}
+                        <SearchOutlined/>{!isMobile && <>搜索<kbd>{SEARCH_KEY}</kbd></>}
                     </button>
                     <Dropdown trigger={["click"]} placement="bottomRight" menu={{
                         items: [
@@ -257,7 +297,7 @@ export function Desktop({onSearch}: { onSearch: () => void }) {
             </SortableContext>
 
             {(dock.length > 0 || dockRecents.length > 0 || editing) &&
-                <SortableContext items={dock.map((i) => i.id)} strategy={horizontalListSortingStrategy}>
+                <SortableContext items={dock.map((i) => dockSortId(i.id))} strategy={horizontalListSortingStrategy}>
                     <DropArea id="dock" className={`pf-dock${dock.length === 0 ? " is-empty" : ""}`} highlight={dropTarget === "dock"}>
                         {dock.map((i, n) => renderTile(i, "dock", n))}
                         {!editing && dockRecents.length > 0 && <>

@@ -8,7 +8,7 @@ import {LockScreen} from "./LockScreen";
 import {HomeBar} from "./HomeBar";
 import {CommandPalette} from "./CommandPalette";
 import {Desktop} from "./desktop/Desktop";
-import {bindRecentsUser, recordRecent} from "./recents";
+import {bindRecentsUser, recordRecent, useRecents} from "./recents";
 import {nextSlots, Slot} from "./slots";
 import {ErrorPage} from "../misc/ErrorPage";
 
@@ -65,13 +65,16 @@ function AppHost() {
     const slotsRef = useRef<Slot<Location>[]>([]);
 
     bindRecentsUser(user);
+    const recents = useRecents();
 
     // 根据当前地址算出要挂哪些应用。这里在渲染时改 ref：输入相同结果就相同，重复执行没有副作用。
+    // 在切换面板里被关掉（不在最近里了）的后台应用一起卸掉
     const slots = useMemo(() => {
-        const list = nextSlots(slotsRef.current, current?.id, location, (id) => !!appById(id)?.keepAlive);
+        const list = nextSlots(slotsRef.current, current?.id, location, (id) => !!appById(id)?.keepAlive)
+            .filter((s) => s.appId === current?.id || recents.some((r) => r.appId === s.appId));
         slotsRef.current = list;
         return list;
-    }, [current, location]);
+    }, [current, location, recents]);
 
     useEffect(() => {
         if (atDesktop) setDesktopMounted(true);

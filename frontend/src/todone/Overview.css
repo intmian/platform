@@ -415,7 +415,7 @@
 
 @media (max-width: 640px) {
     .ov-root {
-        padding-top: 64px;
+        padding-top: 8px;
     }
 
     .ov-hero-title {

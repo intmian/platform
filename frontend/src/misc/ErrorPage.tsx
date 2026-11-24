@@ -1,6 +1,5 @@
 import {useEffect, useState} from 'react';
 import {Button, Image, Space, Typography} from 'antd';
-import {useNavigate} from 'react-router-dom';
 import catPic from '../assets/cat.jpg';
 import './ErrorPage.css'; // 引入样式文件
 const {Text, Link, Title} = Typography;
@@ -29,7 +28,6 @@ const texts = [
 // 猫的页面。notfound：打开了不存在的地址；crash：整个网站出错（路由的 errorElement）
 export function ErrorPage({variant = "crash"}: { variant?: "notfound" | "crash" }) {
     const [currentIndex, setCurrentIndex] = useState(0);
-    const navigate = useNavigate();
 
     useEffect(() => {
         const interval = setInterval(() => {
@@ -49,9 +47,8 @@ export function ErrorPage({variant = "crash"}: { variant?: "notfound" | "crash" 
                     <div className="text-box">
                         {currentText}
                     </div>
-                    {variant === "notfound"
-                        ? <Button type="primary" onClick={() => navigate("/")}>回到桌面</Button>
-                        : <Button type="primary" onClick={() => window.location.reload()}>重新加载</Button>}
+                    {/* 找不到页面时底部胶囊就在，不用再放回桌面的按钮；整站出错时没有胶囊，给个重新加载 */}
+                    {variant === "crash" && <Button type="primary" onClick={() => window.location.reload()}>重新加载</Button>}
                 </Space>
             </Space>
         </div>

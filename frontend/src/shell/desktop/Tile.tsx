@@ -21,9 +21,11 @@ export function ItemGlyph({item, size}: { item: DesktopItem; size: number }) {
 }
 
 // 桌面上的一个图标。平时：点击打开，长按（或右键）进入编辑。编辑时：拖动排序，点击打开设置，左上角减号移除。
-export function Tile({item, area, size, editing, showLabel = true, badge, index = 0, onOpen, onEdit, onStartEditing, onRemove}: {
+export function Tile({item, sortId, area, rowStart, size, editing, showLabel = true, badge, index = 0, onOpen, onEdit, onStartEditing, onRemove}: {
     item: DesktopItem;
+    sortId: string;
     area: "grid" | "dock";
+    rowStart?: boolean;
     size: number;
     editing: boolean;
     showLabel?: boolean;
@@ -35,19 +37,19 @@ export function Tile({item, area, size, editing, showLabel = true, badge, index 
     onRemove: () => void;
 }) {
     const {attributes, listeners, setNodeRef, transform, transition, isDragging} = useSortable({
-        id: item.id,
+        id: sortId,
         disabled: !editing,
         data: {area},
     });
     // 刚加到桌面的图标挂载时“跳”一下
-    const [pop] = useState(() => takeJustAdded(item.id));
+    const [pop] = useState(() => area === "grid" && takeJustAdded(item.id));
     const timer = useRef<number>();
     const longPressed = useRef(false);
     const title = itemTitle(item);
 
     return <div
         ref={setNodeRef}
-        className={`pf-icon${editing ? " is-editing" : ""}${isDragging ? " is-dragging" : ""}${pop ? " is-pop" : ""}`}
+        className={`pf-icon${rowStart ? " is-row-start" : ""}${editing ? " is-editing" : ""}${isDragging ? " is-dragging" : ""}${pop ? " is-pop" : ""}`}
         style={{transform: CSS.Translate.toString(transform), transition, ["--i" as string]: index}}
         {...(editing ? attributes : {})}
         {...(editing ? listeners : {})}
@@ -92,7 +94,7 @@ export function Tile({item, area, size, editing, showLabel = true, badge, index 
             </span>
             {showLabel && <span className="pf-icon-label">{title}</span>}
         </button>
-        {editing && <button className="pf-icon-remove" aria-label={`移除 ${title}`}
+        {editing && <button className="pf-icon-remove" aria-label={area === "dock" ? `从 Dock 取下 ${title}` : `移除 ${title}`}
                             onPointerDown={(e) => e.stopPropagation()}
                             onClick={(e) => {
                                 e.stopPropagation();

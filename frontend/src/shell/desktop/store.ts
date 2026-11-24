@@ -23,8 +23,8 @@ export type DesktopItem = AppItem | LinkItem;
 
 export interface DesktopLayout {
     v: 1;
-    grid: DesktopItem[];
-    dock: DesktopItem[];
+    grid: DesktopItem[];  // 桌面上的全部图标
+    dock: DesktopItem[];  // 额外钉在 Dock 里的，图标在 grid 里也有一份（同一个 id），不是从桌面挪过去
     hiddenApps: string[]; // 被移出桌面的应用；新加的应用不在这里，会自动出现
     widgets: string[];    // 桌面上的小组件，按显示顺序；旧数据没有这个字段时用默认
 }
@@ -69,7 +69,7 @@ export function defaultLayout(): DesktopLayout {
         v: 1,
         dock: dockIds.filter((id) => visible.some((a) => a.id === id)).map(appItem),
         grid: [
-            ...visible.filter((a) => !dockIds.includes(a.id)).map((a) => appItem(a.id)),
+            ...visible.map((a) => appItem(a.id)),
             {id: "link:blog", kind: "link", title: "博客", url: "https://www.intmian.com"},
         ],
         hiddenApps: [],
@@ -82,13 +82,15 @@ function isLayout(x: unknown): x is DesktopLayout {
     return !!l && l.v === 1 && Array.isArray(l.grid) && Array.isArray(l.dock) && Array.isArray(l.hiddenApps);
 }
 
-// 清单里新加的应用补到桌面末尾；已经不存在的应用去掉；旧数据补上小组件列表
+// 清单里新加的应用补到桌面末尾；已经不存在的应用去掉；旧数据补上小组件列表。
+// 以前 Dock 里的图标是从桌面挪过去的，桌面上没有；这里把它们补回桌面最前面。
 export function reconcile(layout: DesktopLayout): DesktopLayout {
     const widgets = Array.isArray(layout.widgets) ? layout.widgets : [...DEFAULT_WIDGETS];
     const known = new Set(APPS.map((a) => a.id));
     const keep = (i: DesktopItem) => i.kind === "link" || known.has(i.appId);
-    const grid = layout.grid.filter(keep);
-    const dock = layout.dock.filter(keep);
+    const dock = layout.dock.filter(keep).filter((i, n, all) => all.findIndex((x) => x.id === i.id) === n);
+    const kept = layout.grid.filter(keep);
+    const grid = [...dock.filter((d) => !kept.some((g) => g.id === d.id)), ...kept];
     const placed = new Set([...grid, ...dock].filter((i): i is AppItem => i.kind === "app").map((i) => i.appId));
     const missing = APPS.filter((a) => !a.hiddenByDefault && !placed.has(a.id) && !layout.hiddenApps.includes(a.id));
     return {...layout, grid: [...grid, ...missing.map((a) => appItem(a.id))], dock, widgets};
@@ -214,13 +216,30 @@ export function patchLink(id: string, patch: Partial<Pick<LinkItem, "title" | "u
     updateDesktop((l) => ({...l, grid: l.grid.map(fix), dock: l.dock.map(fix)}));
 }
 
+// 放进 / 移出 Dock：只改 Dock，桌面上的图标不动
 export function toggleDock(id: string) {
     updateDesktop((l) => {
-        const inDock = l.dock.find((i) => i.id === id);
-        if (inDock) return {...l, dock: l.dock.filter((i) => i.id !== id), grid: [...l.grid, inDock]};
-        const inGrid = l.grid.find((i) => i.id === id);
-        if (!inGrid || l.dock.length >= DOCK_MAX) return l;
-        return {...l, grid: l.grid.filter((i) => i.id !== id), dock: [...l.dock, inGrid]};
+        if (l.dock.some((i) => i.id === id)) return {...l, dock: l.dock.filter((i) => i.id !== id)};
+        const item = l.grid.find((i) => i.id === id);
+        if (!item || l.dock.length >= DOCK_MAX) return l;
+        return {...l, dock: [...l.dock, item]};
+    });
+}
+
+export function unpinFromDock(id: string) {
+    updateDesktop((l) => ({...l, dock: l.dock.filter((i) => i.id !== id)}));
+}
+
+// 把桌面上的图标钉到 Dock 的某个位置（已经在 Dock 里就挪到那个位置）。toIndex 超出范围放到末尾；Dock 满了就不动
+export function pinToDock(id: string, toIndex: number) {
+    updateDesktop((l) => {
+        const item = l.grid.find((i) => i.id === id);
+        if (!item) return l;
+        const already = l.dock.some((i) => i.id === id);
+        if (!already && l.dock.length >= DOCK_MAX) return l;
+        const list = l.dock.filter((i) => i.id !== id);
+        list.splice(Math.max(0, Math.min(toIndex, list.length)), 0, item);
+        return {...l, dock: list};
     });
 }
 
@@ -241,20 +260,6 @@ export function visibleItems(items: DesktopItem[], canUse: (app: AppDef) => bool
         if (i.kind === "link") return true;
         const app = APPS.find((a) => a.id === i.appId);
         return !!app && canUse(app);
-    });
-}
-
-// 把图标移到另一栏（或同一栏的另一个位置）。toIndex 超出范围时放到末尾；Dock 满了就不动
-export function moveItem(id: string, to: "grid" | "dock", toIndex: number) {
-    updateDesktop((l) => {
-        const item = [...l.grid, ...l.dock].find((i) => i.id === id);
-        if (!item) return l;
-        const from = l.dock.some((i) => i.id === id) ? "dock" : "grid";
-        if (from !== to && to === "dock" && l.dock.length >= DOCK_MAX) return l;
-        const next = {grid: l.grid.filter((i) => i.id !== id), dock: l.dock.filter((i) => i.id !== id)};
-        const list = [...next[to]];
-        list.splice(Math.max(0, Math.min(toIndex, list.length)), 0, item);
-        return {...l, ...next, [to]: list};
     });
 }
 

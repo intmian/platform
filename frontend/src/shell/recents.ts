@@ -45,6 +45,13 @@ export function recordRecent(page: Omit<RecentPage, "at">) {
     emit();
 }
 
+// 从最近里关掉一个应用：列表里去掉；外壳看到它不在最近里了，也会卸掉它在后台保留的页面
+export function closeRecent(appId: string) {
+    if (!list.some((p) => p.appId === appId)) return;
+    list = list.filter((p) => p.appId !== appId);
+    emit();
+}
+
 export function useRecents(): RecentPage[] {
     return useSyncExternalStore(
         (cb) => {

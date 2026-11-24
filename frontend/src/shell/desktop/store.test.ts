@@ -37,10 +37,25 @@ describe("reconcile", () => {
         expect(reconcile(old).widgets).toEqual(DEFAULT_WIDGETS);
     });
 
-    it("默认布局里每个应用只出现一次", () => {
+    it("默认布局：桌面上每个图标一次，Dock 里的桌面上也有", () => {
         const l = defaultLayout();
-        const ids = [...l.grid, ...l.dock].map((i) => i.id);
+        const ids = l.grid.map((i) => i.id);
         expect(new Set(ids).size).toBe(ids.length);
+        expect(l.dock.length).toBeGreaterThan(0);
+        l.dock.forEach((d) => expect(ids).toContain(d.id));
+    });
+
+    it("旧数据里只在 Dock 的图标补回桌面最前面，Dock 不变", () => {
+        const layout = {
+            v: 1 as const,
+            grid: [appItem("kana")],
+            dock: [appItem("todone"), appItem("money")],
+            hiddenApps: [],
+            widgets: [],
+        };
+        const out = reconcile(layout);
+        expect(out.grid.slice(0, 3).map((i) => i.id)).toEqual(["app:todone", "app:money", "app:kana"]);
+        expect(out.dock.map((i) => i.id)).toEqual(["app:todone", "app:money"]);
     });
 });
 
