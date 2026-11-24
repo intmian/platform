@@ -102,18 +102,24 @@ html.pf-gray-page body {
     object-fit: contain;
 }
 
-/* 站内快捷方式：应用图标 + 右下角的字块（放在方块里面，编辑时跟着一起抖） */
-.pf-link-chip {
+/* 还没加载出来的站外图标：先藏着，下面垫首字母 */
+.pf-tile img.is-loading {
     position: absolute;
-    right: 6%;
+    visibility: hidden;
+}
+
+/* 链接角标：左下角白底小圆 + 箭头（放在方块里面，编辑时跟着一起抖） */
+.pf-link-mark {
+    position: absolute;
+    left: 6%;
     bottom: 6%;
     display: flex;
     align-items: center;
     justify-content: center;
-    border-radius: 30%;
-    font-weight: 700;
-    line-height: 1;
-    box-shadow: 0 0 0 2px #fff, 0 2px 6px rgba(40, 30, 20, .18);
+    border-radius: 50%;
+    background: #fff;
+    color: #3a3631;
+    box-shadow: 0 1px 4px rgba(40, 30, 20, .28);
 }
 
 .pf-tile-add {
