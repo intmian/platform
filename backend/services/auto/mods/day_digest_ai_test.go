@@ -3,6 +3,7 @@ package mods
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"strings"
 	"testing"
 
@@ -29,60 +30,12 @@ func (f *fakeDigestChat) Chat(prompt string) (string, error) {
 	return "", errors.New("unexpected chat call")
 }
 
-func validDigestJSON() string {
-	return `{
-		"pushBrief": {
-			"weatherLine": "",
-			"overview": "今天的主线是国际安全升温、中国相关科技竞争、美国制度争议。",
-			"importantNews": [
-				{"title":"科技竞争","summary":"AI、芯片和生物医药竞争成为重点。","topic":"科技","importance":5,"sourceRefs":["nyt:1"]}
-			],
-			"keywordBriefs": [
-				{"keyword":"FSD","summary":"特斯拉在中国同时面对诉讼和本地化测试推进。","count":2,"sourceRefs":["kw:0:0","kw:0:1"]}
-			]
-		},
-		"overview": "今天的主线是国际安全升温、中国相关科技竞争、美国制度争议。",
-		"importantNews": [
-			{"title":"科技竞争","summary":"AI、芯片和生物医药竞争成为重点。","topic":"科技","importance":5,"sourceRefs":["nyt:1"]}
-		],
-		"keywordBriefs": [
-			{"keyword":"FSD","summary":"特斯拉在中国同时面对诉讼和本地化测试推进。","count":2,"sourceRefs":["kw:0:0","kw:0:1"]}
-		],
-		"topicBriefs": [
-			{"topic":"科技","summary":"科技竞争相关报道集中。","sourceRefs":["nyt:1"]}
-		],
-		"coverage": [
-			{"ref":"bbc:0","topic":"社会","inPush":false,"importance":3},
-			{"ref":"nyt:0","topic":"美国","inPush":false,"importance":3},
-			{"ref":"nyt:1","topic":"科技","inPush":true,"importance":5},
-			{"ref":"kw:0:0","topic":"FSD","inPush":true,"importance":4},
-			{"ref":"kw:0:1","topic":"FSD","inPush":true,"importance":3}
-		]
-	}`
-}
-
 func validPublicDigestJSON() string {
 	return `{
-		"pushBrief": {
-			"weatherLine": "",
-			"overview": "今天的公共新闻主线是国际安全升温、中国相关科技竞争、美国制度争议。",
-			"importantNews": [
-				{"title":"科技竞争","summary":"AI、芯片和生物医药竞争成为重点。","topic":"科技","importance":5,"sourceRefs":["nyt:1"]}
-			],
-			"keywordBriefs": []
-		},
-		"overview": "今天的公共新闻主线是国际安全升温、中国相关科技竞争、美国制度争议。",
-		"importantNews": [
-			{"title":"科技竞争","summary":"AI、芯片和生物医药竞争成为重点。","topic":"科技","importance":5,"sourceRefs":["nyt:1"]}
-		],
-		"keywordBriefs": [],
-		"topicBriefs": [
-			{"topic":"科技","summary":"科技竞争相关报道集中。","sourceRefs":["nyt:1"]}
-		],
-		"coverage": [
-			{"ref":"bbc:0","topic":"社会","inPush":false,"importance":3},
-			{"ref":"nyt:0","topic":"美国","inPush":false,"importance":3},
-			{"ref":"nyt:1","topic":"科技","inPush":true,"importance":5}
+		"overview": "AI 正加速取代科技岗位，行业裁员仍在扩大；与此同时，中国正尝试用人工智能预测政治风险。",
+		"news": [
+			{"title":"AI 加速取代科技岗位","summary":"科技行业裁员加速。","refs":["nyt:0"]},
+			{"title":"中国用 AI 预测政治风险","summary":"预测性监控技术受到关注。","refs":["nyt:1"]}
 		]
 	}`
 }
@@ -94,11 +47,11 @@ func TestGenerateDayDigestParsesJSON(t *testing.T) {
 	if err != nil {
 		t.Fatalf("generateDayDigest error = %v", err)
 	}
-	if got == nil || got.Overview == "" {
-		t.Fatalf("expected digest overview")
+	if got.Overview == "" || got.PushBrief.Overview != got.Overview {
+		t.Fatalf("page and push should share one overview: %q vs %q", got.Overview, got.PushBrief.Overview)
 	}
-	if !strings.Contains(chat.prompts[0], "500-800") {
-		t.Fatalf("prompt should include push budget, got: %s", chat.prompts[0])
+	if len(got.ImportantNews) != 2 || len(got.PushBrief.ImportantNews) != 2 || got.ImportantNews[0].SourceRefs[0] != "nyt:0" {
+		t.Fatalf("unexpected news: %#v / %#v", got.ImportantNews, got.PushBrief.ImportantNews)
 	}
 	if strings.Contains(strings.ToLower(chat.prompts[0]), "fsd") {
 		t.Fatalf("public prompt should not include keyword news, got: %s", chat.prompts[0])
@@ -106,7 +59,7 @@ func TestGenerateDayDigestParsesJSON(t *testing.T) {
 	if chat.calls != 1 {
 		t.Fatalf("keyword briefs should come from search results without extra chat calls, calls=%d", chat.calls)
 	}
-	if len(got.KeywordBriefs) != 1 || got.KeywordBriefs[0].Keyword != "fsd" || len(got.KeywordBriefs[0].SourceRefs) != 2 || got.KeywordBriefs[0].SourceRefs[1] != "kw:0:1" {
+	if len(got.KeywordBriefs) != 1 || got.KeywordBriefs[0].Keyword != "fsd" || len(got.KeywordBriefs[0].SourceRefs) != 2 {
 		t.Fatalf("unexpected keyword briefs: %#v", got.KeywordBriefs)
 	}
 	if len(got.PushBrief.KeywordBriefs) != 1 {
@@ -114,54 +67,51 @@ func TestGenerateDayDigestParsesJSON(t *testing.T) {
 	}
 }
 
-func TestGenerateDayDigestPromptIncludesWeatherLine(t *testing.T) {
+func TestGenerateDayDigestPushTakesTopNews(t *testing.T) {
 	report := sampleDigestReport()
-	setDigestTestWeather(t, report)
-	chat := &fakeDigestChat{replies: []string{validPublicDigestJSONWithWeatherLine("多云，23-33℃")}}
+	items := []string{}
+	for i := 0; i < 8; i++ {
+		items = append(items, fmt.Sprintf(`{"title":"新闻%d","summary":"细节","refs":["nyt:%d"]}`, i, i%2))
+	}
+	reply := `{"overview":"概要","news":[` + strings.Join(items, ",") + `]}`
 
-	if _, err := generateDayDigest(report, chat); err != nil {
+	got, err := generateDayDigest(report, &fakeDigestChat{replies: []string{reply}})
+	if err != nil {
 		t.Fatalf("generateDayDigest error = %v", err)
 	}
-	if !strings.Contains(chat.prompts[0], `"weatherLine": "多云，23-33℃"`) {
-		t.Fatalf("prompt should include deterministic weather line, got: %s", chat.prompts[0])
-	}
-	if strings.Contains(chat.prompts[0], "杭州") {
-		t.Fatalf("prompt weather line should not invent city, got: %s", chat.prompts[0])
+	if len(got.ImportantNews) != 8 || len(got.PushBrief.ImportantNews) != dayPushNewsCount || got.PushBrief.ImportantNews[0].Title != "新闻0" {
+		t.Fatalf("push should take the first %d of %d news, got %d", dayPushNewsCount, len(got.ImportantNews), len(got.PushBrief.ImportantNews))
 	}
 }
 
-func TestGenerateDayDigestAllowsEmptyKeywordBriefsWithoutKeywordNews(t *testing.T) {
+func TestGenerateDayDigestWeatherLineFromReport(t *testing.T) {
 	report := sampleDigestReport()
-	report.KeywordNews = nil
+	if err := json.Unmarshal([]byte(`{"daily":[{"textDay":"多云","tempMin":"23","tempMax":"33"}]}`), &report.Weather); err != nil {
+		t.Fatalf("json.Unmarshal weather error = %v", err)
+	}
+	chat := &fakeDigestChat{replies: []string{validPublicDigestJSON()}}
 
-	got, err := parseAndValidateDayDigest(report, `{
-		"pushBrief": {
-			"overview": "今天的主线是社会事件和科技竞争。",
-			"importantNews": [
-				{"title":"社会事件","summary":"BBC 报道社会事件后续。","topic":"社会","importance":4,"sourceRefs":["bbc:0"]}
-			],
-			"keywordBriefs": []
-		},
-		"overview": "今天的主线是社会事件和科技竞争。",
-		"importantNews": [
-			{"title":"社会事件","summary":"BBC 报道社会事件后续。","topic":"社会","importance":4,"sourceRefs":["bbc:0"]},
-			{"title":"科技竞争","summary":"NYT 报道科技行业趋势。","topic":"科技","importance":5,"sourceRefs":["nyt:1"]}
-		],
-		"keywordBriefs": [],
-		"topicBriefs": [
-			{"topic":"社会","summary":"社会事件相关报道。","sourceRefs":["bbc:0"]},
-			{"topic":"科技","summary":"科技竞争相关报道。","sourceRefs":["nyt:1"]}
-		],
-		"coverage": [
-			{"ref":"bbc:0","topic":"社会","inPush":true,"importance":4},
-			{"ref":"nyt:1","topic":"科技","inPush":true,"importance":5}
-		]
-	}`)
+	got, err := generateDayDigest(report, chat)
+	if err != nil {
+		t.Fatalf("generateDayDigest error = %v", err)
+	}
+	if got.PushBrief.WeatherLine != "多云，23-33℃" {
+		t.Fatalf("weather line should come from report, got %q", got.PushBrief.WeatherLine)
+	}
+	if strings.Contains(chat.prompts[0], "多云") {
+		t.Fatalf("weather should not be sent to the AI, got: %s", chat.prompts[0])
+	}
+}
+
+func TestGenerateDayDigestDropsInvalidRefs(t *testing.T) {
+	report := sampleDigestReport()
+	got, err := parseAndValidateDayDigest(report, `{"overview":"概要","news":[{"title":"t","summary":"s","refs":["nyt:1","nyt:9","bbc:0"]}]}`)
 	if err != nil {
 		t.Fatalf("parseAndValidateDayDigest error = %v", err)
 	}
-	if got == nil || len(got.KeywordBriefs) != 0 {
-		t.Fatalf("expected digest with empty keyword briefs, got %#v", got)
+	refs := got.ImportantNews[0].SourceRefs
+	if len(refs) != 2 || refs[0] != "nyt:1" || refs[1] != "bbc:0" {
+		t.Fatalf("unexpected refs: %#v", refs)
 	}
 }
 
@@ -178,74 +128,32 @@ func TestGenerateDayDigestRepairsInvalidFirstReply(t *testing.T) {
 	if !strings.Contains(chat.prompts[1], "修复") {
 		t.Fatalf("second prompt should be repair prompt: %s", chat.prompts[1])
 	}
-	if strings.Contains(strings.ToLower(chat.prompts[1]), "fsd") {
-		t.Fatalf("public repair prompt should not include keyword news, got: %s", chat.prompts[1])
+}
+
+func TestGenerateDayDigestRepairsKeywordRefsInNews(t *testing.T) {
+	report := sampleDigestReport()
+	bad := strings.Replace(validPublicDigestJSON(), `"refs":["nyt:0"]`, `"refs":["nyt:0","kw:0:0"]`, 1)
+	chat := &fakeDigestChat{replies: []string{bad, validPublicDigestJSON()}}
+
+	if _, err := generateDayDigest(report, chat); err != nil {
+		t.Fatalf("generateDayDigest error = %v", err)
+	}
+	if chat.calls != 2 {
+		t.Fatalf("expected keyword ref in news to trigger repair, calls=%d", chat.calls)
 	}
 }
 
-func TestGenerateDayDigestRepairsKeywordRefsOutsideKeywordBriefs(t *testing.T) {
+func TestGenerateDayDigestRepairsEmptyOverview(t *testing.T) {
 	report := sampleDigestReport()
-	chat := &fakeDigestChat{replies: []string{validPublicDigestJSONWithKeywordInTopicBrief(), validPublicDigestJSON()}}
+	empty := `{"overview":"","news":[{"title":"t","summary":"s","refs":["nyt:0"]}]}`
+	chat := &fakeDigestChat{replies: []string{empty, validPublicDigestJSON()}}
 
 	got, err := generateDayDigest(report, chat)
 	if err != nil {
 		t.Fatalf("generateDayDigest error = %v", err)
 	}
-	if got == nil {
-		t.Fatal("expected repaired digest")
-	}
-	if chat.calls != 2 {
-		t.Fatalf("expected keyword topic ref to trigger repair, calls=%d", chat.calls)
-	}
-}
-
-func TestGenerateDayDigestRejectsNonKeywordRefsInKeywordBriefs(t *testing.T) {
-	report := sampleDigestReport()
-
-	got, err := parseAndValidateDayDigest(report, strings.Replace(validDigestJSON(), `"sourceRefs":["kw:0:0","kw:0:1"]`, `"sourceRefs":["nyt:1"]`, 1))
-	if err == nil {
-		t.Fatalf("expected keyword brief validation error")
-	}
-	if got != nil {
-		t.Fatalf("expected nil digest, got %#v", got)
-	}
-}
-
-func TestGenerateDayDigestRepairsEmptyPushBrief(t *testing.T) {
-	report := sampleDigestReport()
-	chat := &fakeDigestChat{replies: []string{validPublicDigestJSONWithEmptyPushBrief(), validPublicDigestJSON()}}
-
-	got, err := generateDayDigest(report, chat)
-	if err != nil {
-		t.Fatalf("generateDayDigest error = %v", err)
-	}
-	if got == nil {
-		t.Fatal("expected repaired digest")
-	}
-	if chat.calls != 2 {
-		t.Fatalf("expected empty push brief to trigger repair, calls=%d", chat.calls)
-	}
-	if got.PushBrief.Overview == "" || len(got.PushBrief.ImportantNews) == 0 {
-		t.Fatalf("expected repaired push brief, got %#v", got.PushBrief)
-	}
-}
-
-func TestGenerateDayDigestRepairsInventedWeatherLineWhenInputEmpty(t *testing.T) {
-	report := sampleDigestReport()
-	chat := &fakeDigestChat{replies: []string{validPublicDigestJSONWithWeatherLine("多云，23-33℃"), validPublicDigestJSON()}}
-
-	got, err := generateDayDigest(report, chat)
-	if err != nil {
-		t.Fatalf("generateDayDigest error = %v", err)
-	}
-	if got == nil {
-		t.Fatal("expected repaired digest")
-	}
-	if chat.calls != 2 {
-		t.Fatalf("expected invented weather line to trigger repair, calls=%d", chat.calls)
-	}
-	if got.PushBrief.WeatherLine != "" {
-		t.Fatalf("expected repaired weather line to stay empty, got %q", got.PushBrief.WeatherLine)
+	if chat.calls != 2 || got.PushBrief.Overview == "" {
+		t.Fatalf("expected empty overview to trigger repair, calls=%d", chat.calls)
 	}
 }
 
@@ -282,57 +190,4 @@ func TestGenerateDayDigestSummarySetupFailureSetsFallback(t *testing.T) {
 	if report.Summary != dayDigestFailureSummary {
 		t.Fatalf("expected deterministic failure summary, got %q", report.Summary)
 	}
-}
-
-func setDigestTestWeather(t *testing.T, report *DayReport) {
-	t.Helper()
-	if err := json.Unmarshal([]byte(`{"daily":[{"textDay":"多云","tempMin":"23","tempMax":"33"}]}`), &report.Weather); err != nil {
-		t.Fatalf("json.Unmarshal weather error = %v", err)
-	}
-}
-
-func validDigestJSONWithEmptyPushBrief() string {
-	return strings.Replace(validDigestJSON(), `"pushBrief": {
-			"weatherLine": "",
-			"overview": "今天的主线是国际安全升温、中国相关科技竞争、美国制度争议。",
-			"importantNews": [
-				{"title":"科技竞争","summary":"AI、芯片和生物医药竞争成为重点。","topic":"科技","importance":5,"sourceRefs":["nyt:1"]}
-			],
-			"keywordBriefs": [
-				{"keyword":"FSD","summary":"特斯拉在中国同时面对诉讼和本地化测试推进。","count":2,"sourceRefs":["kw:0:0","kw:0:1"]}
-			]
-		}`, `"pushBrief": {
-			"weatherLine": "",
-			"overview": "",
-			"importantNews": [],
-			"keywordBriefs": []
-		}`, 1)
-}
-
-func validPublicDigestJSONWithEmptyPushBrief() string {
-	return strings.Replace(validPublicDigestJSON(), `"pushBrief": {
-			"weatherLine": "",
-			"overview": "今天的公共新闻主线是国际安全升温、中国相关科技竞争、美国制度争议。",
-			"importantNews": [
-				{"title":"科技竞争","summary":"AI、芯片和生物医药竞争成为重点。","topic":"科技","importance":5,"sourceRefs":["nyt:1"]}
-			],
-			"keywordBriefs": []
-		}`, `"pushBrief": {
-			"weatherLine": "",
-			"overview": "",
-			"importantNews": [],
-			"keywordBriefs": []
-		}`, 1)
-}
-
-func validDigestJSONWithWeatherLine(weatherLine string) string {
-	return strings.Replace(validDigestJSON(), `"weatherLine": ""`, `"weatherLine": "`+weatherLine+`"`, 1)
-}
-
-func validPublicDigestJSONWithWeatherLine(weatherLine string) string {
-	return strings.Replace(validPublicDigestJSON(), `"weatherLine": ""`, `"weatherLine": "`+weatherLine+`"`, 1)
-}
-
-func validPublicDigestJSONWithKeywordInTopicBrief() string {
-	return strings.Replace(validPublicDigestJSON(), `"sourceRefs":["nyt:1"]`, `"sourceRefs":["nyt:1","kw:0:0"]`, 1)
 }

@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"strings"
-	"time"
 )
 
 type digestChat interface {
@@ -14,23 +13,31 @@ type digestChat interface {
 
 const dayDigestFailureSummary = "今日摘要生成失败，原始日报已保存，请打开完整日报查看。"
 
-type dayDigestPromptInput struct {
-	WeatherLine string             `json:"weatherLine,omitempty"`
-	BBC         []digestPromptNews `json:"bbc"`
-	NYT         []digestPromptNews `json:"nyt"`
-}
+// dayPushNewsCount 是推送里放几条重要新闻：AI 只给一份按重要性排好的列表，推送取前几条。
+const dayPushNewsCount = 5
 
-type dayPublicDigestPromptInput struct {
-	WeatherLine string             `json:"weatherLine,omitempty"`
-	BBC         []digestPromptNews `json:"bbc"`
-	NYT         []digestPromptNews `json:"nyt"`
+type dayDigestPromptInput struct {
+	BBC []digestPromptNews `json:"bbc"`
+	NYT []digestPromptNews `json:"nyt"`
 }
 
 type digestPromptNews struct {
 	Ref         string `json:"ref"`
 	Title       string `json:"title"`
 	Description string `json:"description,omitempty"`
-	PubDate     string `json:"pubDate,omitempty"`
+}
+
+// dayDigestAIOutput 是让 AI 返回的最小结构，解析后再展开成 DayDigest。
+// 概要只有一份，推送和页面共用；天气行由代码填，不经过 AI。
+type dayDigestAIOutput struct {
+	Overview string            `json:"overview"`
+	News     []dayDigestAINews `json:"news"`
+}
+
+type dayDigestAINews struct {
+	Title   string   `json:"title"`
+	Summary string   `json:"summary"`
+	Refs    []string `json:"refs"`
 }
 
 func buildDayDigestPromptInput(report *DayReport) dayDigestPromptInput {
@@ -39,14 +46,12 @@ func buildDayDigestPromptInput(report *DayReport) dayDigestPromptInput {
 		return input
 	}
 
-	input.WeatherLine = buildDayDigestWeatherLine(report)
 	input.BBC = make([]digestPromptNews, 0, len(report.BbcNews))
 	for i, item := range report.BbcNews {
 		input.BBC = append(input.BBC, digestPromptNews{
 			Ref:         fmt.Sprintf("bbc:%d", i),
 			Title:       item.Title,
 			Description: item.Description,
-			PubDate:     formatDigestPromptTime(item.PubDate),
 		})
 	}
 
@@ -56,20 +61,10 @@ func buildDayDigestPromptInput(report *DayReport) dayDigestPromptInput {
 			Ref:         fmt.Sprintf("nyt:%d", i),
 			Title:       item.Title,
 			Description: item.Description,
-			PubDate:     formatDigestPromptTime(item.PubDate),
 		})
 	}
 
 	return input
-}
-
-func buildDayPublicDigestPromptInput(report *DayReport) dayPublicDigestPromptInput {
-	input := buildDayDigestPromptInput(report)
-	return dayPublicDigestPromptInput{
-		WeatherLine: input.WeatherLine,
-		BBC:         input.BBC,
-		NYT:         input.NYT,
-	}
 }
 
 func buildDayDigestWeatherLine(report *DayReport) string {
@@ -96,62 +91,36 @@ func buildDayDigestWeatherLine(report *DayReport) string {
 	return ""
 }
 
-func formatDigestPromptTime(t time.Time) string {
-	if t.IsZero() {
-		return ""
-	}
-	return t.Format(time.RFC3339)
-}
-
-func buildDayDigestPrompt(input dayPublicDigestPromptInput) string {
-	payload, err := json.MarshalIndent(input, "", "  ")
+func buildDayDigestPrompt(input dayDigestPromptInput) string {
+	// 紧凑 JSON，省输入 token
+	payload, err := json.Marshal(input)
 	if err != nil {
 		payload = []byte("{}")
 	}
-	return `请作为每日新闻整合器，基于下面 JSON 新闻输入生成结构化日报公共 digest。
+	return `你是中文新闻编辑，把下面的外媒新闻整理成给中国读者看的今日要闻，读者在手机上看。
 
-要求：
-1. 只返回一个 JSON 对象，不要 Markdown、代码块、解释文字。
-2. 输入为 BBC/NYT 公共新闻；overview、importantNews 都只能基于本输入。
-3. 推送 brief 面向中国普通读者，整体信息密度为 500-800 字；主 digest 可以更完整。
-4. importantNews 聚合最重要的 BBC/NYT 事实，sourceRefs 只能使用输入里已有的 bbc:n 或 nyt:n。
-5. topicBriefs 必须返回空数组（页面已不展示主题，不要生成）。
-6. keywordBriefs 和 pushBrief.keywordBriefs 必须返回空数组。
-7. coverage 必须列出输入中被识别的来源 ref，ref 只能使用输入里已有的 bbc:n 或 nyt:n。
-8. pushBrief.weatherLine 必须复用输入 weatherLine；输入没有 weatherLine 时留空，不要编造天气。
-9. 语言克制、准确，不做评价，不编造输入中没有的事实。
-10. 字数上限（手机上阅读，宁短勿长）：importantNews 的 title 不超过 18 字、summary 不超过 60 字；overview 不超过 150 字，pushBrief.overview 不超过 100 字。title 直接说事实，不加"重磅""突发"之类的修饰。
+只返回一个 JSON 对象，不要代码块或解释：
+{"overview":"string","news":[{"title":"string","summary":"string","refs":["bbc:0"]}]}
 
-返回 JSON schema：
-{
-  "pushBrief": {
-    "weatherLine": "",
-    "overview": "string",
-    "importantNews": [{"title":"string","summary":"string","topic":"string","importance":1,"sourceRefs":["nyt:0"]}],
-    "keywordBriefs": []
-  },
-  "overview": "string",
-  "importantNews": [{"title":"string","summary":"string","topic":"string","importance":1,"sourceRefs":["bbc:0"]}],
-  "keywordBriefs": [],
-  "topicBriefs": [],
-  "coverage": [{"ref":"bbc:0","topic":"string","inPush":true,"importance":1}]
-}
+overview（今日概览）：
+- 150-220 字，一段话，2-4 句。先讲当天最重要的一两件事，再用一两句带过其他值得知道的动态。
+- 直接讲发生了什么，像新闻导语。不要写"本轮新闻""BBC 和纽约时报报道了""新闻主要集中在"这类描述来源或输入的话，也不要出现媒体名。
+- 示意格式（内容是虚构的，不要照抄）："美联储宣布降息 25 个基点，为年内第二次，并暗示后续节奏会放缓；欧洲市场随之走高。中东方面，停火谈判在开罗重启，但双方在撤军时间表上仍有分歧。另外，日本首相宣布提前解散众院，大选定于下月举行。"
+
+news（重要新闻）：
+- 6-10 条，按重要性从高到低排，前 5 条会单独推送。同一件事的多篇报道合成一条。
+- title 不超过 18 字，直接说事实，不加"重磅""突发"之类的修饰；summary 不超过 60 字，补充关键细节。
+- refs 写这条依据的输入 ref（bbc:n 或 nyt:n），只能用输入里有的。
+
+通用：语言克制准确，不评价，不编造输入里没有的事实。
 
 新闻输入：
 ` + string(payload)
 }
 
 func buildDayDigestRepairPrompt(originalPrompt, response string, validationErr error) string {
-	return fmt.Sprintf(`请修复上一轮日报 digest 输出，使其成为可解析且满足 schema 的 JSON 对象。
-
-修复要求：
-1. 只返回修复后的 JSON 对象，不要 Markdown、代码块、解释文字。
-2. overview、importantNews、coverage 在规范化后都不能为空；keywordBriefs 必须为空数组。
-3. pushBrief.overview 和 pushBrief.importantNews 在规范化后不能为空；pushBrief.keywordBriefs 必须为空数组。
-4. pushBrief.weatherLine 必须复用原始输入 weatherLine；输入为空时留空。
-5. keywordBriefs 和 pushBrief.keywordBriefs 必须返回空数组。
-6. importantNews 的 sourceRefs 只能使用 bbc:n 或 nyt:n；topicBriefs 必须返回空数组。
-7. 所有 sourceRefs 和 coverage.ref 必须来自原始输入中的 ref。
+	return fmt.Sprintf(`上一轮输出不符合要求，请修复后只返回 JSON 对象，不要代码块或解释。
+overview 不能为空；news 至少一条，每条的 refs 只能用原始输入里的 bbc:n 或 nyt:n。
 
 校验错误：
 %v
@@ -170,12 +139,37 @@ func parseAndValidateDayDigest(report *DayReport, raw string) (*DayDigest, error
 	}
 	raw = trimJSONEnvelope(raw)
 
-	var digest DayDigest
-	if err := json.Unmarshal([]byte(raw), &digest); err != nil {
+	var out dayDigestAIOutput
+	if err := json.Unmarshal([]byte(raw), &out); err != nil {
 		return nil, errors.Join(errors.New("day digest json unmarshal error"), err)
 	}
 
-	return validateDayDigest(report, &digest)
+	return validateDayDigest(report, expandDayDigest(report, out))
+}
+
+// expandDayDigest 把 AI 的最小输出展开成页面和推送用的 DayDigest。
+func expandDayDigest(report *DayReport, out dayDigestAIOutput) *DayDigest {
+	news := make([]DigestItem, 0, len(out.News))
+	for _, item := range out.News {
+		news = append(news, DigestItem{Title: item.Title, Summary: item.Summary, SourceRefs: item.Refs})
+	}
+	news = normalizeDigestItems(report, news)
+	overview := strings.TrimSpace(out.Overview)
+
+	pushNews := news
+	if len(pushNews) > dayPushNewsCount {
+		pushNews = pushNews[:dayPushNewsCount]
+	}
+
+	return &DayDigest{
+		PushBrief: DailyPushBrief{
+			WeatherLine:   buildDayDigestWeatherLine(report),
+			Overview:      overview,
+			ImportantNews: append([]DigestItem(nil), pushNews...),
+		},
+		Overview:      overview,
+		ImportantNews: news,
+	}
 }
 
 func validateDayDigest(report *DayReport, digest *DayDigest) (*DayDigest, error) {
@@ -187,36 +181,14 @@ func validateDayDigest(report *DayReport, digest *DayDigest) (*DayDigest, error)
 		return nil, errors.New("day digest overview is empty")
 	}
 	if len(normalized.ImportantNews) == 0 {
-		return nil, errors.New("day digest importantNews is empty")
+		return nil, errors.New("day digest news is empty")
 	}
-	if err := validatePublicDigestItems(normalized.ImportantNews, "day digest importantNews"); err != nil {
+	if err := validatePublicDigestItems(normalized.ImportantNews, "day digest news"); err != nil {
 		return nil, err
 	}
 	if err := validateKeywordBriefs(normalized.KeywordBriefs, "day digest keywordBriefs"); err != nil {
 		return nil, err
 	}
-	if err := validateTopicBriefs(normalized.TopicBriefs, "day digest topicBriefs"); err != nil {
-		return nil, err
-	}
-	if len(normalized.Coverage) == 0 {
-		return nil, errors.New("day digest coverage is empty")
-	}
-	if strings.TrimSpace(normalized.PushBrief.Overview) == "" {
-		return nil, errors.New("day digest pushBrief overview is empty")
-	}
-	if len(normalized.PushBrief.ImportantNews) == 0 {
-		return nil, errors.New("day digest pushBrief importantNews is empty")
-	}
-	if err := validatePublicDigestItems(normalized.PushBrief.ImportantNews, "day digest pushBrief importantNews"); err != nil {
-		return nil, err
-	}
-	if err := validateKeywordBriefs(normalized.PushBrief.KeywordBriefs, "day digest pushBrief keywordBriefs"); err != nil {
-		return nil, err
-	}
-	if expectedWeatherLine := buildDayDigestWeatherLine(report); strings.TrimSpace(normalized.PushBrief.WeatherLine) != expectedWeatherLine {
-		return nil, errors.New("day digest pushBrief weatherLine does not match input")
-	}
-
 	return normalized, nil
 }
 
@@ -231,32 +203,12 @@ func validatePublicDigestItems(items []DigestItem, field string) error {
 	return nil
 }
 
-func validateTopicBriefs(briefs []TopicBrief, field string) error {
-	for _, brief := range briefs {
-		for _, ref := range brief.SourceRefs {
-			if isKeywordSourceRef(ref) {
-				return fmt.Errorf("%s contains keyword source ref %s", field, ref)
-			}
-		}
-	}
-	return nil
-}
-
 func validateKeywordBriefs(briefs []KeywordBrief, field string) error {
 	for _, brief := range briefs {
 		for _, ref := range brief.SourceRefs {
 			if !isKeywordSourceRef(ref) {
 				return fmt.Errorf("%s contains non-keyword source ref %s", field, ref)
 			}
-		}
-	}
-	return nil
-}
-
-func validateCoverageRefs(coverage []DigestCoverage, field string, valid func(string) bool) error {
-	for _, item := range coverage {
-		if !valid(item.Ref) {
-			return fmt.Errorf("%s contains invalid source ref %s", field, item.Ref)
 		}
 	}
 	return nil
@@ -305,7 +257,7 @@ func generateDayDigest(report *DayReport, chat digestChat) (*DayDigest, error) {
 }
 
 func generatePublicDayDigest(report *DayReport, chat digestChat) (*DayDigest, error) {
-	prompt := buildDayDigestPrompt(buildDayPublicDigestPromptInput(report))
+	prompt := buildDayDigestPrompt(buildDayDigestPromptInput(report))
 	response, err := chat.Chat(prompt)
 	if err == nil {
 		digest, parseErr := parseAndValidateDayDigest(report, response)

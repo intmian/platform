@@ -19,7 +19,8 @@ export function DayView({report}: { report: ReportData }) {
     const digest = report.digest;
     // 页面上用完整版的重点（推送里那份是精简版），没有时退回推送版
     const important = digest?.importantNews?.length ? digest.importantNews : digest?.pushBrief?.importantNews || [];
-    const overview = digest?.overview || digest?.pushBrief?.overview || "";
+    // 概要优先用推送那份：11 月 25 日前的旧日报里，主 overview 常写成"本轮 BBC 和纽约时报……"这类描述来源的话；新日报两份是同一段
+    const overview = digest?.pushBrief?.overview || digest?.overview || "";
 
     return <div className="rp-day">
         <WeatherStrip report={report}/>
