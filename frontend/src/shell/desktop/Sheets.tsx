@@ -5,8 +5,10 @@ import {APPS, appById, canUseApp} from "../apps";
 import {AppGlyph, LinkGlyph} from "../AppTile";
 import {useRecents} from "../recents";
 import {useAuth} from "../../common/loginCtx";
+import {WIDGETS} from "./Widgets";
 import {
     addLink,
+    addWidget,
     DesktopItem,
     DesktopLayout,
     DOCK_MAX,
@@ -114,6 +116,11 @@ export function AddSheet({open, layout, onClose}: { open: boolean; layout: Deskt
     const neverPlaced = APPS.filter((a) => a.hiddenByDefault && !placedApps.has(a.id) && !layout.hiddenApps.includes(a.id)
         && canUseApp(a, (p) => auth.loginInfo.hasPermission(p)));
 
+    const missingWidgets = WIDGETS.filter((w) => {
+        const app = appById(w.appId);
+        return !layout.widgets.includes(w.id) && !!app && canUseApp(app, (p) => auth.loginInfo.hasPermission(p));
+    });
+
     const addUrl = () => {
         const u = normalizeUrl(url);
         if (!u) return setError("网址格式不对");
@@ -145,6 +152,17 @@ export function AddSheet({open, layout, onClose}: { open: boolean; layout: Deskt
                 <span className="pf-add-text">{a.name}</span>
                 <Button size="small" icon={<PlusOutlined/>} onClick={() => restoreApp(a.id)}>添加</Button>
             </div>)}
+        </section>}
+        {missingWidgets.length > 0 && <section className="pf-add-section">
+            <div className="pf-add-label">小组件</div>
+            {missingWidgets.map((w) => {
+                const app = appById(w.appId)!;
+                return <div key={w.id} className="pf-add-row">
+                    <AppGlyph app={app} size={32}/>
+                    <span className="pf-add-text">{w.name}<small>{app.name}</small></span>
+                    <Button size="small" icon={<PlusOutlined/>} onClick={() => addWidget(w.id)}>添加</Button>
+                </div>;
+            })}
         </section>}
         <section className="pf-add-section">
             <div className="pf-add-label">网址</div>

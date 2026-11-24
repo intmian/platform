@@ -26,9 +26,11 @@ export interface DesktopLayout {
     grid: DesktopItem[];
     dock: DesktopItem[];
     hiddenApps: string[]; // 被移出桌面的应用；新加的应用不在这里，会自动出现
+    widgets: string[];    // 桌面上的小组件，按显示顺序；旧数据没有这个字段时用默认
 }
 
 export const DOCK_MAX = 5;
+export const DEFAULT_WIDGETS = ["today", "books"];
 
 interface State {
     user: string;
@@ -40,6 +42,8 @@ let state: State = {user: "", layout: null, version: 0};
 const listeners = new Set<() => void>();
 let saveTimer: number | undefined;
 let saving = false;
+// 刚添加的图标：桌面渲染它时播一次“跳出”动画，然后清掉
+let justAdded: string | null = null;
 
 function cacheKey(user: string) {
     return `shell:desktop:${user}`;
@@ -69,6 +73,7 @@ export function defaultLayout(): DesktopLayout {
             {id: "link:blog", kind: "link", title: "博客", url: "https://www.intmian.com"},
         ],
         hiddenApps: [],
+        widgets: [...DEFAULT_WIDGETS],
     };
 }
 
@@ -77,15 +82,16 @@ function isLayout(x: unknown): x is DesktopLayout {
     return !!l && l.v === 1 && Array.isArray(l.grid) && Array.isArray(l.dock) && Array.isArray(l.hiddenApps);
 }
 
-// 清单里新加的应用补到桌面末尾；已经不存在的应用去掉
+// 清单里新加的应用补到桌面末尾；已经不存在的应用去掉；旧数据补上小组件列表
 export function reconcile(layout: DesktopLayout): DesktopLayout {
+    const widgets = Array.isArray(layout.widgets) ? layout.widgets : [...DEFAULT_WIDGETS];
     const known = new Set(APPS.map((a) => a.id));
     const keep = (i: DesktopItem) => i.kind === "link" || known.has(i.appId);
     const grid = layout.grid.filter(keep);
     const dock = layout.dock.filter(keep);
     const placed = new Set([...grid, ...dock].filter((i): i is AppItem => i.kind === "app").map((i) => i.appId));
     const missing = APPS.filter((a) => !a.hiddenByDefault && !placed.has(a.id) && !layout.hiddenApps.includes(a.id));
-    return {...layout, grid: [...grid, ...missing.map((a) => appItem(a.id))], dock};
+    return {...layout, grid: [...grid, ...missing.map((a) => appItem(a.id))], dock, widgets};
 }
 
 export async function loadDesktop(user: string) {
@@ -177,7 +183,9 @@ export function isOnDesktop(layout: DesktopLayout, url: string) {
 }
 
 export function addLink(title: string, url: string) {
-    updateDesktop((l) => ({...l, grid: [...l.grid, {id: newLinkId(), kind: "link", title, url}]}));
+    const id = newLinkId();
+    justAdded = id;
+    updateDesktop((l) => ({...l, grid: [...l.grid, {id, kind: "link", title, url}]}));
 }
 
 export function removeItem(id: string) {
@@ -193,6 +201,7 @@ export function removeItem(id: string) {
 }
 
 export function restoreApp(appId: string) {
+    justAdded = `app:${appId}`;
     updateDesktop((l) => ({
         ...l,
         hiddenApps: l.hiddenApps.filter((a) => a !== appId),
@@ -233,4 +242,45 @@ export function visibleItems(items: DesktopItem[], canUse: (app: AppDef) => bool
         const app = APPS.find((a) => a.id === i.appId);
         return !!app && canUse(app);
     });
+}
+
+// 把图标移到另一栏（或同一栏的另一个位置）。toIndex 超出范围时放到末尾；Dock 满了就不动
+export function moveItem(id: string, to: "grid" | "dock", toIndex: number) {
+    updateDesktop((l) => {
+        const item = [...l.grid, ...l.dock].find((i) => i.id === id);
+        if (!item) return l;
+        const from = l.dock.some((i) => i.id === id) ? "dock" : "grid";
+        if (from !== to && to === "dock" && l.dock.length >= DOCK_MAX) return l;
+        const next = {grid: l.grid.filter((i) => i.id !== id), dock: l.dock.filter((i) => i.id !== id)};
+        const list = [...next[to]];
+        list.splice(Math.max(0, Math.min(toIndex, list.length)), 0, item);
+        return {...l, ...next, [to]: list};
+    });
+}
+
+export function removeWidget(id: string) {
+    updateDesktop((l) => ({...l, widgets: l.widgets.filter((w) => w !== id)}));
+}
+
+export function addWidget(id: string) {
+    updateDesktop((l) => (l.widgets.includes(id) ? l : {...l, widgets: [...l.widgets, id]}));
+}
+
+export function reorderWidgets(fromId: string, toId: string) {
+    updateDesktop((l) => {
+        const list = [...l.widgets];
+        const from = list.indexOf(fromId);
+        const to = list.indexOf(toId);
+        if (from < 0 || to < 0) return l;
+        const [w] = list.splice(from, 1);
+        list.splice(to, 0, w);
+        return {...l, widgets: list};
+    });
+}
+
+
+export function takeJustAdded(id: string): boolean {
+    if (justAdded !== id) return false;
+    justAdded = null;
+    return true;
 }

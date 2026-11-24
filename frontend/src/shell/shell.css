@@ -492,8 +492,14 @@ body {
         left: 12px;
         right: 12px;
         transform: none;
-        justify-content: space-around;
-        border-radius: 30px;
+        justify-content: space-evenly;
+        gap: 4px;
+        padding: 10px 8px;
+        border-radius: 28px;
+    }
+
+    .pf-dock .pf-icon {
+        flex: none;
     }
 }
 
@@ -906,4 +912,312 @@ body {
 .pf-add-text small {
     font-size: 12px;
     color: var(--pf-text-3);
+}
+
+/* ---------- 细节：角标、小组件编辑、Dock 最近、动画 ---------- */
+.pf-icon-art {
+    position: relative;
+    display: inline-flex;
+    line-height: 0;
+}
+
+.pf-badge {
+    position: absolute;
+    top: -6px;
+    right: -7px;
+    min-width: 20px;
+    height: 20px;
+    padding: 0 6px;
+    box-sizing: border-box;
+    border-radius: 10px;
+    background: #e5484d;
+    color: #fff;
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 20px;
+    text-align: center;
+    box-shadow: 0 0 0 2px var(--desk-bg), 0 2px 6px rgba(200, 40, 40, .3);
+    font-variant-numeric: tabular-nums;
+    animation: pf-pop .35s cubic-bezier(.3, 1.6, .5, 1) both;
+}
+
+/* 电脑上鼠标移到图标、卡片上轻微浮起 */
+@media (hover: hover) {
+    .pf-desktop:not(.is-editing) .pf-icon-btn:hover .pf-tile,
+    .pf-dock-recent:hover .pf-tile {
+        transform: translateY(-3px);
+        box-shadow: 0 8px 18px rgba(40, 30, 20, .16), inset 0 0 0 1px rgba(0, 0, 0, .04);
+    }
+
+    .pf-desktop:not(.is-editing) .pf-widget[role="button"]:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 2px 4px rgba(60, 40, 20, .06), 0 16px 36px rgba(60, 40, 20, .1);
+    }
+
+    .pf-widget-list li:hover,
+    .pf-book:hover .pf-book-name {
+        color: var(--pf-primary);
+    }
+}
+
+.pf-widget {
+    transition: transform .2s ease, box-shadow .2s ease;
+}
+
+.pf-widget-list li {
+    cursor: pointer;
+    transition: color .15s ease;
+}
+
+/* 小组件编辑：和图标一样晃，左上角减号 */
+.pf-widget-slot {
+    position: relative;
+    min-width: 0;
+}
+
+.pf-widgets.is-editing .pf-widget-slot {
+    touch-action: none;
+    cursor: grab;
+}
+
+.pf-widgets.is-editing .pf-widget {
+    animation: pf-wiggle-soft .38s ease-in-out infinite;
+}
+
+.pf-widgets.is-editing .pf-widget-slot:nth-child(2n) .pf-widget {
+    animation-delay: -.15s;
+}
+
+.pf-widget-slot.is-dragging {
+    z-index: 10;
+}
+
+.pf-widget-slot.is-dragging .pf-widget {
+    animation: none;
+    box-shadow: 0 18px 40px rgba(40, 30, 20, .2);
+}
+
+@keyframes pf-wiggle-soft {
+    0% { transform: rotate(-.5deg); }
+    50% { transform: rotate(.5deg); }
+    100% { transform: rotate(-.5deg); }
+}
+
+.pf-widget-remove {
+    position: absolute;
+    top: -8px;
+    left: -8px;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    border: 2px solid #fff;
+    background: #6d675f;
+    color: #fff;
+    font-size: 11px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    padding: 0;
+    z-index: 2;
+    animation: pf-pop .25s cubic-bezier(.3, 1.6, .5, 1) both;
+}
+
+.pf-icon-remove {
+    animation: pf-pop .25s cubic-bezier(.3, 1.6, .5, 1) both;
+}
+
+/* 账本小组件 */
+.pf-books {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 10px;
+}
+
+.pf-book {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-rows: auto auto;
+    column-gap: 10px;
+    cursor: pointer;
+}
+
+.pf-book-name {
+    font-size: 13px;
+    color: var(--desk-ink-2);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    transition: color .15s ease;
+}
+
+.pf-book-value {
+    grid-row: 2;
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--desk-ink);
+    font-variant-numeric: tabular-nums;
+}
+
+.pf-book-change {
+    grid-row: 1 / span 2;
+    grid-column: 2;
+    align-self: end;
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
+    padding-bottom: 3px;
+}
+
+.pf-book-change.is-up { color: #2f8a4e; }
+.pf-book-change.is-down { color: #c4432b; }
+
+/* 加载中的占位条 */
+.pf-skeleton {
+    height: 12px;
+    margin-top: 8px;
+    border-radius: 6px;
+    background: linear-gradient(90deg, rgba(0, 0, 0, .05) 25%, rgba(0, 0, 0, .09) 50%, rgba(0, 0, 0, .05) 75%);
+    background-size: 200% 100%;
+    animation: pf-shimmer 1.2s linear infinite;
+}
+
+@keyframes pf-shimmer {
+    from { background-position: 200% 0; }
+    to { background-position: -200% 0; }
+}
+
+/* Dock：右侧是最近用过的应用，中间一条竖线隔开 */
+.pf-dock-sep {
+    width: 1px;
+    align-self: stretch;
+    margin: 6px 2px;
+    background: rgba(0, 0, 0, .12);
+}
+
+.pf-dock-recent {
+    border: 0;
+    padding: 2px;
+    background: none;
+    cursor: pointer;
+    line-height: 0;
+    -webkit-tap-highlight-color: transparent;
+    animation: pf-fade .3s ease both;
+}
+
+.pf-dock-recent .pf-tile {
+    transition: transform .16s ease, box-shadow .16s ease;
+}
+
+.pf-dock-recent:active .pf-tile {
+    transform: scale(.93);
+}
+
+.pf-dock.is-empty {
+    min-width: 220px;
+    min-height: 88px;
+}
+
+.pf-desktop.is-editing .pf-dock {
+    box-shadow: 0 12px 40px rgba(60, 40, 20, .12), inset 0 0 0 1.5px rgba(0, 0, 0, .08);
+}
+
+.pf-desktop.is-editing .pf-dock.is-over {
+    background: rgba(255, 255, 255, .85);
+    box-shadow: 0 12px 40px rgba(60, 40, 20, .14), inset 0 0 0 2px var(--pf-primary);
+}
+
+.pf-grid {
+    border-radius: 18px;
+    transition: background .15s ease;
+}
+
+.pf-grid.is-over {
+    background: rgba(255, 255, 255, .35);
+}
+
+/* 第一次进桌面：小组件和图标依次浮现 */
+@keyframes pf-rise-in {
+    from { opacity: 0; transform: translateY(10px) scale(.96); }
+}
+
+.pf-desktop.is-entering .pf-widget-slot,
+.pf-desktop.is-entering .pf-grid > .pf-icon {
+    animation: pf-rise-in .45s cubic-bezier(.2, .8, .2, 1) backwards;
+}
+
+.pf-desktop.is-entering .pf-grid > .pf-icon {
+    animation-delay: calc(120ms + var(--i, 0) * 28ms);
+}
+
+.pf-desktop.is-entering .pf-dock {
+    animation: pf-dock-in .5s cubic-bezier(.2, .8, .2, 1) backwards .15s;
+}
+
+@keyframes pf-dock-in {
+    from { opacity: 0; transform: translate(-50%, 24px); }
+}
+
+@media (max-width: 767px) {
+    @keyframes pf-dock-in {
+        from { opacity: 0; transform: translateY(24px); }
+    }
+}
+
+/* 刚加到桌面的图标“跳”一下 */
+@keyframes pf-pop {
+    0% { transform: scale(.4); opacity: 0; }
+    100% { transform: scale(1); opacity: 1; }
+}
+
+.pf-icon.is-pop .pf-tile {
+    animation: pf-pop .45s cubic-bezier(.3, 1.6, .5, 1) backwards;
+}
+
+/* 胶囊第一次出现时从下面滑上来 */
+.pf-homebar {
+    animation: pf-bar-in .35s cubic-bezier(.2, .8, .2, 1) backwards;
+}
+
+@keyframes pf-bar-in {
+    from { opacity: 0; transform: translate(-50%, 16px); }
+}
+
+.pf-homebar-app .pf-tile {
+    transition: transform .16s ease;
+}
+
+@media (hover: hover) {
+    .pf-homebar-app:hover .pf-tile {
+        transform: translateY(-2px);
+    }
+}
+
+/* 登录成功：卡片淡出放大，再露出桌面 */
+.pf-lock.is-leaving {
+    animation: pf-lock-out .28s ease forwards;
+}
+
+.pf-lock.is-leaving .pf-lock-card {
+    animation: pf-lock-card-out .28s ease forwards;
+}
+
+@keyframes pf-lock-out {
+    to { opacity: 0; }
+}
+
+@keyframes pf-lock-card-out {
+    to { opacity: 0; transform: scale(1.06); }
+}
+
+/* 系统设置了“减少动态效果”时全部关掉 */
+@media (prefers-reduced-motion: reduce) {
+    .pf-desktop *,
+    .pf-homebar,
+    .pf-homebar *,
+    .pf-lock,
+    .pf-lock * {
+        animation: none !important;
+        transition: none !important;
+    }
 }

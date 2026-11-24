@@ -1,10 +1,10 @@
-import {appItem, defaultLayout, reconcile} from "./store";
+import {appItem, DEFAULT_WIDGETS, defaultLayout, reconcile} from "./store";
 import {normalizeUrl} from "./Sheets";
 import {APPS} from "../apps";
 
 describe("reconcile", () => {
     it("清单里新加的应用自动补到桌面末尾", () => {
-        const layout = {v: 1 as const, grid: [appItem("todone")], dock: [], hiddenApps: []};
+        const layout = {v: 1 as const, grid: [appItem("todone")], dock: [], hiddenApps: [], widgets: []};
         const out = reconcile(layout);
         const ids = out.grid.flatMap((i) => i.kind === "app" ? [i.appId] : []);
         const expected = APPS.filter((a) => !a.hiddenByDefault).map((a) => a.id);
@@ -13,7 +13,7 @@ describe("reconcile", () => {
     });
 
     it("用户移除的应用不会被补回来", () => {
-        const layout = {v: 1 as const, grid: [], dock: [], hiddenApps: ["money"]};
+        const layout = {v: 1 as const, grid: [], dock: [], hiddenApps: ["money"], widgets: []};
         const out = reconcile(layout);
         expect(out.grid.some((i) => i.kind === "app" && i.appId === "money")).toBe(false);
     });
@@ -24,11 +24,17 @@ describe("reconcile", () => {
             grid: [appItem("gone"), {id: "link:x", kind: "link" as const, title: "x", url: "/todone/g/1"}],
             dock: [appItem("gone2")],
             hiddenApps: [],
+            widgets: [],
         };
         const out = reconcile(layout);
         expect(out.grid.find((i) => i.id === "app:gone")).toBeUndefined();
         expect(out.grid.find((i) => i.id === "link:x")).toBeDefined();
         expect(out.dock).toEqual([]);
+    });
+
+    it("旧数据没有小组件列表时补上默认的", () => {
+        const old = {v: 1, grid: [], dock: [], hiddenApps: []} as unknown as Parameters<typeof reconcile>[0];
+        expect(reconcile(old).widgets).toEqual(DEFAULT_WIDGETS);
     });
 
     it("默认布局里每个应用只出现一次", () => {

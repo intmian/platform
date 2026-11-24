@@ -109,11 +109,13 @@ function AppHost() {
     }), [atDesktop]);
 
     return <>
-        {desktopMounted && <div className="pf-slot" hidden={!atDesktop}>
+        {desktopMounted && <FadeSlot className="pf-slot" active={atDesktop}>
             <AppRuntimeCtx.Provider value={desktopRuntime}>
-                <Desktop onSearch={() => setPaletteOpen(true)}/>
+                <AppErrorBoundary appName="桌面">
+                    <Desktop onSearch={() => setPaletteOpen(true)}/>
+                </AppErrorBoundary>
             </AppRuntimeCtx.Provider>
-        </div>}
+        </FadeSlot>}
 
         {slots.map((slot) => {
             const app = appById(slot.appId)!;
@@ -139,7 +141,7 @@ function AppSlot({app, location, active, allowed, setTitle}: {
     setTitle: (t: string | null) => void;
 }) {
     const runtime = useMemo<AppRuntime>(() => ({appId: app.id, active, setTitle}), [app.id, active, setTitle]);
-    return <div className="pf-slot pf-app-slot" hidden={!active}>
+    return <FadeSlot className="pf-slot pf-app-slot" active={active}>
         <AppRuntimeCtx.Provider value={runtime}>
             {allowed ? <AppErrorBoundary appName={app.name}>
                 <Suspense fallback={<AppLoading/>}>
@@ -147,7 +149,21 @@ function AppSlot({app, location, active, allowed, setTitle}: {
                 </Suspense>
             </AppErrorBoundary> : <NoPermission app={app}/>}
         </AppRuntimeCtx.Provider>
-    </div>;
+    </FadeSlot>;
+}
+
+// 应用（或桌面）从隐藏变成显示时淡入一下。只动透明度：容器上加 transform 会让应用里 fixed 定位的元素跟着错位
+function FadeSlot({className, active, children}: { className: string; active: boolean; children: ReactNode }) {
+    const ref = useRef<HTMLDivElement>(null);
+    const wasActive = useRef(active);
+    useLayoutEffect(() => {
+        if (active && !wasActive.current && ref.current
+            && !window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+            ref.current.animate([{opacity: 0}, {opacity: 1}], {duration: 180, easing: "ease-out"});
+        }
+        wasActive.current = active;
+    }, [active]);
+    return <div ref={ref} className={className} hidden={!active}>{children}</div>;
 }
 
 // 所有应用共用一个窗口滚动条。切走时记下这个应用滚到哪里，切回来时恢复；第一次打开的应用从顶部开始。

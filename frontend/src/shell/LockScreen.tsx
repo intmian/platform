@@ -11,6 +11,7 @@ export function LockScreen({overlay = false}: { overlay?: boolean }) {
     const [password, setPassword] = useState("");
     const [error, setError] = useState("");
     const [loading, setLoading] = useState(false);
+    const [leaving, setLeaving] = useState(false);
     const pwdRef = useRef<InputRef>(null);
     const userRef = useRef<InputRef>(null);
 
@@ -36,10 +37,12 @@ export function LockScreen({overlay = false}: { overlay?: boolean }) {
             pwdRef.current?.focus();
             return;
         }
-        auth.onLogin(ret);
+        // 先播一下淡出再进入，减少“啪”地一下切换的生硬感
+        setLeaving(true);
+        window.setTimeout(() => auth.onLogin(ret), window.matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : 260);
     };
 
-    return <div className={overlay ? "pf-lock pf-lock-overlay" : "pf-lock"}>
+    return <div className={`pf-lock${overlay ? " pf-lock-overlay" : ""}${leaving ? " is-leaving" : ""}`}>
         <form className="pf-lock-card" onSubmit={submit}>
             <img className="pf-lock-logo" src="/icons/plat-192.png" alt=""/>
             <div className="pf-lock-title">{overlay ? "登录已过期" : "Platform"}</div>

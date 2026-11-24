@@ -76,6 +76,7 @@ export const APPS: AppDef[] = [
         basePath: "/subscription",
         component: lazyWithReload(() => import("../subscription/SubscriptionPage")),
         keepAlive: true,
+        hiddenByDefault: true, // 基本不用了，新桌面上默认不放
     },
     {
         id: "cmd",

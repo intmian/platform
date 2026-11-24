@@ -41,6 +41,8 @@ export interface TodayDigest {
     overdue: number;
     today: number;
     items: TodayDigestItem[]; // 最多几条，逾期在前
+    // 按清单地址统计的逾期数，桌面上 Todone 清单快捷方式的角标用
+    overdueByPath: Record<string, number>;
 }
 
 // 桌面“今天”卡片的数据：只看关注页收藏范围内的事，规则和关注页上半部分一致
@@ -56,9 +58,15 @@ export async function loadTodayDigest(user: string): Promise<TodayDigest | null>
             kind,
             path: todoneGroupPath(it.group.GroupID),
         });
+        const overdueByPath: Record<string, number> = {};
+        overdue.forEach((it) => {
+            const path = todoneGroupPath(it.group.GroupID);
+            overdueByPath[path] = (overdueByPath[path] ?? 0) + 1;
+        });
         return {
             overdue: overdue.length,
             today: today.length,
+            overdueByPath,
             items: [...overdue.map((it) => toItem(it, "overdue")), ...today.map((it) => toItem(it, "today"))].slice(0, DIGEST_MAX),
         };
     } catch (e) {
