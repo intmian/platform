@@ -112,15 +112,15 @@ func buildDayDigestPrompt(input dayPublicDigestPromptInput) string {
 
 要求：
 1. 只返回一个 JSON 对象，不要 Markdown、代码块、解释文字。
-2. 输入为 BBC/NYT 公共新闻；overview、importantNews、topicBriefs 都只能基于本输入。
+2. 输入为 BBC/NYT 公共新闻；overview、importantNews 都只能基于本输入。
 3. 推送 brief 面向中国普通读者，整体信息密度为 500-800 字；主 digest 可以更完整。
 4. importantNews 聚合最重要的 BBC/NYT 事实，sourceRefs 只能使用输入里已有的 bbc:n 或 nyt:n。
-5. topicBriefs 梳理 BBC/NYT 的公共主题，sourceRefs 只能使用输入里已有的 bbc:n 或 nyt:n。
+5. topicBriefs 必须返回空数组（页面已不展示主题，不要生成）。
 6. keywordBriefs 和 pushBrief.keywordBriefs 必须返回空数组。
 7. coverage 必须列出输入中被识别的来源 ref，ref 只能使用输入里已有的 bbc:n 或 nyt:n。
 8. pushBrief.weatherLine 必须复用输入 weatherLine；输入没有 weatherLine 时留空，不要编造天气。
 9. 语言克制、准确，不做评价，不编造输入中没有的事实。
-10. 字数上限（手机上阅读，宁短勿长）：importantNews 的 title 不超过 18 字、summary 不超过 60 字；overview 不超过 150 字，pushBrief.overview 不超过 100 字；topicBriefs 的 topic 不超过 8 字、summary 不超过 40 字。title 直接说事实，不加"重磅""突发"之类的修饰。
+10. 字数上限（手机上阅读，宁短勿长）：importantNews 的 title 不超过 18 字、summary 不超过 60 字；overview 不超过 150 字，pushBrief.overview 不超过 100 字。title 直接说事实，不加"重磅""突发"之类的修饰。
 
 返回 JSON schema：
 {
@@ -133,7 +133,7 @@ func buildDayDigestPrompt(input dayPublicDigestPromptInput) string {
   "overview": "string",
   "importantNews": [{"title":"string","summary":"string","topic":"string","importance":1,"sourceRefs":["bbc:0"]}],
   "keywordBriefs": [],
-  "topicBriefs": [{"topic":"string","summary":"string","sourceRefs":["nyt:0"]}],
+  "topicBriefs": [],
   "coverage": [{"ref":"bbc:0","topic":"string","inPush":true,"importance":1}]
 }
 
@@ -150,7 +150,7 @@ func buildDayDigestRepairPrompt(originalPrompt, response string, validationErr e
 3. pushBrief.overview 和 pushBrief.importantNews 在规范化后不能为空；pushBrief.keywordBriefs 必须为空数组。
 4. pushBrief.weatherLine 必须复用原始输入 weatherLine；输入为空时留空。
 5. keywordBriefs 和 pushBrief.keywordBriefs 必须返回空数组。
-6. importantNews 和 topicBriefs 的 sourceRefs 只能使用 bbc:n 或 nyt:n。
+6. importantNews 的 sourceRefs 只能使用 bbc:n 或 nyt:n；topicBriefs 必须返回空数组。
 7. 所有 sourceRefs 和 coverage.ref 必须来自原始输入中的 ref。
 
 校验错误：
