@@ -9,6 +9,7 @@ import (
 	"io"
 	"os"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -18,7 +19,9 @@ type webMgr struct {
 	// 使用jwt进行签名。这里有一个缺陷，因为密码修改后jwt依然有效，所以不太安全。jwt也可能会被盗用。也不太好做续签，后面会改成使用session。目前版本先做一个第二个盐随机化的安全处理，防止爆破出秘钥。
 	jwt       token.JwtMgr
 	webEngine *gin.Engine
-	plat      *PlatForm
+	// homeLayoutMu 保护桌面布局的读改写
+	homeLayoutMu sync.Mutex
+	plat         *PlatForm
 }
 
 func (m *webMgr) Init(plat *PlatForm) error {
@@ -81,10 +84,10 @@ func (m *webMgr) Init(plat *PlatForm) error {
 			panic("salt1 is empty")
 		}
 		_ = m.plat.storage.Set("WebSalt1", xstorage.ToUnit[string](s1, xstorage.ValueTypeString))
+	} else {
+		s1 = xstorage.ToBase[string](s1v)
 	}
-	// 为了权衡安全和方便性，重启时如果跨月就重置一下token，如果每次都重置那会导致每次都需要重新登录，不重置会导致可能的破解？
-	token2 := time.Now().Format("2006-01")
-	m.jwt.SetSalt(xstorage.ToBase[string](s1v), token2)
+	m.setJwtSalt(s1, time.Now())
 	var err error
 	go func() {
 		err = engine.Run(":" + m.plat.baseSetting.Copy().WebPort)
@@ -95,11 +98,19 @@ func (m *webMgr) Init(plat *PlatForm) error {
 	return nil
 }
 
+// setJwtSalt 设置签名盐。salt2 取启动时的年月：跨月后的第一次重启（每次发布都会重启）会让所有 token 失效，
+// 这是有意的，保证自动续期的账号每个月至少重新登录一次。
+func (m *webMgr) setJwtSalt(salt1 string, now time.Time) {
+	m.jwt.SetSalt(salt1, now.Format("2006-01"))
+}
+
 func (m *webMgr) CheckTokenPermission(data *token.Data, wantPermission string) bool {
-	n := time.Now()
-	return m.jwt.CheckPermission(data, n, wantPermission)
+	if data == nil {
+		return false
+	}
+	return m.jwt.CheckPermission(data, time.Now(), wantPermission)
 }
 
 func (m *webMgr) CheckToken(data *token.Data) bool {
-	return m.jwt.CheckToken(data)
+	return data != nil && m.jwt.CheckToken(data)
 }

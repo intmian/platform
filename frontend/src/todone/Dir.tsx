@@ -1,4 +1,4 @@
-import {useEffect, useState} from "react";
+import {useState} from "react";
 import {PDir, PDirTree, PGroup} from "./net/protocal";
 import {
     Button,
@@ -20,7 +20,6 @@ import {
     ChangeGroupReq,
     CreateDirReq,
     CreateGroupReq,
-    GetDirTreeReq,
     MoveDirReq,
     MoveGroupReq,
     sendChangeDir,
@@ -29,13 +28,13 @@ import {
     sendCreateGroup,
     sendDelDir,
     sendDelGroup,
-    sendGetDirTree,
     sendMoveDir,
     sendMoveGroup
 } from "./net/send_back";
 import {
     CopyOutlined,
     DeleteOutlined,
+    DesktopOutlined,
     EditOutlined,
     FileAddOutlined,
     FileOutlined,
@@ -44,6 +43,8 @@ import {
     MoreOutlined
 } from "@ant-design/icons";
 import {Addr, AddrUnitType} from "./addr";
+import {addLink, isOnDesktop, useDesktopLayout} from "../shell/desktop/store";
+import {todoneGroupPath} from "./route";
 
 // 文件夹-任务组树的显示部分
 function DirTreeNodeTitle({
@@ -75,6 +76,7 @@ function DirTreeNodeTitle({
     if (title === "") {
         title = "无标题";
     }
+    const desktop = useDesktopLayout();
     const items: MenuProps['items'] = []
     if (isDir && onAddDir && onAddGroup) {
         items.push(
@@ -108,6 +110,21 @@ function DirTreeNodeTitle({
             icon: <CopyOutlined/>,
             label: "复制"
         },
+    )
+    if (!isDir) {
+        const pinned = !!desktop && isOnDesktop(desktop, todoneGroupPath(ID));
+        items.push({
+            key: 'desktop',
+            icon: <DesktopOutlined/>,
+            label: pinned ? "已在桌面" : "添加到桌面",
+            disabled: pinned || !desktop,
+            onClick: () => {
+                addLink(title, todoneGroupPath(ID));
+                message.success("已添加到桌面").then();
+            },
+        })
+    }
+    items.push(
         {
             key: 'del',
             onClick: () => {
@@ -588,32 +605,27 @@ function PDir2TreeDataNode(pDir: PDirTree, addr: Addr, onRefresh: () => void, on
 
 interface DirProps {
     userID: string
-    onSelectGroup: (groupAddr: Addr, title: string, groupType?: number) => void
-    onSelectDir: (dirAddr: Addr) => void
+    // 目录树由外面（Main）加载和持有，改动后通过 onTreeChange 交回去
+    dirTree: PDirTree | null
+    loading: boolean
+    onTreeChange: (tree: PDirTree) => void
+    onSelectGroup: (groupID: number) => void
 }
 
 const LOCAL_STORAGE_KEY = "todone:dir:expandedKeys";
 
 export function Dir(props: DirProps) {
-    // 状态
-    const [dirTree, setDirTree] = useState<PDirTree | null>(null);
-    const [loading, setLoading] = useState(true);
+    const {dirTree, loading} = props;
+    const setDirTree = props.onTreeChange;
     // 读取本地存储的展开状态
     const [expandedKeys, setExpandedKeys] = useState<string[]>(() => {
-        const storedKeys = localStorage.getItem(LOCAL_STORAGE_KEY);
-        return storedKeys ? JSON.parse(storedKeys) : [];
+        try {
+            const storedKeys = localStorage.getItem(LOCAL_STORAGE_KEY);
+            return storedKeys ? JSON.parse(storedKeys) : [];
+        } catch {
+            return [];
+        }
     });
-
-    // 加载数据
-    useEffect(() => {
-        const req: GetDirTreeReq = {UserID: props.userID};
-        sendGetDirTree(req, (ret) => {
-            if (ret.ok) {
-                setDirTree(ret.data.DirTree);
-            }
-            setLoading(false);
-        });
-    }, [props.userID]);
 
     // 显示加载中
     if (loading || dirTree === null) {
@@ -625,7 +637,7 @@ export function Dir(props: DirProps) {
                 justifyContent: 'center',
                 alignItems: 'center',
             }}
-        >加载中<LoadingOutlined spin/></div>
+        >{loading ? <>加载中<LoadingOutlined spin/></> : "目录加载失败"}</div>
     }
 
     // 显示树
@@ -709,56 +721,8 @@ export function Dir(props: DirProps) {
             }
             const [type, id] = key.split("-");
             if (type === "grp") {
-                // 从tree中获取搜索到路径并组成Addr
-                const addr = new Addr(props.userID);
-                addr.addDir(dirTree.RootDir.ID);
-                let title = "";
-                let groupType: number | undefined = undefined;
-                const searchDir = (tree: PDirTree, addr: Addr): Addr | null => {
-                    for (const grp of tree.ChildrenGrp) {
-                        if (grp.ID === parseInt(id)) {
-                            addr.addGroup(grp.ID);
-                            title = grp.Title;
-                            groupType = grp.Type;
-                            return addr;
-                        }
-                    }
-                    for (const dir of tree.ChildrenDir) {
-                        const addr2 = addr.copy();
-                        addr2.addDir(dir.RootDir.ID);
-                        const ret = searchDir(dir, addr2);
-                        if (ret !== null) {
-                            return ret;
-                        }
-                    }
-                    return null;
-                }
-                const addrRet = searchDir(dirTree, addr);
-                if (addrRet !== null) {
-                    props.onSelectGroup(addrRet, title, groupType);
-                }
+                props.onSelectGroup(parseInt(id));
             } else {
-                // 从tree中获取搜索到路径并组成Addr
-                const addr = new Addr(props.userID);
-                addr.addDir(dirTree.RootDir.ID);
-                const searchDir = (tree: PDirTree, addr: Addr): Addr | null => {
-                    if (tree.RootDir.ID === parseInt(id)) {
-                        return addr;
-                    }
-                    for (const dir of tree.ChildrenDir) {
-                        const addr2 = addr.copy();
-                        addr2.addDir(dir.RootDir.ID);
-                        const ret = searchDir(dir, addr2);
-                        if (ret !== null) {
-                            return ret;
-                        }
-                    }
-                    return null;
-                }
-                const addrRet = searchDir(dirTree, addr);
-                if (addrRet !== null) {
-                    props.onSelectDir(addrRet);
-                }
                 // 将文件夹展开，如果处于未展开状态
                 if (!expandedKeys.includes(key)) {
                     const newExpandedKeys = [...expandedKeys];

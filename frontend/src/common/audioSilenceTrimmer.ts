@@ -83,9 +83,9 @@ function detectVoiceSegments(
     const segments: VoiceSegment[] = [];
     let current: VoiceSegment | null = null;
 
-    frames.forEach((frame) => {
+    for (const frame of frames) {
         if (frame.dbfs < thresholdDbfs) {
-            return;
+            continue;
         }
 
         if (!current || frame.start - current.end > maxBridgeSamples) {
@@ -97,12 +97,12 @@ function detectVoiceSegments(
                 end: frame.end,
                 activeSamples: frame.end - frame.start,
             };
-            return;
+            continue;
         }
 
         current.end = frame.end;
         current.activeSamples += frame.end - frame.start;
-    });
+    }
 
     if (current && current.activeSamples >= minSegmentSamples) {
         segments.push(current);

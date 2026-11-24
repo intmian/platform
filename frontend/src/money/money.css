@@ -1,7 +1,7 @@
 .money-page {
     min-height: 100vh;
-    background: #f6f7f9;
-    color: #1f2328;
+    background: var(--pf-bg-layout);
+    color: var(--pf-text);
 }
 
 .money-main {
@@ -26,12 +26,12 @@
 
 .money-title-block p {
     margin: 4px 0 0;
-    color: #667085;
+    color: var(--pf-text-2);
 }
 
 .money-section {
-    background: #fff;
-    border: 1px solid #e5e7eb;
+    background: var(--pf-bg);
+    border: 1px solid var(--pf-border-2);
     border-radius: 8px;
     padding: 16px;
     margin-bottom: 14px;
@@ -96,15 +96,15 @@
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 0;
     overflow: hidden;
-    border: 1px solid #e5e7eb;
+    border: 1px solid var(--pf-border-2);
     border-radius: 8px;
-    background: #f8fafc;
+    background: var(--pf-fill-3);
 }
 
 .money-book-stat {
     min-width: 0;
     padding: 10px 12px;
-    border-left: 1px solid #e5e7eb;
+    border-left: 1px solid var(--pf-border-2);
 }
 
 .money-book-stat:first-child {
@@ -113,7 +113,7 @@
 
 .money-book-stat span {
     display: block;
-    color: #667085;
+    color: var(--pf-text-2);
     font-size: 12px;
     line-height: 1.2;
 }
@@ -121,7 +121,7 @@
 .money-book-stat strong {
     display: block;
     margin-top: 6px;
-    color: #1f2937;
+    color: var(--pf-text);
     font-size: clamp(14px, 1.35vw, 17px);
     line-height: 1.15;
     font-weight: 720;
@@ -132,7 +132,7 @@
 }
 
 .money-book-stat.is-primary strong {
-    color: #155eef;
+    color: var(--pf-primary);
 }
 
 .money-card-actions {
@@ -146,15 +146,15 @@
 }
 
 .money-metric {
-    border: 1px solid #e5e7eb;
+    border: 1px solid var(--pf-border-2);
     border-radius: 8px;
     padding: 12px;
-    background: #fff;
+    background: var(--pf-bg);
     min-width: 0;
 }
 
 .money-metric-label {
-    color: #667085;
+    color: var(--pf-text-2);
     font-size: 13px;
 }
 
@@ -189,7 +189,7 @@
     min-height: 32px;
     display: flex;
     align-items: center;
-    color: #1f2937;
+    color: var(--pf-text);
     font-size: 15px;
     font-weight: 560;
     font-variant-numeric: tabular-nums;
@@ -242,7 +242,7 @@
 }
 
 .money-muted {
-    color: #667085;
+    color: var(--pf-text-2);
 }
 
 .money-hidden-file {
@@ -250,6 +250,7 @@
 }
 
 .is-positive {
+    /* 正负值用固定的深绿/深红，比主题色更易读 */
     color: #047857;
 }
 
@@ -267,9 +268,9 @@
 .money-hero-metric {
     border-radius: 8px;
     padding: 18px;
-    color: #111827;
-    background: #ffffff;
-    border: 1px solid #d8dee8;
+    color: var(--pf-text);
+    background: var(--pf-bg);
+    border: 1px solid var(--pf-border);
     min-width: 0;
 }
 
@@ -287,7 +288,7 @@
     display: flex;
     flex-wrap: wrap;
     gap: 8px 14px;
-    color: #667085;
+    color: var(--pf-text-2);
     font-size: 13px;
 }
 
@@ -325,7 +326,7 @@
     justify-content: space-between;
     gap: 12px;
     padding: 10px 0;
-    border-bottom: 1px solid #eef1f5;
+    border-bottom: 1px solid var(--pf-border-2);
     font-variant-numeric: tabular-nums;
 }
 
@@ -349,7 +350,7 @@
 
 .money-line-axis,
 .money-line-zero {
-    stroke: #d8dee8;
+    stroke: var(--pf-border);
     stroke-width: 1;
 }
 
@@ -359,26 +360,26 @@
 
 .money-line-path {
     fill: none;
-    stroke: #155eef;
+    stroke: var(--pf-primary);
     stroke-width: 3;
     stroke-linecap: round;
     stroke-linejoin: round;
 }
 
 .money-line-point {
-    fill: #fff;
-    stroke: #155eef;
+    fill: var(--pf-bg);
+    stroke: var(--pf-primary);
     stroke-width: 3;
     cursor: pointer;
 }
 
 .money-line-point.is-active {
-    fill: #155eef;
+    fill: var(--pf-primary);
 }
 
 .money-line-scale,
 .money-line-date {
-    fill: #667085;
+    fill: var(--pf-text-2);
     font-size: 12px;
 }
 
@@ -389,11 +390,11 @@
     gap: 3px;
     min-width: 150px;
     padding: 8px 10px;
-    border: 1px solid #d8dee8;
+    border: 1px solid var(--pf-border);
     border-radius: 8px;
-    background: #fff;
-    box-shadow: 0 8px 24px rgba(16, 24, 40, 0.14);
-    color: #1f2937;
+    background: var(--pf-bg);
+    box-shadow: var(--pf-shadow);
+    color: var(--pf-text);
     font-size: 12px;
     pointer-events: none;
 }
@@ -420,7 +421,7 @@
 
 .money-structure-tree {
     display: grid;
-    border: 1px solid #e5e7eb;
+    border: 1px solid var(--pf-border-2);
     border-radius: 8px;
     overflow: hidden;
 }
@@ -431,7 +432,7 @@
     gap: 12px;
     align-items: center;
     padding: 10px 12px;
-    border-top: 1px solid #eef1f5;
+    border-top: 1px solid var(--pf-border-2);
     font-variant-numeric: tabular-nums;
 }
 
@@ -440,12 +441,12 @@
 }
 
 .money-structure-row.is-root {
-    background: #f8fafc;
+    background: var(--pf-fill-3);
     font-weight: 700;
 }
 
 .money-structure-row.is-child span {
-    color: #344054;
+    color: var(--pf-text);
 }
 
 .money-structure-row strong {
@@ -466,13 +467,13 @@
     grid-template-columns: 120px 1fr;
     gap: 12px;
     padding: 12px;
-    border: 1px solid #e5e7eb;
+    border: 1px solid var(--pf-border-2);
     border-radius: 8px;
-    background: #fbfcfe;
+    background: var(--pf-fill-4);
 }
 
 .money-event-date {
-    color: #667085;
+    color: var(--pf-text-2);
     font-variant-numeric: tabular-nums;
 }
 
@@ -496,9 +497,9 @@
 
 .money-entry-card,
 .money-config-card {
-    border: 1px solid #e5e7eb;
+    border: 1px solid var(--pf-border-2);
     border-radius: 8px;
-    background: #fff;
+    background: var(--pf-bg);
     padding: 12px;
 }
 
@@ -512,7 +513,7 @@
 }
 
 .money-entry-head span {
-    color: #667085;
+    color: var(--pf-text-2);
 }
 
 .money-entry-grid {
@@ -523,7 +524,7 @@
 }
 
 .money-entry-grid span {
-    color: #667085;
+    color: var(--pf-text-2);
 }
 
 .money-entry-grid strong {
@@ -586,7 +587,7 @@
 
 .money-list-drag-handle {
     cursor: grab;
-    color: #667085;
+    color: var(--pf-text-2);
 }
 
 .money-list-drag-handle:active {
@@ -594,9 +595,9 @@
 }
 
 .money-history-card {
-    border: 1px solid #e5e7eb;
+    border: 1px solid var(--pf-border-2);
     border-radius: 8px;
-    background: #fff;
+    background: var(--pf-bg);
     padding: 12px;
 }
 
@@ -617,7 +618,7 @@
 }
 
 .money-history-card-grid span {
-    color: #667085;
+    color: var(--pf-text-2);
 }
 
 @media (max-width: 768px) {

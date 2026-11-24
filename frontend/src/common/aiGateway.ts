@@ -1,5 +1,4 @@
-import config from "../config.json";
-import {UniPost, UniResult} from "./newSendHttp";
+import {request} from "./api";
 import {
     AiAction,
     AiRequestMap,
@@ -22,21 +21,15 @@ export type {
 } from "./aiProtocol";
 export {AiAction} from "./aiProtocol";
 
-interface UniEnvelope<T> {
-    code: number;
-    msg?: string;
-    data?: T;
-}
-
 export async function sendAiAction<T extends AiAction>(
     action: T,
     payload: AiRequestMap[T],
 ): Promise<AiResponseMap[T] | null> {
-    const res: UniResult = await UniPost(config.api_base_url + '/misc/ai/run', {
+    const ret = await request<AiResponseMap[T]>('/misc/ai/run', {
         action,
         payload,
     });
-    return res.ok ? (res.data as AiResponseMap[T]) : null;
+    return ret.ok && ret.data !== undefined ? ret.data : null;
 }
 
 export async function transcribeAudio(req: AiTranscribeReq): Promise<AiTranscribeResp | null> {
@@ -50,25 +43,14 @@ export async function transcribeAudio(req: AiTranscribeReq): Promise<AiTranscrib
         form.append("prompt", req.prompt.trim());
     }
 
-    try {
-        const response = await fetch(config.api_base_url + "/misc/ai/transcribe", {
-            method: "POST",
-            body: form,
-        });
-        if (!response.ok || (response.status !== undefined && response.status !== 200)) {
-            console.debug("transcribeAudio failed:", response);
-            throw new Error("语音转写请求失败");
-        }
-        const data = await response.json() as UniEnvelope<AiTranscribeResp>;
-        if (data.code !== 0 || !data.data) {
-            console.debug("transcribeAudio failed:", data.msg);
-            throw new Error(data.msg || "语音转写失败");
-        }
-        return data.data;
-    } catch (error) {
-        console.debug("transcribeAudio failed:", error);
-        throw error instanceof Error ? error : new Error("语音转写失败");
+    const ret = await request<AiTranscribeResp>("/misc/ai/transcribe", form);
+    if (!ret.ok || !ret.data) {
+        console.debug("transcribeAudio failed:", ret.code, ret.msg);
+        // 网络或 HTTP 层失败、后端业务失败，提示文字和以前保持一致
+        const transportFailed = ret.code < 0 || ret.code >= 400;
+        throw new Error(transportFailed ? "语音转写请求失败" : (ret.msg || "语音转写失败"));
     }
+    return ret.data;
 }
 
 const CAPABILITY_STORAGE_KEY = "platform.ai.transcribe.capability.v1";
@@ -93,14 +75,11 @@ export function peekTranscriptionCapability(): AiTranscribeCapability | null {
 }
 
 export async function getTranscriptionCapability(): Promise<AiTranscribeCapability> {
-    const res: UniResult = await UniPost(
-        config.api_base_url + "/misc/ai/transcribe/capability",
-        {},
-    );
-    if (!res.ok) {
+    const ret = await request<Partial<AiTranscribeCapability>>("/misc/ai/transcribe/capability");
+    if (!ret.ok || !ret.data) {
         throw new Error("无法读取语音转写模式");
     }
-    const capability = res.data as Partial<AiTranscribeCapability>;
+    const capability = ret.data;
     if (capability.mode !== "file" && capability.mode !== "realtime") {
         throw new Error("语音转写模式无效");
     }

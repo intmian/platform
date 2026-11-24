@@ -1,4 +1,4 @@
-import {useCallback, useEffect, useState} from 'react';
+import {useCallback, useEffect, useRef, useState} from 'react';
 import {
     Button,
     Card,
@@ -14,9 +14,9 @@ import {
     Table,
     Tabs,
     Tooltip,
-    Typography
+    Typography,
+    theme
 } from 'antd';
-import TabPane from "antd/es/tabs/TabPane";
 import {ConfigsCtr, UniConfigModal} from "../common/UniConfig";
 import {ConfigsType, ConfigType} from "../common/UniConfigDef";
 import {getWebPing} from "../common/newSendHttp";
@@ -52,8 +52,8 @@ interface SwapData {
 
 interface CpuData {
     percent: number;
-    info: any[];
-    times: any[];
+    info: { modelName: string; cores: number }[];
+    times: unknown[];
 }
 
 type MemoryInfo = {
@@ -100,9 +100,11 @@ export function Ping({setting}: { setting: PerformanceSettingData }) {
         out: {ping: 0, lost: 0, loading: true}
     })
 
+    const aliveRef = useRef(true)
     const fetchPingData = useCallback(async (url: string, key: keyof typeof pingData) => {
         try {
             const ret = await getWebPing(url)
+            if (!aliveRef.current) return
             const averagePing = ret.delays.length > 0 ? ret.delays.reduce((sum, delay) => sum + delay, 0) / ret.delays.length : 0
             setPingData(prevState => ({
                 ...prevState,
@@ -114,6 +116,7 @@ export function Ping({setting}: { setting: PerformanceSettingData }) {
             }))
         } catch (error) {
             console.error(`Error fetching ping data from ${url}:`, error)
+            if (!aliveRef.current) return
             setPingData(prevState => ({
                 ...prevState,
                 [key]: {
@@ -125,9 +128,14 @@ export function Ping({setting}: { setting: PerformanceSettingData }) {
     }, [])
 
     useEffect(() => {
+        aliveRef.current = true
         if (setting.baseUrl) fetchPingData(setting.baseUrl, 'base').then()
         if (setting.realUrl) fetchPingData(setting.realUrl, 'real').then()
         if (setting.outUrl) fetchPingData(setting.outUrl, 'out').then()
+        // 离开页面后测速请求可能还没回来，回来了也不再更新
+        return () => {
+            aliveRef.current = false
+        }
     }, [setting.baseUrl, setting.realUrl, setting.outUrl, fetchPingData])
 
     // 计算延迟对比
@@ -151,7 +159,8 @@ export function Ping({setting}: { setting: PerformanceSettingData }) {
                 left: 0,
                 right: 0,
                 bottom: 0,
-                backgroundColor: 'rgba(0, 0, 0, 0.2)',
+                backgroundColor: 'var(--pf-bg)',
+                opacity: 0.85,
                 zIndex: 1,
                 display: 'flex',
                 justifyContent: 'center',
@@ -166,7 +175,8 @@ export function Ping({setting}: { setting: PerformanceSettingData }) {
                 left: 0,
                 right: 0,
                 bottom: 0,
-                backgroundColor: 'rgba(0, 0, 0, 0.2)',
+                backgroundColor: 'var(--pf-bg)',
+                opacity: 0.85,
                 zIndex: 1,
                 display: 'flex',
                 justifyContent: 'center',
@@ -288,29 +298,27 @@ const Performance = () => {
         realUrl: '',
         baseUrl: ''
     })
-    const [LoaddingSetting, setLoaddingSetting] = useState(true);
+    const {token} = theme.useToken();
 
     useEffect(() => {
-        if (PerformanceConfigs.needInit) {
-            PerformanceConfigs.init()
-        }
-        setSetting({
-            hasInit: !PerformanceConfigs.needInit,
-            outUrl: PerformanceConfigs.get('outUrl'),
-            realUrl: PerformanceConfigs.get('realUrl'),
-            baseUrl: PerformanceConfigs.get('baseUrl')
+        const read = (hasInit: boolean) => setSetting({
+            hasInit,
+            outUrl: String(PerformanceConfigs.get('outUrl') ?? ''),
+            realUrl: String(PerformanceConfigs.get('realUrl') ?? ''),
+            baseUrl: String(PerformanceConfigs.get('baseUrl') ?? '')
         })
-        PerformanceConfigs.addCallback(() => {
-            setSetting({
-                hasInit: true,
-                outUrl: PerformanceConfigs.get('outUrl'),
-                realUrl: PerformanceConfigs.get('realUrl'),
-                baseUrl: PerformanceConfigs.get('baseUrl')
-            })
-        })
+        read(!PerformanceConfigs.needInit)
+        const remove = PerformanceConfigs.addCallback(() => read(true))
+        void PerformanceConfigs.init()
+        return remove
     }, []);
 
+    // 断线后点“重新连接”时加一，触发下面的 effect 重新建连
+    const [connection, setConnection] = useState(0);
+
     useEffect(() => {
+        setError(false);
+        setLoading(true);
         const eventSource = new EventSource('/api/admin/system/usage/sse');
         eventSource.onmessage = (event) => {
             try {
@@ -330,7 +338,7 @@ const Performance = () => {
         return () => {
             eventSource.close();
         };
-    }, []);
+    }, [connection]);
 
     const columns = [
         {
@@ -371,12 +379,12 @@ const Performance = () => {
         },
     ];
     if (loading) {
-        return <Spin
-            style={{display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh'}}/>;
+        return <Flex justify="center" style={{padding: 48}}><Spin/></Flex>;
     }
 
     if (error || !data) {
-        return <Result status="error" title="Error" subTitle="停留时间过长，请刷新界面"/>;
+        return <Result status="warning" title="连接已断开"
+                       extra={<Button onClick={() => setConnection((c) => c + 1)}>重新连接</Button>}/>;
     }
 
     return (
@@ -403,7 +411,7 @@ const Performance = () => {
                             type="dashboard"
                             percent={data.memory.usedPercent}
                             format={percent => `${percent?.toFixed(2)}%`}
-                            strokeColor="#3f8600"
+                            strokeColor={token.colorSuccess}
                         />
                     </Col>
                     <Col span={12}>
@@ -412,7 +420,7 @@ const Performance = () => {
                             type="dashboard"
                             percent={data.cpu.percent}
                             format={percent => `${percent?.toFixed(2)}%`}
-                            strokeColor="#cf1322"
+                            strokeColor={token.colorError}
                         />
                     </Col>
                 </Row>
@@ -566,31 +574,14 @@ const Performance = () => {
                               />
                           },
                       ]}
-                >
-                    <TabPane tab="内存详情" key="1">
-
-                    </TabPane>
-                    <TabPane tab="Swap详情" key="2">
-
-
-                    </TabPane>
-                    <TabPane tab="CPU详情" key="3">
-                        <List
-                            dataSource={data.cpu.info}
-                            renderItem={(info, index) => (
-                                <List.Item key={index}>
-                                    {info.modelName} - {info.cores} 核心
-                                </List.Item>
-                            )}
-                        />
-                    </TabPane>
-                </Tabs>
+                />
             </Card>
         </div>
     );
 };
 export default Performance;
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function isValidPerformanceData(data: any): data is PerformanceData {
     return data && typeof data.memory === 'object' && typeof data.swap === 'object' && typeof data.cpu === 'object' && Array.isArray(data.top10Mem) && Array.isArray(data.top10Cpu);
 }

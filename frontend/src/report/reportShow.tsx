@@ -1,42 +1,41 @@
-import {DayReport, sendGetReport, sendGetWholeReport, WholeReport} from "../common/newSendHttp";
-import type {DayDigest} from "../common/newSendHttp";
+import {DayReport, sendGetReport, sendGetWholeReport} from "../common/newSendHttp";
 import React, {useEffect, useRef, useState} from "react";
-import {Button, Card, Col, Collapse, List, Menu, Row, Tag, Typography} from 'antd';
+import {Button, Card, Col, Collapse, Empty, List, Menu, Row, Tag, Typography} from 'antd';
 import {CloudOutlined, MenuOutlined, WindowsOutlined} from '@ant-design/icons';
-import {useIsMobile} from "../common/hooksv2";
+import {useIsMobile} from "../common/breakpoints";
 import {DigestConsole} from "./reportDigest";
-import type {KeywordNewsGroup, LegacyGoogleNewsGroup} from "../common/newSendHttp";
+import type {KeywordNewsGroup, RssItem} from "../common/newSendHttp";
 import {formatPublished, keywordNewsOf, mergeKeywordNews} from "./keywordNews";
 
 const {Title, Text, Link: TypographyLink} = Typography;
 
 
-function ReportShow({selected, loginReady, isLoggedIn}: {
-    selected: string,
-    loginReady: boolean,
-    isLoggedIn: boolean,
-}) {
-    const [data, setData] = useState<DayReport | WholeReport | null>(null);
+// 单天、多天聚合、新闻汇总三种数据都按这个形状展示（汇总没有天气和概要）
+type ReportData = Omit<DayReport, "Weather" | "WeatherIndex"> & {
+    Weather?: DayReport["Weather"];
+    WeatherIndex?: DayReport["WeatherIndex"];
+};
+
+function ReportShow({selected}: { selected: string }) {
+    const [data, setData] = useState<ReportData | null>(null);
+    // 请求失败（这天没有日报或后端出错）时不再一直转圈
+    const [missing, setMissing] = useState(false);
 
     // 发送请求
     useEffect(() => {
-        if (!loginReady || !isLoggedIn) {
-            setData(null);
-            return;
-        }
         if (selected === "") {
             return;
         }
+        setData(null);
+        setMissing(false);
         // 多天聚合
         if (selected.includes("_")) {
             const days = selected.split("_");
             let reports: DayReport[] = [];
             let loaded = 0;
             let summary = "";
-            let weather: any = null;
-            let weatherIndex: any = null;
-            let bbcNews: any[] = [];
-            let nytNews: any[] = [];
+            let bbcNews: RssItem[] = [];
+            let nytNews: RssItem[] = [];
             const keywordLists: KeywordNewsGroup[][] = [];
             // 并发请求
             days.forEach(day => {
@@ -46,6 +45,10 @@ function ReportShow({selected, loginReady, isLoggedIn}: {
                     }
                     loaded++;
                     if (loaded === days.length) {
+                        if (reports.length === 0) {
+                            setMissing(true);
+                            return;
+                        }
                         // 聚合
                         let dayI = 0;
                         for (const rep of reports) {
@@ -62,8 +65,6 @@ function ReportShow({selected, loginReady, isLoggedIn}: {
                         }
                         setData({
                             Summary: summary,
-                            Weather: weather,
-                            WeatherIndex: weatherIndex,
                             BbcNews: bbcNews,
                             NytNews: nytNews,
                             KeywordNews: mergeKeywordNews(keywordLists),
@@ -77,16 +78,20 @@ function ReportShow({selected, loginReady, isLoggedIn}: {
             sendGetWholeReport({}, (ret) => {
                 if (ret.ok) {
                     setData(ret.data.Report);
+                } else {
+                    setMissing(true);
                 }
             });
         } else {
             sendGetReport({DayString: selected}, (ret) => {
                 if (ret.ok) {
                     setData(ret.data.Report);
+                } else {
+                    setMissing(true);
                 }
             })
         }
-    }, [selected, loginReady, isLoggedIn]);
+    }, [selected]);
 
     return <div>
         <Row style={{
@@ -100,35 +105,14 @@ function ReportShow({selected, loginReady, isLoggedIn}: {
                     selected.includes("_") ? selected.replace(/_/g, " ~ ") + " 区间日报" : selected + " 日报"}
             </Title>
         </Row>
-        <Dashboard data={data}/>
+        {missing ? <Empty style={{marginTop: 48}} description={selected === "whole" ? "没有汇总" : "这天没有日报"}/> :
+            <Dashboard data={data}/>}
     </div>;
 }
 
 
-// 天气数据接口
-interface WeatherData {
-    daily: Array<{
-        tempMax: number;
-        tempMin: number;
-        textDay: string;
-        textNight: string;
-        windDirDay: string;
-        windScaleDay: string;
-        windSpeedDay: number;
-        humidity: number;
-        cloud: number;
-    }>;
-}
-
-// 天气指数数据接口
-interface WeatherIndexData {
-    daily: Array<{
-        name: string;
-        category: string;
-        text: string;
-        level: string;
-    }>;
-}
+type WeatherData = DayReport["Weather"];
+type WeatherIndexData = DayReport["WeatherIndex"];
 
 // 新闻数据接口
 interface NewsArticle {
@@ -156,8 +140,7 @@ function WeatherCard({weather, weatherIndex}: WeatherCardProps) {
         <Card title="今日天气" style={{
             marginBottom: '16px',
             borderRadius: '10px',               /* 圆角 */
-            boxShadow: '0 4px 10px rgba(0, 0, 0, 0.15)', /* 阴影效果 */
-            backgroundColor: '#fff',           /* 背景色 */
+            boxShadow: 'var(--pf-shadow)', /* 阴影效果 */
         }}>
             <Row gutter={16} style={{
                 marginBottom: '32px',
@@ -186,7 +169,7 @@ function WeatherCard({weather, weatherIndex}: WeatherCardProps) {
             <Collapse bordered={false}>
                 <Collapse.Panel header="天气指数" key="1" style={{
                     // 不要背景颜色
-                    backgroundColor: "white",
+                    backgroundColor: "transparent",
                 }}>
                     <List
                         dataSource={indices}
@@ -224,8 +207,7 @@ function SummaryCard({summary}: { summary: string }) {
     return <Card title="概要" style={{
         marginBottom: '16px',
         borderRadius: '10px',               /* 圆角 */
-        boxShadow: '0 4px 10px rgba(0, 0, 0, 0.15)', /* 阴影效果 */
-        backgroundColor: '#fff',           /* 背景色 */
+        boxShadow: 'var(--pf-shadow)', /* 阴影效果 */
     }}>
         {paragraphs.map((p, i) => (
             <Typography.Paragraph key={i}>{p}<br/></Typography.Paragraph>
@@ -257,8 +239,7 @@ function NewsCard({title, articles}: { title: string, articles?: NewsArticle[] }
         return <Card title={title} style={{
             marginBottom: '16px',
             borderRadius: '10px',               /* 圆角 */
-            boxShadow: '0 4px 10px rgba(0, 0, 0, 0.15)', /* 阴影效果 */
-            backgroundColor: '#fff',           /* 背景色 */
+            boxShadow: 'var(--pf-shadow)', /* 阴影效果 */
             padding: '16px',                     /* 内边距 */
         }}>
             <Text type="secondary">暂无新闻</Text>
@@ -268,8 +249,7 @@ function NewsCard({title, articles}: { title: string, articles?: NewsArticle[] }
     return <Card title={title} style={{
         marginBottom: '16px',
         borderRadius: '10px',               /* 圆角 */
-        boxShadow: '0 4px 10px rgba(0, 0, 0, 0.15)', /* 阴影效果 */
-        backgroundColor: '#fff',           /* 背景色 */
+        boxShadow: 'var(--pf-shadow)', /* 阴影效果 */
         padding: '16px',                     /* 内边距 */
     }}>
         <List
@@ -286,7 +266,7 @@ function NewsCard({title, articles}: { title: string, articles?: NewsArticle[] }
                             }}
                         >
                             <TypographyLink href={item.link} target="_blank" rel="noopener noreferrer"
-                                            style={{color: "black", fontWeight: 'normal'}}>{item.title}
+                                            style={{color: "var(--pf-text)", fontWeight: 'normal'}}>{item.title}
                             </TypographyLink>
                             <Text type="secondary" style={{fontSize: '12px', fontWeight: 'normal'}}>
                                 {isMobile ? new Date(item.pubDate).toLocaleDateString('zh-CN', {timeZone: 'Asia/Shanghai'}) : new Date(item.pubDate).toLocaleString('zh-CN', {timeZone: 'Asia/Shanghai'})}
@@ -303,8 +283,7 @@ function NewsCard({title, articles}: { title: string, articles?: NewsArticle[] }
 const cardStyle: React.CSSProperties = {
     marginBottom: '16px',
     borderRadius: '10px',
-    boxShadow: '0 4px 10px rgba(0, 0, 0, 0.15)',
-    backgroundColor: '#fff',
+    boxShadow: 'var(--pf-shadow)',
     padding: '16px',
 };
 
@@ -358,16 +337,7 @@ function KeywordNewsCard({group}: { group: KeywordNewsGroup }) {
 }
 
 interface DashboardProps {
-    data: {
-        Weather?: WeatherData;
-        WeatherIndex?: WeatherIndexData;
-        Summary?: string;
-        digest?: DayDigest;
-        BbcNews: NewsArticle[];
-        NytNews: NewsArticle[];
-        KeywordNews?: KeywordNewsGroup[];
-        GoogleNews?: LegacyGoogleNewsGroup[];
-    } | null;
+    data: ReportData | null;
 }
 
 function Dashboard({data}: DashboardProps) {
@@ -384,7 +354,7 @@ function Dashboard({data}: DashboardProps) {
     const isMobile = useIsMobile();
 
     if (!data) {
-        return <Card title="Loading..." bordered={false} loading={true}/>;
+        return <Card bordered={false} loading={true}/>;
     }
     let {Weather, WeatherIndex, BbcNews, NytNews, digest} = data;
 
@@ -433,7 +403,7 @@ function Dashboard({data}: DashboardProps) {
                 right: '10px',
                 width: '200px',
                 padding: '10px',
-                borderLeft: '1px solid #ddd',
+                borderLeft: '1px solid var(--pf-border-2)',
                 zIndex: 1000,
                 transition: 'position 0.3s ease',
             }}
@@ -447,8 +417,8 @@ function Dashboard({data}: DashboardProps) {
                     position: 'fixed',
                     top: '10px',
                     right: '10px',
-                    backgroundColor: 'white',
-                    boxShadow: '0 2px 5px rgba(0, 0, 0, 0.1)',
+                    backgroundColor: 'var(--pf-bg-elevated)',
+                    boxShadow: 'var(--pf-shadow)',
                     zIndex: 1000,
                     padding: '10px',
                     width: '150px',
@@ -463,7 +433,7 @@ function Dashboard({data}: DashboardProps) {
                         position: 'absolute',
                         top: '5px',
                         right: '5px',
-                        color: '#333',
+                        color: 'var(--pf-text)',
                         fontSize: '16px',
                     }}
                 >

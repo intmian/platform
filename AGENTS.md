@@ -11,7 +11,7 @@
 
 ## 项目地图
 
-- `frontend/`：Vite + React + antd 5，按模块分目录（`src/todone` 里同时有普通任务板、Library 娱乐库和例行清单，另有 `src/money`、`src/subscription`、`src/admin` ……）。
+- `frontend/`：Vite + React + antd 5。`src/shell` 是外壳（锁屏登录、桌面、底部横条、⌘K、应用保活），所有路径都经过它；各应用登记在 `src/shell/apps.tsx`，按模块分目录（`src/todone` 里同时有普通任务板、Library 娱乐库和例行清单，另有 `src/money`、`src/subscription`、`src/admin` ……）。
 - `backend/`：Go + Gin，入口 `backend/main/main.go`。RPC 服务在 `backend/services/*`，平台自带的接口（登录、配置、AI、记账、订阅）在 `backend/platform/`。
 - `backend/mian_go_lib`：子模块，属于本项目，但有独立的 Git 历史，改了要单独提交并更新父仓库的引用。
 - `workers/ai-proxy`：AI 请求转发 Worker，已下线（公网入口关闭，代码保留），原因见目录下 `AGENTS.md`。
@@ -28,6 +28,7 @@
 
 ## 发布
 
+- 生产是前后端分离部署：前端构建产物由 Nginx 直接对外提供（含 SPA 回落到 `index.html`），后端只提供 API。后端里 `use_front` 托管前端的代码是历史遗留，没在用，不用为它改东西。
 - push 到 master 会自动构建并部署；提交信息里带 `#ignoreDeploy` 就跳过。只改文档、AI 配置这类不需要部署的提交带上它。
 - 让提交、推送就直接做，不用盯着 CI 跑完，也不用做线上检查，除非我要求。
 

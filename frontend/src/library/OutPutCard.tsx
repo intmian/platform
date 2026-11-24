@@ -1,8 +1,9 @@
-import React, {useEffect, useMemo, useState} from "react";
+import React, {useMemo, useState} from "react";
 import {Card, Col, Divider, Image, Row, Space, Typography} from "antd";
 import TextRate from "./TextRate";
 import {OutPutData, ScoreData} from "./OutPutData";
-import {useIsMobile} from "../common/hooksv2";
+import {useIsMobile} from "../common/breakpoints";
+import {useAppTitle} from "../shell/runtime";
 import Paragraphs from "../common/Paragraphs";
 
 const {Title, Text, Paragraph} = Typography;
@@ -59,12 +60,10 @@ const OutPutCard: React.FC<OutPutCardProps> = ({data, editable = true, onChange}
     const initMain = useMemo(() => scoreDataToText(SEQ_MAIN, local.mainScore), [local.mainScore]);
 
     // 更改标题为 name+mainScore
-    useEffect(() => {
-        document.title = `《${data.name}》鉴赏 - ${data.mainScore.value >= 0 ? data.mainScore.value + (data.mainScore.plus ? "+" : data.mainScore.sub ? "-" : "") : ""}/5分`;
-    }, [data.name, data.mainScore]);
+    useAppTitle(`《${data.name}》鉴赏 - ${data.mainScore.value >= 0 ? data.mainScore.value + (data.mainScore.plus ? "+" : data.mainScore.sub ? "-" : "") : ""}/5分`);
 
     // 更新工具：更新某个评分字段并上抛
-    const updateScore = (key: keyof Pick<OutPutData, "objScore" | "score" | "innovateScore" | "mainScore">,
+    const updateScore = (key: keyof Pick<OutPutData, "objScore" | "subScore" | "innovateScore" | "mainScore">,
                          seq: string[],
                          text: string) => {
         const next: OutPutData = {...local};
@@ -120,7 +119,6 @@ const OutPutCard: React.FC<OutPutCardProps> = ({data, editable = true, onChange}
             marginBottom: '16px',
             borderRadius: '10px',               /* 圆角 */
             boxShadow: '0 4px 10px rgba(0, 0, 0, 0.15)', /* 阴影效果 */
-            backgroundColor: '#fff',           /* 背景色 */
         }}>
             <Row>
                 <Space direction="vertical" size={4}>
@@ -195,7 +193,7 @@ const OutPutCard: React.FC<OutPutCardProps> = ({data, editable = true, onChange}
                     SEQ_SUBJ,
                     initSubj,
                     local.subScore?.comment || "",
-                    (t) => updateScore("score", SEQ_SUBJ, t)
+                    (t) => updateScore("subScore", SEQ_SUBJ, t)
                 )}
 
                 {/* 第四栏：创新 */}

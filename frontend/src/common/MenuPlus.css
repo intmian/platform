@@ -1,0 +1,114 @@
+/* 分区布局：桌面左侧竖排导航，手机顶部横向滑动的标签条。颜色只用 --pf-* 变量 */
+.pf-section {
+    display: flex;
+    align-items: flex-start;
+    gap: 20px;
+    padding: 20px 24px;
+    box-sizing: border-box;
+    min-height: calc(100dvh - var(--homebar-h, 0px) - var(--safe-bottom, 0px));
+    background: var(--pf-bg-layout);
+}
+
+.pf-section-nav {
+    position: sticky;
+    top: 20px;
+    flex: none;
+    width: 168px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.pf-section-link {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    height: 36px;
+    padding: 0 12px;
+    border-radius: var(--pf-radius, 6px);
+    color: var(--pf-text-2);
+    font-size: 14px;
+    white-space: nowrap;
+    text-decoration: none;
+    transition: background .15s, color .15s;
+}
+
+.pf-section-link:hover {
+    background: var(--pf-fill-3);
+    color: var(--pf-text);
+}
+
+.pf-section-link.active {
+    background: var(--pf-bg);
+    color: var(--pf-primary);
+    font-weight: 500;
+    box-shadow: 0 0 0 1px var(--pf-border-2);
+}
+
+.pf-section-link .anticon {
+    font-size: 15px;
+}
+
+.pf-section-main {
+    flex: 1;
+    min-width: 0;
+}
+
+/* 手机 */
+.pf-section.is-mobile {
+    display: block;
+    padding: 0;
+}
+
+.pf-section-tabs {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    display: flex;
+    gap: 6px;
+    overflow-x: auto;
+    padding: calc(var(--safe-top, 0px) + 10px) 12px 10px;
+    background: var(--pf-bg-layout);
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+}
+
+.pf-section-tabs::-webkit-scrollbar {
+    display: none;
+}
+
+.pf-section-tab {
+    flex: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 32px;
+    padding: 0 14px;
+    border-radius: 16px;
+    color: var(--pf-text-2);
+    font-size: 14px;
+    white-space: nowrap;
+    text-decoration: none;
+}
+
+.pf-section-tab.active {
+    background: var(--pf-bg);
+    color: var(--pf-primary);
+    font-weight: 500;
+    box-shadow: 0 0 0 1px var(--pf-border-2);
+}
+
+.pf-section.is-mobile .pf-section-main {
+    padding: 2px 12px 12px;
+}
+
+/* 表格这类本身没有底色的页面放进白色面板 */
+.pf-section-panel {
+    background: var(--pf-bg);
+    border-radius: var(--pf-radius-lg, 8px);
+    padding: 20px;
+}
+
+.pf-section.is-mobile .pf-section-panel {
+    padding: 12px;
+}

@@ -1,4 +1,6 @@
 import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
+import {useSearchParams} from 'react-router-dom';
+import {useIsAppActive} from '../shell/runtime';
 import {
     Button,
     Checkbox,
@@ -78,7 +80,7 @@ import {
     startNewRound,
     touchLibraryUpdatedAt,
 } from './libraryUtil';
-import {useIsMobile} from '../common/hooksv2';
+import {useIsMobile} from '../common/breakpoints';
 import LibraryDetail from './LibraryDetail';
 import LibraryLoadingImage from './LibraryLoadingImage';
 import LibraryTimeline from './LibraryTimeline';
@@ -381,8 +383,7 @@ function parseDetailTaskIdParam(rawValue: string | null): number | null {
     return value;
 }
 
-function readLibraryUrlState(): LibraryUrlState {
-    const params = new URLSearchParams(window.location.search);
+function readLibraryUrlState(params: URLSearchParams): LibraryUrlState {
     const category = params.get(URL_STATE_PARAM_KEYS.category)?.trim() || 'all';
     const todoReason = params.get(URL_STATE_PARAM_KEYS.todoReason)?.trim() || 'all';
     return {
@@ -510,7 +511,12 @@ export default function Library(props: LibraryProps) {
 function LibraryContent({addr, groupTitle}: LibraryProps) {
     const voiceBusy = useLibraryVoiceBusy();
     const isMobile = useIsMobile();
-    const initialUrlStateRef = useRef<LibraryUrlState>(readLibraryUrlState());
+    // 筛选状态放在地址的查询参数里（刷新、分享链接都能还原），只用 replace 改，不进浏览器历史
+    const [searchParams, setSearchParams] = useSearchParams();
+    const searchParamsRef = useRef(searchParams);
+    searchParamsRef.current = searchParams;
+    const appActive = useIsAppActive();
+    const initialUrlStateRef = useRef<LibraryUrlState>(readLibraryUrlState(searchParams));
     const pendingDetailTaskIdFromUrlRef = useRef<number | null>(initialUrlStateRef.current.detailTaskId);
     
     // 数据状态
@@ -766,8 +772,12 @@ function LibraryContent({addr, groupTitle}: LibraryProps) {
     }, [allItems, loading, mainSubGroup]);
 
     useEffect(() => {
-        const url = new URL(window.location.href);
-        const params = url.searchParams;
+        // 在后台时地址栏属于别的应用，不能改
+        if (!appActive) {
+            return;
+        }
+        const current = searchParamsRef.current;
+        const params = new URLSearchParams(current);
         const normalizedStatuses = normalizeStatusFilterOptions(selectedStatuses);
         const isDefaultStatuses = areStatusFilterOptionsEqual(normalizedStatuses, DEFAULT_STATUS_FILTER_OPTIONS);
         if (normalizedStatuses.length === 0) {
@@ -815,16 +825,11 @@ function LibraryContent({addr, groupTitle}: LibraryProps) {
             params.delete(URL_STATE_PARAM_KEYS.detailTaskId);
         }
 
-        const nextSearch = params.toString();
-        const currentSearch = window.location.search.startsWith('?')
-            ? window.location.search.slice(1)
-            : window.location.search;
-        if (nextSearch === currentSearch) {
+        if (params.toString() === current.toString()) {
             return;
         }
-        const nextUrl = `${window.location.pathname}${nextSearch ? `?${nextSearch}` : ''}${window.location.hash}`;
-        window.history.replaceState({}, '', nextUrl);
-    }, [detailItem, searchText, selectedCategory, selectedStatuses, showDetail, sortBy, todoReasonFilter]);
+        setSearchParams(params, {replace: true});
+    }, [appActive, detailItem, searchText, selectedCategory, selectedStatuses, setSearchParams, showDetail, sortBy, todoReasonFilter]);
 
     // 提取所有分类（从 extra.category 字段）
     const categories: string[] = useMemo(() => {
@@ -1362,7 +1367,7 @@ function LibraryContent({addr, groupTitle}: LibraryProps) {
             {type: 'divider' as const},
             {
                 key: 'delete',
-                label: <span style={{color: '#ff4d4f'}}>删除</span>,
+                label: <span style={{color: 'var(--pf-error)'}}>删除</span>,
             },
         ];
     };
@@ -1783,9 +1788,9 @@ function LibraryContent({addr, groupTitle}: LibraryProps) {
                         icon={<QuestionCircleOutlined/>}
                         onClick={() => setShowGuideModal(true)}
                         style={{
-                            color: '#595959',
-                            border: '1px solid #d9d9d9',
-                            background: '#fff',
+                            color: 'var(--pf-text-2)',
+                            border: '1px solid var(--pf-border)',
+                            background: 'var(--pf-bg)',
                         }}
                     />
                 </Space>
@@ -1820,7 +1825,7 @@ function LibraryContent({addr, groupTitle}: LibraryProps) {
                                     <>
                                         {menuNode}
                                         {showDisplayOptions ? (
-                                            <div style={{padding: 8, borderTop: '1px solid #f0f0f0'}}>
+                                            <div style={{padding: 8, borderTop: '1px solid var(--pf-border-2)'}}>
                                                 {displayOptionsContent}
                                             </div>
                                         ) : null}
@@ -2198,7 +2203,7 @@ function LibraryContent({addr, groupTitle}: LibraryProps) {
                             提示
                         </Button>
                     </Space.Compact>
-                    <div style={{fontSize: 12, color: '#999', marginTop: 4}}>
+                    <div style={{fontSize: 12, color: 'var(--pf-text-3)', marginTop: 4}}>
                         提示：分类会在添加条目时自动出现，无需预先创建
                     </div>
                 </div>
@@ -2217,7 +2222,7 @@ function LibraryContent({addr, groupTitle}: LibraryProps) {
                                     justifyContent: 'space-between',
                                     alignItems: isMobile ? 'stretch' : 'center',
                                     padding: '12px 16px',
-                                    background: '#fafafa',
+                                    background: 'var(--pf-fill-4)',
                                     borderRadius: 8,
                                     gap: isMobile ? 8 : 0,
                                 }}
@@ -2257,7 +2262,7 @@ function LibraryContent({addr, groupTitle}: LibraryProps) {
                                     <>
                                         <div>
                                             <div style={{fontWeight: 500}}>{cat}</div>
-                                            <div style={{fontSize: 12, color: '#999'}}>
+                                            <div style={{fontSize: 12, color: 'var(--pf-text-3)'}}>
                                                 {categoryCount.get(cat) || 0} 个条目
                                             </div>
                                         </div>
@@ -2392,9 +2397,9 @@ function LibraryContent({addr, groupTitle}: LibraryProps) {
                                 key={item.key}
                                 style={{
                                     padding: '10px 12px',
-                                    border: '1px solid #f0f0f0',
+                                    border: '1px solid var(--pf-border-2)',
                                     borderRadius: 10,
-                                    background: item.key === 'wait_expired' ? '#fff7e6' : '#fafafa',
+                                    background: item.key === 'wait_expired' ? 'var(--pf-warning-bg)' : 'var(--pf-fill-4)',
                                 }}
                             >
                                 <Space size={8} wrap>
@@ -2436,8 +2441,8 @@ function LibraryContent({addr, groupTitle}: LibraryProps) {
                                 style={{
                                     padding: '12px 14px',
                                     borderRadius: 10,
-                                    border: '1px solid #f0f0f0',
-                                    background: '#fafafa',
+                                    border: '1px solid var(--pf-border-2)',
+                                    background: 'var(--pf-fill-4)',
                                 }}
                             >
                                 <Space size={8} wrap style={{marginBottom: 6}}>

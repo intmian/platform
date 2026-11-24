@@ -1,4 +1,4 @@
-import config from "../config.json";
+import {ApiResult, request} from "./api";
 
 export type ProviderProtocol = "OpenAI" | "DeepSeek";
 export type ModelType = "text" | "stt" | "search";
@@ -84,26 +84,18 @@ export interface AIQueueTestResult {
     error?: string;
 }
 
-interface AIConfigEnvelope<T> {
-    code: number;
-    msg?: string;
-    data: T;
+// 网络或 HTTP 层失败用固定提示；后端业务失败用后端给的 msg
+function apiErrorMessage(ret: ApiResult<unknown>, fallback: string): string {
+    if (ret.code < 0 || ret.code >= 400) return fallback;
+    return ret.msg || fallback;
 }
 
 async function postAIConfig<T>(path: string, body: object): Promise<T> {
-    const response = await fetch(config.api_base_url + path, {
-        method: "POST",
-        headers: {"Content-Type": "application/json"},
-        body: JSON.stringify(body),
-    });
-    if (!response.ok) {
-        throw new Error("AI 配置请求失败");
+    const ret = await request<T>(path, body);
+    if (!ret.ok) {
+        throw new Error(apiErrorMessage(ret, "AI 配置请求失败"));
     }
-    const result = await response.json() as AIConfigEnvelope<T>;
-    if (result.code !== 0) {
-        throw new Error(result.msg || "AI 配置请求失败");
-    }
-    return result.data;
+    return ret.data;
 }
 
 export function getAIPlatformConfig(): Promise<AIPlatformConfig> {
@@ -130,16 +122,9 @@ export async function testAIQueue(value: AIPlatformConfig, queueID: string, inpu
         form.append("file", file, file.name);
     }
 
-    const response = await fetch(config.api_base_url + "/misc/ai/config/queue/test", {
-        method: "POST",
-        body: form,
-    });
-    if (!response.ok) {
-        throw new Error("调用策略测试请求失败");
+    const ret = await request<AIQueueTestResult>("/misc/ai/config/queue/test", form);
+    if (!ret.ok) {
+        throw new Error(apiErrorMessage(ret, "调用策略测试请求失败"));
     }
-    const result = await response.json() as AIConfigEnvelope<AIQueueTestResult>;
-    if (result.code !== 0) {
-        throw new Error(result.msg || "调用策略测试请求失败");
-    }
-    return result.data;
+    return ret.data;
 }

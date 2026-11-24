@@ -1,4 +1,5 @@
 import {Addr, AddrUnitType} from "./addr";
+import {useReloadGroup} from "./reloadCtx";
 import {PTask} from "./net/protocal";
 import {Button, DatePicker, Flex, Form, Input, message, Modal, Select, Typography} from "antd";
 import {useEffect, useState} from "react";
@@ -6,8 +7,7 @@ import dayjs from "dayjs";
 import {EmptyGoTimeStr, IsDateEmptyFromGoEmpty} from "../common/tool";
 import {ChangeTaskReq, sendChangeTask, sendDelTask, sendTaskMove, TaskMoveReq} from "./net/send_back";
 import {SaveOutlined} from "@ant-design/icons";
-import {useIsMobile} from "../common/hooksv2";
-import "react-quill-new/dist/quill.snow.css";
+import {useIsMobile} from "../common/breakpoints";
 import TaskTree from "./TaskTree";
 import {Editor} from "./TaskDetailEditor";
 
@@ -28,6 +28,7 @@ export function TaskDetail(props: TaskDetailProps) {
     const [status, setStatus] = useState<"not_started" | "started" | "done">("not_started");
     const isMobile = useIsMobile();
     const [showMove, setShowMove] = useState(false);
+    const reloadGroup = useReloadGroup();
 
     useEffect(() => {
         if (!props.task) {
@@ -262,9 +263,9 @@ export function TaskDetail(props: TaskDetailProps) {
                 allowClear
                 style={{width: "45%"}}
                 value={beginTimeJs}
-                onChange={(date, dateString) => {
-                    if (dateString !== "") {
-                        setBeginTime(dayjs(dateString).toISOString());
+                onChange={(date) => {
+                    if (date) {
+                        setBeginTime(dayjs(date.format("YYYY-MM-DD")).toISOString());
                     } else {
                         setBeginTime(EmptyGoTimeStr);
                     }
@@ -277,9 +278,9 @@ export function TaskDetail(props: TaskDetailProps) {
                 value={endTimeJs}
                 style={{width: "45%"}}
 
-                onChange={(date, dateString) => {
-                    if (dateString !== "") {
-                        setEndTime(dayjs(dateString + "23:59:59").toISOString());
+                onChange={(date) => {
+                    if (date) {
+                        setEndTime(dayjs(date.format("YYYY-MM-DD") + "23:59:59").toISOString());
                     } else {
                         setEndTime(EmptyGoTimeStr);
                     }
@@ -295,13 +296,11 @@ export function TaskDetail(props: TaskDetailProps) {
         {showMove ? <TaskMovePanel
             subGroupAddr={addr}
             movedTasks={[task.ID]}
-            refreshApi={props.refreshApi}
             tree={props.tree}
             onCancel={() => setShowMove(false)}
             onFinish={() => {
                 setShowMove(false);
-                // 刷新浏览器标签页
-                document.location.reload();
+                reloadGroup();
             }}
         /> : null}
     </Flex>

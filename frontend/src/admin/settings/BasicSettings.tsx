@@ -4,7 +4,7 @@ import {CloseOutlined} from "@ant-design/icons";
 import {DndContext, DragEndEvent, PointerSensor, closestCenter, useSensor, useSensors} from "@dnd-kit/core";
 import {SortableContext, arrayMove, rectSortingStrategy, useSortable} from "@dnd-kit/sortable";
 import {CSS} from "@dnd-kit/utilities";
-import {sendCfgPlatGet, sendCfgPlatSet, sendCfgServiceGet, sendCfgServiceSet} from "../../common/sendhttp.js";
+import {getCfg, setCfg} from "../../common/cfgApi";
 import {SaveBar} from "./SaveBar";
 
 const {Text} = Typography;
@@ -41,16 +41,6 @@ const R2_FIELDS: ConnectionField[] = [
     {key: "r2.secretKey", label: "Secret Key", secret: true},
     {key: "r2.web", label: "外部访问地址", url: true},
 ];
-
-type ConfigResponse = {ok: boolean, data?: Record<string, {Data: unknown}>};
-
-function loadConfig(send: (callback: (ret: ConfigResponse) => void) => void): Promise<Record<string, {Data: unknown}>> {
-    return new Promise((resolve, reject) => send((ret) => ret.ok ? resolve(ret.data ?? {}) : reject(new Error("配置加载失败"))));
-}
-
-function saveConfig(send: (callback: (ret: {ok: boolean}) => void) => void): Promise<void> {
-    return new Promise((resolve, reject) => send((ret) => ret.ok ? resolve() : reject(new Error("保存失败"))));
-}
 
 // 配置值可能是原始类型，也可能是 JSON 字符串
 function parseStored(value: unknown): unknown {
@@ -208,9 +198,9 @@ export function BasicSettings({onDirtyChange}: {onDirtyChange: (dirty: boolean) 
 
     useEffect(() => {
         Promise.all([
-            loadConfig((callback) => sendCfgServiceGet("auto", callback)),
-            loadConfig((callback) => sendCfgServiceGet("todone", callback)),
-            loadConfig((callback) => sendCfgPlatGet(callback)),
+            getCfg({server: "auto"}),
+            getCfg({server: "todone"}),
+            getCfg(),
         ]).then(([auto, todone, plat]) => {
             const next: BasicValues = {
                 keywords: parseKeywords(auto["auto.news.keys"]?.Data),
@@ -219,7 +209,7 @@ export function BasicSettings({onDirtyChange}: {onDirtyChange: (dirty: boolean) 
             };
             setValue(next);
             setSaved(next);
-        }).catch((error: Error) => message.error(error.message));
+        }).catch((error: Error) => message.error(`配置加载失败：${error.message}`));
     }, []);
 
     const dirty = useMemo(() => JSON.stringify(value) !== JSON.stringify(saved), [saved, value]);
@@ -273,16 +263,16 @@ export function BasicSettings({onDirtyChange}: {onDirtyChange: (dirty: boolean) 
         setSaving(true);
         try {
             if (JSON.stringify(value.keywords) !== JSON.stringify(saved.keywords)) {
-                await saveConfig((callback) => sendCfgServiceSet("auto", "news.keys", JSON.stringify(serializeKeywords(value.keywords)), callback));
+                await setCfg({server: "auto"}, "news.keys", JSON.stringify(serializeKeywords(value.keywords)));
             }
             for (const field of TODONE_FIELDS) {
                 if (value.todone[field.key] !== saved.todone[field.key]) {
-                    await saveConfig((callback) => sendCfgServiceSet("todone", field.key, JSON.stringify(value.todone[field.key]), callback));
+                    await setCfg({server: "todone"}, field.key, JSON.stringify(value.todone[field.key]));
                 }
             }
             for (const field of R2_FIELDS) {
                 if (value.r2[field.key] !== saved.r2[field.key]) {
-                    await saveConfig((callback) => sendCfgPlatSet(field.key, JSON.stringify(value.r2[field.key]), callback));
+                    await setCfg({}, field.key, JSON.stringify(value.r2[field.key]));
                 }
             }
             setSaved(value);

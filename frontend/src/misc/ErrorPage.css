@@ -7,6 +7,12 @@
     padding: 0 24px;
 }
 
+/* 在外壳里显示时，给底部胶囊留出位置 */
+.error-page.is-inline {
+    height: auto;
+    min-height: calc(100dvh - var(--homebar-h, 0px) - var(--safe-bottom, 0px));
+}
+
 .text-box {
     width: auto; /* 根据需要设置宽度 */
     height: 100px; /* 根据需要设置高度 */

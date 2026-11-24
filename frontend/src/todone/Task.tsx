@@ -1,4 +1,5 @@
 import {Addr} from "./addr";
+import {useReloadGroup} from "./reloadCtx";
 import {PTask, TaskType} from "./net/protocal";
 import {Button, Checkbox, Dropdown, Flex, MenuProps, message, Modal, Row, Tag} from "antd";
 import {ReactNode, useEffect, useState} from "react";
@@ -174,7 +175,7 @@ export function TaskTitle({task, clickShowSubTask, isShowSon, onSelectTask, hasS
     let color = undefined;
     let textDecoration = task.Done ? 'line-through' : 'none';
     if (!task.Started || BeforeBegin) {
-        color = '#bfbfbf'; // 灰色
+        color = 'var(--pf-text-4)'; // 灰色
     }
     if (task.Done) {
         textDecoration = 'line-through';
@@ -387,7 +388,7 @@ export function Task(props: TaskProps) {
         opacity: isDragging ? 0.6 : 1,
         position: 'relative' as const,
         zIndex: isDragging ? 9999 : undefined,
-        backgroundColor: isDragging ? '#fafafa' : undefined,
+        backgroundColor: isDragging ? 'var(--pf-fill-4)' : undefined,
         boxShadow: isDragging ? '0 9px 28px 8px rgba(0, 0, 0, 0.05), 0 6px 16px 0 rgba(0, 0, 0, 0.08)' : undefined,
         borderRadius: isDragging ? '8px' : undefined,
         scale: isDragging ? '1.02' : undefined,
@@ -412,6 +413,7 @@ export function Task(props: TaskProps) {
     const [menuLoadingKey, setMenuLoadingKey] = useState<string | null>(null);
     // 移动和删除弹窗控制
     const [showMove, setShowMove] = useState(false);
+    const reloadGroup = useReloadGroup();
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
     // 右键事件
     const handleContextMenu = (e: React.MouseEvent) => {
@@ -463,7 +465,7 @@ export function Task(props: TaskProps) {
             sendTaskDelTag(req, (ret) => {
                 if (ret.ok) {
                     message.success("取消标记任务成功").then();
-                    props.task.Tags = props.task.Tags.filter(tag => tag !== "[system]flag");
+                    props.task.Tags = (props.task.Tags ?? []).filter(tag => tag !== "[system]flag");
                     props.refreshTree();
                 } else {
                     message.error("取消标记任务失败").then();
@@ -651,13 +653,11 @@ export function Task(props: TaskProps) {
             <TaskMovePanel
                 subGroupAddr={props.addr}
                 movedTasks={[props.task.ID]}
-                refreshApi={props.refreshTree}
                 tree={props.tree}
                 onCancel={() => setShowMove(false)}
                 onFinish={() => {
                     setShowMove(false);
-                    // 刷新浏览器标签页
-                    document.location.reload();
+                    reloadGroup();
                 }}
             />
         )}
@@ -772,7 +772,7 @@ export function Task(props: TaskProps) {
                 style={{
                     width: '100%',
                     borderRadius: 6,
-                    outline: isOverChildrenDrop ? '2px dashed #1677ff' : undefined,
+                    outline: isOverChildrenDrop ? '2px dashed var(--pf-primary)' : undefined,
                     outlineOffset: isOverChildrenDrop ? 2 : undefined,
                     transition: 'outline 120ms ease',
                 }}

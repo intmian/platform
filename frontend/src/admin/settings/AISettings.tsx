@@ -13,11 +13,15 @@ import {AIQueuePanel} from "./AIQueuePanel";
 import {SaveBar} from "./SaveBar";
 import {AIView, BUSINESS_DEFINITIONS, collectChanges, collectIssues, nextID, reconcileConfig} from "./aiConfigModel";
 
-export function AISettings({onDirtyChange}: {onDirtyChange: (dirty: boolean) => void}) {
+// view 由地址决定（/admin/setting/ai/queues 等），切换时调 onViewChange 改地址
+export function AISettings({onDirtyChange, view, onViewChange: setView}: {
+    onDirtyChange: (dirty: boolean) => void;
+    view: AIView;
+    onViewChange: (view: AIView) => void;
+}) {
     const [value, setValue] = useState<AIPlatformConfig | null>(null);
     const [saved, setSaved] = useState<AIPlatformConfig | null>(null);
     const [saving, setSaving] = useState(false);
-    const [view, setView] = useState<AIView>("overview");
     const [queueID, setQueueID] = useState<string | null>(null);
     const [providerID, setProviderID] = useState<string | null>(null);
 

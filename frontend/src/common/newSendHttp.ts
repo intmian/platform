@@ -1,76 +1,23 @@
-import {EnvData, TaskIO, TaskStatus, ToolData} from "./backHttpDefine";
-import config from "../config.json";
+import {TaskIO, TaskStatus} from "./backHttpDefine";
 import {message} from "antd";
-
-export interface UniReturn {
-    code: number
-    msg: string
-    data: object
-}
+import {request} from "./api";
 
 export interface UniResult {
     data: object
     ok: boolean
 }
 
-// 通用的异步POST请求，只适配platform的通用后端返回格式，如果code不为0，或者没有code字段，返回null或者不为200的状态码，返回null
-export async function UniPost(url: string, req: object) {
-    const result: UniResult = {
-        data: {},
-        ok: false
-    }
-    try {
-        const response: Response = await fetch(url, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(req),
-        });
-
-        if (!response.ok || (response.status !== undefined && response.status !== 200)) {
-            console.debug('UniPost failed:', response)
-            result.ok = false
-            return result
-        }
-        const data: UniReturn = await response.json()
-        if (data.code !== 0) {
-            console.debug('UniPost failed:', data.msg)
-            return result
-        } else {
-            result.ok = true
-        }
-        if (data.data !== undefined) {
-            result.data = data.data
-        } else {
-            result.data = {}
-            result.ok = false
-        }
-        return result
-    } catch (error) {
-        result.ok = false
-        console.debug('UniPost failed:', error)
-        return result
-    }
+// 旧调用方用的返回形状；底层走 common/api.ts 的统一请求内核
+export async function UniPost(url: string, req: object): Promise<UniResult> {
+    const ret = await request<object>(url, req);
+    // 历史行为：成功但没有 data 字段也算失败
+    const ok = ret.ok && ret.data !== undefined;
+    return {ok, data: ret.data ?? {}};
 }
 
-export interface DebugParam {
-    ints: number[]
-    f64s: number[]
-    strs: string[]
-}
-
-export function sendDebug(svr: string, cmd: string, req: DebugParam, callback: (ret: {
-    data: never,
-    ok: boolean
-}) => void) {
-    UniPost(config.api_base_url + '/debug/' + svr + '/' + cmd, req).then((res: UniResult) => {
-        const result: { data: never, ok: boolean } = {
-            data: res.data as never,
-            ok: res.ok
-        };
-        callback(result);
-    })
+// 回调式的旧接口统一走这里
+function uniCallback<T>(url: string, req: object, callback: (ret: { data: T, ok: boolean }) => void) {
+    UniPost(url, req).then((res) => callback({data: res.data as T, ok: res.ok}));
 }
 
 export interface SubscriptionItem {
@@ -101,147 +48,6 @@ export interface SubscriptionMutationRet {
     item: SubscriptionItem
 }
 
-export async function sendSubscriptionList() {
-    return UniPost(config.api_base_url + '/misc/subscription/list', {})
-}
-
-export async function sendSubscriptionCreate(req: {
-    name: string
-    upstreamUrl: string
-    workerForwardUrl: string
-    workerForwardEnabled: boolean
-    monitorEnabled: boolean
-    cacheEnabled: boolean
-}) {
-    return UniPost(config.api_base_url + '/misc/subscription/create', req)
-}
-
-export async function sendSubscriptionUpdate(req: {
-    id: string
-    name: string
-    upstreamUrl: string
-    workerForwardUrl: string
-    workerForwardEnabled: boolean
-    monitorEnabled: boolean
-    cacheEnabled: boolean
-}) {
-    return UniPost(config.api_base_url + '/misc/subscription/update', req)
-}
-
-export async function sendSubscriptionDelete(req: { id: string }) {
-    return UniPost(config.api_base_url + '/misc/subscription/delete', req)
-}
-
-export async function sendSubscriptionRotate(req: { id: string }) {
-    return UniPost(config.api_base_url + '/misc/subscription/rotate', req)
-}
-
-export async function sendSubscriptionCheck(req: { id: string }) {
-    return UniPost(config.api_base_url + '/misc/subscription/check', req)
-}
-
-//=====以下为自动生成的代码=====
-export interface CreateToolReq {
-    Name: string
-    Typ: number
-}
-
-export interface CreateToolRet {
-    Suc: boolean
-    ToolID: string
-}
-
-
-export interface UpdateToolReq {
-    ToolID: string
-    Name: string
-    Content: string
-}
-
-export interface UpdateToolRet {
-    Suc: boolean
-}
-
-
-export type GetToolsReq = object
-
-export interface GetToolsRet {
-    ID2ToolData: Map<string, ToolData>
-}
-
-
-export interface GetToolScriptReq {
-    ToolID: string
-}
-
-export interface GetToolScriptRet {
-    Script: string
-}
-
-
-export type CreateEnvReq = object
-
-export interface CreateEnvRet {
-    Suc: boolean
-    EnvID: number
-}
-
-
-export type GetEnvsReq = object
-
-export interface GetEnvsRet {
-    EnvData: EnvData[]
-}
-
-
-export interface GetEnvReq {
-    EnvID: number
-}
-
-export interface GetEnvRet {
-    EnvData: EnvData
-    AllFiles: string[]
-}
-
-
-export interface GetFileReq {
-    EnvID: number
-    FileName: string
-}
-
-export interface GetFileRet {
-    Content: string
-}
-
-
-export interface SetFileReq {
-    EnvID: number
-    FileName: string
-    Content: string
-}
-
-export type SetFileRet = object
-
-
-export interface SetEnvReq {
-    EnvID: number
-    params: string[]
-    note: string
-    bindToolID: string
-}
-
-export type SetEnvRet = object
-
-
-export interface RunEnvReq {
-    EnvID: number
-    ToolID: string
-    Params: string[]
-}
-
-export type RunEnvRet = object
-
-
 export interface GetTasksReq {
     EvnID: number
 }
@@ -255,7 +61,6 @@ export interface GetTasksRet {
     Status: number
 }
 
-
 export interface GetTaskReq {
     EnvID: number
     TaskIndex: number
@@ -267,197 +72,14 @@ export interface GetTaskRet {
     Status: TaskStatus
 }
 
-
-export interface StopTaskReq {
-    EvnID: number
-    TaskIndex: number
-}
-
-export type StopTaskRet = object
-
-
-export interface TaskInputReq {
-    EvnID: number
-    TaskIndex: number
-    Content: string
-}
-
-export type TaskInputRet = object
-
-const cmd_api_base_url = config.api_base_url + '/service/cmd/';
-
-export function sendCreateTool(req: CreateToolReq, callback: (ret: { data: CreateToolRet, ok: boolean }) => void) {
-    UniPost(cmd_api_base_url + 'createTool', req).then((res: UniResult) => {
-        const result: { data: CreateToolRet, ok: boolean } = {
-            data: res.data as CreateToolRet,
-            ok: res.ok
-        };
-        callback(result);
-    });
-}
-
-export function sendUpdateTool(req: UpdateToolReq, callback: (ret: { data: UpdateToolRet, ok: boolean }) => void) {
-    UniPost(cmd_api_base_url + 'updateTool', req).then((res: UniResult) => {
-        const result: { data: UpdateToolRet, ok: boolean } = {
-            data: res.data as UpdateToolRet,
-            ok: res.ok
-        };
-        callback(result);
-    });
-}
-
-export function sendGetTools(req: GetToolsReq, callback: (ret: { data: GetToolsRet, ok: boolean }) => void) {
-    UniPost(cmd_api_base_url + 'getTools', req).then((res: UniResult) => {
-        const result: { data: GetToolsRet, ok: boolean } = {
-            data: res.data as GetToolsRet,
-            ok: res.ok
-        };
-        if (result.ok) {
-            result.data.ID2ToolData = new Map(Object.entries(result.data.ID2ToolData));
-        }
-        callback(result);
-    });
-}
-
-export function sendGetToolScript(req: GetToolScriptReq, callback: (ret: {
-    data: GetToolScriptRet,
-    ok: boolean
-}) => void) {
-    UniPost(cmd_api_base_url + 'getToolScript', req).then((res: UniResult) => {
-        const result: { data: GetToolScriptRet, ok: boolean } = {
-            data: res.data as GetToolScriptRet,
-            ok: res.ok
-        };
-        callback(result);
-    });
-}
-
-export function sendCreateEnv(req: CreateEnvReq, callback: (ret: { data: CreateEnvRet, ok: boolean }) => void) {
-    UniPost(cmd_api_base_url + 'createEnv', req).then((res: UniResult) => {
-        const result: { data: CreateEnvRet, ok: boolean } = {
-            data: res.data as CreateEnvRet,
-            ok: res.ok
-        };
-        callback(result);
-    });
-}
-
-export function sendGetEnvs(req: GetEnvsReq, callback: (ret: { data: GetEnvsRet, ok: boolean }) => void) {
-    UniPost(cmd_api_base_url + 'getEnvs', req).then((res: UniResult) => {
-        const result: { data: GetEnvsRet, ok: boolean } = {
-            data: res.data as GetEnvsRet,
-            ok: res.ok
-        };
-        callback(result);
-    });
-}
-
-export function sendGetEnv(req: GetEnvReq, callback: (ret: { data: GetEnvRet, ok: boolean }) => void) {
-    UniPost(cmd_api_base_url + 'getEnv', req).then((res: UniResult) => {
-        const result: { data: GetEnvRet, ok: boolean } = {
-            data: res.data as GetEnvRet,
-            ok: res.ok
-        };
-        callback(result);
-    });
-}
-
-export function sendGetFile(req: GetFileReq, callback: (ret: { data: GetFileRet, ok: boolean }) => void) {
-    UniPost(cmd_api_base_url + 'getFile', req).then((res: UniResult) => {
-        const result: { data: GetFileRet, ok: boolean } = {
-            data: res.data as GetFileRet,
-            ok: res.ok
-        };
-        callback(result);
-    });
-}
-
-export function sendSetFile(req: SetFileReq, callback: (ret: { data: SetFileRet, ok: boolean }) => void) {
-    UniPost(cmd_api_base_url + 'setFile', req).then((res: UniResult) => {
-        const result: { data: SetFileRet, ok: boolean } = {
-            data: res.data as SetFileRet,
-            ok: res.ok
-        };
-        callback(result);
-    });
-}
-
-export function sendSetEnv(req: SetEnvReq, callback: (ret: { data: SetEnvRet, ok: boolean }) => void) {
-    UniPost(cmd_api_base_url + 'setEnv', req).then((res: UniResult) => {
-        const result: { data: SetEnvRet, ok: boolean } = {
-            data: res.data as SetEnvRet,
-            ok: res.ok
-        };
-        callback(result);
-    });
-}
-
-export function sendRunEnv(req: RunEnvReq, callback: (ret: { data: RunEnvRet, ok: boolean }) => void) {
-    UniPost(cmd_api_base_url + 'runEnv', req).then((res: UniResult) => {
-        const result: { data: RunEnvRet, ok: boolean } = {
-            data: res.data as RunEnvRet,
-            ok: res.ok
-        };
-        callback(result);
-    });
-}
+const cmd_api_base_url = '/service/cmd/';
 
 export function sendGetTasks(req: GetTasksReq, callback: (ret: { data: GetTasksRet, ok: boolean }) => void) {
-    UniPost(cmd_api_base_url + 'getTasks', req).then((res: UniResult) => {
-        const result: { data: GetTasksRet, ok: boolean } = {
-            data: res.data as GetTasksRet,
-            ok: res.ok
-        };
-        callback(result);
-    });
+    uniCallback<GetTasksRet>(cmd_api_base_url + 'getTasks', req, callback);
 }
 
 export function sendGetTask(req: GetTaskReq, callback: (ret: { data: GetTaskRet, ok: boolean }) => void) {
-    UniPost(cmd_api_base_url + 'getTask', req).then((res: UniResult) => {
-        const result: { data: GetTaskRet, ok: boolean } = {
-            data: res.data as GetTaskRet,
-            ok: res.ok
-        };
-        callback(result);
-    });
-}
-
-export function sendStopTask(req: StopTaskReq, callback: (ret: { data: StopTaskRet, ok: boolean }) => void) {
-    UniPost(cmd_api_base_url + 'stopTask', req).then((res: UniResult) => {
-        const result: { data: StopTaskRet, ok: boolean } = {
-            data: res.data as StopTaskRet,
-            ok: res.ok
-        };
-        callback(result);
-    });
-}
-
-export function sendTaskInput(req: TaskInputReq, callback: (ret: { data: TaskInputRet, ok: boolean }) => void) {
-    UniPost(cmd_api_base_url + 'taskInput', req).then((res: UniResult) => {
-        const result: { data: TaskInputRet, ok: boolean } = {
-            data: res.data as TaskInputRet,
-            ok: res.ok
-        };
-        callback(result);
-    });
-}
-
-export interface DeleteToolReq {
-    ToolID: string
-}
-
-export interface DeleteToolRet {
-    Suc: boolean
-}
-
-export function sendDeleteTool(req: DeleteToolReq, callback: (ret: { data: DeleteToolRet, ok: boolean }) => void) {
-    UniPost(cmd_api_base_url + 'deleteTool', req).then((res: UniResult) => {
-        const result: { data: DeleteToolRet, ok: boolean } = {
-            data: res.data as DeleteToolRet,
-            ok: res.ok
-        };
-        callback(result);
-    });
+    uniCallback<GetTaskRet>(cmd_api_base_url + 'getTask', req, callback);
 }
 
 type WeatherPtl = {
@@ -623,14 +245,12 @@ export interface GetReportRet {
     Report: DayReport
 }
 
-
 export type GetWholeReportReq = object
 
 export interface GetWholeReportRet {
     Suc: boolean
     Report: WholeReport
 }
-
 
 export type GetReportListReq = object
 
@@ -639,67 +259,37 @@ export interface GetReportListRet {
     List: string[]
 }
 
-
 export type GenerateReportReq = object
 
 export interface GenerateReportRet {
     Suc: boolean
 }
 
-
-const auto_api_base_url = config.api_base_url + '/service/auto/'
+const auto_api_base_url = '/service/auto/'
 
 export function sendGetReport(req: GetReportReq, callback: (ret: { data: GetReportRet, ok: boolean }) => void) {
-    UniPost(auto_api_base_url + 'getReport', req).then((res: UniResult) => {
-        const result: { data: GetReportRet, ok: boolean } = {
-            data: res.data as GetReportRet,
-            ok: res.ok
-        };
-
-        callback(result);
-    });
+    uniCallback<GetReportRet>(auto_api_base_url + 'getReport', req, callback);
 }
 
 export function sendGetWholeReport(req: GetWholeReportReq, callback: (ret: {
     data: GetWholeReportRet,
     ok: boolean
 }) => void) {
-    UniPost(auto_api_base_url + 'getWholeReport', req).then((res: UniResult) => {
-        const result: { data: GetWholeReportRet, ok: boolean } = {
-            data: res.data as GetWholeReportRet,
-            ok: res.ok
-        };
-
-        callback(result);
-    });
+    uniCallback<GetWholeReportRet>(auto_api_base_url + 'getWholeReport', req, callback);
 }
 
 export function sendGetReportList(req: GetReportListReq, callback: (ret: {
     data: GetReportListRet,
     ok: boolean
 }) => void) {
-    UniPost(auto_api_base_url + 'getReportList', req).then((res: UniResult) => {
-        const result: { data: GetReportListRet, ok: boolean } = {
-            data: res.data as GetReportListRet,
-            ok: res.ok
-        };
-
-        callback(result);
-    });
+    uniCallback<GetReportListRet>(auto_api_base_url + 'getReportList', req, callback);
 }
 
 export function sendGenerateReport(req: GenerateReportReq, callback: (ret: {
     data: GenerateReportRet,
     ok: boolean
 }) => void) {
-    UniPost(auto_api_base_url + 'generateReport', req).then((res: UniResult) => {
-        const result: { data: GenerateReportRet, ok: boolean } = {
-            data: res.data as GenerateReportRet,
-            ok: res.ok
-        };
-
-        callback(result);
-    });
+    uniCallback<GenerateReportRet>(auto_api_base_url + 'generateReport', req, callback);
 }
 
 export async function getWebPing(url: string, attempts: number = 10): Promise<{ delays: number[], lossRate: number }> {
@@ -742,7 +332,7 @@ export async function getWebPing(url: string, attempts: number = 10): Promise<{ 
 }
 
 export async function sendGptRewrite(text: string): Promise<string> {
-    const res: UniResult = await UniPost(config.api_base_url + '/misc/gpt-rewrite', {content: text});
+    const res: UniResult = await UniPost('/misc/gpt-rewrite', {content: text});
     return res.ok ? (res.data as unknown as string) : '';
 }
 
@@ -755,24 +345,15 @@ export interface FileShow {
 }
 
 export async function UploadFile(file: File): Promise<FileShow | null> {
-    const res = await fetch('/api/misc/r2-presigned-url', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({
-            fileName: file.name,
-            fileType: file.type,
-        }),
+    const ret = await request<{ UploadURL?: string, PublicURL?: string }>('/misc/r2-presigned-url', {
+        fileName: file.name,
+        fileType: file.type,
     });
-
-    if (!res.ok) {
+    if (!ret.ok || !ret.data) {
         message.error("获取上传地址失败").then();
         return null;
     }
-    const {code, data} = await res.json();
-    if (code !== 0) {
-        message.error("获取上传地址失败").then();
-        return null;
-    }
+    const data = ret.data;
     const {UploadURL, PublicURL} = data;
 
     if (!UploadURL || !PublicURL) {
@@ -825,11 +406,5 @@ export type SearchBiLogRet<T> = {
 }
 
 export function sendSearchBiLog<T>(table: string, req: SearchBiLogReq, callback: (ret: { data: SearchBiLogRet<T>, ok: boolean }) => void) {
-    UniPost(config.api_base_url + '/admin/bi_log/' + table + '/search', req).then((res: UniResult) => {
-        const result: { data: SearchBiLogRet<T>, ok: boolean } = {
-            data: res.data as SearchBiLogRet<T>,
-            ok: res.ok
-        };
-        callback(result);
-    });
+    uniCallback<SearchBiLogRet<T>>('/admin/bi_log/' + table + '/search', req, callback);
 }

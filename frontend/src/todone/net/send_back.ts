@@ -1,6 +1,5 @@
-import {UniPost, UniResult} from "../../common/newSendHttp";
+import {request} from "../../common/api";
 import {LibraryNote, LibraryScoreDetail, LibraryScoreDetailDimension, PDirTree, PRoutineNode, PSubGroup, PTask} from "./protocal";
-import config from "../../config.json";
 
 export interface GetDirTreeReq {
     UserID: string
@@ -233,10 +232,21 @@ export interface DelTaskReq {
 export type DelTaskRet = object
 
 
-const api_base_url = config.api_base_url + '/service/todone/';
+const TODONE_PATH = '/service/todone/';
+
+interface TodoneResult {
+    data: object
+    ok: boolean
+}
+
+// 所有 Todone 接口都走 common/api 的请求内核。沿用旧约定：成功但没有 data 字段也算失败。
+async function todoneRequest(cmd: string, req: object): Promise<TodoneResult> {
+    const ret = await request<object>(TODONE_PATH + cmd, req);
+    return {ok: ret.ok && ret.data !== undefined, data: ret.data ?? {}};
+}
 
 export function sendGetDirTree(req: GetDirTreeReq, callback: (ret: { data: GetDirTreeRet, ok: boolean }) => void) {
-    UniPost(api_base_url + 'getDirTree', req).then((res: UniResult) => {
+    todoneRequest('getDirTree', req).then((res: TodoneResult) => {
         const result: { data: GetDirTreeRet, ok: boolean } = {
             data: res.data as GetDirTreeRet,
             ok: res.ok
@@ -247,7 +257,7 @@ export function sendGetDirTree(req: GetDirTreeReq, callback: (ret: { data: GetDi
 }
 
 export function sendMoveDir(req: MoveDirReq, callback: (ret: { data: MoveDirRet, ok: boolean }) => void) {
-    UniPost(api_base_url + 'moveDir', req).then((res: UniResult) => {
+    todoneRequest('moveDir', req).then((res: TodoneResult) => {
         const result: { data: MoveDirRet, ok: boolean } = {
             data: res.data as MoveDirRet,
             ok: res.ok
@@ -258,7 +268,7 @@ export function sendMoveDir(req: MoveDirReq, callback: (ret: { data: MoveDirRet,
 }
 
 export function sendMoveGroup(req: MoveGroupReq, callback: (ret: { data: MoveGroupRet, ok: boolean }) => void) {
-    UniPost(api_base_url + 'moveGroup', req).then((res: UniResult) => {
+    todoneRequest('moveGroup', req).then((res: TodoneResult) => {
         const result: { data: MoveGroupRet, ok: boolean } = {
             data: res.data as MoveGroupRet,
             ok: res.ok
@@ -269,7 +279,7 @@ export function sendMoveGroup(req: MoveGroupReq, callback: (ret: { data: MoveGro
 }
 
 export function sendCreateDir(req: CreateDirReq, callback: (ret: { data: CreateDirRet, ok: boolean }) => void) {
-    UniPost(api_base_url + 'createDir', req).then((res: UniResult) => {
+    todoneRequest('createDir', req).then((res: TodoneResult) => {
         const result: { data: CreateDirRet, ok: boolean } = {
             data: res.data as CreateDirRet,
             ok: res.ok
@@ -280,7 +290,7 @@ export function sendCreateDir(req: CreateDirReq, callback: (ret: { data: CreateD
 }
 
 export function sendChangeDir(req: ChangeDirReq, callback: (ret: { data: ChangeDirRet, ok: boolean }) => void) {
-    UniPost(api_base_url + 'changeDir', req).then((res: UniResult) => {
+    todoneRequest('changeDir', req).then((res: TodoneResult) => {
         const result: { data: ChangeDirRet, ok: boolean } = {
             data: res.data as ChangeDirRet,
             ok: res.ok
@@ -291,7 +301,7 @@ export function sendChangeDir(req: ChangeDirReq, callback: (ret: { data: ChangeD
 }
 
 export function sendDelDir(req: DelDirReq, callback: (ret: { data: DelDirRet, ok: boolean }) => void) {
-    UniPost(api_base_url + 'delDir', req).then((res: UniResult) => {
+    todoneRequest('delDir', req).then((res: TodoneResult) => {
         const result: { data: DelDirRet, ok: boolean } = {
             data: res.data as DelDirRet,
             ok: res.ok
@@ -302,7 +312,7 @@ export function sendDelDir(req: DelDirReq, callback: (ret: { data: DelDirRet, ok
 }
 
 export function sendDelGroup(req: DelGroupReq, callback: (ret: { data: DelGroupRet, ok: boolean }) => void) {
-    UniPost(api_base_url + 'delGroup', req).then((res: UniResult) => {
+    todoneRequest('delGroup', req).then((res: TodoneResult) => {
         const result: { data: DelGroupRet, ok: boolean } = {
             data: res.data as DelGroupRet,
             ok: res.ok
@@ -313,7 +323,7 @@ export function sendDelGroup(req: DelGroupReq, callback: (ret: { data: DelGroupR
 }
 
 export function sendCreateGroup(req: CreateGroupReq, callback: (ret: { data: CreateGroupRet, ok: boolean }) => void) {
-    UniPost(api_base_url + 'createGroup', req).then((res: UniResult) => {
+    todoneRequest('createGroup', req).then((res: TodoneResult) => {
         const result: { data: CreateGroupRet, ok: boolean } = {
             data: res.data as CreateGroupRet,
             ok: res.ok
@@ -324,7 +334,7 @@ export function sendCreateGroup(req: CreateGroupReq, callback: (ret: { data: Cre
 }
 
 export function sendChangeGroup(req: ChangeGroupReq, callback: (ret: { data: ChangeGroupRet, ok: boolean }) => void) {
-    UniPost(api_base_url + 'changeGroup', req).then((res: UniResult) => {
+    todoneRequest('changeGroup', req).then((res: TodoneResult) => {
         const result: { data: ChangeGroupRet, ok: boolean } = {
             data: res.data as ChangeGroupRet,
             ok: res.ok
@@ -335,7 +345,7 @@ export function sendChangeGroup(req: ChangeGroupReq, callback: (ret: { data: Cha
 }
 
 export function sendGetSubGroup(req: GetSubGroupReq, callback: (ret: { data: GetSubGroupRet, ok: boolean }) => void) {
-    UniPost(api_base_url + 'getSubGroup', req).then((res: UniResult) => {
+    todoneRequest('getSubGroup', req).then((res: TodoneResult) => {
         const result: { data: GetSubGroupRet, ok: boolean } = {
             data: res.data as GetSubGroupRet,
             ok: res.ok
@@ -346,7 +356,7 @@ export function sendGetSubGroup(req: GetSubGroupReq, callback: (ret: { data: Get
 }
 
 export function sendGetTask(req: GetTaskReq, callback: (ret: { data: GetTaskRet, ok: boolean }) => void) {
-    UniPost(api_base_url + 'getTask', req).then((res: UniResult) => {
+    todoneRequest('getTask', req).then((res: TodoneResult) => {
         const result: { data: GetTaskRet, ok: boolean } = {
             data: res.data as GetTaskRet,
             ok: res.ok
@@ -357,7 +367,7 @@ export function sendGetTask(req: GetTaskReq, callback: (ret: { data: GetTaskRet,
 }
 
 export function sendChangeTask(req: ChangeTaskReq, callback: (ret: { data: ChangeTaskRet, ok: boolean }) => void) {
-    UniPost(api_base_url + 'changeTask', req).then((res: UniResult) => {
+    todoneRequest('changeTask', req).then((res: TodoneResult) => {
         const result: { data: ChangeTaskRet, ok: boolean } = {
             data: res.data as ChangeTaskRet,
             ok: res.ok
@@ -368,56 +378,56 @@ export function sendChangeTask(req: ChangeTaskReq, callback: (ret: { data: Chang
 }
 
 export function sendGetLibraryNotes(req: GetLibraryNotesReq, callback: (ret: {data: GetLibraryNotesRet, ok: boolean}) => void) {
-    UniPost(api_base_url + 'getLibraryNotes', req).then((res: UniResult) => callback({
+    todoneRequest('getLibraryNotes', req).then((res: TodoneResult) => callback({
         data: res.data as GetLibraryNotesRet,
         ok: res.ok,
     }));
 }
 
 export function sendCreateLibraryNote(req: CreateLibraryNoteReq, callback: (ret: {data: CreateLibraryNoteRet, ok: boolean}) => void) {
-    UniPost(api_base_url + 'createLibraryNote', req).then((res: UniResult) => callback({
+    todoneRequest('createLibraryNote', req).then((res: TodoneResult) => callback({
         data: res.data as CreateLibraryNoteRet,
         ok: res.ok,
     }));
 }
 
 export function sendChangeLibraryNote(req: ChangeLibraryNoteReq, callback: (ret: {data: ChangeLibraryNoteRet, ok: boolean}) => void) {
-    UniPost(api_base_url + 'changeLibraryNote', req).then((res: UniResult) => callback({
+    todoneRequest('changeLibraryNote', req).then((res: TodoneResult) => callback({
         data: res.data as ChangeLibraryNoteRet,
         ok: res.ok,
     }));
 }
 
 export function sendDelLibraryNote(req: DelLibraryNoteReq, callback: (ret: {data: DelLibraryNoteRet, ok: boolean}) => void) {
-    UniPost(api_base_url + 'delLibraryNote', req).then((res: UniResult) => callback({
+    todoneRequest('delLibraryNote', req).then((res: TodoneResult) => callback({
         data: res.data as DelLibraryNoteRet,
         ok: res.ok,
     }));
 }
 
 export function sendGetLibraryScoreDetail(req: GetLibraryScoreDetailReq, callback: (ret: {data: GetLibraryScoreDetailRet, ok: boolean}) => void) {
-    UniPost(api_base_url + 'getLibraryScoreDetail', req).then((res: UniResult) => callback({
+    todoneRequest('getLibraryScoreDetail', req).then((res: TodoneResult) => callback({
         data: res.data as GetLibraryScoreDetailRet,
         ok: res.ok,
     }));
 }
 
 export function sendCreateLibraryScoreDetail(req: CreateLibraryScoreDetailReq, callback: (ret: {data: CreateLibraryScoreDetailRet, ok: boolean}) => void) {
-    UniPost(api_base_url + 'createLibraryScoreDetail', req).then((res: UniResult) => callback({
+    todoneRequest('createLibraryScoreDetail', req).then((res: TodoneResult) => callback({
         data: res.data as CreateLibraryScoreDetailRet,
         ok: res.ok,
     }));
 }
 
 export function sendChangeLibraryScoreDetail(req: ChangeLibraryScoreDetailReq, callback: (ret: {data: ChangeLibraryScoreDetailRet, ok: boolean}) => void) {
-    UniPost(api_base_url + 'changeLibraryScoreDetail', req).then((res: UniResult) => callback({
+    todoneRequest('changeLibraryScoreDetail', req).then((res: TodoneResult) => callback({
         data: res.data as ChangeLibraryScoreDetailRet,
         ok: res.ok,
     }));
 }
 
 export function sendCreateTask(req: CreateTaskReq, callback: (ret: { data: CreateTaskRet, ok: boolean }) => void) {
-    UniPost(api_base_url + 'createTask', req).then((res: UniResult) => {
+    todoneRequest('createTask', req).then((res: TodoneResult) => {
         const result: { data: CreateTaskRet, ok: boolean } = {
             data: res.data as CreateTaskRet,
             ok: res.ok
@@ -428,7 +438,7 @@ export function sendCreateTask(req: CreateTaskReq, callback: (ret: { data: Creat
 }
 
 export function sendDelTask(req: DelTaskReq, callback: (ret: { data: DelTaskRet, ok: boolean }) => void) {
-    UniPost(api_base_url + 'delTask', req).then((res: UniResult) => {
+    todoneRequest('delTask', req).then((res: TodoneResult) => {
         const result: { data: DelTaskRet, ok: boolean } = {
             data: res.data as DelTaskRet,
             ok: res.ok
@@ -457,7 +467,7 @@ export function sendCreateSubGroup(req: CreateSubGroupReq, callback: (ret: {
     data: CreateSubGroupRet,
     ok: boolean
 }) => void) {
-    UniPost(api_base_url + 'createSubGroup', req).then((res: UniResult) => {
+    todoneRequest('createSubGroup', req).then((res: TodoneResult) => {
         const result: { data: CreateSubGroupRet, ok: boolean } = {
             data: res.data as CreateSubGroupRet,
             ok: res.ok
@@ -478,7 +488,7 @@ export type DelSubGroupRet = object
 
 
 export function sendDelSubGroup(req: DelSubGroupReq, callback: (ret: { data: DelSubGroupRet, ok: boolean }) => void) {
-    UniPost(api_base_url + 'delSubGroup', req).then((res: UniResult) => {
+    todoneRequest('delSubGroup', req).then((res: TodoneResult) => {
         const result: { data: DelSubGroupRet, ok: boolean } = {
             data: res.data as DelSubGroupRet,
             ok: res.ok
@@ -502,7 +512,7 @@ export interface GetTasksRet {
 
 
 export function sendGetTasks(req: GetTasksReq, callback: (ret: { data: GetTasksRet, ok: boolean }) => void) {
-    UniPost(api_base_url + 'getTasks', req).then((res: UniResult) => {
+    todoneRequest('getTasks', req).then((res: TodoneResult) => {
         const result: { data: GetTasksRet, ok: boolean } = {
             data: res.data as GetTasksRet,
             ok: res.ok
@@ -526,7 +536,7 @@ export function sendChangeSubGroup(req: ChangeSubGroupReq, callback: (ret: {
     data: ChangeSubGroupRet,
     ok: boolean
 }) => void) {
-    UniPost(api_base_url + 'changeSubGroup', req).then((res: UniResult) => {
+    todoneRequest('changeSubGroup', req).then((res: TodoneResult) => {
         const result: { data: ChangeSubGroupRet, ok: boolean } = {
             data: res.data as ChangeSubGroupRet,
             ok: res.ok
@@ -554,7 +564,7 @@ export type TaskMoveRet = object
 
 
 export function sendTaskMove(req: TaskMoveReq, callback: (ret: { data: TaskMoveRet, ok: boolean }) => void) {
-    UniPost(api_base_url + 'taskMove', req).then((res: UniResult) => {
+    todoneRequest('taskMove', req).then((res: TodoneResult) => {
         const result: { data: TaskMoveRet, ok: boolean } = {
             data: res.data as TaskMoveRet,
             ok: res.ok
@@ -588,7 +598,7 @@ export interface TaskDelTagReq {
 export type TaskDelTagRet = object
 
 export function sendTaskAddTag(req: TaskAddTagReq, callback: (ret: { data: TaskAddTagRet, ok: boolean }) => void) {
-    UniPost(api_base_url + 'taskAddTag', req).then((res: UniResult) => {
+    todoneRequest('taskAddTag', req).then((res: TodoneResult) => {
         const result: { data: TaskAddTagRet, ok: boolean } = {
             data: res.data as TaskAddTagRet,
             ok: res.ok
@@ -599,7 +609,7 @@ export function sendTaskAddTag(req: TaskAddTagReq, callback: (ret: { data: TaskA
 }
 
 export function sendTaskDelTag(req: TaskDelTagReq, callback: (ret: { data: TaskDelTagRet, ok: boolean }) => void) {
-    UniPost(api_base_url + 'taskDelTag', req).then((res: UniResult) => {
+    todoneRequest('taskDelTag', req).then((res: TodoneResult) => {
         const result: { data: TaskDelTagRet, ok: boolean } = {
             data: res.data as TaskDelTagRet,
             ok: res.ok
@@ -636,7 +646,7 @@ export interface SaveRoutineReq {
 export type SaveRoutineRet = object
 
 export async function postTodone<T>(cmd: string, req: object): Promise<{ data: T, ok: boolean }> {
-    const res = await UniPost(api_base_url + cmd, req);
+    const res = await todoneRequest(cmd, req);
     return {data: res.data as T, ok: res.ok};
 }
 

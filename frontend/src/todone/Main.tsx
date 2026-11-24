@@ -1,191 +1,173 @@
-import {useContext, useEffect, useRef, useState} from "react";
-import {LoginCtr, LoginCtx} from "../common/loginCtx";
+import {useCallback, useEffect, useMemo, useRef, useState} from "react";
+import {Button, Drawer, FloatButton, Result, Spin, theme} from "antd";
+import {MenuOutlined, StarOutlined} from "@ant-design/icons";
+import {Navigate, useNavigate, useParams} from "react-router-dom";
+import {useAuth} from "../common/loginCtx";
+import {useIsMobile} from "../common/breakpoints";
+import {useAppActive, useAppTitle, useIsAppActive} from "../shell/runtime";
+import {loadDesktop, useDesktopLayout} from "../shell/desktop/store";
 import {Dir} from "./Dir";
-import {Drawer, FloatButton, theme} from "antd";
 import {Addr} from "./addr";
+import {GroupReloadCtx} from "./reloadCtx";
 import Group from "./Group";
 import {TaskDetail} from "./TaskDetail";
-import {GroupType, PTask} from "./net/protocal";
-import {MenuOutlined, StarOutlined} from "@ant-design/icons";
-import {useIsMobile} from "../common/hooksv2";
-import User from "../common/User";
-import {useParams} from "react-router-dom";
+import {GroupType, PDirTree, PTask} from "./net/protocal";
 import TaskTree from "./TaskTree";
 import Library from "./Library";
 import Routine from "./Routine";
-import {useLoginGate} from "../common/useLoginGate";
 import Overview from "./Overview";
-import {OverviewGroup} from "./net/send_back";
+import {OverviewGroup, sendGetDirTree} from "./net/send_back";
 import {locateInPage, LocateTarget} from "./locate";
+import {findGroupInTree, parseGroupIdParam, parseLegacyGroupParam, TODONE_BASE, todoneGroupPath} from "./route";
 
-function groupPageTitle(groupType: number, title: string, overview = false) {
-    if (overview) {
-        return 'TODONE 关注';
-    }
-    switch (groupType) {
-        case GroupType.Library:
-            return `TODONE 娱乐库: ${title}`;
-        case GroupType.Routine:
-            return `TODONE 例行清单: ${title}`;
-        default:
-            return `TODONE 任务板: ${title}`;
-    }
+// 旧格式的分组地址（/todone/<编码后的 addr|title|type>），换成 /todone/g/<id>
+export function LegacyGroupRedirect() {
+    const {legacy} = useParams();
+    const id = parseLegacyGroupParam(legacy);
+    return <Navigate to={id ? todoneGroupPath(id) : `${TODONE_BASE}/g/0`} replace/>;
 }
 
+type TreeState = 'loading' | 'ok' | 'error';
+
+/**
+ * Todone 的页面框架：左侧目录抽屉 + 中间的关注页或分组页 + 右侧任务详情。
+ * 地址里只有分组 ID，所在目录、标题、类型都从目录树里查；目录树加载完之前不渲染分组页。
+ */
 export function Todone() {
-    // 读取路由
-    const {group} = useParams();
-    // 获得账户
-    const loginCtr: LoginCtr = useContext<LoginCtr>(LoginCtx);
-    const [chooseAddr, setChooseAddr] = useState<Addr | null>(null);
-    const [chooseTitle, setChooseTitle] = useState<string>('')
-    const [chooseGroupType, setChooseGroupType] = useState<number>(GroupType.Normal);
+    const {groupId: rawGroupId} = useParams();
+    const showOverview = rawGroupId === undefined;
+    const groupId = parseGroupIdParam(rawGroupId);
+    const userID = useAuth().loginInfo.usr;
+    const navigate = useNavigate();
+    const isMobile = useIsMobile();
+    const active = useIsAppActive();
+    const {token} = theme.useToken();
+
+    const [dirTree, setDirTree] = useState<PDirTree | null>(null);
+    const [treeState, setTreeState] = useState<TreeState>('loading');
+    const [showDir, setShowDir] = useState(false);
+    // 移动任务后整页重新挂载当前清单（替代以前的刷新浏览器）
+    const [reloadNonce, setReloadNonce] = useState(0);
+    const reloadGroup = useCallback(() => {
+        setSelectTaskAddr(undefined);
+        setReloadNonce((n) => n + 1);
+    }, []);
     const [selectTaskAddr, setSelectTaskAddr] = useState<Addr>();
     const taskRef = useRef<PTask>();
     const refreshApiRef = useRef<() => void>();
     const treeRef = useRef<TaskTree>();
-    const [showDir, setShowDir] = useState(false);
-    const isMobile = useIsMobile()
-    const {token} = theme.useToken();
-    const {loginPanel} = useLoginGate();
 
-    // 更换Favicon为/todone-mini.png
-    useEffect(() => {
-        const existingFavicon = document.querySelector('link[rel="icon"], link[rel="shortcut icon"]');
-        if (existingFavicon) {
-            existingFavicon.remove();
-        }
-
-        const link = document.createElement('link');
-        link.type = 'image/x-icon';
-        link.rel = 'shortcut icon';
-        link.href = '/todone-mini.png';
-        document.getElementsByTagName('head')[0].appendChild(link);
-
-    }, []);
-
-    const showOverview = chooseAddr === null;
+    const loadTree = useCallback((quiet = false) => {
+        if (!quiet) setTreeState('loading');
+        sendGetDirTree({UserID: userID}, (ret) => {
+            if (ret.ok && ret.data.DirTree) {
+                setDirTree(ret.data.DirTree);
+                setTreeState('ok');
+            } else if (!quiet) {
+                setTreeState('error');
+            }
+        });
+    }, [userID]);
 
     useEffect(() => {
-        document.title = groupPageTitle(chooseGroupType, chooseTitle, showOverview);
-    }, [chooseTitle, chooseGroupType, showOverview]);
+        loadTree();
+    }, [loadTree]);
 
-    const openGroup = (addr: Addr, title: string, groupType: number) => {
-        setChooseAddr(addr);
-        setChooseTitle(title);
-        setChooseGroupType(groupType);
-        const encodedGroup = encodeURIComponent(`${addr.toString()}|${title}|${groupType}`);
-        window.history.pushState({}, '', `/todone/${encodedGroup}`);
+    // 从别的应用切回来时静默刷新目录（别的设备上可能新建、改名了分组）
+    useAppActive(() => loadTree(true));
+
+    // “添加到桌面”要用桌面布局；直接打开 Todone 时桌面还没加载过
+    const desktop = useDesktopLayout();
+    useEffect(() => {
+        if (!desktop && userID) void loadDesktop(userID);
+    }, [desktop, userID]);
+
+    const found = useMemo(() => groupId ? findGroupInTree(dirTree, groupId) : null, [dirTree, groupId]);
+    const groupTitle = found?.group.Title ?? '';
+    const groupType = found?.group.Type ?? GroupType.Normal;
+    // Addr 只在目录链变化时换新，避免分组页因为目录树刷新而重新加载
+    const addrKey = found ? [...found.dirIDs.map((d) => `dir-${d}`), `grp-${found.group.ID}`].join('/') : '';
+    const addr = useMemo(() => {
+        if (!addrKey) return null;
+        const a = new Addr(userID);
+        a.bindAddr(addrKey);
+        return a;
+    }, [addrKey, userID]);
+
+    useAppTitle(showOverview ? '关注' : groupTitle || null);
+
+    // 换了分组，右侧任务详情跟着关掉
+    useEffect(() => {
+        setSelectTaskAddr(undefined);
+    }, [addrKey]);
+
+    const openGroup = (id: number) => {
+        navigate(todoneGroupPath(id));
         setShowDir(false);
     };
 
     const openOverview = () => {
-        setChooseAddr(null);
-        setChooseTitle('');
-        setChooseGroupType(GroupType.Normal);
-        window.history.pushState({}, '', '/todone');
+        navigate(TODONE_BASE);
         setShowDir(false);
     };
 
     // 从“关注”页打开清单；带了 target 就滚到那条任务（或那一栏）并闪一下
     const openOverviewGroup = (g: OverviewGroup, target?: LocateTarget) => {
-        const addr = new Addr(loginCtr.loginInfo.usr);
-        addr.addDir(g.DirID);
-        addr.addGroup(g.GroupID);
-        openGroup(addr, g.Title, g.Type);
+        openGroup(g.GroupID);
         if (target) locateInPage(target);
     };
 
-    // 浏览器后退/前进：按地址栏重新解析
-    useEffect(() => {
-        const onPop = () => {
-            const m = window.location.pathname.match(/^\/todone\/?(.*)$/);
-            const raw = m?.[1] ? decodeURIComponent(m[1]) : '';
-            const parts = raw.split('|');
-            if (parts.length < 2 || !parts[0] || !parts[1]) {
-                setChooseAddr(null);
-                setChooseTitle('');
-                setChooseGroupType(GroupType.Normal);
-                return;
-            }
-            const addr = new Addr(loginCtr.loginInfo.usr);
-            addr.bindAddr(parts[0]);
-            setChooseAddr(addr);
-            setChooseTitle(parts[1]);
-            setChooseGroupType(parts[2] ? parseInt(parts[2]) : GroupType.Normal);
-        };
-        window.addEventListener('popstate', onPop);
-        return () => window.removeEventListener('popstate', onPop);
-    }, [loginCtr.loginInfo.usr]);
+    let page;
+    if (showOverview) {
+        page = <Overview userID={userID} onOpenGroup={openOverviewGroup}/>;
+    } else if (treeState === 'loading' && !found) {
+        page = <div style={{display: 'flex', justifyContent: 'center', padding: '80px 0'}}><Spin/></div>;
+    } else if (treeState === 'error' && !found) {
+        page = <Result status="warning" title="目录加载失败"
+                       extra={<Button onClick={() => loadTree()}>重试</Button>}/>;
+    } else if (!found || !addr) {
+        page = <Result status="404" title="清单不存在或已删除"
+                       extra={<Button type="primary" onClick={openOverview}>回到关注</Button>}/>;
+    } else if (groupType === GroupType.Library) {
+        page = <Library key={found.group.ID} addr={addr} groupTitle={groupTitle}/>;
+    } else if (groupType === GroupType.Routine) {
+        page = <Routine key={found.group.ID} addr={addr} groupTitle={groupTitle}/>;
+    } else {
+        page = <Group
+            key={`${found.group.ID}-${reloadNonce}`}
+            addr={addr}
+            GroupTitle={groupTitle}
+            onSelectTask={(taskAddr, pTask, refreshApi, tree) => {
+                setSelectTaskAddr(taskAddr);
+                taskRef.current = pTask;
+                refreshApiRef.current = refreshApi;
+                treeRef.current = tree;
+            }}
+        />;
+    }
 
-    useEffect(() => {
-        // 使用竖线分隔group: addr|title|type
-        if (!group) {
-            // 没选分组时显示总视图
-            setChooseAddr(null);
-            setChooseTitle('');
-            setChooseGroupType(GroupType.Normal);
-            return;
-        }
-        // url解码
-        const decodedGroup = decodeURIComponent(group);
-        const groupData = decodedGroup.split('|');
-        if (groupData.length < 2) {
-            setShowDir(true);
-            return;
-        }
-        const savedAddr = groupData[0];
-        const savedTitle = groupData[1];
-        const savedType = groupData[2] ? parseInt(groupData[2]) : GroupType.Normal;
-        if (savedAddr && savedTitle) {
-            const addr = new Addr(loginCtr.loginInfo.usr);
-            addr.bindAddr(savedAddr);
-            setChooseAddr(addr);
-            setChooseTitle(savedTitle);
-            setChooseGroupType(savedType);
-        } else {
-            setShowDir(true);
-        }
-    }, [group, loginCtr.loginInfo.usr]);
+    const wide = showOverview || !found || groupType === GroupType.Library;
 
-    return <div
-        style={{
-            // 居中
-            display: 'flex',
-            justifyContent: 'center',
-        }}
-    >
-        {!showDir ?
+    // 宽屏：目录按钮浮在左上角，内容区左边让出位置；手机：按钮放进页面顶部，跟内容一起排，不再压住标题
+    return <GroupReloadCtx.Provider value={reloadGroup}><div style={{display: 'flex', justifyContent: 'center', paddingLeft: isMobile ? 0 : 56, boxSizing: 'border-box'}}>
+        {!isMobile && !showDir ?
             <FloatButton
-                style={{
-                    // 左上角
-                    left: 10,
-                    top: 30,
-                }}
+                style={{left: 10, top: 'calc(var(--safe-top, 0px) + 30px)'}}
                 icon={<MenuOutlined/>}
                 tooltip={<div>目录</div>}
-                onClick={() => {
-                    setShowDir(true);
-                }}
+                onClick={() => setShowDir(true)}
             /> : null}
+        {/* 抽屉挂在 body 上，Todone 切到后台时要跟着收起来，不然会盖在别的应用上 */}
         <Drawer
             autoFocus={false}
             title="目录"
             placement="left"
-            size={"default"}
             closable={true}
-            onClose={() => {
-                setShowDir(false);
-            }}
-            open={showDir}
-            extra={<User autoOpenLoginPanel={false}/>}
+            onClose={() => setShowDir(false)}
+            open={showDir && active}
             width={isMobile ? '70%' : '400px'}
         >
-            <div
-                style={{
-                    width: "100%",
-                }}
-            >
+            <div style={{width: "100%"}}>
                 <div
                     onClick={openOverview}
                     style={{
@@ -204,70 +186,41 @@ export function Todone() {
                     <StarOutlined/> 关注
                 </div>
                 <Dir
-                    userID={loginCtr.loginInfo.usr}
-                    onSelectGroup={(addr, title, groupType) => {
-                        openGroup(addr, title, groupType ?? GroupType.Normal);
-                    }}
-                    onSelectDir={(addr) => {
-                        // 暂无逻辑
-                    }}
+                    userID={userID}
+                    dirTree={dirTree}
+                    loading={treeState === 'loading' && !dirTree}
+                    onTreeChange={setDirTree}
+                    onSelectGroup={openGroup}
                 />
             </div>
         </Drawer>
 
         <div
             style={{
-            // 总视图在宽屏是看板，铺满；窄一点时由 Overview 自己限宽居中
-            width: showOverview
-                ? (isMobile ? '90%' : '94%')
-                : (isMobile || chooseGroupType === GroupType.Library) ? '90%' : '650px',
-            minHeight: '100%',
+                // 总视图在宽屏是看板，铺满；窄一点时由 Overview 自己限宽居中
+                width: showOverview
+                    ? (isMobile ? '90%' : '94%')
+                    : (isMobile || wide) ? '90%' : '650px',
+                minHeight: '100%',
             }}
         >
-            {showOverview ? (
-                <Overview userID={loginCtr.loginInfo.usr} onOpenGroup={openOverviewGroup}/>
-            ) : chooseGroupType === GroupType.Library ? (
-                <Library
-                    addr={chooseAddr}
-                    groupTitle={chooseTitle}
-                />
-            ) : chooseGroupType === GroupType.Routine ? (
-                <Routine
-                    key={chooseAddr?.toString()}
-                    addr={chooseAddr}
-                    groupTitle={chooseTitle}
-                />
-            ) : (
-                <Group
-                    addr={chooseAddr}
-                    GroupTitle={chooseTitle}
-                    onSelectTask={(addr, pTask, refreshApi, tree) => {
-                        setSelectTaskAddr(addr);
-                        taskRef.current = pTask;
-                        refreshApiRef.current = refreshApi;
-                        treeRef.current = tree;
-                    }}
-                />
-            )}
+            {isMobile && <div style={{paddingTop: 'calc(var(--safe-top, 0px) + 6px)', marginLeft: -8}}>
+                <Button type="text" icon={<MenuOutlined/>} onClick={() => setShowDir(true)}>目录</Button>
+            </div>}
+            {page}
         </div>
 
         <Drawer
             title="任务详情"
             placement="right"
             closable={true}
-            onClose={() => {
-                setSelectTaskAddr(undefined);
-            }}
-            open={selectTaskAddr !== undefined}
+            onClose={() => setSelectTaskAddr(undefined)}
+            open={selectTaskAddr !== undefined && active}
             width={isMobile ? '80%' : '400px'}
         >
-            <TaskDetail addr={selectTaskAddr} task={taskRef.current} refreshApi={refreshApiRef.current}
-                        tree={treeRef.current}
-            />
+            {selectTaskAddr && taskRef.current && refreshApiRef.current && treeRef.current &&
+                <TaskDetail addr={selectTaskAddr} task={taskRef.current} refreshApi={refreshApiRef.current}
+                            tree={treeRef.current}/>}
         </Drawer>
-
-        {loginPanel}
-
-
-    </div>
+    </div></GroupReloadCtx.Provider>
 }

@@ -1,26 +1,19 @@
 import {sendGenerateReport, sendGetReportList} from "../common/newSendHttp";
 import {useEffect, useState} from "react";
-import {Button, Col, DatePicker, Divider, message, Popconfirm, Row} from "antd";
-import {ScreenType, useScreenType} from "../common/hooksv2";
-import User from "../common/User";
+import {Button, Col, DatePicker, message, Popconfirm, Row} from "antd";
+import {ScreenType, useScreenType} from "../common/breakpoints";
 import dayjs, {Dayjs} from "dayjs";
 
 const {RangePicker} = DatePicker;
 
-function ReportSelector({onSelect, loginReady, isLoggedIn}: {
+function ReportSelector({onSelect}: {
     onSelect: (report: string) => void,
-    loginReady: boolean,
-    isLoggedIn: boolean,
 }) {
     const [reportList, setReportList] = useState<string[]>([]);
     // 响应式
     const screenType = useScreenType();
 
     useEffect(() => {
-        if (!loginReady || !isLoggedIn) {
-            setReportList([]);
-            return;
-        }
         sendGetReportList({}, (ret) => {
             if (!ret.ok) {
                 message.error("获取日报列表失败");
@@ -28,7 +21,7 @@ function ReportSelector({onSelect, loginReady, isLoggedIn}: {
             }
             setReportList(ret.data.List.reverse());
         });
-    }, [loginReady, isLoggedIn]);
+    }, []);
 
     const handleRefresh = () => {
         sendGetReportList({}, (ret) => {
@@ -111,11 +104,14 @@ function ReportSelector({onSelect, loginReady, isLoggedIn}: {
             />
         </Col>
         <Col span={24}>
-            <Button style={{width: "100%"}} onClick={() => {
-                if (window.confirm("确定要生成新闻汇总吗？")) {
-                    onSelect("whole");
-                }
-            }} danger>生成汇总</Button>
+            <Popconfirm
+                title="确定要生成新闻汇总吗？"
+                onConfirm={() => onSelect("whole")}
+                okText="确定"
+                cancelText="取消"
+            >
+                <Button style={{width: "100%"}} danger>生成汇总</Button>
+            </Popconfirm>
         </Col>
         <Col span={24}>
             <Popconfirm
@@ -144,16 +140,6 @@ function ReportSelector({onSelect, loginReady, isLoggedIn}: {
             padding: screenType == ScreenType.Mobile ? "0px" : "20px",
         }}
     >
-        <Row
-            style={{
-                // 靠右
-                float: "right",
-                marginBottom: "10px"
-            }}
-        >
-            <User autoOpenLoginPanel={false}/>
-        </Row>
-        <Divider/>
         {opre}
     </div>;
 }

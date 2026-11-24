@@ -1,14 +1,23 @@
 package logic
 
 import (
+	"sync"
+
 	"github.com/intmian/mian_go_lib/tool/multi"
 )
 
 type UserMgr struct {
 	userMap multi.SafeMap[string, *UserLogic]
+	// 只保护“第一次创建”：同一用户的两个首次请求同时进来时，不能各建一个 UserLogic（各自的锁和缓存会互相覆盖）
+	createLock sync.Mutex
 }
 
 func (u *UserMgr) GetUserLogic(userID string) *UserLogic {
+	if v, ok := u.userMap.Load(userID); ok {
+		return v
+	}
+	u.createLock.Lock()
+	defer u.createLock.Unlock()
 	if v, ok := u.userMap.Load(userID); ok {
 		return v
 	}

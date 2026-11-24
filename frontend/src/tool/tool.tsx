@@ -17,17 +17,8 @@ import {
     Tooltip,
     Typography
 } from "antd";
-import {useForm} from "antd/es/form/Form";
-import {
-    CreateToolReq,
-    sendCreateTool,
-    sendDeleteTool,
-    sendGetTools,
-    sendGetToolScript,
-    sendUpdateTool
-} from "../common/newSendHttp";
 import {ToolData} from "../common/backHttpDefine";
-import {useNavigate} from "react-router-dom";
+import {createTool, deleteTool, getTools, getToolScript, updateTool} from "./cmdApi";
 
 export function ToolAvatar({typ}: { typ?: ToolType }) {
     let typIcon: ReactNode;
@@ -36,14 +27,14 @@ export function ToolAvatar({typ}: { typ?: ToolType }) {
     } else if (typ === ToolType.FileExec) {
         typIcon = <FileOutlined/>
     }
-    let color;
-    let bgColor;
+    let color: string | undefined;
+    let bgColor: string | undefined;
     if (typ === ToolType.Python) {
-        color = '#f56a00';
-        bgColor = '#fde3cf';
+        color = 'var(--pf-warning)';
+        bgColor = 'var(--pf-warning-bg)';
     } else if (typ === ToolType.FileExec) {
-        color = '#1890ff';
-        bgColor = '#e6f7ff';
+        color = 'var(--pf-info)';
+        bgColor = 'var(--pf-info-bg)';
     }
     return <Avatar
         size={45}
@@ -64,7 +55,7 @@ export function ToolAdd({onClick}: { onClick?: () => void }) {
         <div style={{marginTop: '40px', marginBottom: '50px'}}>
             <PlusOutlined style={{fontSize: '40px'}}/>
         </div>
-        <div style={{color: 'grey', marginBottom: '5px'}}>
+        <div style={{color: 'var(--pf-text-3)', marginBottom: '5px'}}>
             <Typography.Text type="secondary">新增</Typography.Text>
         </div>
     </Card>
@@ -93,7 +84,7 @@ export function ToolShow({name, ID, typ, createdAt, updatedAt, onDel, loading, o
         <div style={{fontWeight: 'bold', fontSize: '16px', marginBottom: '5px'}}>
             {name}
         </div>
-        <div style={{color: 'grey', marginBottom: '5px'}}>
+        <div style={{color: 'var(--pf-text-3)', marginBottom: '5px'}}>
             <Row
                 style={{justifyContent: 'center'}}
             >
@@ -124,7 +115,7 @@ export function ToolShow({name, ID, typ, createdAt, updatedAt, onDel, loading, o
             </Button>
         </Tooltip>
         <Tooltip title="删除">
-            <Popconfirm title={"确认删除?"} onConfirm={onDel}>
+            <Popconfirm title="删除这个工具？" okText="删除" okButtonProps={{danger: true}} cancelText="取消" onConfirm={onDel}>
                 <Button type="text" danger size={"small"}>
                     {deleteIcon}
                 </Button>
@@ -183,78 +174,42 @@ export function ToolPanelShow({loading, tools, onClickAdd, onClickDel, onOpenToo
     </Flex>
 }
 
-function AddModel({onFinish}: { onFinish: (name: string | undefined, typ: ToolType | undefined) => void }) {
+function AddModal({onFinish}: { onFinish: (tool?: { id: string, name: string, typ: ToolType }) => void }) {
     const [loading, setLoading] = useState(false)
-    const [form] = useForm()
-    const [open, setOpen] = useState(true)
-    return <Modal
-        title="新增工具"
-        open={open}
-        footer={null}
-        onCancel={() => {
-            setOpen(false)
-            onFinish(undefined, undefined)
-        }}
-        width={400}
-        style={{
-            display: 'flex',
-            justifyContent: 'center',
-        }}
-        maskClosable={false}
-    >
-        <Form
-            form={form}
-            layout="horizontal"  // 设置为 horizontal 模式
-            labelCol={{span: 6}}  // 标签宽度占 6 列
-            wrapperCol={{span: 18}}  // 输入框宽度占 18 列
-            style={{margin: '2px', marginBottom: '20px'}}
-        >
-            <Form.Item
-                label="工具名"
-                name="name"
-                rules={[{required: true, message: '请输入工具名'}]}
-            >
+    const [form] = Form.useForm<{ name: string, typ: ToolType }>()
+
+    const submit = async (values: { name: string, typ: ToolType }) => {
+        setLoading(true)
+        try {
+            const id = await createTool(values.name, values.typ)
+            onFinish({id, name: values.name, typ: values.typ})
+        } catch (e) {
+            message.error(e instanceof Error ? `新增失败：${e.message}` : '新增失败')
+        } finally {
+            setLoading(false)
+        }
+    }
+
+    return <Modal title="新增工具" open footer={null} onCancel={() => onFinish()} width={400} maskClosable={false}>
+        <Form form={form} layout="horizontal" labelCol={{span: 6}} wrapperCol={{span: 18}} onFinish={submit}
+              style={{marginTop: 16}}>
+            <Form.Item label="工具名" name="name" rules={[{required: true, message: '请输入工具名'}]}>
                 <Input/>
             </Form.Item>
-            <Form.Item
-                label="类型"
-                name="typ"
-                rules={[{required: true, message: '请输入类型'}]}
-            >
-                <Select>
-                    <Select.Option value={ToolType.Python}>Python</Select.Option>
-                    <Select.Option value={ToolType.FileExec}>可执行文件</Select.Option>
-                </Select>
+            <Form.Item label="类型" name="typ" rules={[{required: true, message: '请选择类型'}]}>
+                <Select options={TYPE_OPTIONS}/>
             </Form.Item>
-            <Form.Item style={
-                // 居中
-                {
-                    display: 'flex',
-                    justifyContent: 'center',
-                    marginBottom: 0,
-                }
-            }>
-                <Button type="primary" loading={loading} onClick={
-                    () => {
-                        const values = form.getFieldsValue()
-                        const req: CreateToolReq = {
-                            Name: values.name,
-                            Typ: values.typ
-                        }
-                        setLoading(true)
-                        sendCreateTool(req, (data) => {
-                            if (data.ok) {
-                                onFinish(values.name, values.typ)
-                                setOpen(false)
-                            }
-                            setLoading(false)
-                        })
-                    }
-                }>提交</Button>
+            <Form.Item wrapperCol={{offset: 6, span: 18}} style={{marginBottom: 0}}>
+                <Button type="primary" htmlType="submit" loading={loading}>提交</Button>
             </Form.Item>
         </Form>
     </Modal>
 }
+
+const TYPE_OPTIONS = [
+    {value: ToolType.Python, label: 'Python'},
+    {value: ToolType.FileExec, label: '可执行文件'},
+]
 
 export function ToolDetail({id, toolData, onClose, onChange}: {
     id: string,
@@ -262,222 +217,130 @@ export function ToolDetail({id, toolData, onClose, onChange}: {
     onClose: () => void,
     onChange: (name: string) => void
 }) {
-    let needContent = false
-    const [loaddingContent, setLoadingContent] = useState(false)
-    const navigate = useNavigate();
-    const [form] = useForm();
+    const [form] = Form.useForm<{ name: string, content: string }>()
+    const [loadingContent, setLoadingContent] = useState(false)
     const [updating, setUpdating] = useState(false)
-    form.setFieldsValue({
-        name: toolData.Name,
-        typ: toolData.Typ
-    })
-    if (toolData.Typ === ToolType.Python) {
-        needContent = true
-    }
+    const needContent = toolData.Typ === ToolType.Python
+
     useEffect(() => {
+        form.setFieldsValue({name: toolData.Name})
+    }, [form, toolData.Name])
+
+    useEffect(() => {
+        if (!needContent) return
+        let cancelled = false
         setLoadingContent(true)
-        if (needContent) {
-            const req = {
-                ToolID: id
-            }
-            setLoadingContent(true)
-            sendGetToolScript(req, (ret) => {
-                if (ret.ok) {
-                    form.setFieldsValue({
-                        content: ret.data.Script
-                    })
-                }
-                setLoadingContent(false)
-            })
+        getToolScript(id)
+            .then((script) => !cancelled && form.setFieldsValue({content: script}))
+            .catch((e: Error) => !cancelled && message.error(`读取脚本失败：${e.message}`))
+            .finally(() => !cancelled && setLoadingContent(false))
+        return () => {
+            cancelled = true
         }
-    }, [id, needContent, toolData])
-    let contentElement: ReactNode
-    if (needContent) {
-        contentElement = <Input.TextArea style={{height: '100px'}}/>
-    } else {
-        contentElement =
-            <Input value={toolData.Addr} disabled/>
+    }, [form, id, needContent])
+
+    const submit = async () => {
+        const values = form.getFieldsValue()
+        setUpdating(true)
+        try {
+            await updateTool(id, values.name, values.content ?? '')
+            message.success('已保存')
+            onChange(values.name)
+        } catch (e) {
+            message.error(e instanceof Error ? `保存失败：${e.message}` : '保存失败')
+        } finally {
+            setUpdating(false)
+        }
     }
 
-    // 将golang生成的json时间转换为能看懂的时间 2024-10-15T16:01:46.5010056+08:00 - 》 2024年10月15日 16:01:46
-    const createdStr = new Date(toolData.Created).toLocaleString('zh-CN', {hour12: false});
-    const updatedStr = new Date(toolData.Updated).toLocaleString('zh-CN', {hour12: false});
+    const createdStr = new Date(toolData.Created).toLocaleString('zh-CN', {hour12: false})
+    const updatedStr = new Date(toolData.Updated).toLocaleString('zh-CN', {hour12: false})
 
-    return <Modal
-        title="工具详情"
-        open={true}
-        footer={null}
-        onCancel={() => {
-            // 把后面的/打开的ID吃掉。
-            navigate('/cmd/工具', {replace: true})
-            onClose()
-        }}
-        style={{
-            display: 'flex',
-            justifyContent: 'center',
-        }}
-        maskClosable={false}
-    >
-        <Form
-            layout="horizontal"  // 设置为 horizontal 模式
-            labelCol={{span: 3}}  // 标签宽度占 6 列
-            wrapperCol={{span: 21}}  // 输入框宽度占 18 列
-            style={{margin: '2px', width: '400px'}}
-            form={form}
-        >
-            <Form.Item
-                label="工具名"
-                name="name"
-            >
-                <Input value={toolData.Name}/>
+    return <Modal title="工具详情" open footer={null} onCancel={onClose} maskClosable={false} width={520}>
+        <Form layout="horizontal" labelCol={{span: 4}} wrapperCol={{span: 20}} form={form} style={{marginTop: 16}}>
+            <Form.Item label="工具名" name="name">
+                <Input/>
             </Form.Item>
-            <Form.Item
-                label="类型"
-            >
-                <Select value={toolData.Typ} disabled={true}>
-                    <Select.Option value={ToolType.Python}>Python</Select.Option>
-                    <Select.Option value={ToolType.FileExec}>可执行文件</Select.Option>
-                </Select>
+            <Form.Item label="类型">
+                <Select value={toolData.Typ} disabled options={TYPE_OPTIONS}/>
             </Form.Item>
-            <Form.Item
-                label="时间"
-            >
+            <Form.Item label="时间">
                 <Timeline style={{margin: 0, padding: 0, height: '50px'}}
                           items={[
-                              {
-                                  children: <Typography.Text>{'创建于  ' + createdStr}</Typography.Text>
-                              },
-                              {
-                                  children: <Typography.Text>{'修改于  ' + updatedStr}</Typography.Text>
-                              }
+                              {children: <Typography.Text>{'创建于 ' + createdStr}</Typography.Text>},
+                              {children: <Typography.Text>{'修改于 ' + updatedStr}</Typography.Text>},
                           ]}
                 />
             </Form.Item>
-            <Form.Item
-                label="内容"
-                name="content"
-            >
-                {loaddingContent ? <Input.TextArea style={{height: '100px'}} disabled/> : contentElement}
-            </Form.Item>
-            <Form.Item style={
-                // 居中
-                {
-                    display: 'flex',
-                    justifyContent: 'center',
-                    marginBottom: 0,
-                }
-            }>
-                <Button type="primary" onClick={() => {
-                    // 提交
-                    const values = form.getFieldsValue()
-                    setUpdating(true)
-                    sendUpdateTool({
-                        ToolID: id,
-                        Name: values.name,
-                        Content: values.content
-                    }, (ret) => {
-                        setUpdating(false)
-                        if (ret.ok) {
-                            message.success('更新成功')
-                            onChange(values.name)
-                        } else {
-                            message.error('更新失败')
-                        }
-                    })
-                }}
-                        loading={updating}
-                >提交</Button>
+            {needContent
+                ? <Form.Item label="内容" name="content">
+                    <Input.TextArea autoSize={{minRows: 4, maxRows: 16}} disabled={loadingContent}
+                                    style={{fontFamily: 'monospace'}}/>
+                </Form.Item>
+                : <Form.Item label="地址">
+                    <Input value={toolData.Addr} disabled/>
+                </Form.Item>}
+            <Form.Item wrapperCol={{offset: 4, span: 20}} style={{marginBottom: 0}}>
+                <Button type="primary" onClick={() => void submit()} loading={updating}>保存</Button>
             </Form.Item>
         </Form>
     </Modal>
 }
 
-export function ToolPanel({wantOpenID}: { wantOpenID?: string }) {
-    // 请求数据
-    const [toolData, setToolData] = useState<Map<string, ToolData>>(new Map())
-    const [Loading, setLoading] = useState(true)
-    const [AddOpen, setAddOpen] = useState(false)
-    const [messageApi, messageCtx] = message.useMessage()
-    const [UpdateOpen, setUpdateOpen] = useState(false)
-    const [UpdateID, setUpdateID] = useState('')
-    const navigate = useNavigate();
-    const onOpenToolDetail = (id: string) => {
-        setUpdateOpen(true)
-        setUpdateID(id)
-        navigate('/cmd/工具/' + id, {replace: true})
-    }
+// openID 来自地址 /cmd/tools/:id；打开、关闭详情都是改地址
+export function ToolPanel({openID, onOpen, onClose}: {
+    openID?: string,
+    onOpen: (id: string) => void,
+    onClose: () => void,
+}) {
+    const [tools, setTools] = useState<Map<string, ToolData>>(new Map())
+    const [loading, setLoading] = useState(true)
+    const [adding, setAdding] = useState(false)
+
     useEffect(() => {
-        if (wantOpenID) {
-            navigate('/cmd/工具/' + wantOpenID, {replace: true})
+        let cancelled = false
+        getTools()
+            .then((data) => !cancelled && setTools(new Map(Object.entries(data))))
+            .catch((e: Error) => !cancelled && message.error(`获取工具列表失败：${e.message}`))
+            .finally(() => !cancelled && setLoading(false))
+        return () => {
+            cancelled = true
         }
-    }, [navigate, wantOpenID]);
-    useEffect(() => {
-        const req = {}
-        sendGetTools(req, (ret) => {
-            if (ret.ok) {
-                setToolData(ret.data.ID2ToolData)
-                setLoading(false)
-                if (wantOpenID) {
-                    setUpdateOpen(true)
-                    setUpdateID(wantOpenID)
-                }
-            } else {
-                messageApi.error('获取工具列表失败')
-            }
-        })
-    }, [messageApi])
-    const onClickAdd = () => {
-        setAddOpen(true)
-    }
-    const onClickDel = (id: string) => {
-        const req = {
-            ToolID: id
+    }, [])
+
+    const onClickDel = async (id: string) => {
+        try {
+            await deleteTool(id)
+            const next = new Map(tools)
+            next.delete(id)
+            setTools(next)
+        } catch (e) {
+            message.error(e instanceof Error ? `删除失败：${e.message}` : '删除失败')
         }
-        sendDeleteTool(req, (ret) => {
-            if (ret.ok) {
-                const newToolData = new Map(toolData)
-                newToolData.delete(id)
-                setToolData(newToolData)
-            } else {
-                messageApi.error('删除工具失败')
-            }
-        })
     }
+
+    const openTool = openID ? tools.get(openID) : undefined
+
     return <>
-        {messageCtx}
-        <ToolPanelShow loading={Loading} tools={toolData} onClickAdd={onClickAdd} onClickDel={onClickDel}
-                       onOpenToolDetail={onOpenToolDetail}/>
-        {UpdateOpen ? <ToolDetail id={UpdateID} toolData={toolData.get(UpdateID) as ToolData} onClose={() => {
-            setUpdateOpen(false)
-            setUpdateID('')
-        }} onChange={
-            (name) => {
-                const newToolData = new Map(toolData)
-                const tool = newToolData.get(UpdateID) as ToolData
-                tool.Name = name
-                tool.Updated = new Date().toISOString()
-                newToolData.set(UpdateID, tool)
-                setToolData(newToolData)
-            }
-        }/> : null
-        }
-        {AddOpen ? <AddModel onFinish={(name, typ) => {
-            setAddOpen(false)
-            if (name && typ) {
-                const newToolData = new Map(toolData)
-                // 获得当前时间
-                const now = new Date()
-                newToolData.set('new', {
-                    Name: name,
-                    Typ: typ,
-                    Content: '',
-                    Created: now.toISOString(),
-                    Updated: now.toISOString(),
-                    Addr: ''
-                })
-                setToolData(newToolData)
-            }
-        }}/> : null}
+        <ToolPanelShow loading={loading} tools={tools} onClickAdd={() => setAdding(true)}
+                       onClickDel={(id) => void onClickDel(id)} onOpenToolDetail={onOpen}/>
+        {openID && openTool && <ToolDetail
+            id={openID}
+            toolData={openTool}
+            onClose={onClose}
+            onChange={(name) => {
+                const next = new Map(tools)
+                next.set(openID, {...openTool, Name: name, Updated: new Date().toISOString()})
+                setTools(next)
+            }}
+        />}
+        {adding && <AddModal onFinish={(tool) => {
+            setAdding(false)
+            if (!tool) return
+            const now = new Date().toISOString()
+            const next = new Map(tools)
+            next.set(tool.id || 'new', {Name: tool.name, Typ: tool.typ, Content: '', Created: now, Updated: now, Addr: ''})
+            setTools(next)
+        }}/>}
     </>
 }
-

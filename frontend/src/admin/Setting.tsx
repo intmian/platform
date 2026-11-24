@@ -1,13 +1,27 @@
-import {useCallback, useEffect, useState} from "react";
+import {useCallback, useEffect, useRef, useState} from "react";
 import {Tabs, theme} from "antd";
-import {useBlocker} from "react-router-dom";
+import {Navigate, useBlocker, useNavigate, useParams, useResolvedPath} from "react-router-dom";
 import {AISettings} from "./settings/AISettings";
 import {BasicSettings} from "./settings/BasicSettings";
+import {AIView} from "./settings/aiConfigModel";
 import {clearSettingsDirty, confirmLeaveSettings, hasUnsavedSettings, setSettingsDirty} from "./settings/settingsGuard";
 import "./settings/settings.css";
 
+// 地址：/admin/setting/basic、/admin/setting/ai[/queues|/providers]，每个分类都能单独固定到桌面
+type Section = "basic" | "ai";
+const AI_VIEWS: AIView[] = ["overview", "queues", "providers"];
+
 function Setting() {
-    const [section, setSection] = useState("basic");
+    const splat = (useParams()["*"] ?? "").split("/").filter(Boolean);
+    const base = useResolvedPath(".").pathname.replace(/\/$/, "");
+    const navigate = useNavigate();
+    const section = splat[0] as Section | undefined;
+    const aiView: AIView = AI_VIEWS.includes(splat[1] as AIView) ? splat[1] as AIView : "overview";
+
+    // 从基础设置切回 AI 时回到上次看的子页
+    const lastAIView = useRef<AIView>(aiView);
+    if (section === "ai") lastAIView.current = aiView;
+
     const [dirty, setDirty] = useState({basic: false, ai: false});
     const {token} = theme.useToken();
 
@@ -35,13 +49,22 @@ function Setting() {
         };
     }, []);
 
-    // 点顶部导航跳到其他页面时提醒
-    const blocker = useBlocker(dirty.basic || dirty.ai);
+    // 离开设置页（后台其他分区、回桌面、切到别的应用）时提醒；设置页内部切分类不拦
+    const blocker = useBlocker(({nextLocation}) => (
+        (dirty.basic || dirty.ai) && nextLocation.pathname !== base && !nextLocation.pathname.startsWith(base + "/")
+    ));
     useEffect(() => {
         if (blocker.state === "blocked") {
             confirmLeaveSettings(() => blocker.proceed(), () => blocker.reset());
         }
     }, [blocker]);
+
+    const aiPath = useCallback((view: AIView) => view === "overview" ? `${base}/ai` : `${base}/ai/${view}`, [base]);
+    const onAIViewChange = useCallback((view: AIView) => navigate(aiPath(view)), [aiPath, navigate]);
+
+    if (section !== "basic" && section !== "ai") {
+        return <Navigate to={`${base}/basic`} replace/>;
+    }
 
     const label = (text: string, changed: boolean) => <span>
         {text}
@@ -55,7 +78,7 @@ function Setting() {
         <Tabs
             className="settings-tabs"
             activeKey={section}
-            onChange={setSection}
+            onChange={(key) => navigate(key === "ai" ? aiPath(lastAIView.current) : `${base}/${key}`)}
             tabBarStyle={{background: token.colorBgContainer}}
             items={[
                 {key: "basic", label: label("基础设置", dirty.basic)},
@@ -64,7 +87,9 @@ function Setting() {
         />
         {/* 两个分类都保持挂载，切换时不丢未保存的修改 */}
         <div style={{display: section === "basic" ? undefined : "none"}}><BasicSettings onDirtyChange={onBasicDirty}/></div>
-        <div style={{display: section === "ai" ? undefined : "none"}}><AISettings onDirtyChange={onAIDirty}/></div>
+        <div style={{display: section === "ai" ? undefined : "none"}}>
+            <AISettings onDirtyChange={onAIDirty} view={lastAIView.current} onViewChange={onAIViewChange}/>
+        </div>
     </div>;
 }
 

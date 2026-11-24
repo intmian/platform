@@ -1,128 +1,50 @@
-import React, {useEffect, useState} from 'react';
+import {useMemo} from 'react';
 import {Calendar} from 'antd';
-import styled, {keyframes} from 'styled-components';
 import dayjs, {Dayjs} from 'dayjs';
-import zhLocale from 'antd/lib/calendar/locale/zh_CN.js'
+import zhLocale from 'antd/lib/calendar/locale/zh_CN.js';
+import './love.css';
 
-// 爱心飘动动画
-const floatAnimation = keyframes`
-    0% {
-        transform: translateY(0) scale(1);
-    }
-    50% {
-        transform: translateY(-20px) scale(1.2);
-    }
-    100% {
-        transform: translateY(0) scale(1);
-    }
-`;
+const anniversaryDate: Dayjs = dayjs('2022-12-18');
 
-// 漂浮爱心
-interface FloatingHeartProps {
-    top: string;
-    left: string;
-    duration: number;
-}
+const Anniversary = () => {
+    // 50 个随机位置、随机时长（2 到 5 秒）的漂浮爱心；只在挂载时生成一次
+    const hearts = useMemo(() => Array.from({length: 50}).map(() => ({
+        top: `${Math.random() * 100}%`,
+        left: `${Math.random() * 100}%`,
+        duration: Math.random() * 3 + 2,
+    })), []);
 
-const FloatingHeart = styled.div<FloatingHeartProps>`
-    position: absolute;
-    font-size: 24px;
-    animation: ${floatAnimation} ${(props) => props.duration}s ease-in-out infinite;
-    color: #eb2f96;
-    top: ${(props) => props.top};
-    left: ${(props) => props.left};
-`;
-
-// 中间巨大爱心
-const CenterHeart = styled.div`
-    font-size: 128px;
-    color: #eb2f96;
-`;
-
-// 大字显示
-const LargeText = styled.p`
-    font-size: 24px;
-    margin-top: 2px;
-`;
-
-const Anniversary: React.FC = () => {
-
-    // 随机生成位置和持续时间的爱心
-    const floatingHearts = Array.from({length: 50}).map((_, index) => (
-        <FloatingHeart
-            key={index}
-            top={`${Math.random() * 100}%`}
-            left={`${Math.random() * 100}%`}
-            duration={Math.random() * 3 + 2} // 2 到 5 秒的随机动画时间
-        >
-            💖
-        </FloatingHeart>
-    ));
-
-    return <div
-        style={{
-            //     粉红色背景
-            backgroundColor: '#f9f0ff',
-            display: 'flex',
-            justifyContent: 'center',
-            alignItems: 'center',
-            height: '100vh',  // 父容器占满整个屏幕高度
-        }}
-    >
-        {floatingHearts}
+    return <div className="love-page">
+        {hearts.map((h, index) => (
+            <div
+                key={index}
+                className="love-floating-heart"
+                style={{top: h.top, left: h.left, animationDuration: `${h.duration}s`}}
+            >
+                💖
+            </div>
+        ))}
         <LovePanel/>
     </div>;
 };
 
 const LovePanel = () => {
-    const [daysTogether, setDaysTogether] = useState<number>(0);
-    const [daysToNextAnniversary, setDaysToNextAnniversary] = useState<number>(0);
-
-    const anniversaryDate: Dayjs = dayjs('2022-12-18');
-
-    useEffect(() => {
-        const today: Dayjs = dayjs();
-        const diffDays: number = today.diff(anniversaryDate, 'day');
-        setDaysTogether(diffDays);
-
-        const nextAnniversary: Dayjs = anniversaryDate.add(Math.floor(diffDays / 365) + 1, 'year');
-        const daysUntilNext: number = nextAnniversary.diff(today, 'day');
-        setDaysToNextAnniversary(daysUntilNext);
-    }, []);
-
-    const parentStyle = {
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
-        height: '400px',
-        maxHeight: '100%',
-        minWidth: '300px',
-        width: '300px',
-        flexDirection: 'column', // 垂直排列子组件
-        zIndex: 1, // 确保爱心飘动在最上层
-    };
-
-    const childStyle = {
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
-        width: '100%',
-        textAlign: 'center' // 确保文本居中
-    };
+    const today = dayjs();
+    const daysTogether = today.diff(anniversaryDate, 'day');
+    const nextAnniversary = anniversaryDate.add(Math.floor(daysTogether / 365) + 1, 'year');
+    const daysToNextAnniversary = nextAnniversary.diff(today, 'day');
 
     return (
-        <div style={parentStyle}>
-            <div style={childStyle}><CenterHeart>❤️</CenterHeart></div>
-            <div style={childStyle}><LargeText>爱你宝宝</LargeText></div>
-            <div style={childStyle}><Calendar fullscreen={false} value={anniversaryDate} locale={zhLocale}
-
-            />
+        <div className="love-panel">
+            <div className="love-panel-row"><div className="love-center-heart">❤️</div></div>
+            <div className="love-panel-row"><p className="love-large-text">爱你宝宝</p></div>
+            <div className="love-panel-row">
+                <Calendar fullscreen={false} value={anniversaryDate} locale={zhLocale}/>
             </div>
-            <div style={childStyle}><LargeText>我们已经在一起 {daysTogether} 天了！</LargeText></div>
-            <div style={childStyle}><LargeText>距离下一周年还有 {daysToNextAnniversary} 天！</LargeText></div>
+            <div className="love-panel-row"><p className="love-large-text">我们已经在一起 {daysTogether} 天了！</p></div>
+            <div className="love-panel-row"><p className="love-large-text">距离下一周年还有 {daysToNextAnniversary} 天！</p></div>
         </div>
     );
-}
-
+};
 
 export default Anniversary;

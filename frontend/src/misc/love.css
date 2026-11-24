@@ -1,0 +1,61 @@
+.love-page {
+    position: relative;
+    overflow: hidden;
+    background-color: #f9f0ff;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+}
+
+@keyframes love-float {
+    0% {
+        transform: translateY(0) scale(1);
+    }
+    50% {
+        transform: translateY(-20px) scale(1.2);
+    }
+    100% {
+        transform: translateY(0) scale(1);
+    }
+}
+
+/* 漂浮的小爱心；位置和动画时长由行内样式给 */
+.love-floating-heart {
+    position: absolute;
+    font-size: 24px;
+    color: #eb2f96;
+    animation-name: love-float;
+    animation-timing-function: ease-in-out;
+    animation-iteration-count: infinite;
+}
+
+.love-panel {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    height: 400px;
+    max-height: 100%;
+    width: 300px;
+    min-width: 300px;
+    z-index: 1;
+}
+
+.love-panel-row {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+    text-align: center;
+}
+
+.love-center-heart {
+    font-size: 128px;
+    color: #eb2f96;
+}
+
+.love-large-text {
+    font-size: 24px;
+    margin-top: 2px;
+}

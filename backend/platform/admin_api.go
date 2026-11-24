@@ -68,14 +68,13 @@ func (m *webMgr) login(c *gin.Context) {
 	data := token.Data{
 		User:       body.Username,
 		Permission: permission,
-		ValidTime:  int64(time.Hour*24*7/time.Second) + time.Now().Unix(),
+		ValidTime:  tokenValidSeconds + time.Now().Unix(),
 	}
 	t := m.jwt.GenToken(body.Username, data.Permission, data.ValidTime)
 	data.Token = t
 
 	// 保存token
-	tokenS, _ := json.Marshal(data)
-	c.SetCookie("token", string(tokenS), 60*60*24*7, "/", "", false, true)
+	m.setTokenCookie(c, data)
 	c.JSON(200, gin.H{
 		"code": 0,
 		"data": struct {
@@ -116,6 +115,16 @@ func (m *webMgr) onLogin(c *gin.Context, userName string, permission []string, r
 			m.plat.log.Warning("PLAT", "push error [%s]", err.Error())
 		}
 	}
+}
+
+const (
+	tokenValidSeconds = 60 * 60 * 24 * 7
+	tokenRenewBefore  = 60 * 60 * 24 * 2
+)
+
+func (m *webMgr) setTokenCookie(c *gin.Context, data token.Data) {
+	tokenS, _ := json.Marshal(data)
+	c.SetCookie("token", string(tokenS), tokenValidSeconds, "/", "", false, true)
 }
 
 func (m *webMgr) logout(c *gin.Context) {
@@ -177,13 +186,11 @@ func (m *webMgr) check(c *gin.Context) {
 		return
 	}
 
-	// 如果不具备admin权限，且有效期剩余两天，则刷新token
-	if !m.CheckTokenPermission(&data, "admin") && data.ValidTime-time.Now().Unix() < 60*60*24*2 {
-		data.ValidTime = time.Now().Unix() + 60*60*24*7
-		t := m.jwt.GenToken(data.User, data.Permission, data.ValidTime)
-		data.Token = t
-		tokenS, _ := json.Marshal(data)
-		c.SetCookie("token", string(tokenS), 60*60*24*7, "/", "", false, true)
+	// 非 admin 且有效期不足两天时续签。admin 有意不续签：token 被盗用时最多再用 7 天
+	if !m.CheckTokenPermission(&data, "admin") && data.ValidTime-time.Now().Unix() < tokenRenewBefore {
+		data.ValidTime = time.Now().Unix() + tokenValidSeconds
+		data.Token = m.jwt.GenToken(data.User, data.Permission, data.ValidTime)
+		m.setTokenCookie(c, data)
 	}
 
 	c.JSON(200, gin.H{

@@ -1,5 +1,4 @@
-import config from "../config.json";
-import {UniPost} from "../common/newSendHttp";
+import {post} from "../common/api";
 import {
     MoneyBook,
     MoneyBookArchive,
@@ -10,12 +9,9 @@ import {
     ReconciliationRecord
 } from "./types";
 
-async function moneyPost<T>(path: string, req: object): Promise<T> {
-    const ret = await UniPost(config.api_base_url + path, req);
-    if (!ret.ok) {
-        throw new Error("请求失败");
-    }
-    return ret.data as T;
+// 失败时抛 ApiError，消息是后端返回的 msg（没有就是“请求失败”）
+function moneyPost<T>(path: string, req: object): Promise<T> {
+    return post<T>(path, req);
 }
 
 export function listMoneyBooks() {

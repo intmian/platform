@@ -10,7 +10,6 @@ import {
     Modal,
     Popover,
     Popconfirm,
-    Result,
     Space,
     Spin,
     Switch,
@@ -28,19 +27,10 @@ import {
     PlusOutlined,
     RedoOutlined
 } from "@ant-design/icons";
-import {useLoginGate} from "../common/useLoginGate";
-import {useIsMobile} from "../common/hooksv2";
-import {
-    sendSubscriptionCreate,
-    sendSubscriptionCheck,
-    sendSubscriptionDelete,
-    sendSubscriptionList,
-    sendSubscriptionRotate,
-    sendSubscriptionUpdate,
-    SubscriptionItem,
-    SubscriptionListRet,
-    SubscriptionMutationRet
-} from "../common/newSendHttp";
+import {useIsMobile} from "../common/breakpoints";
+import {request} from "../common/api";
+import type {SubscriptionItem, SubscriptionListRet, SubscriptionMutationRet} from "../common/newSendHttp";
+import {useAppActive, useAppTitle} from "../shell/runtime";
 
 const {Text, Title} = Typography;
 const SUBSCRIPTION_CARD_MIN_WIDTH = 360;
@@ -176,7 +166,7 @@ function renderMonitorTag(item: SubscriptionItem) {
     >
         <span style={monitorTextStyle}>Auto Check</span>
         {item.workerForwardEnabled ? <span style={{
-            color: "#bfbfbf",
+            color: "var(--pf-text-4)",
             fontSize: 12,
             lineHeight: 1,
         }}>|</span> : null}
@@ -243,8 +233,8 @@ function MetricCard(props: {
     return <div style={{
         padding: "10px 12px",
         borderRadius: 12,
-        background: "#fafafa",
-        border: "1px solid #f0f0f0",
+        background: "var(--pf-fill-4)",
+        border: "1px solid var(--pf-border-2)",
         minWidth: 0,
         gridColumn: props.fullRow ? "1 / -1" : undefined,
     }}>
@@ -270,7 +260,7 @@ function MetricCard(props: {
 }
 
 export default function SubscriptionPage() {
-    const {loginReady, isLoggedIn, openLogin, loginPanel} = useLoginGate();
+    useAppTitle("订阅管理");
     const isMobile = useIsMobile();
     const [viewportWidth, setViewportWidth] = useState(window.innerWidth);
     const [items, setItems] = useState<SubscriptionItem[]>([]);
@@ -284,20 +274,20 @@ export default function SubscriptionPage() {
 
     const loadItems = async () => {
         setLoading(true);
-        const ret = await sendSubscriptionList();
+        const ret = await request<SubscriptionListRet>("/misc/subscription/list");
         setLoading(false);
         if (!ret.ok) {
             message.error("加载订阅失败");
             return;
         }
-        setItems(((ret.data as SubscriptionListRet).items ?? []) as SubscriptionItem[]);
+        setItems(ret.data?.items ?? []);
     };
 
     useEffect(() => {
-        if (loginReady && isLoggedIn) {
-            loadItems().then();
-        }
-    }, [loginReady, isLoggedIn]);
+        loadItems().then();
+    }, []);
+    // 保活：从别的应用切回来时刷新，巡检结果可能已经变了
+    useAppActive(() => loadItems().then());
 
     useEffect(() => {
         const handleResize = () => {
@@ -337,7 +327,7 @@ export default function SubscriptionPage() {
         const values = await form.validateFields();
         setSaving(true);
         const ret = editingItem
-            ? await sendSubscriptionUpdate({
+            ? await request<SubscriptionMutationRet>("/misc/subscription/update", {
                 id: editingItem.id,
                 name: values.name,
                 upstreamUrl: values.upstreamUrl,
@@ -346,13 +336,13 @@ export default function SubscriptionPage() {
                 monitorEnabled: values.monitorEnabled,
                 cacheEnabled: values.cacheEnabled,
             })
-            : await sendSubscriptionCreate(values);
+            : await request<SubscriptionMutationRet>("/misc/subscription/create", values);
         setSaving(false);
-        if (!ret.ok) {
+        if (!ret.ok || !ret.data?.item) {
             message.error(editingItem ? "更新失败" : "创建失败");
             return;
         }
-        const item = (ret.data as SubscriptionMutationRet).item;
+        const item = ret.data.item;
         setItems((prev) => {
             if (!editingItem) {
                 return [...prev, item].sort((a, b) => a.name.localeCompare(b.name));
@@ -366,7 +356,7 @@ export default function SubscriptionPage() {
     };
 
     const onDelete = async (id: string) => {
-        const ret = await sendSubscriptionDelete({id});
+        const ret = await request("/misc/subscription/delete", {id});
         if (!ret.ok) {
             message.error("删除失败");
             return;
@@ -377,26 +367,26 @@ export default function SubscriptionPage() {
 
     const onRotate = async (id: string) => {
         setActingKey(`rotate-${id}`);
-        const ret = await sendSubscriptionRotate({id});
+        const ret = await request<SubscriptionMutationRet>("/misc/subscription/rotate", {id});
         setActingKey("");
-        if (!ret.ok) {
+        if (!ret.ok || !ret.data?.item) {
             message.error("轮换失败");
             return;
         }
-        const item = (ret.data as SubscriptionMutationRet).item;
+        const item = ret.data.item;
         setItems((prev) => prev.map((current) => current.id === item.id ? item : current));
         message.success("轮换成功");
     };
 
     const onManualCheck = async (id: string) => {
         setActingKey(`check-${id}`);
-        const ret = await sendSubscriptionCheck({id});
+        const ret = await request<SubscriptionMutationRet>("/misc/subscription/check", {id});
         setActingKey("");
-        if (!ret.ok) {
+        if (!ret.ok || !ret.data?.item) {
             message.error("巡检失败");
             return;
         }
-        const item = (ret.data as SubscriptionMutationRet).item;
+        const item = ret.data.item;
         setItems((prev) => prev.map((current) => current.id === item.id ? item : current));
         message.success("巡检完成");
     };
@@ -410,28 +400,9 @@ export default function SubscriptionPage() {
         }
     };
 
-    if (!loginReady) {
-        return <Flex align="center" justify="center" style={{minHeight: "100vh"}}>
-            <Spin size="large"/>
-        </Flex>;
-    }
-
-    if (!isLoggedIn) {
-        return <div style={{padding: 24}}>
-            {loginPanel}
-            <Result
-                status="403"
-                title="需要登录"
-                subTitle="订阅管理是用户自管页面，登录后才能查看和维护分享链接。"
-                extra={<Button type="primary" onClick={openLogin}>登录</Button>}
-            />
-        </div>;
-    }
-
     const columnCount = getSubscriptionColumnCount(viewportWidth, isMobile);
 
     return <div style={{padding: isMobile ? 14 : 20, maxWidth: 1680, margin: "0 auto"}}>
-        {loginPanel}
         <Flex justify="space-between" align="center" wrap="wrap" gap="middle" style={{marginBottom: 16}}>
             <div>
                 <Flex align="center" gap={8}>
