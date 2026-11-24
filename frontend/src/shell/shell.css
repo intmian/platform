@@ -1531,40 +1531,19 @@ html.pf-gray-page body {
     }
 }
 
-/* ---------- 苹果式的边缘 ----------
-   苹果的图标和小组件不是“方图切个圆角”：
-   1) 角是连续曲率的“方圆”（squircle）：直边到圆角是慢慢弯过去的，没有普通圆角那个突然拐弯的点。
-      CSS 的 corner-shape 目前只有 Chrome/Edge 支持，Safari 还不支持，那边继续用普通圆角（看起来和以前一样）。
-      方圆在同样半径下显得更方，所以半径要给大一些。
-   2) 边上有一圈很细的“受光边”：左上亮、中间消失、右下再微微亮一点，像玻璃边缘反光，让图标从背景里“立”起来。
-      做法是一个盖在上面的伪元素，背景是斜向渐变，再用两层遮罩挖空中间，只留 1px 的边。 */
-@supports (corner-shape: squircle) {
-    .pf-tile {
-        border-radius: 34%;
-        corner-shape: squircle;
-    }
-
-    .pf-widget {
-        border-radius: 34px;
-        corner-shape: squircle;
-    }
-
-    .pf-wall-preview {
-        border-radius: 24px;
-        corner-shape: squircle;
-    }
-}
-
+/* ---------- 图标和卡片的受光边 ----------
+   边上一圈很细的亮边，左上稍亮、中间消失、右下微亮，让图标从背景里“立”起来。
+   做法是一个盖在上面的伪元素，背景是斜向渐变，再用两层遮罩挖空中间，只留 1px 的边。
+   试过苹果那种方圆角（corner-shape: squircle），角看着发方、不自然，拍板用普通圆角。 */
 .pf-tile::after,
 .pf-widget::after {
     content: "";
     position: absolute;
     inset: 0;
     border-radius: inherit;
-    corner-shape: inherit;
     padding: 1px;
     pointer-events: none;
-    background: linear-gradient(150deg, rgba(255, 255, 255, .75) 0%, rgba(255, 255, 255, .18) 30%, rgba(255, 255, 255, 0) 55%, rgba(255, 255, 255, .32) 100%);
+    background: linear-gradient(150deg, rgba(255, 255, 255, .42) 0%, rgba(255, 255, 255, .12) 30%, rgba(255, 255, 255, 0) 55%, rgba(255, 255, 255, .2) 100%);
     -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
     -webkit-mask-composite: xor;
     mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
