@@ -10,6 +10,7 @@ import {CommandPalette} from "./CommandPalette";
 import {Desktop} from "./desktop/Desktop";
 import {bindRecentsUser, recordRecent} from "./recents";
 import {nextSlots, Slot} from "./slots";
+import {ErrorPage} from "../misc/ErrorPage";
 
 const DEFAULT_TITLE = "Platform";
 const DEFAULT_FAVICON = "/favicon-32.png";
@@ -213,11 +214,7 @@ function AppLoading() {
 }
 
 function NotFound() {
-    const navigate = useNavigate();
-    return <div className="pf-center pf-empty">
-        <div className="pf-empty-title">没有这个页面</div>
-        <Button onClick={() => navigate("/")}>回到桌面</Button>
-    </div>;
+    return <ErrorPage variant="notfound"/>;
 }
 
 function NoPermission({app}: { app: AppDef }) {

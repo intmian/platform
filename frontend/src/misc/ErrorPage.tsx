@@ -1,5 +1,6 @@
 import {useEffect, useState} from 'react';
-import {Image, Space, Typography} from 'antd';
+import {Button, Image, Space, Typography} from 'antd';
+import {useNavigate} from 'react-router-dom';
 import catPic from '../assets/cat.jpg';
 import './ErrorPage.css'; // 引入样式文件
 const {Text, Link, Title} = Typography;
@@ -25,8 +26,10 @@ const texts = [
     </Link>
 ];
 
-export function ErrorPage() {
+// 猫的页面。notfound：打开了不存在的地址；crash：整个网站出错（路由的 errorElement）
+export function ErrorPage({variant = "crash"}: { variant?: "notfound" | "crash" }) {
     const [currentIndex, setCurrentIndex] = useState(0);
+    const navigate = useNavigate();
 
     useEffect(() => {
         const interval = setInterval(() => {
@@ -38,14 +41,17 @@ export function ErrorPage() {
     const currentText = texts[currentIndex];
 
     return (
-        <div className="error-page">
+        <div className={`error-page${variant === "notfound" ? " is-inline" : ""}`}>
             <Space direction="vertical" align="center">
                 <Space direction="vertical">
-                    <Title>Not Found,这个页面被猫吃了</Title>
+                    <Title>{variant === "notfound" ? "Not Found，这个页面被猫吃了" : "出错了，可能是猫踩到了键盘"}</Title>
                     <Image width={'40%'} src={catPic} preview={false}/>
                     <div className="text-box">
                         {currentText}
                     </div>
+                    {variant === "notfound"
+                        ? <Button type="primary" onClick={() => navigate("/")}>回到桌面</Button>
+                        : <Button type="primary" onClick={() => window.location.reload()}>重新加载</Button>}
                 </Space>
             </Space>
         </div>

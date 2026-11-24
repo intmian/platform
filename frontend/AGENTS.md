@@ -34,6 +34,7 @@
 - 语音输入（实时模式）拍过板的行为：点下立即开录，连接在后台建；断线自动重连并把最后一句定稿之后的音频补发，不丢不重；30 秒没出新字（离线时看音量）自动结束，硬上限默认 5 分钟；到最后仍转不出的录音存进 IndexedDB（`common/voicePending.ts`），按钮角标手动重试，文字插到当前光标。预览直接显示在输入框里，不用气泡。
 - 颜色用 antd theme token；普通 CSS 用 `shell/theme.tsx` 写到 `:root` 的 `--pf-*` 变量，不写死色值（有含义的数据色除外）。新页面在不破坏现有风格的前提下可以有自己的设计。
 - 图标：应用图标是同一个角色（Platform娘）拿不同道具的二次元插画，设定稿在 `icon-src/platform-girl-handbook.html`，新应用照它生成；主图标（窗台猫）保持正式简约。母版放 `icon-src/<id>-1024.png`，导出到 `public/icons/<id>-192.png`（桌面）、`-180.png`（iPhone 主屏，必须不透明）、`-32.png`（标签页），`apps.tsx` 按 id 自动取。
+- 404 和整站崩溃页都用 `misc/ErrorPage`，图是作者自己的猫（`assets/cat.jpg`），不要换成通用的空状态。
 - antd 按钮两个汉字之间不自动加空格（全局关掉了 `autoInsertSpace`）。
 - `src/debug/debug.tsx`（`/debug`，只在本地开发出现）是组件试验场：改文件里的 `TARGET`/`TARGET_PROPS` 挂一个组件单独调交互。
 - Note Mini 已经迁到独立项目 `memos-mian`，这里不再有入口。`FlagNote = 2` 保留不复用；R2 上传、AI、语音这些共享能力和历史文件链接都要保留。
