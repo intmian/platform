@@ -44,3 +44,9 @@ export function useAppTitle(title: string | null | undefined) {
     }, [title, setTitle]);
     useEffect(() => () => setTitle(null), [setTitle]);
 }
+
+// 像页面一样的抽屉（详情、目录、设置面板）用这组属性：层级放在底部胶囊（900）下面，
+// 开着时也能回桌面、切应用、添加到桌面。抽屉底部不留空：胶囊浮在上面，抽屉里往下滚时收起（HomeBar 的 useHideOnScroll）。
+// 抽屉挂在 body 上、不随应用隐藏，所以 open 要同时看 useIsAppActive()，切走时收起、切回来恢复。
+// 小表单、确认框不用它，仍按 antd 默认层级盖住胶囊：填到一半不该切走。
+export const pageDrawerProps = {zIndex: 880, rootClassName: "pf-page-drawer"} as const;

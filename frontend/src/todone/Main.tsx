@@ -4,7 +4,7 @@ import {MenuOutlined, StarOutlined} from "@ant-design/icons";
 import {Navigate, useNavigate, useParams} from "react-router-dom";
 import {useAuth} from "../common/loginCtx";
 import {useIsMobile} from "../common/breakpoints";
-import {useAppActive, useAppTitle, useIsAppActive} from "../shell/runtime";
+import {pageDrawerProps, useAppActive, useAppTitle, useIsAppActive} from "../shell/runtime";
 import {loadDesktop, useDesktopLayout} from "../shell/desktop/store";
 import {Dir} from "./Dir";
 import {Addr} from "./addr";
@@ -94,7 +94,9 @@ export function Todone() {
         return a;
     }, [addrKey, userID]);
 
-    useAppTitle(showOverview ? '关注' : groupTitle || null);
+    // 娱乐库打开某个作品时标题用作品名，这样“添加到桌面”、最近应用里显示的是作品
+    const [detailTitle, setDetailTitle] = useState<string | null>(null);
+    useAppTitle(showOverview ? '关注' : detailTitle || groupTitle || null);
 
     // 换了分组，右侧任务详情跟着关掉
     useEffect(() => {
@@ -129,7 +131,7 @@ export function Todone() {
         page = <Result status="404" title="清单不存在或已删除"
                        extra={<Button type="primary" onClick={openOverview}>回到关注</Button>}/>;
     } else if (groupType === GroupType.Library) {
-        page = <Library key={found.group.ID} addr={addr} groupTitle={groupTitle}/>;
+        page = <Library key={found.group.ID} addr={addr} groupTitle={groupTitle} onDetailTitle={setDetailTitle}/>;
     } else if (groupType === GroupType.Routine) {
         page = <Routine key={found.group.ID} addr={addr} groupTitle={groupTitle}/>;
     } else {
@@ -159,6 +161,7 @@ export function Todone() {
             /> : null}
         {/* 抽屉挂在 body 上，Todone 切到后台时要跟着收起来，不然会盖在别的应用上 */}
         <Drawer
+            {...pageDrawerProps}
             autoFocus={false}
             title="目录"
             placement="left"
@@ -212,6 +215,7 @@ export function Todone() {
         </div>
 
         <Drawer
+            {...pageDrawerProps}
             title="任务详情"
             placement="right"
             closable={true}

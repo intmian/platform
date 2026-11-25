@@ -272,6 +272,8 @@ const LIBRARY_GUIDE_SCORE_DIMENSIONS: Array<{
 interface LibraryProps {
     addr: Addr | null;
     groupTitle: string;
+    // 打开、关上作品详情时告诉外面作品名（null 表示没打开），用作网页标题和“添加到桌面”的名字
+    onDetailTitle?: (title: string | null) => void;
 }
 
 interface LibraryItemWithDerived extends LibraryItemFull {
@@ -508,7 +510,7 @@ export default function Library(props: LibraryProps) {
     return <LibraryVoiceProvider><LibraryContent {...props}/></LibraryVoiceProvider>;
 }
 
-function LibraryContent({addr, groupTitle}: LibraryProps) {
+function LibraryContent({addr, groupTitle, onDetailTitle}: LibraryProps) {
     const voiceBusy = useLibraryVoiceBusy();
     const isMobile = useIsMobile();
     // 筛选状态放在地址的查询参数里（刷新、分享链接都能还原），只用 replace 改，不进浏览器历史
@@ -546,6 +548,19 @@ function LibraryContent({addr, groupTitle}: LibraryProps) {
     // 详情弹窗
     const [detailItem, setDetailItem] = useState<LibraryItemFull | null>(null);
     const [showDetail, setShowDetail] = useState(false);
+    const openDetailId = showDetail && detailItem ? detailItem.taskId : null;
+    const openDetailIdRef = useRef(openDetailId);
+    openDetailIdRef.current = openDetailId;
+    // 地址里的作品参数被外面改了、还没落到详情上时，记下地址要的是哪个（null 表示要关上）。
+    // 期间同步地址的 effect 按它写，不拿旧状态把地址改回去
+    const urlDetailIntentRef = useRef<{ id: number | null } | null>(null);
+    const [urlDetailNonce, setUrlDetailNonce] = useState(0);
+
+    const detailTitle = showDetail && detailItem ? detailItem.title || null : null;
+    useEffect(() => {
+        onDetailTitle?.(detailTitle);
+    }, [detailTitle, onDetailTitle]);
+    useEffect(() => () => onDetailTitle?.(null), [onDetailTitle]);
     
     // 添加条目弹窗
     const [showAdd, setShowAdd] = useState(false);
@@ -767,9 +782,29 @@ function LibraryContent({addr, groupTitle}: LibraryProps) {
         if (pendingItem) {
             setDetailItem(pendingItem);
             setShowDetail(true);
+        } else {
+            // 作品不在了：不再坚持地址里的参数，让下面的同步把它去掉
+            urlDetailIntentRef.current = null;
         }
         pendingDetailTaskIdFromUrlRef.current = null;
-    }, [allItems, loading, mainSubGroup]);
+    }, [allItems, loading, mainSubGroup, urlDetailNonce]);
+
+    // Todone 保活时，已经停在这个分组上再点桌面上钉住的作品（或钉住的分组），Library 不会重新挂载，
+    // 只是地址的查询参数变了。这里跟着打开或关上详情。自己同步地址引起的变化和当前状态一致，不会进来。
+    useEffect(() => {
+        const urlId = parseDetailTaskIdParam(searchParams.get(URL_STATE_PARAM_KEYS.detailTaskId));
+        if (urlId === openDetailIdRef.current) {
+            return;
+        }
+        urlDetailIntentRef.current = {id: urlId};
+        if (urlId === null) {
+            setShowDetail(false);
+            setDetailItem(null);
+        } else {
+            pendingDetailTaskIdFromUrlRef.current = urlId;
+            setUrlDetailNonce((n) => n + 1);
+        }
+    }, [searchParams]);
 
     useEffect(() => {
         // 在后台时地址栏属于别的应用，不能改
@@ -819,8 +854,13 @@ function LibraryContent({addr, groupTitle}: LibraryProps) {
             params.delete(URL_STATE_PARAM_KEYS.searchText);
         }
 
-        if (showDetail && detailItem) {
-            params.set(URL_STATE_PARAM_KEYS.detailTaskId, String(detailItem.taskId));
+        const intent = urlDetailIntentRef.current;
+        if (intent && intent.id === openDetailId) {
+            urlDetailIntentRef.current = null;
+        }
+        const detailId = urlDetailIntentRef.current ? urlDetailIntentRef.current.id : openDetailId;
+        if (detailId !== null) {
+            params.set(URL_STATE_PARAM_KEYS.detailTaskId, String(detailId));
         } else {
             params.delete(URL_STATE_PARAM_KEYS.detailTaskId);
         }
@@ -829,7 +869,7 @@ function LibraryContent({addr, groupTitle}: LibraryProps) {
             return;
         }
         setSearchParams(params, {replace: true});
-    }, [appActive, detailItem, searchText, selectedCategory, selectedStatuses, setSearchParams, showDetail, sortBy, todoReasonFilter]);
+    }, [appActive, openDetailId, searchText, selectedCategory, selectedStatuses, setSearchParams, sortBy, todoReasonFilter, urlDetailNonce]);
 
     // 提取所有分类（从 extra.category 字段）
     const categories: string[] = useMemo(() => {

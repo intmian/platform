@@ -7,10 +7,10 @@
     padding: 0 24px;
 }
 
-/* 在外壳里显示时，给底部胶囊留出位置 */
+/* 在外壳里显示时占满一屏（胶囊浮在上面，不扣它的高度） */
 .error-page.is-inline {
     height: auto;
-    min-height: calc(100dvh - var(--homebar-h, 0px) - var(--safe-bottom, 0px));
+    min-height: 100dvh;
 }
 
 .text-box {

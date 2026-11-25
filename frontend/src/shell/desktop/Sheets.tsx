@@ -1,4 +1,4 @@
-import {useEffect, useState} from "react";
+import {KeyboardEvent, useEffect, useState} from "react";
 import {Button, Input, Modal} from "antd";
 import {PlusOutlined} from "@ant-design/icons";
 import {APPS, appById, canUseApp} from "../apps";
@@ -78,11 +78,11 @@ export function ItemSheet({item, layout, onClose}: {
             <div className="pf-sheet-name">{item.kind === "app" ? itemTitle(item) : (title || item.title)}</div>
         </div>
         {item.kind === "link" && <div className="pf-sheet-form">
-            <label>名字<Input value={title} onChange={(e) => setTitle(e.target.value)} onPressEnter={save}/></label>
-            <label>地址<Input value={url} onChange={(e) => setUrl(e.target.value)} onPressEnter={save}/></label>
+            <label>名字<Input value={title} onChange={(e) => setTitle(e.target.value)} onPressEnter={plainEnter(save)}/></label>
+            <label>地址<Input value={url} onChange={(e) => setUrl(e.target.value)} onPressEnter={plainEnter(save)}/></label>
             {!url.trim().startsWith("/") &&
                 <label>图标<Input value={icon} placeholder="不填自动用网站自己的图标" onChange={(e) => setIcon(e.target.value)}
-                                  onPressEnter={save}/></label>}
+                                  onPressEnter={plainEnter(save)}/></label>}
             {error && <div className="pf-sheet-error">{error}</div>}
         </div>}
         <div className="pf-sheet-actions">
@@ -181,7 +181,7 @@ export function AddSheet({open, layout, onClose}: { open: boolean; layout: Deskt
                        onChange={(e) => {
                            setUrl(e.target.value);
                            setError("");
-                       }} onPressEnter={addUrl}/>
+                       }} onPressEnter={plainEnter(addUrl)}/>
                 {error && <div className="pf-sheet-error">{error}</div>}
                 <Button type="primary" onClick={addUrl} disabled={!url.trim()}>添加</Button>
             </div>
@@ -201,4 +201,11 @@ export function WallpaperSheet({open, layout, onClose}: { open: boolean; layout:
             </button>)}
         </div>
     </Modal>;
+}
+
+// 只认单独的回车：⌘/Ctrl+回车由外壳统一点弹窗的主按钮，这里再处理就会提交两次
+function plainEnter(fn: () => void) {
+    return (e: KeyboardEvent<HTMLInputElement>) => {
+        if (!e.metaKey && !e.ctrlKey) fn();
+    };
 }

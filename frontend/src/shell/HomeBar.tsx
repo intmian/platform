@@ -10,7 +10,7 @@ import {addLink, isOnDesktop, useDesktopLayout} from "./desktop/store";
 const RECENT_IN_BAR = 3;
 
 // 应用底部正中的悬浮胶囊：回桌面按钮 + 最近用过的几个应用（点一下直接切过去）+ “更多”打开切换面板。
-// 页面往下滚时收起，往上滚、滚到底、或鼠标移到屏幕底部时出现，避免一直挡住内容。
+// 不给它留空：页面或抽屉往下滚时收起，往上滚、回到顶部、鼠标移到屏幕底部时出现。
 // 层级低于 antd 弹窗的遮罩，所以弹窗开着时切不走，不会出现“上一个应用的抽屉盖在桌面上”。
 export function HomeBar({current, currentPath, currentTitle, onSearch}: {
     current: AppDef | undefined;
@@ -63,39 +63,82 @@ export function HomeBar({current, currentPath, currentTitle, onSearch}: {
     </>;
 }
 
-// 往下滚收起，往上滚出现；靠近顶部、滚到底、鼠标移到屏幕底部、换页面时都出现
+// 往下滚收起，往上滚出现；靠近顶部、鼠标移到屏幕底部、换页面时出现。
+// 页面和抽屉都不给胶囊留空，挡住了就往下滚一下让它收起。
+// 滚到底：第一次到底不弹，最后一行能看全；到底以后再往下推一次（新的一下滚轮或上划），胶囊才出来，
+// 学 Safari 工具栏。抽屉、弹窗里的滚动区域也算（capture 阶段能收到任何元素的 scroll）。
 function useHideOnScroll(resetKey: string) {
     const [hidden, setHidden] = useState(false);
     useEffect(() => {
         setHidden(false);
     }, [resetKey]);
     useEffect(() => {
-        let last = window.scrollY;
-        let queued = false;
-        const onScroll = () => {
-            if (queued) return;
-            queued = true;
-            requestAnimationFrame(() => {
-                queued = false;
-                const y = window.scrollY;
-                const atBottom = window.innerHeight + y >= document.documentElement.scrollHeight - 4;
-                if (y < 40 || atBottom) setHidden(false);
-                else if (y > last + 6) setHidden(true);
-                else if (y < last - 6) setHidden(false);
-                last = y;
-            });
+        const lastTop = new WeakMap<object, number>();
+        const onScroll = (e: Event) => {
+            const isPage = e.target === document || e.target === document.documentElement;
+            const key: object = isPage ? document : e.target as Element;
+            const y = isPage ? window.scrollY : (e.target as Element).scrollTop;
+            const last = lastTop.get(key) ?? 0;
+            if (y < 40) setHidden(false);
+            else if (y > last + 6) setHidden(true);
+            else if (y < last - 6) setHidden(false);
+            else return; // 动得太少：不更新基准，慢慢滚也能累计到阈值
+            lastTop.set(key, y);
+        };
+
+        // 滚轮：触控板松手后的惯性也会连续发 wheel，所以只认停顿 200ms 以后的新一下
+        let lastWheel = 0;
+        const onWheel = (e: WheelEvent) => {
+            const now = e.timeStamp;
+            const freshGesture = now - lastWheel > 200;
+            lastWheel = now;
+            if (freshGesture && e.deltaY > 0 && atBottom(scrollerOf(e.target))) setHidden(false);
+        };
+        // 触屏：手指按下时已经在底部，再往上划一段
+        let touch: { y: number; scroller: Element } | null = null;
+        const onTouchStart = (e: TouchEvent) => {
+            const scroller = scrollerOf(e.target);
+            touch = atBottom(scroller) ? {y: e.touches[0].clientY, scroller} : null;
+        };
+        const onTouchMove = (e: TouchEvent) => {
+            if (touch && touch.y - e.touches[0].clientY > 30 && atBottom(touch.scroller)) {
+                setHidden(false);
+                touch = null;
+            }
         };
         const onMove = (e: MouseEvent) => {
             if (e.clientY > window.innerHeight - 90) setHidden(false);
         };
-        window.addEventListener("scroll", onScroll, {passive: true});
+        document.addEventListener("scroll", onScroll, {passive: true, capture: true});
+        window.addEventListener("wheel", onWheel, {passive: true});
+        window.addEventListener("touchstart", onTouchStart, {passive: true});
+        window.addEventListener("touchmove", onTouchMove, {passive: true});
         window.addEventListener("mousemove", onMove, {passive: true});
         return () => {
-            window.removeEventListener("scroll", onScroll);
+            document.removeEventListener("scroll", onScroll, {capture: true});
+            window.removeEventListener("wheel", onWheel);
+            window.removeEventListener("touchstart", onTouchStart);
+            window.removeEventListener("touchmove", onTouchMove);
             window.removeEventListener("mousemove", onMove);
         };
     }, []);
     return hidden;
+}
+
+// 手指或滚轮所在位置实际滚动的是哪个元素：往上找第一个能竖着滚的，找不到就是整个页面
+function scrollerOf(target: EventTarget | null): Element {
+    let el = target instanceof Element ? target : null;
+    while (el && el !== document.body && el !== document.documentElement) {
+        const oy = getComputedStyle(el).overflowY;
+        if ((oy === "auto" || oy === "scroll") && el.scrollHeight > el.clientHeight + 1) return el;
+        el = el.parentElement;
+    }
+    return document.scrollingElement ?? document.documentElement;
+}
+
+// 已经滚到底（内容本来就不够一屏的不算，那种情况胶囊不会被收起）
+function atBottom(el: Element): boolean {
+    return el.scrollHeight > el.clientHeight + 1 && el.scrollTop + el.clientHeight >= el.scrollHeight - 2;
 }
 
 function SwitchPanel({current, currentPath, currentTitle, onClose, onSearch}: {

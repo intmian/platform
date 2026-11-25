@@ -36,7 +36,7 @@ import {CheckValue, ProgressRing, RhythmChip, RoutineCheck, RuleEditor, RuleIcon
 import {useIsMobile} from "../common/breakpoints";
 import {aggregate, Agg, buildModel, defaultNode, leafState, Model, nodeKey, Owner, restDate, resumeNodes, SgModel, toggleLeaves, VNode, withOwnerSync} from "./routineModel";
 import "./Routine.css";
-import {useAppActive} from "../shell/runtime";
+import {pageDrawerProps, useAppActive, useIsAppActive} from "../shell/runtime";
 import {Highlight, normKeyword, SearchBox, textMatch} from "./search";
 
 // ---------------- 工具 ----------------
@@ -224,6 +224,7 @@ interface ResetTarget {
 export default function Routine(props: RoutineProps) {
     const {token} = theme.useToken();
     const isMobile = useIsMobile();
+    const appActive = useIsAppActive();
     const addr = props.addr;
     const userID = addr?.userID ?? '';
     const dirID = addr ? addr.getParentUnit().ID : 0;
@@ -760,7 +761,8 @@ export default function Routine(props: RoutineProps) {
 
         {/* ---------- 编辑 ---------- */}
         <Drawer
-            open={!!editor}
+            {...pageDrawerProps}
+            open={!!editor && appActive}
             onClose={() => setEditor(null)}
             placement={isMobile ? 'bottom' : 'right'}
             height={isMobile ? '85%' : undefined}
@@ -1265,7 +1267,8 @@ function ReviewSheet(props: {
     if (tempLeft) parts.push(`${tempLeft} 个本次补充`);
     const empty = active.length === 0;
 
-    return <Drawer open={props.open} onClose={props.onClose} placement={props.isMobile ? 'bottom' : 'right'}
+    const appActive = useIsAppActive();
+    return <Drawer {...pageDrawerProps} open={props.open && appActive} onClose={props.onClose} placement={props.isMobile ? 'bottom' : 'right'}
                    height={props.isMobile ? '85%' : undefined} width={props.isMobile ? undefined : 420}
                    title="复核" className="rt-drawer" rootStyle={props.rootStyle}>
         <div className="rt-review-hero">

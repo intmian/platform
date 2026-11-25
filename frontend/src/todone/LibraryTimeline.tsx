@@ -1,4 +1,5 @@
 import React, {useEffect, useMemo, useRef, useState} from 'react';
+import {pageDrawerProps, useIsAppActive} from '../shell/runtime';
 import {
     Anchor,
     Button,
@@ -311,6 +312,7 @@ interface LibraryTimelineProps {
 
 export default function LibraryTimeline({visible, items, onClose, onItemClick}: LibraryTimelineProps) {
     const isMobile = useIsMobile();
+    const appActive = useIsAppActive();
     const [selectedYear, setSelectedYear] = useState<number | 'all'>('all');
     const [viewMode, setViewMode] = useState<LibraryTimelineViewMode>('timeline');
     const [exporting, setExporting] = useState(false);
@@ -1230,6 +1232,7 @@ export default function LibraryTimeline({visible, items, onClose, onItemClick}: 
 
     return (
         <Drawer
+            {...pageDrawerProps}
             title={
                 <Flex justify="space-between" align="center">
                     <Space>
@@ -1257,7 +1260,7 @@ export default function LibraryTimeline({visible, items, onClose, onItemClick}: 
             width={isMobile ? '100%' : 'min(1120px, 92vw)'}
             className="library-timeline-drawer"
             onClose={onClose}
-            open={visible}
+            open={visible && appActive}
         >
             <div>
                 <Flex gap={8} wrap="wrap" align="center" style={{marginBottom: 16}}>

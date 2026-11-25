@@ -5,8 +5,6 @@
     display: flex;
     align-items: flex-start;
     box-sizing: border-box;
-    /* 外壳在页面底部给胶囊留了一段空；左栏本身就是整屏高，把这段空吃掉，否则页面会多出一截能滚 */
-    margin-bottom: calc(-1 * (var(--homebar-h, 0px) + var(--safe-bottom, 0px)));
 }
 
 .pf-section-nav {
@@ -97,7 +95,7 @@
 .pf-section-main {
     flex: 1;
     min-width: 0;
-    padding: calc(var(--safe-top, 0px) + 20px) 24px calc(var(--homebar-h, 0px) + var(--safe-bottom, 0px) + 20px);
+    padding: calc(var(--safe-top, 0px) + 20px) 24px calc(var(--safe-bottom, 0px) + 20px);
 }
 
 /* 手机 */

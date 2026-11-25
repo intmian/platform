@@ -1,4 +1,5 @@
 import React, {useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState} from 'react';
+import {pageDrawerProps, useIsAppActive} from '../shell/runtime';
 import {
     AutoComplete,
     Button,
@@ -290,6 +291,7 @@ interface LibraryDetailProps {
 export default function LibraryDetail({visible, item, noteContext, categories = [], todoReasonOptions = [], onClose, onSave, onToggleFavorite, onDelete}: LibraryDetailProps) {
     const voiceBusy = useLibraryVoiceBusy();
     const isMobile = useIsMobile();
+    const appActive = useIsAppActive();
     const [editMode, setEditMode] = useState(false);
     const [localItem, setLocalItem] = useState<LibraryItemFull | null>(null);
     const [coreSaving, setCoreSaving] = useState(false);
@@ -688,6 +690,22 @@ export default function LibraryDetail({visible, item, noteContext, categories = 
             setEditMode(false);
         });
     };
+
+    // 编辑模式下 ⌘/Ctrl+回车 = 保存（和任务详情一样）。里面弹出的弹窗归外壳统一处理，不在这里管
+    const saveBasicInfoRef = useRef(handleSaveBasicInfo);
+    saveBasicInfoRef.current = handleSaveBasicInfo;
+    useEffect(() => {
+        if (!visible || !appActive || !editMode) return;
+        const onKey = (e: KeyboardEvent) => {
+            if (!(e.metaKey || e.ctrlKey) || e.key !== 'Enter' || e.isComposing || e.defaultPrevented) return;
+            if (e.target instanceof Element && e.target.closest('.ant-modal-wrap')) return;
+            if (voiceBusy) return;
+            e.preventDefault();
+            saveBasicInfoRef.current();
+        };
+        window.addEventListener('keydown', onKey);
+        return () => window.removeEventListener('keydown', onKey);
+    }, [visible, appActive, editMode, voiceBusy]);
 
     // 快速状态变更
     const handleStatusChange = (newStatus: LibraryItemStatus, comment?: string) => {
@@ -1933,6 +1951,7 @@ export default function LibraryDetail({visible, item, noteContext, categories = 
 
     return (
         <Drawer
+            {...pageDrawerProps}
             className="library-detail-drawer"
             title={
                 <span className="library-detail-drawer-title" title={displayTitle || '未命名'}>
@@ -1958,7 +1977,8 @@ export default function LibraryDetail({visible, item, noteContext, categories = 
                 window.setTimeout(measure, 180);
             }}
             onClose={onClose}
-            open={visible}
+            // 切到别的应用时收起，切回来还是这个作品
+            open={visible && appActive}
             extra={isMobile ? undefined : drawerActions}
             footer={
                 onDelete && (
@@ -2561,7 +2581,9 @@ export default function LibraryDetail({visible, item, noteContext, categories = 
                 </Paragraph>
             </Modal>
 
+            {/* 主按钮是“重新裁剪”，⌘回车不该触发它，只关掉（外壳的 ⌘回车规则） */}
             <Modal
+                className="pf-enter-closes"
                 title="图片库"
                 open={showRawCoverModal}
                 onCancel={() => setShowRawCoverModal(false)}

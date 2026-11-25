@@ -97,11 +97,13 @@ function AppHost() {
     // 跟着地址在绘制前切换，不等桌面组件自己的 effect，免得偶尔慢一拍露白
     // 灰底的应用同理
     const grayPage = !!current?.grayPage;
+    const showHomeBar = !atDesktop && !current?.noHomeBar;
     useLayoutEffect(() => {
         document.documentElement.classList.toggle("pf-on-desktop", atDesktop);
         document.documentElement.classList.toggle("pf-gray-page", grayPage);
-    }, [atDesktop, grayPage]);
-    useLayoutEffect(() => () => document.documentElement.classList.remove("pf-on-desktop", "pf-gray-page"), []);
+        document.documentElement.classList.toggle("pf-no-homebar", !atDesktop && !showHomeBar);
+    }, [atDesktop, grayPage, showHomeBar]);
+    useLayoutEffect(() => () => document.documentElement.classList.remove("pf-on-desktop", "pf-gray-page", "pf-no-homebar"), []);
 
     useEffect(() => {
         if (current) recordRecent({appId: current.id, path: location.pathname + location.search, title: currentTitle});
@@ -117,6 +119,7 @@ function AppHost() {
         window.addEventListener("keydown", onKey);
         return () => window.removeEventListener("keydown", onKey);
     }, []);
+    useModEnterForModals();
 
     const desktopRuntime = useMemo<AppRuntime>(() => ({
         appId: "desktop", active: atDesktop, setTitle: () => undefined,
@@ -141,7 +144,7 @@ function AppHost() {
 
         {!atDesktop && !current && <NotFound/>}
 
-        {!atDesktop && <HomeBar current={current} currentPath={location.pathname + location.search}
+        {showHomeBar && <HomeBar current={current} currentPath={location.pathname + location.search}
                                 currentTitle={currentTitle} onSearch={() => setPaletteOpen(true)}/>}
         <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)}/>
     </>;
@@ -178,6 +181,53 @@ function FadeSlot({className, active, children}: { className: string; active: bo
         wasActive.current = active;
     }, [active]);
     return <div ref={ref} className={className} hidden={!active}>{children}</div>;
+}
+
+// 所有应用的 antd 弹窗统一支持 ⌘/Ctrl+回车，等于替你点一下最上面那个弹窗的按钮：
+// - 有主按钮（确定、保存）就点它；弹窗底部只有一个按钮（比如只有“关闭”）就点那个；
+// - 红色的危险按钮（删除确认之类）不响应，必须手点；
+// - 弹窗加了 className="pf-enter-closes" 的（主按钮是“重新裁剪”这类顺手功能），⌘回车只是关掉；
+// - 输入框自己处理了 ⌘回车的要 preventDefault，这里就不再重复点；回车本来就提交的输入框，按着 ⌘ 时别自己提交。
+// 抽屉不管：任务详情、娱乐详情编辑这些各自处理。
+function useModEnterForModals() {
+    useEffect(() => {
+        const onKey = (e: KeyboardEvent) => {
+            if (!(e.metaKey || e.ctrlKey) || e.key !== "Enter" || e.isComposing || e.defaultPrevented) return;
+            const button = findModalDefaultButton();
+            if (!button) return;
+            e.preventDefault();
+            button.click();
+        };
+        window.addEventListener("keydown", onKey);
+        return () => window.removeEventListener("keydown", onKey);
+    }, []);
+}
+
+function findModalDefaultButton(): HTMLButtonElement | null {
+    // 关上但没销毁的弹窗还在 DOM 里，只是 display: none。
+    // 焦点在哪个弹窗里就用哪个；否则取层级最高的（嵌套弹窗层级更高），一样高取后出现的
+    const wraps = Array.from(document.querySelectorAll<HTMLElement>(".ant-modal-wrap"))
+        .filter((w) => getComputedStyle(w).display !== "none");
+    if (!wraps.length) return null;
+    const focused = wraps.find((w) => w.contains(document.activeElement));
+    const top = focused ?? wraps.reduce((a, b) =>
+        (Number(getComputedStyle(b).zIndex) || 0) >= (Number(getComputedStyle(a).zIndex) || 0) ? b : a);
+    const modal = top.querySelector<HTMLElement>(".ant-modal");
+    if (!modal) return null;
+    if (modal.classList.contains("pf-enter-closes")) return modal.querySelector<HTMLButtonElement>(".ant-modal-close");
+    const usable = (b: HTMLButtonElement) => !b.disabled && !b.classList.contains("ant-btn-loading")
+        && !b.classList.contains("ant-btn-dangerous");
+    const footer = modal.querySelector<HTMLElement>(".ant-modal-footer, .ant-modal-confirm-btns");
+    if (footer) {
+        const buttons = Array.from(footer.querySelectorAll<HTMLButtonElement>("button"));
+        const primary = buttons.find((b) => b.classList.contains("ant-btn-primary"));
+        if (primary) return usable(primary) ? primary : null;
+        return buttons.length === 1 && usable(buttons[0]) ? buttons[0] : null;
+    }
+    // 没有标准底栏的（表单自己放按钮）：正文里只有一个主按钮或提交按钮时按它
+    const candidates = Array.from(modal.querySelectorAll<HTMLButtonElement>("button.ant-btn-primary, button[type=submit]"));
+    const unique = Array.from(new Set(candidates));
+    return unique.length === 1 && usable(unique[0]) ? unique[0] : null;
 }
 
 // 所有应用共用一个窗口滚动条。切走时记下这个应用滚到哪里，切回来时恢复；第一次打开的应用从顶部开始。

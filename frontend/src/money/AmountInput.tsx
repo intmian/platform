@@ -105,7 +105,9 @@ function openAmountExpressionModal(onChange: (value: number) => void, liability 
             onChange={(event) => {
                 expression = event.target.value;
             }}
-            onPressEnter={() => {
+            onPressEnter={(event) => {
+                // ⌘/Ctrl+回车交给外壳统一点“应用”，这里再处理就会应用两次
+                if (event.metaKey || event.ctrlKey) return;
                 if (applyExpression()) {
                     closeModal();
                 }

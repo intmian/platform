@@ -34,6 +34,8 @@ export interface AppDef {
     // 页面底色是灰色（antd 的 layout 底色）。外壳会把整页底色一起换掉，
     // 否则胶囊下面留的空白、手机上拉过头的地方会露出白色
     grayPage?: boolean;
+    // 不显示底部胶囊（作者的特殊设定：记账不要胶囊）。回桌面靠 ⌘K 或浏览器返回
+    noHomeBar?: boolean;
     favicon?: string;    // 标签页图标
     touchIcon?: string;  // 从这个应用添加到 iPhone 主屏时的图标
 }
@@ -66,6 +68,7 @@ export const APPS: AppDef[] = [
         component: lazyWithReload(() => import("../money/MoneyApp")),
         keepAlive: true,
         grayPage: true,
+        noHomeBar: true,
     },
     {
         id: "report",

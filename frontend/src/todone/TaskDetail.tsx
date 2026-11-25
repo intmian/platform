@@ -135,16 +135,12 @@ export function TaskDetail(props: TaskDetailProps) {
     return <Flex
         // 如果手机端，输入回车后保存，如果pc端ctrl或cmd+enter保存
         onKeyDown={(e) => {
-            if (isMobile) {
-                if (e.key === "Enter") {
-                    sendSave();
-                }
-            } else {
-                if (e.ctrlKey || e.metaKey) {
-                    if (e.key === "Enter") {
-                        sendSave();
-                    }
-                }
+            // 里面弹出的“移动任务”弹窗也会把按键冒泡到这里，那是弹窗自己的事（外壳统一处理 ⌘回车）
+            if ((e.target as Element).closest(".ant-modal-wrap")) return;
+            if (e.key !== "Enter" || e.nativeEvent.isComposing) return;
+            if (isMobile || e.ctrlKey || e.metaKey) {
+                e.preventDefault();
+                sendSave();
             }
         }}
         vertical={true}
