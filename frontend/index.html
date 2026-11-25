@@ -11,6 +11,8 @@
     <link href="/favicon-32.png" rel="icon" type="image/png"/>
     <link href="/icons/plat-180.png" rel="apple-touch-icon"/>
     <link rel="manifest" href="/manifest.json">
+    <!-- 桌面默认壁纸的插画，和 JS 并行下载，桌面入场不用等它 -->
+    <link rel="preload" as="image" href="/desk/girl.png"/>
     <title>Platform</title>
     <style>
         /* JS 加载完之前先显示和桌面同色的底，避免白屏一闪 */

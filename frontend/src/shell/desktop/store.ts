@@ -106,19 +106,29 @@ export function reconcile(layout: DesktopLayout): DesktopLayout {
     return {...layout, grid: [...grid, ...missing.map((a) => appItem(a.id))], dock, widgets};
 }
 
+// 同步读出本地缓存的布局。桌面在第一次渲染时就调用，第一帧就是用户自己的壁纸和图标，
+// 不会先按默认壁纸、空图标画一帧再跳。在渲染中调用，所以这里不通知订阅者（不然 React 会报
+// “渲染时更新别的组件”）；随后 loadDesktop 拉到服务器版本时会正常通知。
+export function primeDesktop(user: string) {
+    if (!user || state.user === user) return;
+    let cached: DesktopLayout | null = null;
+    let version = 0;
+    try {
+        const raw = JSON.parse(localStorage.getItem(cacheKey(user)) || "null");
+        if (raw && isLayout(raw.layout)) {
+            cached = raw.layout;
+            version = raw.version ?? 0;
+        }
+    } catch {
+        cached = null;
+    }
+    state = {user, layout: reconcile(cached ?? defaultLayout()), version};
+}
+
 export async function loadDesktop(user: string) {
     if (state.user !== user) {
-        let cached: DesktopLayout | null = null;
-        try {
-            const raw = JSON.parse(localStorage.getItem(cacheKey(user)) || "null");
-            if (raw && isLayout(raw.layout)) {
-                cached = raw.layout;
-                state.version = raw.version ?? 0;
-            }
-        } catch {
-            cached = null;
-        }
-        set({user, layout: reconcile(cached ?? defaultLayout()), version: cached ? state.version : 0});
+        primeDesktop(user);
+        listeners.forEach((l) => l());
     }
     const ret = await request<{ Version: number; Layout: unknown }>("/misc/home/get");
     if (!ret.ok || state.user !== user) return;

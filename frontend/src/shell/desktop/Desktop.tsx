@@ -28,11 +28,13 @@ import {
     DOCK_MAX,
     loadDesktop,
     pinToDock,
+    primeDesktop,
     removeItem,
     reorder,
     unpinFromDock,
     useDesktopLayout,
     visibleItems,
+    Wallpaper,
 } from "./store";
 import {Tile} from "./Tile";
 import {useDesktopData, Widgets} from "./Widgets";
@@ -68,6 +70,22 @@ function dayPart(d: Date): DayPart {
     return "night";
 }
 
+// 壁纸插画是 CSS 里的遮罩图（见 shell.css 的 .pf-desk-art），图片比页面晚到时会在动画放完后突然冒出来，
+// 所以入场前先把它下载好。地址要和 CSS 里的保持一致
+const WALL_ART: Record<Wallpaper, string | null> = {girl: "/desk/girl.png", cat: "/desk/cat.png", none: null};
+
+function useImageReady(src: string | null) {
+    const [loaded, setLoaded] = useState<string | null>(null);
+    useEffect(() => {
+        if (!src) return;
+        const img = new Image();
+        // 加载失败也算好了，不让一张图卡住整个桌面
+        img.onload = img.onerror = () => setLoaded(src);
+        img.src = src;
+    }, [src]);
+    return !src || loaded === src;
+}
+
 function useToday() {
     const [now, setNow] = useState(() => new Date());
     useEffect(() => {
@@ -99,6 +117,7 @@ export function Desktop({onSearch}: { onSearch: () => void }) {
     const auth = useAuth();
     const navigate = useNavigate();
     const isMobile = useIsMobile();
+    primeDesktop(auth.loginInfo.usr);
     const layout = useDesktopLayout();
     const recents = useRecents();
     const today = useToday();
@@ -107,8 +126,9 @@ export function Desktop({onSearch}: { onSearch: () => void }) {
     const [adding, setAdding] = useState(false);
     const [pickingWall, setPickingWall] = useState(false);
     const [refreshKey, setRefreshKey] = useState(0);
-    // 第一次显示桌面时图标依次浮现，之后从应用切回来不再播
-    const [entering, setEntering] = useState(true);
+    // 第一次显示桌面的入场：先只放壁纸（waiting），等布局和小组件数据都到了，
+    // 内容再一次性浮现（entering），播完就结束（done）；之后从应用切回来不再播
+    const [intro, setIntro] = useState<"waiting" | "entering" | "done">("waiting");
     // 拖到另一栏上方时高亮那一栏（只记状态，不挪图标）
     const [dropTarget, setDropTarget] = useState<Area | null>(null);
     const user = auth.loginInfo.usr;
@@ -126,10 +146,24 @@ export function Desktop({onSearch}: { onSearch: () => void }) {
         if (user) void loadDesktop(user);
     }, [user]);
 
+    // 数据和壁纸插画都到了就开播；网慢时最多等 1.2 秒，不让人一直对着空壁纸
+    const wallpaper = layout?.wallpaper ?? "girl";
+    const artReady = useImageReady(WALL_ART[wallpaper]);
+    const dataReady = data.today !== undefined && data.books !== undefined;
+    const startIntro = () => setIntro((s) => s === "waiting" ? "entering" : s);
     useEffect(() => {
-        const t = window.setTimeout(() => setEntering(false), 900);
+        if (layout && dataReady && artReady) startIntro();
+    }, [layout, dataReady, artReady]);
+    useEffect(() => {
+        const t = window.setTimeout(startIntro, 1200);
         return () => window.clearTimeout(t);
     }, []);
+    // 要比最慢的那段入场动画长（最后一个图标约 1 秒），提前去掉 class 会让动画中途跳到终点
+    useEffect(() => {
+        if (intro !== "entering") return;
+        const t = window.setTimeout(() => setIntro("done"), 1200);
+        return () => window.clearTimeout(t);
+    }, [intro]);
 
     // 从应用切回桌面、或者整个页面回到前台时，刷新小卡片、角标和布局
     useAppActive(() => {
@@ -254,7 +288,7 @@ export function Desktop({onSearch}: { onSearch: () => void }) {
 
     const part = dayPart(new Date());
 
-    return <div className={`pf-desktop is-${part} wall-${layout?.wallpaper ?? "girl"}${editing ? " is-editing" : ""}${entering ? " is-entering" : ""}`}
+    return <div className={`pf-desktop is-${part} wall-${wallpaper}${editing ? " is-editing" : ""}${intro !== "done" ? ` is-${intro}` : ""}`}
                 {...blankPress}
                 onClick={(e) => {
                     // 编辑时点空白处结束编辑

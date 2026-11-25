@@ -22,7 +22,9 @@ export function Shell() {
     const location = useLocation();
     const app = findApp(location.pathname);
 
-    if (!auth.loginInfo.init) return <div className="pf-boot"/>;
+    // 还在确认登录时什么都不渲染：#root 为空，index.html 里的启动图标就一直留着，
+    // 不会换成另一个长得差一点的图标再闪一下
+    if (!auth.loginInfo.init) return null;
     if (!auth.loginInfo.isValid()) {
         const shared = !!app?.shareParam && new URLSearchParams(location.search).has(app.shareParam);
         if (app?.public || shared) return <PublicApp app={app!}/>;

@@ -40,12 +40,6 @@ html.pf-gray-page body {
     box-sizing: border-box;
 }
 
-.pf-boot {
-    position: fixed;
-    inset: 0;
-    background: var(--desk-bg) url(/icons/plat-192.png) center / 56px no-repeat;
-}
-
 .pf-center {
     min-height: 60vh;
     display: flex;
@@ -1160,9 +1154,33 @@ html.pf-gray-page body {
     background: rgba(255, 255, 255, .35);
 }
 
-/* 第一次进桌面：小组件和图标依次浮现 */
+/* 第一次进桌面分两步：
+   is-waiting：数据和插画图片还没到，只有壁纸的柔光从启动画面的米色底上晕开，其他都先藏着；
+   is-entering：都到齐了，插画淡入，问候语、小组件、图标、Dock 一次性依次浮现。
+   柔光的淡入两个阶段都挂同一个动画：class 切换时动画名不变，就会接着播，不会被截断或重播 */
 @keyframes pf-rise-in {
     from { opacity: 0; transform: translateY(10px) scale(.96); }
+}
+
+.pf-desktop.is-waiting::before,
+.pf-desktop.is-entering::before {
+    animation: pf-fade .6s ease both;
+}
+
+.pf-desktop.is-entering .pf-desk-art {
+    animation: pf-fade .7s ease both;
+}
+
+.pf-desktop.is-waiting > * {
+    visibility: hidden;
+}
+
+.pf-desktop.is-entering .pf-desk-top {
+    animation: pf-head-in .45s cubic-bezier(.2, .8, .2, 1) backwards;
+}
+
+@keyframes pf-head-in {
+    from { opacity: 0; transform: translateY(6px); }
 }
 
 .pf-desktop.is-entering .pf-widget-slot,
@@ -1171,7 +1189,8 @@ html.pf-gray-page body {
 }
 
 .pf-desktop.is-entering .pf-grid > .pf-icon {
-    animation-delay: calc(120ms + var(--i, 0) * 28ms);
+    /* 图标多时错开的间隔封顶，整段入场不超过 1 秒左右 */
+    animation-delay: calc(120ms + min(var(--i, 0), 16) * 28ms);
 }
 
 .pf-desktop.is-entering .pf-dock {
