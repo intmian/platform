@@ -39,6 +39,7 @@ export interface AppDef {
 }
 
 // 插画图标按 id 放在 public/icons/ 下：<id>-192.png 桌面、<id>-32.png 标签页、<id>-180.png iPhone 主屏
+// 每个图标画的是什么见 frontend/icon-src/README.md
 function art(id: string, tone: IconTone) {
     return {
         icon: {image: `/icons/${id}-192.png`, tone},
