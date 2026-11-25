@@ -21,6 +21,7 @@
 - 新用户第一次 `getDirTree` 会建根目录行但在内存里没绑上，那一次会 panic，第二次请求就好了。
 - Todone 表里有叫 `index` 的列，是 SQL 关键字：手写 SQL 里要写成 `` `index` ``。gorm 的 `Scan` 报错不会冒出来，曾经因此导致线上所有子分组的序号都是 1（老数据至今重复，排序靠 `id` 兜底）。
 - 服务重启后，要先调一次 `getDirTree` 把用户加载进内存，否则 `createGroup` 等写接口会直接返回 `svr error`。
+- **D1 读取按行计费（免费额度每天 500 万行），而且库上没有统计信息**。Todone 库只有一个用户，查询里只要带着 `user_id = ?`，SQLite 往往会选 `user_id` 索引，等于全表扫描，哪怕有更合适的组合索引也一样（2026-11 关注页因此每次读 6000 多行，差点打满额度）。热点查询别在 SQL 里带 `user_id`，用别的方式保证归属（关注页是靠子查询加 Go 里再筛一遍）；新写的查询先用 `EXPLAIN QUERY PLAN` 看一眼。用量用 `wrangler d1 insights` 按读取行数排序查，日志库 `todone_db_log.rows` 记的是返回行数，不是读取行数。
 - Todone 删除策略混用：目录、子分组是硬删，分组、任务是软删（`deleted`），排查时两种都要看。
 - 每个用户的 Todone 操作共用一把锁，天然串行。子分组每 5 秒自动落盘一次变更。
 - `platform/core.go` 里所有服务的"启动时开启"都读的是 `auto/open_when_start`（已知问题）；`auto` 服务内部又用 `<unit>.open`，两者不一致。

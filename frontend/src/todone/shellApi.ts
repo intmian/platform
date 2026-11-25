@@ -1,7 +1,7 @@
 // Todone 给外壳（桌面、⌘K）用的接口。外壳按需动态引入这个文件，不会把整个 Todone 打进首屏。
 import {post, request} from "../common/api";
 import {PDirTree} from "./net/protocal";
-import type {GetOverviewRet} from "./net/send_back";
+import {type GetOverviewRet, todoneLastWriteAt} from "./net/send_back";
 import {FocusItem, focusFromOverview, itemDone} from "./focusModel";
 import {todoneGroupPath} from "./route";
 import {todayStr} from "./routineRule";
@@ -45,8 +45,21 @@ export interface TodayDigest {
     overdueByPath: Record<string, number>;
 }
 
+// 桌面每次切回来、标签页每次回到前台都会刷新卡片，来回切的时候非常频繁（曾经一下午几百次，
+// 差点打满 D1 每日额度）。所以 1 分钟内、期间没在 Todone 里改过东西，就直接用上次的结果。
+const DIGEST_REUSE_MS = 60 * 1000;
+let lastDigest: { user: string; day: string; fetchedAt: number; digest: TodayDigest } | null = null;
+
 // 桌面“今天”卡片的数据：只看关注页收藏范围内的事，规则和关注页上半部分一致
 export async function loadTodayDigest(user: string): Promise<TodayDigest | null> {
+    const day = todayStr();
+    const now = Date.now();
+    if (lastDigest && lastDigest.user === user && lastDigest.day === day
+        && now - lastDigest.fetchedAt < DIGEST_REUSE_MS && todoneLastWriteAt() < lastDigest.fetchedAt) {
+        return lastDigest.digest;
+    }
+    // 记请求发出的时间而不是返回的时间：请求途中发生的修改，下次就不会被当成已经包含在结果里
+    const fetchedAt = now;
     const ret = await request<GetOverviewRet>("/service/todone/getOverview", {UserID: user});
     if (!ret.ok || !ret.data) return null;
     try {
@@ -63,12 +76,14 @@ export async function loadTodayDigest(user: string): Promise<TodayDigest | null>
             const path = todoneGroupPath(it.group.GroupID);
             overdueByPath[path] = (overdueByPath[path] ?? 0) + 1;
         });
-        return {
+        const digest: TodayDigest = {
             overdue: overdue.length,
             today: today.length,
             overdueByPath,
             items: [...overdue.map((it) => toItem(it, "overdue")), ...today.map((it) => toItem(it, "today"))].slice(0, DIGEST_MAX),
         };
+        lastDigest = {user, day, fetchedAt, digest};
+        return digest;
     } catch (e) {
         console.error("[todone] loadTodayDigest", e);
         return null;

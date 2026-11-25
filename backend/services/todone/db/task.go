@@ -17,12 +17,13 @@ type TaskDB struct {
 	TaskID           uint32 `gorm:"primaryKey"`
 	Title            string
 	Note             string
-	ParentSubGroupID uint32 `gorm:"index"`
+	ParentSubGroupID uint32 `gorm:"index;index:idx_task_dbs_open,priority:1"`
 	ParentTaskID     uint32
-	Deleted          bool
-	Done             bool
-	CreatedAt        time.Time `gorm:"column:time_created_at"`
-	UpdatedAt        time.Time `gorm:"column:time_updated_at"`
+	// 组合索引 idx_task_dbs_open 给“某些子分组里的未完成任务”用（分组页、关注页）
+	Deleted   bool      `gorm:"index:idx_task_dbs_open,priority:3"`
+	Done      bool      `gorm:"index:idx_task_dbs_open,priority:2"`
+	CreatedAt time.Time `gorm:"column:time_created_at"`
+	UpdatedAt time.Time `gorm:"column:time_updated_at"`
 
 	// 额外信息
 	TaskType TaskType

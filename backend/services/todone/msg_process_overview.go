@@ -70,8 +70,9 @@ func (s *Service) OnSetTaskDone(_ backendshare.Valid, req SetTaskDoneReq) (ret S
 // OnGetOverview 只读汇总。持锁只做内存目录树快照，D1 查询都在锁外并发执行，
 // 避免几次网络往返期间挡住同一用户的其他操作。读到的是一瞬间之前的状态，对汇总无影响。
 //
-// 任务不能直接按 user_id 全表筛：删分组是软删、删子分组是硬删，都不会处理下面的任务；
-// 父任务完成后子任务在库里也仍是未完成。所以从活着的分组往下查，再丢掉父链断掉的子任务。
+// 任务只查收藏涉及的分组（D1 读取按行计费，全查再筛曾经差点打满每日额度），
+// 查回来的不一定都算数：删分组是软删、删子分组是硬删，都不会处理下面的任务；父任务完成后
+// 子任务在库里也仍是未完成。所以只认活着的分组下的子分组，再丢掉父链断掉的子任务。
 func (s *Service) OnGetOverview(_ backendshare.Valid, req GetOverviewReq) (ret GetOverviewRet, err error) {
 	var groups []logic.GroupSnapshot
 	s.userMgr.SafeUseUserLogic(req.UserID, func(user *logic.UserLogic) {
@@ -96,52 +97,27 @@ func (s *Service) OnGetOverview(_ backendshare.Valid, req GetOverviewReq) (ret G
 		return ret, errors.New("get connect failed")
 	}
 
-	// 第一轮：彼此独立的查询并发发出。
+	// 五个查询彼此独立，一起并发发出，整个请求只等一轮 D1 往返。
 	var (
 		subGroups []db.SubGroupDB
 		favorites []db.GroupFavoriteDB
 		tags      []db.TagsDB
 		nodes     []db.RoutineNodeDB
-		errs      [4]error
+		tasks     []db.TaskDB
+		errs      [5]error
 		wg        sync.WaitGroup
 	)
-	wg.Add(4)
+	wg.Add(5)
 	go func() { defer wg.Done(); subGroups, errs[0] = db.GetSubGroupsByGroupIDs(conn, groupIDs) }()
 	go func() { defer wg.Done(); favorites, errs[1] = db.GetGroupFavorites(conn, req.UserID) }()
 	go func() { defer wg.Done(); tags, errs[2] = db.GetTagsByUser(conn, req.UserID) }()
 	go func() { defer wg.Done(); nodes, errs[3] = db.GetRoutineNodesByUser(conn, req.UserID) }()
+	go func() { defer wg.Done(); tasks, errs[4] = db.GetUnfinishedTasksInFavoriteGroups(conn, req.UserID) }()
 	wg.Wait()
 	if err = errors.Join(errs[:]...); err != nil {
 		return
 	}
-
-	// 第二轮：按子分组分批并发查未完成任务。
 	sort.SliceStable(subGroups, func(i, j int) bool { return subGroups[i].Index < subGroups[j].Index })
-	subGroupIDs := make([]uint32, 0, len(subGroups))
-	for _, sg := range subGroups {
-		subGroupIDs = append(subGroupIDs, sg.ID)
-	}
-	var (
-		tasks   []db.TaskDB
-		taskMu  sync.Mutex
-		taskErr error
-	)
-	for start := 0; start < len(subGroupIDs); start += db.MaxInSize {
-		part := subGroupIDs[start:min(start+db.MaxInSize, len(subGroupIDs))]
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			found, e := db.GetUnfinishedTasksBySubGroupIDs(conn, req.UserID, part)
-			taskMu.Lock()
-			defer taskMu.Unlock()
-			taskErr = errors.Join(taskErr, e)
-			tasks = append(tasks, found...)
-		}()
-	}
-	wg.Wait()
-	if taskErr != nil {
-		return ret, taskErr
-	}
 
 	favGroup := make(map[uint32]bool)
 	favSubGroup := make(map[uint32]bool)

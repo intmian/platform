@@ -71,17 +71,26 @@ func GetSubGroupsByGroupIDs(conn *gorm.DB, groupIDs []uint32) ([]SubGroupDB, err
 // overviewTaskColumns 总视图不需要 Note（娱乐库的大 JSON 也在这一列），只取列表要用的字段。
 const overviewTaskColumns = "user_id, task_id, title, parent_sub_group_id, parent_task_id, deleted, done, task_type, started, time_begin_time, time_end_time, wait4"
 
-func GetUnfinishedTasksBySubGroupIDs(conn *gorm.DB, userID string, subGroupIDs []uint32) ([]TaskDB, error) {
-	res := make([]TaskDB, 0)
-	for _, part := range chunks(subGroupIDs) {
-		var found []TaskDB
-		err := conn.Select(overviewTaskColumns).
-			Where("parent_sub_group_id IN ? AND user_id = ? AND done = ? AND deleted = ?", part, userID, false, false).
-			Find(&found).Error
-		if err != nil {
-			return nil, err
+// GetUnfinishedTasksInFavoriteGroups 收藏涉及的分组（整个收藏或只收藏了其中一栏）下所有子分组里的未完成任务。
+// 范围比收藏大一点（只收藏一栏时整个分组都会查出来），由调用方再按收藏筛；例行清单本来就要整张。
+//
+// SQL 里故意不带 user_id：D1 没有统计信息，带上它 SQLite 会选 user_id 索引，而库里只有一个用户，
+// 等于每次全表扫描（2026-11 一次读 6000 多行，差点打满 D1 每日读取额度）。归属由子查询里
+// group_favorites.user_id 保证，这里再按 UserID 筛一遍兜底。
+func GetUnfinishedTasksInFavoriteGroups(conn *gorm.DB, userID string) ([]TaskDB, error) {
+	var found []TaskDB
+	err := conn.Select(overviewTaskColumns).
+		Where("parent_sub_group_id IN (SELECT id FROM sub_group_dbs WHERE parent_group_id IN "+
+			"(SELECT group_id FROM group_favorites WHERE user_id = ?)) AND done = ? AND deleted = ?", userID, false, false).
+		Find(&found).Error
+	if err != nil {
+		return nil, err
+	}
+	res := make([]TaskDB, 0, len(found))
+	for _, t := range found {
+		if t.UserID == userID {
+			res = append(res, t)
 		}
-		res = append(res, found...)
 	}
 	return res, nil
 }

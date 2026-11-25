@@ -239,9 +239,15 @@ interface TodoneResult {
     ok: boolean
 }
 
+// 最近一次在本页改 Todone 数据的时间。读接口都叫 get*，其余都算写。
+// 桌面“今天”卡片靠它判断能不能直接用上次拉到的结果（shellApi.ts）。
+let lastWriteAt = 0;
+export const todoneLastWriteAt = () => lastWriteAt;
+
 // 所有 Todone 接口都走 common/api 的请求内核。沿用旧约定：成功但没有 data 字段也算失败。
 async function todoneRequest(cmd: string, req: object): Promise<TodoneResult> {
     const ret = await request<object>(TODONE_PATH + cmd, req);
+    if (!cmd.startsWith('get')) lastWriteAt = Date.now();
     return {ok: ret.ok && ret.data !== undefined, data: ret.data ?? {}};
 }
 
