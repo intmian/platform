@@ -59,6 +59,7 @@ npx wrangler rollback <版本ID> --config <配置>          # 只回滚代码，
   - `--apply` 要求先停服（`--confirm-stopped`），并先写备份；
   - 能独立 `--verify`，也能 `--rollback`。
   - 把计划给我看，确认后再执行。不要用临时 SQL 直接改。
+- 服务器 sqlite 里的配置（如 `key_value_models` 表的 `ai.config`）被后端整份缓存在内存里（xstorage `UseCache` + `FullInitLoad`），运行中直接改库会被忽略或被覆盖。能用配置页就用配置页；必须直接改时：先用后端的校验逻辑验过新值，再停服 → 备份 `db.sqlite`（连同 `-wal`/`-shm`）到 `/root/data/plat/backup/` → 写入并读回核对 → 按 `updateAfterGA.sh` 的方式重启。
 - 页面显示为空不等于数据丢了：先查前端缓存、后端报错、Worker 健康和直接计数，再考虑动数据。
 
 ## 已知的安全隐患
