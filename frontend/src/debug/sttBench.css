@@ -1,0 +1,12 @@
+/* 转写对比 */
+.stt-bench-setup { display: flex; flex-direction: column; gap: 12px; }
+.stt-bench-hint { margin-left: 12px; color: var(--pf-text-2); }
+.stt-bench-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 12px; margin-top: 12px; }
+.stt-bench-col { margin: 0 !important; }
+.stt-bench-note { font-size: 12px; color: var(--pf-text-2); }
+.stt-bench-text { min-height: 72px; line-height: 1.8; font-size: 15px; }
+.stt-bench-sentence { border-bottom: 2px solid rgba(22, 119, 255, 0.25); margin-right: 4px; }
+.stt-bench-partial { color: var(--pf-text-3); }
+.stt-bench-error { color: #d4380d; font-size: 13px; margin-top: 6px; word-break: break-all; }
+.stt-bench-metrics { display: flex; flex-wrap: wrap; gap: 6px 16px; margin-top: 10px; font-size: 13px; color: var(--pf-text-2); }
+.stt-bench-metrics b { color: var(--pf-text); font-weight: 600; }

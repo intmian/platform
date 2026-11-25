@@ -37,17 +37,39 @@
     font-size: 18px;
 }
 
-.adm-stat-value span {
-    font-size: 13px;
+/* 最近日志：和其他数值同一行高，正常时一个小绿点，有问题时只给数字上色 */
+.adm-stat-ok {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--pf-success);
+    align-self: center;
+}
+
+.adm-stat-count {
+    font-weight: 600;
+}
+
+.adm-stat-count em,
+.adm-stat-sep {
+    font-style: normal;
     font-weight: 400;
+    font-size: 14px;
+    color: var(--pf-text-2);
+    margin-left: 3px;
 }
 
-.adm-stat-value .is-good {
-    color: var(--pf-success);
+.adm-stat-sep {
+    margin: 0;
+    color: var(--pf-text-3);
 }
 
-.adm-stat-value .is-bad {
+.adm-stat-count.is-bad {
     color: var(--pf-error);
+}
+
+.adm-stat-count.is-warn {
+    color: var(--pf-warning);
 }
 
 .adm-group + .adm-group {
@@ -138,8 +160,8 @@
     }
 
     .adm-stat-value {
-        flex-direction: column;
-        gap: 2px;
+        flex-wrap: wrap;
+        gap: 2px 6px;
         font-size: 18px;
     }
 
@@ -148,8 +170,13 @@
         margin-top: 8px;
     }
 
-    .adm-stat-value span {
+    .adm-stat-count em {
         font-size: 12px;
+    }
+
+    /* 手机上一行放不下，错误、警告各占一行，不要分隔点 */
+    .adm-stat-sep {
+        display: none;
     }
 
     .adm-svc-grid {
@@ -167,15 +194,6 @@
 
 .adm-stat.is-link:hover {
     box-shadow: 0 4px 14px rgba(0, 0, 0, .06), 0 0 0 1px var(--pf-border-2);
-}
-
-.adm-stat-value .is-warn {
-    color: var(--pf-warning);
-}
-
-.adm-stat-value.is-small span {
-    font-size: inherit;
-    font-weight: 600;
 }
 
 /* 账号 */

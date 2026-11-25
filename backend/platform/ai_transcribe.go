@@ -121,7 +121,6 @@ func (m *webMgr) transcribeQueue(ctx context.Context, aiCfg share.AIPlatformConf
 		if _, err := file.Seek(0, io.SeekStart); err != nil {
 			return ai.TranscriptionResult{}, meta, errors.New("audio file seek error")
 		}
-		base := strings.TrimSpace(item.Provider.BaseURL)
 		token := strings.TrimSpace(item.Provider.Token)
 		model := strings.TrimSpace(item.Model.Name)
 		label := fmt.Sprintf("%s/%s", item.Provider.ID, item.Model.ID)
@@ -148,34 +147,7 @@ func (m *webMgr) transcribeQueue(ctx context.Context, aiCfg share.AIPlatformConf
 			continue
 		}
 
-		var ret ai.TranscriptionResult
-		switch callProtocol {
-		case aiv2.ModelCallProtocolOpenAISTT:
-			if isOpenRouterBaseURL(base) {
-				ret, err = transcribeOpenRouter(ctx, base, item.Provider.ProxyURL, token, file, fileName, model, language)
-			} else {
-				bot := ai.NewOpenAIWithModels(item.Provider.RequestBaseURL(), token, false, model)
-				if bot == nil {
-					err = errors.New("openai init error")
-				} else {
-					ret, err = bot.Transcribe(ctx, file, ai.TranscriptionRequest{
-						Model:    model,
-						Language: language,
-						Prompt:   prompt,
-					})
-				}
-			}
-		case aiv2.ModelCallProtocolDashScopeFunASR:
-			ret, err = transcribeDashScopeFunASR(ctx, base, token, file, fileName, model)
-		case aiv2.ModelCallProtocolDashScopeFunASRRealtime:
-			ret, err = transcribeDashScopeRealtimeFile(ctx, base, token, file, fileName, model)
-		case aiv2.ModelCallProtocolOpenAIRealtimeSTT:
-			ret, err = transcribeOpenAIRealtimeFile(ctx, item.Provider, token, file, model)
-		case aiv2.ModelCallProtocolDashScopeQwen3ASR:
-			ret, err = transcribeDashScopeQwen3ASR(ctx, base, token, file, fileName, model, language)
-		default:
-			err = fmt.Errorf("unsupported stt call protocol %q", callProtocol)
-		}
+		ret, err := transcribeWithItem(ctx, item, callProtocol, token, file, fileName, language, prompt)
 		if err == nil || isAITranscriptionEmptyError(err) {
 			ret.Text = strings.TrimSpace(ret.Text)
 			attempt.Success = true
@@ -201,4 +173,67 @@ func (m *webMgr) transcribeQueue(ctx context.Context, aiCfg share.AIPlatformConf
 	err = errors.Join(errs...)
 	meta.Error = err.Error()
 	return ai.TranscriptionResult{}, meta, err
+}
+
+// transcribeWithItem 按调用协议把一个文件交给对应的上游转写。
+func transcribeWithItem(ctx context.Context, item share.AIResolvedQueueItem, callProtocol aiv2.ModelCallProtocol, token string, file io.ReadSeeker, fileName string, language string, prompt string) (ai.TranscriptionResult, error) {
+	base := strings.TrimSpace(item.Provider.BaseURL)
+	model := strings.TrimSpace(item.Model.Name)
+	var ret ai.TranscriptionResult
+	var err error
+	switch callProtocol {
+	case aiv2.ModelCallProtocolOpenAISTT:
+		if isOpenRouterBaseURL(base) {
+			ret, err = transcribeOpenRouter(ctx, base, item.Provider.ProxyURL, token, file, fileName, model, language)
+		} else {
+			bot := ai.NewOpenAIWithModels(item.Provider.RequestBaseURL(), token, false, model)
+			if bot == nil {
+				err = errors.New("openai init error")
+			} else {
+				// openai-go 从 reader 的 Filename() 取文件名；上传的 multipart 文件没有这个方法，
+				// 会被当成 anonymous_file，OpenAI 看不出格式直接报 unsupported file format。
+				ret, err = bot.Transcribe(ctx, namedAudioFile{ReadSeeker: file, name: fileName}, ai.TranscriptionRequest{
+					Model:    model,
+					Language: language,
+					Prompt:   prompt,
+				})
+			}
+		}
+	case aiv2.ModelCallProtocolDashScopeFunASR:
+		ret, err = transcribeDashScopeFunASR(ctx, base, token, file, fileName, model)
+	case aiv2.ModelCallProtocolDashScopeFunASRRealtime:
+		ret, err = transcribeDashScopeRealtimeFile(ctx, base, token, file, fileName, model)
+	case aiv2.ModelCallProtocolOpenAIRealtimeSTT:
+		ret, err = transcribeOpenAIRealtimeFile(ctx, item.Provider, token, file, model)
+	case aiv2.ModelCallProtocolDashScopeQwen3ASR:
+		ret, err = transcribeDashScopeQwen3ASR(ctx, base, token, file, fileName, model, language)
+	default:
+		err = fmt.Errorf("unsupported stt call protocol %q", callProtocol)
+	}
+	if err != nil {
+		err = redactAIProxyError(err, item.Provider)
+	}
+	return ret, err
+}
+
+type namedAudioFile struct {
+	io.ReadSeeker
+	name string
+}
+
+func (f namedAudioFile) Filename() string {
+	if strings.TrimSpace(f.name) == "" {
+		return "audio.wav"
+	}
+	return f.name
+}
+
+// redactAIProxyError 把错误里的转发地址（路径里带口令）换掉：上游报错会带上完整请求地址，
+// 而错误会返回给前端、写进日志。
+func redactAIProxyError(err error, provider share.AIProviderConfig) error {
+	proxy := strings.TrimRight(strings.TrimSpace(provider.ProxyURL), "/")
+	if proxy == "" || !strings.Contains(err.Error(), proxy) {
+		return err
+	}
+	return errors.New(strings.ReplaceAll(err.Error(), proxy, "<ai-proxy>"))
 }

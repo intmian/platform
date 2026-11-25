@@ -98,7 +98,21 @@ func (m *webMgr) aiTranscribeRealtime(c *gin.Context) {
 	ctx, cancel := context.WithTimeout(c.Request.Context(), realtimeTranscriptionTimeout)
 	defer cancel()
 
-	items, err := m.resolveRealtimeTranscriptionItems()
+	var items []share.AIResolvedQueueItem
+	if protocol := aiv2.ModelCallProtocol(strings.TrimSpace(c.Query("protocol"))); protocol != "" {
+		// 转写对比页：指定模型，不走策略。
+		var item share.AIResolvedQueueItem
+		item, err = m.resolveBenchSTTItem(protocol, c.Query("model"))
+		if err == nil && !isRealtimeSTTProtocol(protocol) {
+			err = fmt.Errorf("%s is not a realtime protocol", protocol)
+		}
+		if err == nil && !valid.HasOnePermission(share.PermissionAdmin) {
+			err = errors.New("no permission")
+		}
+		items = []share.AIResolvedQueueItem{item}
+	} else {
+		items, err = m.resolveRealtimeTranscriptionItems()
+	}
 	if err != nil {
 		m.logRealtimeTranscription("config error: %s", err.Error())
 		_ = writeRealtimeClientEvent(client, realtimeTranscriptionServerEvent{

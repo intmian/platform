@@ -42,10 +42,20 @@ interface ServerEvent {
     taskID?: string;
 }
 
-function realtimeTranscriptionURL(): string {
+// 转写对比页用：不走“语音转写”策略，直接指定调用协议和模型名（仅管理员）。
+export interface RealtimeModelOverride {
+    protocol: string;
+    model: string;
+}
+
+function realtimeTranscriptionURL(override?: RealtimeModelOverride): string {
     const base = API_BASE.replace(/\/$/, "");
     const url = new URL(`${base}/misc/ai/transcribe/realtime`, window.location.href);
     url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
+    if (override) {
+        url.searchParams.set("protocol", override.protocol);
+        url.searchParams.set("model", override.model);
+    }
     return url.toString();
 }
 
@@ -55,9 +65,9 @@ export class RealtimeTask {
     private connectTimer: number | null;
     private handlers: RealtimeTaskHandlers;
 
-    constructor(handlers: RealtimeTaskHandlers) {
+    constructor(handlers: RealtimeTaskHandlers, override?: RealtimeModelOverride) {
         this.handlers = handlers;
-        const socket = new WebSocket(realtimeTranscriptionURL());
+        const socket = new WebSocket(realtimeTranscriptionURL(override));
         socket.binaryType = "arraybuffer";
         this.socket = socket;
         this.connectTimer = window.setTimeout(() => {

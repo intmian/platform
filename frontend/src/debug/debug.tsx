@@ -1,6 +1,6 @@
 import {ComponentType, createElement, MouseEvent as ReactMouseEvent, ReactNode, useCallback, useState} from "react";
 import {Button, Card, Col, InputNumber, Row, Slider, Space, Typography} from "antd";
-import {DesktopOutlined, ExpandOutlined, MobileOutlined} from "@ant-design/icons";
+import {AudioOutlined, DesktopOutlined, ExpandOutlined, MobileOutlined} from "@ant-design/icons";
 import {Outlet, Route, Routes, Navigate} from "react-router-dom";
 import {MenuPlus, useSectionKey} from "../common/MenuPlus";
 import {useAppTitle} from "../shell/runtime";
@@ -8,6 +8,7 @@ import {appById} from "../shell/apps";
 import {AppGlyph} from "../shell/AppTile";
 import {CustomDeviceSimulator, DeviceSimulator} from "./DeviceSim";
 import {EditableProps, Props} from "./EditableProps";
+import SttBench from "./SttBench";
 
 // 组件试验场：把要调的组件挂在下面，单独调交互和样式。只在本地开发时出现。
 // 换组件就改 TARGET 和 TARGET_PROPS，props 可以在浮动面板里实时改。
@@ -80,6 +81,8 @@ const SECTIONS = [
     {key: "plain", label: "直接显示", icon: <DesktopOutlined/>},
     {key: "device", label: "设备模拟", icon: <MobileOutlined/>},
     {key: "custom", label: "自定义尺寸", icon: <ExpandOutlined/>},
+    // 固定的调试工具，不挂 TARGET
+    {key: "stt-bench", label: "转写对比", icon: <AudioOutlined/>, group: "工具"},
 ];
 
 function DebugLayout({tool}: { tool: ReactNode }) {
@@ -87,7 +90,7 @@ function DebugLayout({tool}: { tool: ReactNode }) {
     useAppTitle(SECTIONS.find((s) => s.key === key)?.label);
     const app = appById("debug");
     return <MenuPlus title="组件试验场" logo={app && <AppGlyph app={app} size={28}/>} items={SECTIONS} activeKey={key}>
-        {tool}
+        {key !== "stt-bench" && tool}
         <Outlet/>
     </MenuPlus>;
 }
@@ -105,6 +108,7 @@ export function Debug() {
             <Route path="plain" element={target}/>
             <Route path="device" element={<DeviceSimulator>{target}</DeviceSimulator>}/>
             <Route path="custom" element={<CustomSize>{target}</CustomSize>}/>
+            <Route path="stt-bench" element={<SttBench/>}/>
             <Route path="*" element={<Navigate to="plain" replace/>}/>
         </Route>
     </Routes>;

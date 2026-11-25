@@ -164,3 +164,37 @@
         justify-content: flex-start;
     }
 }
+
+/* 调用顺序：序号圆点就是拖动把手，悬停时换成把手图标 */
+.ai-queue-index {
+    cursor: grab;
+    touch-action: none;
+    user-select: none;
+}
+
+.ai-queue-grip {
+    display: none;
+}
+
+.ai-queue-step:hover .ai-queue-number {
+    display: none;
+}
+
+.ai-queue-step:hover .ai-queue-grip {
+    display: inline;
+}
+
+.ai-queue-step.is-dragging {
+    position: relative;
+    z-index: 2;
+    opacity: 0.9;
+}
+
+.ai-queue-step.is-dragging .ai-queue-index {
+    cursor: grabbing;
+}
+
+.ai-queue-step.is-dragging .ai-queue-body {
+    background: var(--pf-bg);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, .12);
+}

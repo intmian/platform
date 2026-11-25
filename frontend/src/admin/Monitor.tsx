@@ -135,10 +135,11 @@ export function Monitor() {
                 <div className="adm-stat-label">最近日志</div>
                 <div className="adm-stat-value is-small">
                     {issues === null ? "-" : issues.error + issues.warning === 0
-                        ? <span className="is-good">没有错误和警告</span>
+                        ? <><i className="adm-stat-ok"/>一切正常</>
                         : <>
-                            {issues.error > 0 && <span className="is-bad">错误 {issues.error}</span>}
-                            {issues.warning > 0 && <span className="is-warn">警告 {issues.warning}</span>}
+                            {issues.error > 0 && <b className="adm-stat-count is-bad">{issues.error}<em>错误</em></b>}
+                            {issues.error > 0 && issues.warning > 0 && <em className="adm-stat-sep">·</em>}
+                            {issues.warning > 0 && <b className="adm-stat-count is-warn">{issues.warning}<em>警告</em></b>}
                         </>}
                 </div>
             </button>

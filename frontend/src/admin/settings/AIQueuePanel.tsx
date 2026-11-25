@@ -1,4 +1,7 @@
-import {useEffect, useState} from "react";
+import {ReactNode, useEffect, useState} from "react";
+import {DndContext, DragEndEvent, KeyboardSensor, PointerSensor, TouchSensor, closestCenter, useSensor, useSensors} from "@dnd-kit/core";
+import {SortableContext, arrayMove, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy} from "@dnd-kit/sortable";
+import {CSS} from "@dnd-kit/utilities";
 import {
     Alert,
     Button,
@@ -8,13 +11,14 @@ import {
     Flex,
     Input,
     Popconfirm,
+    Tooltip,
     Select,
     Tag,
     Typography,
     message,
     theme,
 } from "antd";
-import {ArrowDownOutlined, ArrowUpOutlined, DeleteOutlined, PlusOutlined} from "@ant-design/icons";
+import {DeleteOutlined, HolderOutlined, PlusOutlined} from "@ant-design/icons";
 import {
     AIModelQueue,
     AIModelQueueItem,
@@ -140,6 +144,28 @@ function QueueTest({value, queue, onlyIndex, onTestAll}: {
     </Card>;
 }
 
+function itemKey(item: AIModelQueueItem): string {
+    return `${item.providerID}|${item.modelID}`;
+}
+
+// 调用顺序里的一步：按住左边的把手拖动排序。
+// useSortable 给出拖动时的位移（transform），把手上挂 listeners 才能拖起来。
+function SortableStep({id, handle, children}: {
+    id: string;
+    handle: (props: {listeners: object; attributes: object}) => ReactNode;
+    children: ReactNode;
+}) {
+    const {attributes, listeners, setNodeRef, transform, transition, isDragging} = useSortable({id});
+    return <div
+        ref={setNodeRef}
+        className={`ai-queue-step${isDragging ? " is-dragging" : ""}`}
+        style={{transform: CSS.Translate.toString(transform), transition}}
+    >
+        {handle({listeners: listeners ?? {}, attributes})}
+        {children}
+    </div>;
+}
+
 function QueueEditor({value, queue, onChange, onDelete}: {
     value: AIPlatformConfig;
     queue: AIModelQueue;
@@ -154,11 +180,24 @@ function QueueEditor({value, queue, onChange, onDelete}: {
         items: queue.items.map((item, i) => i === index ? {...item, ...patch} : item),
     });
 
-    const moveItem = (index: number, offset: number) => {
-        const items = [...queue.items];
-        [items[index], items[index + offset]] = [items[index + offset], items[index]];
+    const sensors = useSensors(
+        useSensor(PointerSensor, {activationConstraint: {distance: 4}}),
+        // 手机上长按一下再拖，免得和页面滚动打架
+        useSensor(TouchSensor, {activationConstraint: {delay: 200, tolerance: 6}}),
+        useSensor(KeyboardSensor, {coordinateGetter: sortableKeyboardCoordinates}),
+    );
+
+    const onDragEnd = ({active, over}: DragEndEvent) => {
+        if (!over || active.id === over.id) {
+            return;
+        }
+        const from = queue.items.findIndex((item) => itemKey(item) === active.id);
+        const to = queue.items.findIndex((item) => itemKey(item) === over.id);
+        if (from < 0 || to < 0) {
+            return;
+        }
         setTestIndex(null);
-        onChange({items});
+        onChange({items: arrayMove(queue.items, from, to)});
     };
 
     const removeItem = (index: number) => {
@@ -224,16 +263,20 @@ function QueueEditor({value, queue, onChange, onDelete}: {
                         : <Text type="secondary" style={{fontSize: 12}}>未使用</Text>}
                 </Flex>
             </Flex>
-            <Popconfirm
-                title={`删除策略「${queue.name || "未命名策略"}」？`}
-                description={businesses.length > 0 ? `${businesses.map((business) => business.label).join("、")}会变成未配置` : undefined}
-                okText="删除"
-                okButtonProps={{danger: true}}
-                cancelText="取消"
-                onConfirm={onDelete}
-            >
-                <Button danger type="text">删除策略</Button>
-            </Popconfirm>
+            {businesses.length > 0
+                // 正在被业务使用的策略不能删：删了业务就变成未配置，没有意义。要删先在“业务”里换掉。
+                ? <Tooltip title={`正在用于${businesses.map((business) => business.label).join("、")}，先在“业务”里换成别的策略才能删除`}>
+                    <Button type="text" disabled>删除策略</Button>
+                </Tooltip>
+                : <Popconfirm
+                    title={`删除策略「${queue.name || "未命名策略"}」？`}
+                    okText="删除"
+                    okButtonProps={{danger: true}}
+                    cancelText="取消"
+                    onConfirm={onDelete}
+                >
+                    <Button danger type="text">删除策略</Button>
+                </Popconfirm>}
         </Flex>
 
         <Flex vertical gap={10}>
@@ -252,6 +295,8 @@ function QueueEditor({value, queue, onChange, onDelete}: {
                 />
             </Flex>
             {queue.items.length === 0 && <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="还没有模型"/>}
+            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
+            <SortableContext items={queue.items.map(itemKey)} strategy={verticalListSortingStrategy}>
             {queue.items.map((item, index) => {
                 const provider = findProvider(value, item.providerID);
                 const model = findModel(value, item.providerID, item.modelID);
@@ -261,14 +306,20 @@ function QueueEditor({value, queue, onChange, onDelete}: {
                 const deepSeek = isDeepSeekText(provider, model);
                 const efforts: ReasoningEffort[] = deepSeek ? ["none", ...(model.reasoning ?? [])] : (model.reasoning ?? []);
                 const supportsWeb = queue.type === "text" && (model.tools ?? []).includes("web_search");
-                return <div className="ai-queue-step" key={`${item.providerID}-${item.modelID}`}>
-                    <div
-                        className="ai-queue-index"
-                        style={{
-                            background: index === 0 ? token.colorPrimary : token.colorFillSecondary,
-                            color: index === 0 ? token.colorTextLightSolid : token.colorTextSecondary,
-                        }}
-                    >{index + 1}</div>
+                return <SortableStep key={itemKey(item)} id={itemKey(item)} handle={({listeners, attributes}) => <div
+                    {...attributes}
+                    {...listeners}
+                    className="ai-queue-index"
+                    aria-label="拖动排序"
+                    title="按住拖动排序"
+                    style={{
+                        background: index === 0 ? token.colorPrimary : token.colorFillSecondary,
+                        color: index === 0 ? token.colorTextLightSolid : token.colorTextSecondary,
+                    }}
+                >
+                    <span className="ai-queue-number">{index + 1}</span>
+                    <HolderOutlined className="ai-queue-grip"/>
+                </div>}>
                     <div className="ai-queue-body" style={{borderColor: token.colorBorderSecondary, borderRadius: token.borderRadius}}>
                         <Flex justify="space-between" align="flex-start" gap={8} wrap>
                             <Flex vertical style={{minWidth: 0}}>
@@ -279,8 +330,6 @@ function QueueEditor({value, queue, onChange, onDelete}: {
                             </Flex>
                             <Flex gap={2}>
                                 <Button type="text" size="small" onClick={() => setTestIndex(index)}>单测</Button>
-                                <Button type="text" size="small" aria-label="上移" icon={<ArrowUpOutlined/>} disabled={index === 0} onClick={() => moveItem(index, -1)}/>
-                                <Button type="text" size="small" aria-label="下移" icon={<ArrowDownOutlined/>} disabled={index === queue.items.length - 1} onClick={() => moveItem(index, 1)}/>
                                 <Button type="text" size="small" danger aria-label="移除" icon={<DeleteOutlined/>} onClick={() => removeItem(index)}/>
                             </Flex>
                         </Flex>
@@ -306,8 +355,10 @@ function QueueEditor({value, queue, onChange, onDelete}: {
                             >启用 Web Search</Checkbox>}
                         </Flex>}
                     </div>
-                </div>;
+                </SortableStep>;
             })}
+            </SortableContext>
+            </DndContext>
         </Flex>
 
         <QueueTest value={value} queue={queue} onlyIndex={testIndex} onTestAll={() => setTestIndex(null)}/>

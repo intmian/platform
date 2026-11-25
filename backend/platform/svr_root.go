@@ -23,6 +23,7 @@ func (m *webMgr) initSvrRoot(r *gin.Engine) {
 	r.POST("/misc/ai/transcribe", m.aiTranscribe)
 	r.POST("/misc/ai/transcribe/capability", m.aiTranscribeCapability)
 	r.GET("/misc/ai/transcribe/realtime", m.aiTranscribeRealtime)
+	r.POST("/misc/ai/transcribe/bench", m.aiTranscribeBench)
 	r.POST("/misc/ai/config/get", m.aiConfigGet)
 	r.POST("/misc/ai/config/set", m.aiConfigSet)
 	r.POST("/misc/ai/config/queue/test", m.aiQueueTest)
