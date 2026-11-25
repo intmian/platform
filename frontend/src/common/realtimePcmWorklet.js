@@ -1,8 +1,10 @@
-const TARGET_SAMPLE_RATE = 8000;
-const FRAME_SAMPLE_COUNT = 800;
+// 和 realtimeTask.ts 的 REALTIME_SAMPLE_RATE、后端 realtimeClientSampleRate 保持一致。
+const TARGET_SAMPLE_RATE = 16000;
+// 每 100ms 发一帧。
+const FRAME_SAMPLE_COUNT = TARGET_SAMPLE_RATE / 10;
 const WAVEFORM_BAR_COUNT = 16;
 
-class RealtimePcm8kProcessor extends AudioWorkletProcessor {
+class RealtimePcmProcessor extends AudioWorkletProcessor {
     constructor() {
         super();
         this.sourceBuffer = new Float32Array(0);
@@ -78,4 +80,4 @@ class RealtimePcm8kProcessor extends AudioWorkletProcessor {
     }
 }
 
-registerProcessor("platform-realtime-pcm-8k", RealtimePcm8kProcessor);
+registerProcessor("platform-realtime-pcm", RealtimePcmProcessor);

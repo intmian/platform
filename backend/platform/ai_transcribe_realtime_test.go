@@ -112,7 +112,7 @@ func TestConnectDashScopeRealtimeStartsTask(t *testing.T) {
 		}
 		if runTask.Payload.Model != "fun-asr-flash-8k-realtime" ||
 			runTask.Payload.Parameters.Format != "pcm" ||
-			runTask.Payload.Parameters.SampleRate != 8000 {
+			runTask.Payload.Parameters.SampleRate != realtimeClientSampleRate {
 			t.Errorf("unexpected run-task: %#v", runTask)
 		}
 		if _, err := uuid.Parse(runTask.Header.TaskID); err != nil {

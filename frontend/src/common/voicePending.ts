@@ -1,6 +1,6 @@
 import {useEffect, useState} from "react";
 import {transcribeAudio} from "./aiGateway";
-import {pcmToWav, transcribePcmRealtime} from "./realtimeTask";
+import {pcmToWav, REALTIME_SAMPLE_RATE, transcribePcmRealtime} from "./realtimeTask";
 
 // Audio that could not be transcribed (network down, upstream failing). Kept in
 // IndexedDB so a refresh or closed tab does not lose it; retried by hand later.
@@ -9,9 +9,11 @@ export interface PendingVoiceClip {
     id: string;
     createdAt: number;
     durationMs: number;
-    // pcm8k: raw 8 kHz 16-bit mono PCM from the realtime path.
+    // pcm: raw 16-bit mono PCM from the realtime path, at sampleRate.
+    // pcm8k: same, saved before the realtime path moved to 16 kHz (always 8 kHz).
     // file: an encoded recording from the file-upload path.
-    kind: "pcm8k" | "file";
+    kind: "pcm" | "pcm8k" | "file";
+    sampleRate?: number;
     data: Blob;
     fileName?: string;
 }
@@ -96,13 +98,23 @@ export async function transcribePendingVoiceClip(clip: PendingVoiceClip, prompt:
         return response?.text?.trim() || "";
     }
     const pcm = new Uint8Array(await clip.data.arrayBuffer());
+    const sampleRate = clip.kind === "pcm8k" ? 8000 : clip.sampleRate || REALTIME_SAMPLE_RATE;
+    if (sampleRate !== REALTIME_SAMPLE_RATE) {
+        // 采样率和现在的实时通道对不上（8k 时期存下的），只能当文件转写。
+        const response = await transcribeAudio({
+            file: pcmToWav(pcm, sampleRate),
+            fileName: `recording-${clip.createdAt}.wav`,
+            prompt,
+        });
+        return response?.text?.trim() || "";
+    }
     try {
         return await transcribePcmRealtime(pcm);
     } catch (realtimeError) {
         // The STT queue may also hold file models; try them before giving up.
         try {
             const response = await transcribeAudio({
-                file: pcmToWav(pcm),
+                file: pcmToWav(pcm, sampleRate),
                 fileName: `recording-${clip.createdAt}.wav`,
                 prompt,
             });

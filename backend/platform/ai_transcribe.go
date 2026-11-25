@@ -169,6 +169,8 @@ func (m *webMgr) transcribeQueue(ctx context.Context, aiCfg share.AIPlatformConf
 			ret, err = transcribeDashScopeFunASR(ctx, base, token, file, fileName, model)
 		case aiv2.ModelCallProtocolDashScopeFunASRRealtime:
 			ret, err = transcribeDashScopeRealtimeFile(ctx, base, token, file, fileName, model)
+		case aiv2.ModelCallProtocolOpenAIRealtimeSTT:
+			ret, err = transcribeOpenAIRealtimeFile(ctx, item.Provider, token, file, model)
 		case aiv2.ModelCallProtocolDashScopeQwen3ASR:
 			ret, err = transcribeDashScopeQwen3ASR(ctx, base, token, file, fileName, model, language)
 		default:

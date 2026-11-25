@@ -4,7 +4,9 @@ import {API_BASE} from "./api";
 // DashScope task. A voice session chains several of these when the network or
 // the upstream drops; a retry of saved audio replays through one of them.
 
-export const REALTIME_SAMPLE_RATE = 8000;
+// 麦克风推给后端的 PCM 采样率，和 realtimePcmWorklet.js、后端 realtimeClientSampleRate 保持一致。
+// 以前是 8k（早期的 8k 专用模型），2026-11 改成 16k；8k 时期存下的待重试录音见 voicePending.ts。
+export const REALTIME_SAMPLE_RATE = 16000;
 export const PCM_BYTES_PER_MS = REALTIME_SAMPLE_RATE * 2 / 1000;
 const CONNECT_TIMEOUT_MS = 10000;
 
@@ -188,7 +190,7 @@ export function splitPcmFrames(pcm: Uint8Array, frameBytes = 1600): ArrayBuffer[
     return frames;
 }
 
-// Rough "is anyone talking" check for 8 kHz 16-bit PCM: needs at least ~300 ms
+// Rough "is anyone talking" check for realtime 16-bit PCM: needs at least ~300 ms
 // of 20 ms windows whose RMS is above -45 dBFS.
 export function pcmHasVoice(pcm: Uint8Array): boolean {
     const samples = new Int16Array(pcm.buffer, pcm.byteOffset, Math.floor(pcm.byteLength / 2));

@@ -502,7 +502,8 @@ func sourceTypeForAIModelCallProtocol(protocol ai.ModelCallProtocol) (ai.Provide
 		ai.ModelCallProtocolOpenAISTT,
 		ai.ModelCallProtocolDashScopeQwen3ASR,
 		ai.ModelCallProtocolDashScopeFunASR,
-		ai.ModelCallProtocolDashScopeFunASRRealtime:
+		ai.ModelCallProtocolDashScopeFunASRRealtime,
+		ai.ModelCallProtocolOpenAIRealtimeSTT:
 		return ai.ProviderSourceTypeOpenAI, nil
 	default:
 		return "", fmt.Errorf("unsupported model call protocol %q", protocol)

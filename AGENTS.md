@@ -14,7 +14,8 @@
 - `frontend/`：Vite + React + antd 5。`src/shell` 是外壳（锁屏登录、桌面、底部横条、⌘K、应用保活），所有路径都经过它；各应用登记在 `src/shell/apps.tsx`，按模块分目录（`src/todone` 里同时有普通任务板、Library 娱乐库和例行清单，另有 `src/money`、`src/subscription`、`src/admin` ……）。
 - `backend/`：Go + Gin，入口 `backend/main/main.go`。RPC 服务在 `backend/services/*`，平台自带的接口（登录、配置、AI、记账、订阅）在 `backend/platform/`。
 - `backend/mian_go_lib`：子模块，属于本项目，但有独立的 Git 历史，改了要单独提交并更新父仓库的引用。
-- `workers/ai-proxy`：AI 请求转发 Worker，已下线（公网入口关闭，代码保留），原因见目录下 `AGENTS.md`。
+- `workers/ai-proxy-vercel`：AI 请求转发函数，部署在 Vercel 新加坡，让香港服务器访问 OpenAI 等服务。
+- `workers/ai-proxy`：旧的 Cloudflare 版转发 Worker，已下线（公网入口关闭，代码保留），原因见目录下 `AGENTS.md`。
 - `plan/`、`docs/plan/`：规划和历史资料，不代表当前实现。
 - 改某个模块前先读它目录下的 `AGENTS.md`（如果有），里面是拍过板的产品决定和不明显的坑：`backend/`、`frontend/`、`frontend/src/todone/`、`frontend/src/money/`、`frontend/src/subscription/`。
 

@@ -1,0 +1,8 @@
+{
+  "name": "platform-ai-proxy-vercel",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "ws": "^8.23.0"
+  }
+}

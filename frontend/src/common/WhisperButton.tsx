@@ -6,6 +6,7 @@ import {getTranscriptionCapability, peekTranscriptionCapability, transcribeAudio
 import type {AiTranscribeCapability, AiTranscribeResp} from "./aiProtocol";
 import {useAudioRecorder} from "./useAudioRecorder";
 import {useRealtimeTranscription} from "./useRealtimeTranscription";
+import {REALTIME_SAMPLE_RATE} from "./realtimeTask";
 import {
     addPendingVoiceClip,
     PendingVoiceClip,
@@ -297,7 +298,8 @@ export function WhisperButton({
         }
         if (result.failedAudio) {
             void addPendingVoiceClip({
-                kind: "pcm8k",
+                kind: "pcm",
+                sampleRate: REALTIME_SAMPLE_RATE,
                 data: result.failedAudio,
                 durationMs: result.failedDurationMs,
             });

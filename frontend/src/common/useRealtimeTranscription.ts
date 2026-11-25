@@ -371,12 +371,12 @@ export function useRealtimeTranscription(options: RealtimeTranscriptionOptions) 
             streamRef.current = stream;
             const context = new AudioContext();
             contextRef.current = context;
-            await context.audioWorklet.addModule(new URL("./realtimePcm8kWorklet.js", import.meta.url));
+            await context.audioWorklet.addModule(new URL("./realtimePcmWorklet.js", import.meta.url));
             if (session !== sessionRef.current) {
                 return;
             }
             const source = context.createMediaStreamSource(stream);
-            const worklet = new AudioWorkletNode(context, "platform-realtime-pcm-8k", {
+            const worklet = new AudioWorkletNode(context, "platform-realtime-pcm", {
                 numberOfInputs: 1,
                 numberOfOutputs: 1,
                 outputChannelCount: [1],

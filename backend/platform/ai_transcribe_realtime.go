@@ -20,15 +20,19 @@ import (
 )
 
 const (
-	dashScopeRealtimePath         = "/api-ws/v1/inference"
-	dashScopeRealtimeSampleRate   = 8000
+	dashScopeRealtimePath = "/api-ws/v1/inference"
+	// realtimeClientSampleRate 是浏览器麦克风推上来的 PCM 采样率，所有实时上游共用，
+	// 这样同一次录音中途换上游（前端会自动重连）也不用换采样率。DashScope 直接收 16k；
+	// OpenAI 只收 24k，在 ai_transcribe_openai_realtime.go 里补。
+	// 早期接的 fun-asr-flash-8k-realtime 只收 8k，所以以前是 8k；现在的模型都收 16k，音质也更好。
+	realtimeClientSampleRate      = 16000
 	realtimeHandshakeTimeout      = 15 * time.Second
 	realtimeCloseTimeout          = 2 * time.Second
 	realtimeTranscriptionTimeout  = 10 * time.Minute
 	realtimeClientMessageMaxBytes = 64 << 10
 )
 
-var errNoRealtimeTranscriptionModel = errors.New("stt queue has no DashScope realtime model")
+var errNoRealtimeTranscriptionModel = errors.New("stt queue has no realtime model")
 
 var realtimeTranscriptionUpgrader = websocket.Upgrader{
 	ReadBufferSize:  4096,
@@ -105,7 +109,7 @@ func (m *webMgr) aiTranscribeRealtime(c *gin.Context) {
 		return
 	}
 
-	upstream, selected, taskID, err := connectDashScopeRealtimeQueue(ctx, items)
+	session, err := m.connectRealtimeQueue(ctx, items)
 	if err != nil {
 		m.logRealtimeTranscription("upstream connect failed: %s", err.Error())
 		_ = writeRealtimeClientEvent(client, realtimeTranscriptionServerEvent{
@@ -115,20 +119,21 @@ func (m *webMgr) aiTranscribeRealtime(c *gin.Context) {
 		})
 		return
 	}
-	defer upstream.Close()
+	defer session.upstream.Close()
+	selected := session.item
 
 	if err := writeRealtimeClientEvent(client, realtimeTranscriptionServerEvent{
 		Type:       "ready",
-		SampleRate: dashScopeRealtimeSampleRate,
+		SampleRate: realtimeClientSampleRate,
 		ProviderID: selected.Provider.ID,
 		ModelID:    selected.Model.ID,
 		Model:      selected.Model.Name,
-		TaskID:     taskID,
+		TaskID:     session.taskID,
 	}); err != nil {
 		return
 	}
 
-	if err := m.bridgeDashScopeRealtime(client, upstream, taskID); err != nil && !isRealtimeClientGone(err) {
+	if err := session.bridge(client); err != nil && !isRealtimeClientGone(err) {
 		m.logRealtimeTranscription("session failed [%s/%s]: %s", selected.Provider.ID, selected.Model.ID, err.Error())
 	}
 }
@@ -163,7 +168,7 @@ func (m *webMgr) aiTranscribeCapability(c *gin.Context) {
 	if _, err := m.resolveRealtimeTranscriptionItems(); err == nil {
 		c.JSON(http.StatusOK, makeOkReturn(aiTranscribeCapabilityResp{
 			Mode:       "realtime",
-			SampleRate: dashScopeRealtimeSampleRate,
+			SampleRate: realtimeClientSampleRate,
 		}))
 		return
 	} else if !errors.Is(err, errNoRealtimeTranscriptionModel) {
@@ -192,7 +197,7 @@ func (m *webMgr) resolveRealtimeTranscriptionItems() ([]share.AIResolvedQueueIte
 		if protocolErr != nil {
 			continue
 		}
-		if protocol == aiv2.ModelCallProtocolDashScopeFunASRRealtime {
+		if isRealtimeSTTProtocol(protocol) {
 			realtimeItems = append(realtimeItems, item)
 		}
 	}
@@ -202,13 +207,22 @@ func (m *webMgr) resolveRealtimeTranscriptionItems() ([]share.AIResolvedQueueIte
 	return realtimeItems, nil
 }
 
-func connectDashScopeRealtimeQueue(
-	ctx context.Context,
-	items []share.AIResolvedQueueItem,
-) (*websocket.Conn, share.AIResolvedQueueItem, string, error) {
+func isRealtimeSTTProtocol(protocol aiv2.ModelCallProtocol) bool {
+	return protocol == aiv2.ModelCallProtocolDashScopeFunASRRealtime || protocol == aiv2.ModelCallProtocolOpenAIRealtimeSTT
+}
+
+// realtimeSession 是连上的一个实时上游：bridge 负责在浏览器和上游之间转发，直到结束。
+type realtimeSession struct {
+	item     share.AIResolvedQueueItem
+	upstream *websocket.Conn
+	taskID   string
+	bridge   func(client *websocket.Conn) error
+}
+
+// connectRealtimeQueue 按策略顺序依次尝试连接实时上游，第一个连上的就用它。
+func (m *webMgr) connectRealtimeQueue(ctx context.Context, items []share.AIResolvedQueueItem) (realtimeSession, error) {
 	var errs []error
 	for _, item := range items {
-		baseURL := strings.TrimSpace(item.Provider.BaseURL)
 		token := strings.TrimSpace(item.Provider.Token)
 		model := strings.TrimSpace(item.Model.Name)
 		label := fmt.Sprintf("%s/%s", item.Provider.ID, item.Model.ID)
@@ -220,27 +234,42 @@ func connectDashScopeRealtimeQueue(
 			errs = append(errs, fmt.Errorf("%s: stt model is empty", label))
 			continue
 		}
-		conn, taskID, err := connectDashScopeRealtime(ctx, baseURL, token, model, defaultDashScopeRealtimeAudio)
-		if err != nil {
-			errs = append(errs, fmt.Errorf("%s: %w", label, err))
-			continue
+		protocol, _ := share.ResolveAIModelCallProtocol(item.Provider.Protocol, item.Model)
+		switch protocol {
+		case aiv2.ModelCallProtocolOpenAIRealtimeSTT:
+			conn, err := connectOpenAIRealtime(ctx, item.Provider, token, model)
+			if err != nil {
+				errs = append(errs, fmt.Errorf("%s: %w", label, err))
+				continue
+			}
+			bridge := newOpenAIRealtimeBridge(conn, model)
+			return realtimeSession{item: item, upstream: conn, bridge: bridge.run}, nil
+		default:
+			baseURL := strings.TrimSpace(item.Provider.BaseURL)
+			conn, taskID, err := connectDashScopeRealtime(ctx, baseURL, token, model, defaultDashScopeRealtimeAudio)
+			if err != nil {
+				errs = append(errs, fmt.Errorf("%s: %w", label, err))
+				continue
+			}
+			return realtimeSession{item: item, upstream: conn, taskID: taskID, bridge: func(client *websocket.Conn) error {
+				return m.bridgeDashScopeRealtime(client, conn, taskID)
+			}}, nil
 		}
-		return conn, item, taskID, nil
 	}
 	if len(errs) == 0 {
-		return nil, share.AIResolvedQueueItem{}, "", errors.New("realtime stt queue is empty")
+		return realtimeSession{}, errors.New("realtime stt queue is empty")
 	}
-	return nil, share.AIResolvedQueueItem{}, "", errors.Join(errs...)
+	return realtimeSession{}, errors.Join(errs...)
 }
 
-// dashScopeRealtimeAudio 是 run-task 里描述音频的参数：浏览器麦克风推的是 8k PCM，
+// dashScopeRealtimeAudio 是 run-task 里描述音频的参数：浏览器麦克风推的是 16k PCM，
 // 上传的文件则按文件本身的格式和采样率。
 type dashScopeRealtimeAudio struct {
 	Format     string
 	SampleRate int
 }
 
-var defaultDashScopeRealtimeAudio = dashScopeRealtimeAudio{Format: "pcm", SampleRate: dashScopeRealtimeSampleRate}
+var defaultDashScopeRealtimeAudio = dashScopeRealtimeAudio{Format: "pcm", SampleRate: realtimeClientSampleRate}
 
 func connectDashScopeRealtime(
 	ctx context.Context,

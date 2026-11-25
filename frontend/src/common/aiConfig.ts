@@ -2,7 +2,7 @@ import {ApiResult, request} from "./api";
 
 export type ProviderProtocol = "OpenAI" | "DeepSeek";
 export type ModelType = "text" | "stt" | "search";
-export type ModelCallProtocol = "OpenAIText" | "DeepSeekText" | "OpenAISTT" | "DashScopeQwen3ASR" | "DashScopeFunASR" | "DashScopeFunASRRealtime" | "DeepSeekSearch";
+export type ModelCallProtocol = "OpenAIText" | "DeepSeekText" | "OpenAISTT" | "DashScopeQwen3ASR" | "DashScopeFunASR" | "DashScopeFunASRRealtime" | "OpenAIRealtimeSTT" | "DeepSeekSearch";
 export type ReasoningEffort = "none" | "minimal" | "low" | "medium" | "high" | "xhigh" | "max";
 export type ChatTool = "web_search";
 
